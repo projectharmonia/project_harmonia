@@ -1,0 +1,21 @@
+[package]
+name = "dollis"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+bevy = { version = "0.7", default-features = false, features = ["x11"] }
+bevy_atmosphere = "0.3"
+bevy_egui = "0.14"
+bevy_rapier3d = "0.15"
+bevy-inspector-egui = { version = "0.11", default-features = false, features = [
+  "clipboard",
+  "bevy_pbr",
+] }
+iyes_loopless = "0.6"
+serde = "1.0"
+serde_json = "1.0"
+strum = { version = "0.24", features = ["derive"] }
+leafwing-input-manager = { version = "0.4", default-features = false }
+standard_paths = "1.1"
