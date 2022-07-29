@@ -5,6 +5,7 @@ use iyes_loopless::prelude::*;
 
 use super::settings::{Settings, SettingsApplied};
 
+/// Propagates developer settings changes into resources.
 pub(super) struct DeveloperPlugin;
 
 impl Plugin for DeveloperPlugin {
@@ -17,6 +18,7 @@ impl Plugin for DeveloperPlugin {
 }
 
 impl DeveloperPlugin {
+    /// Enables or disables the world inspector when settings are applied.
     fn toggle_inspector_system(
         settings: Res<Settings>,
         mut world_inspector: ResMut<WorldInspectorParams>,
@@ -24,6 +26,7 @@ impl DeveloperPlugin {
         world_inspector.enabled = settings.developer.world_inspector;
     }
 
+    /// Enables or disables collision debugging when settings are applied.
     fn toggle_debug_collisions_system(
         settings: Res<Settings>,
         mut debug_render_ctx: ResMut<DebugRenderContext>,

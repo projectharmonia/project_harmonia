@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use standard_paths::{LocationType, StandardPaths};
 use std::{fs, path::PathBuf};
 
+/// Initializes [`GamePaths`] resource.
 pub(super) struct GamePathsPlugin;
 
 impl Plugin for GamePathsPlugin {
