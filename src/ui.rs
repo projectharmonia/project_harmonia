@@ -1,5 +1,5 @@
-mod back_button;
 mod main_menu;
+mod modal_window;
 mod settings_menu;
 pub(super) mod ui_action;
 mod ui_state;

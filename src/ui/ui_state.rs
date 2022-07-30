@@ -12,7 +12,5 @@ impl Plugin for UiStatePlugin {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub(super) enum UiState {
     MainMenu,
-    SettingsMenu,
     WorldBrowser,
-    InGameMenu,
 }

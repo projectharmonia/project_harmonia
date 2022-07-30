@@ -5,7 +5,7 @@ use bevy_egui::{
 };
 use iyes_loopless::prelude::*;
 
-use super::{ui_state::UiState, UI_MARGIN};
+use super::{settings_menu::SettingsMenu, ui_state::UiState, UI_MARGIN};
 
 pub(super) struct MainMenuPlugin;
 
@@ -19,6 +19,7 @@ impl MainMenuPlugin {
     fn main_menu_system(
         mut commands: Commands,
         mut exit_events: EventWriter<AppExit>,
+        mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
     ) {
         Area::new("Main Menu")
@@ -38,7 +39,7 @@ impl MainMenuPlugin {
                     ))
                     .clicked()
                 {
-                    commands.insert_resource(NextState(UiState::SettingsMenu));
+                    settings_menu.is_open = true;
                 }
                 if ui
                     .add(Button::new(
