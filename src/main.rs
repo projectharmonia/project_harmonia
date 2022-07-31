@@ -1,3 +1,5 @@
+#![warn(clippy::doc_markdown)]
+
 mod core;
 mod ui;
 
