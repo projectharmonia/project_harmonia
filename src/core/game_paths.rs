@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use standard_paths::{LocationType, StandardPaths};
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 /// Initializes [`GamePaths`] resource.
 pub(super) struct GamePathsPlugin;
@@ -12,7 +12,6 @@ impl Plugin for GamePathsPlugin {
 }
 
 /// Paths with game files, such as settings and savegames.
-#[derive(Deref)]
 pub(crate) struct GamePaths {
     pub(crate) settings: PathBuf,
 }
@@ -27,9 +26,6 @@ impl Default for GamePaths {
         let config_dir = StandardPaths::default()
             .writable_location(location)
             .expect("Unable to locate configuration directory");
-
-        fs::create_dir_all(&config_dir)
-            .unwrap_or_else(|error| panic!("Unable to create {config_dir:?}: {error}"));
 
         let mut settings = config_dir;
         settings.push(env!("CARGO_PKG_NAME"));

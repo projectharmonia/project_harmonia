@@ -1,7 +1,9 @@
+use anyhow::{Context, Result};
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
+use tap::TapFallible;
 
 use super::game_paths::GamePaths;
 
@@ -11,15 +13,22 @@ impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
         let game_paths = app.world.resource::<GamePaths>();
 
-        app.insert_resource(Settings::read(&game_paths.settings))
-            .add_event::<SettingsApplied>()
-            .add_system(Self::write_system.run_on_event::<SettingsApplied>());
+        app.insert_resource(
+            Settings::read(&game_paths.settings)
+                .tap_err(|e| error!("{e:#}"))
+                .unwrap_or_default(),
+        )
+        .add_event::<SettingsApplied>()
+        .add_system(Self::write_system.run_on_event::<SettingsApplied>());
     }
 }
 
 impl SettingsPlugin {
     fn write_system(settings: Res<Settings>, game_paths: Res<GamePaths>) {
-        settings.write(&game_paths.settings);
+        settings
+            .write(&game_paths.settings)
+            .tap_err(|e| error!("{e:#}"))
+            .ok();
     }
 }
 
@@ -36,20 +45,28 @@ pub(crate) struct Settings {
 impl Settings {
     /// Creates [`Settings`] from the application settings file.
     /// Will be initialed with defaults if the file does not exist.
-    #[must_use]
-    fn read(file_name: &Path) -> Settings {
+    fn read(file_name: &Path) -> Result<Settings> {
         match fs::read_to_string(file_name) {
-            Ok(content) => {
-                serde_json::from_str::<Settings>(&content).expect("Unable to parse setting file")
-            }
-            Err(_) => Settings::default(),
+            Ok(content) => serde_json::from_str::<Settings>(&content)
+                .with_context(|| format!("Unable to read settings from {file_name:?}")),
+            Err(_) => Ok(Settings::default()),
         }
     }
 
-    /// Serialize [`Settings`] on disk under [`self.file_path`].
-    fn write(&self, file_name: &Path) {
-        let content = serde_json::to_string_pretty(&self).expect("Unable to serialize settings");
-        fs::write(file_name, content).expect("Unable to write settings");
+    /// Saves settings on disk under.
+    ///
+    /// Automatically creates all parent folders.
+    fn write(&self, file_name: &Path) -> Result<()> {
+        let content =
+            serde_json::to_string_pretty(&self).context("Unable to serialize settings")?;
+
+        if let Some(config_dir) = file_name.parent() {
+            fs::create_dir_all(&config_dir)
+                .with_context(|| format!("Unable to create {config_dir:?}"))?;
+        }
+
+        fs::write(file_name, content)
+            .with_context(|| format!("Unable to write settings to {file_name:?}"))
     }
 }
 
@@ -83,14 +100,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn read_write() {
+    fn read_write() -> Result<()> {
         let mut app = App::new();
         app.init_resource::<GamePaths>().add_plugin(SettingsPlugin);
 
         let game_paths = app.world.resource::<GamePaths>();
         assert!(
-            !game_paths.exists(),
-            "Settings file shouldn't be created on startup"
+            !game_paths.settings.exists(),
+            "Settings file {:?} shouldn't be created on startup",
+            game_paths.settings
         );
 
         let mut settings = app.world.resource_mut::<Settings>();
@@ -114,13 +132,13 @@ mod tests {
             "Configuration file should be created on apply event"
         );
 
-        let loaded_settings = Settings::read(&game_paths.settings);
+        let loaded_settings = Settings::read(&game_paths.settings)?;
         let settings = app.world.resource::<Settings>();
         assert_eq!(
-            settings.video, loaded_settings.video,
+            *settings, loaded_settings,
             "Loaded settings should be equal to saved"
         );
 
-        fs::remove_file(&game_paths.settings).expect("Saved file should be removed after the test");
+        fs::remove_file(&game_paths.settings).context("Unable to remove saved file after the test")
     }
 }
