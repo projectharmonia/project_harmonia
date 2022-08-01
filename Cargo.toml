@@ -13,7 +13,7 @@ bevy-inspector-egui = { version = "0.11", default-features = false, features = [
   "clipboard",
   "bevy_pbr",
 ] }
-iyes_loopless = "0.6"
+iyes_loopless = "0.7"
 serde = "1.0"
 serde_json = "1.0"
 strum = { version = "0.24", features = ["derive"] }
