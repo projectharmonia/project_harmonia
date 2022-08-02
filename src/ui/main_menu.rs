@@ -5,13 +5,14 @@ use bevy_egui::{
 };
 use iyes_loopless::prelude::*;
 
-use super::{settings_menu::SettingsMenu, ui_state::UiState, UI_MARGIN};
+use super::{settings_menu::SettingsMenu, world_browser::WorldBrowser, UI_MARGIN};
+use crate::core::game_state::GameState;
 
 pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::main_menu_system.run_in_state(UiState::MainMenu));
+        app.add_system(Self::main_menu_system.run_in_state(GameState::Menu));
     }
 }
 
@@ -30,7 +31,7 @@ impl MainMenuPlugin {
                     ))
                     .clicked()
                 {
-                    commands.insert_resource(NextState(UiState::WorldBrowser));
+                    commands.init_resource::<WorldBrowser>();
                 }
                 if ui
                     .add(Button::new(

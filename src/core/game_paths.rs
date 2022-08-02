@@ -14,6 +14,7 @@ impl Plugin for GamePathsPlugin {
 /// Paths with game files, such as settings and savegames.
 pub(crate) struct GamePaths {
     pub(crate) settings: PathBuf,
+    pub(crate) worlds: PathBuf,
 }
 
 impl Default for GamePaths {
@@ -27,10 +28,13 @@ impl Default for GamePaths {
             .writable_location(location)
             .expect("Unable to locate configuration directory");
 
-        let mut settings = config_dir;
+        let mut settings = config_dir.clone();
         settings.push(env!("CARGO_PKG_NAME"));
         settings.set_extension("json");
 
-        Self { settings }
+        let mut worlds = config_dir;
+        worlds.push("worlds");
+
+        Self { settings, worlds }
     }
 }
