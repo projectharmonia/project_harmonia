@@ -1,3 +1,4 @@
+mod ingame_menu;
 mod main_menu;
 mod modal_window;
 mod settings_menu;
@@ -7,6 +8,7 @@ mod world_menu;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use settings_menu::SettingsMenuPlugin;
 use ui_action::UiActionsPlugin;
@@ -23,6 +25,7 @@ impl PluginGroup for UiPlugins {
             .add(MainMenuPlugin)
             .add(WorldBrowserPlugin)
             .add(SettingsMenuPlugin)
+            .add(InGameMenuPlugin)
             .add(WorldMenuPlugin)
             .add(UiActionsPlugin);
     }
