@@ -19,7 +19,6 @@ impl MainMenuPlugin {
     fn main_menu_system(
         mut commands: Commands,
         mut exit_events: EventWriter<AppExit>,
-        mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
     ) {
         Area::new("Main Menu")
@@ -39,7 +38,7 @@ impl MainMenuPlugin {
                     ))
                     .clicked()
                 {
-                    settings_menu.is_open = true;
+                    commands.init_resource::<SettingsMenu>();
                 }
                 if ui
                     .add(Button::new(

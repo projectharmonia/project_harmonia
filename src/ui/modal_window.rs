@@ -36,7 +36,7 @@ impl ModalWindow<'_> {
     pub fn show<R>(
         self,
         ctx: &Context,
-        add_contents: impl FnOnce(&mut Ui, &mut bool) -> R,
+        add_contents: impl FnOnce(&mut Ui) -> R,
     ) -> Option<InnerResponse<Option<R>>> {
         // Create an area to prevent interation with other widgets
         // and display semi-transparent background
@@ -53,20 +53,19 @@ impl ModalWindow<'_> {
                 ui.allocate_space(screen.size());
             });
 
-        let mut inner_open = *self.open;
         let inner_response = self
             .window
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
             .collapsible(false)
             .resizable(false)
             .open(self.open)
-            .show(ctx, |ui| add_contents(ui, &mut inner_open));
+            .show(ctx, |ui| add_contents(ui));
 
         if let Some(inner_response) = &inner_response {
             ctx.move_to_top(inner_response.response.layer_id);
         }
 
-        if !inner_open || self.action_state.just_pressed(UiAction::Back) {
+        if self.action_state.just_pressed(UiAction::Back) {
             *self.open = false;
         }
 

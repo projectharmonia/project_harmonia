@@ -18,31 +18,27 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SettingsMenu>()
-            .add_system(Self::settings_menu_system.run_if(is_settings_open));
+        app.add_system(Self::settings_menu_system.run_if_resource_exists::<SettingsMenu>());
     }
 }
 
 impl SettingsMenuPlugin {
     fn settings_menu_system(
+        mut commands: Commands,
         mut apply_events: EventWriter<SettingsApplied>,
         action_state: Res<ActionState<UiAction>>,
         mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
     ) {
-        let SettingsMenu {
-            ref mut is_open,
-            ref mut current_tab,
-        } = *settings_menu;
-
-        ModalWindow::new(is_open, &action_state, "Settings").show(egui.ctx_mut(), |ui, is_open| {
+        let mut is_open = true;
+        ModalWindow::new(&mut is_open, &action_state, "Settings").show(egui.ctx_mut(), |ui| {
             ui.horizontal(|ui| {
                 for tab in SettingsTab::iter() {
-                    ui.selectable_value(current_tab, tab, tab.to_string());
+                    ui.selectable_value(&mut settings_menu.current_tab, tab, tab.to_string());
                 }
             });
-            match current_tab {
+            match settings_menu.current_tab {
                 SettingsTab::Video => VideoTab::new(&mut settings.video).show(ui),
                 SettingsTab::Developer => DeveloperTab::new(&mut settings.developer).show(ui),
             };
@@ -50,7 +46,7 @@ impl SettingsMenuPlugin {
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
                         apply_events.send(SettingsApplied);
-                        *is_open = false;
+                        commands.remove_resource::<SettingsMenu>();
                     }
                     if ui.button("Apply").clicked() {
                         apply_events.send(SettingsApplied);
@@ -62,16 +58,15 @@ impl SettingsMenuPlugin {
                 });
             });
         });
-    }
-}
 
-fn is_settings_open(settings_menu: ResMut<SettingsMenu>) -> bool {
-    settings_menu.is_open
+        if !is_open {
+            commands.remove_resource::<SettingsMenu>();
+        }
+    }
 }
 
 #[derive(Default)]
 pub(super) struct SettingsMenu {
-    pub(super) is_open: bool,
     current_tab: SettingsTab,
 }
 
