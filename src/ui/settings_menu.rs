@@ -2,9 +2,10 @@ mod developer_tab;
 mod video_tab;
 
 use bevy::prelude::*;
-use bevy_egui::egui::Layout;
-use bevy_egui::EguiContext;
-use bevy_inspector_egui::egui::Align;
+use bevy_egui::{
+    egui::{Align, Layout},
+    EguiContext,
+};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};

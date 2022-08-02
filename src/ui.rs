@@ -3,6 +3,7 @@ mod modal_window;
 mod settings_menu;
 pub(super) mod ui_action;
 mod world_browser;
+mod world_menu;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
@@ -10,6 +11,7 @@ use main_menu::MainMenuPlugin;
 use settings_menu::SettingsMenuPlugin;
 use ui_action::UiActionsPlugin;
 use world_browser::WorldBrowserPlugin;
+use world_menu::WorldMenuPlugin;
 
 const UI_MARGIN: f32 = 20.0;
 
@@ -21,6 +23,7 @@ impl PluginGroup for UiPlugins {
             .add(MainMenuPlugin)
             .add(WorldBrowserPlugin)
             .add(SettingsMenuPlugin)
+            .add(WorldMenuPlugin)
             .add(UiActionsPlugin);
     }
 }

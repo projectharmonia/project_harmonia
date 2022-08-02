@@ -8,7 +8,7 @@ use leafwing_input_manager::prelude::ActionState;
 use std::{fs, path::PathBuf};
 
 use super::{modal_window::ModalWindow, ui_action::UiAction};
-use crate::core::game_paths::GamePaths;
+use crate::core::{game_paths::GamePaths, game_state::GameState};
 
 pub(super) struct WorldBrowserPlugin;
 
@@ -44,7 +44,10 @@ impl WorldBrowserPlugin {
                 });
             }
             ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
-                if ui.button("➕ Create new").clicked() {}
+                if ui.button("➕ Create new").clicked() {
+                    commands.remove_resource::<WorldBrowser>();
+                    commands.insert_resource(NextState(GameState::InGame));
+                }
             });
         });
 
