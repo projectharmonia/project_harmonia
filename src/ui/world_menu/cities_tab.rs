@@ -20,7 +20,7 @@ impl<'a, 'w, 's, 'wq, 'sq> CitiesTab<'a, 'w, 's, 'wq, 'sq> {
 
 impl CitiesTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for name in self.cities.iter() {
+        for name in self.cities {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(

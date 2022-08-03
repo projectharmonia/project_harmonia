@@ -15,7 +15,7 @@ impl GameStatePlugin {
         mut commands: Commands,
         ingame_entities: Query<Entity, With<InGameOnly>>,
     ) {
-        for entity in ingame_entities.iter() {
+        for entity in &ingame_entities {
             commands.entity(entity).despawn_recursive();
         }
     }

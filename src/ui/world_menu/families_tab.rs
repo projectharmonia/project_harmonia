@@ -20,7 +20,7 @@ impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
 
 impl FamiliesTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for name in self.families.iter() {
+        for name in self.families {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(
