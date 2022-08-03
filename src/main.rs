@@ -4,7 +4,6 @@ mod core;
 mod ui;
 
 use bevy::prelude::*;
-use bevy_atmosphere::AtmospherePlugin;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::prelude::*;
 use bevy_rapier3d::prelude::*;
@@ -24,8 +23,7 @@ impl PluginGroup for DollisPlugins {
             .add(RapierDebugRenderPlugin::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(EguiPlugin)
-            .add(WorldInspectorPlugin::new())
-            .add(AtmospherePlugin::default());
+            .add(WorldInspectorPlugin::new());
 
         CorePlugins.build(group);
         UiPlugins.build(group);

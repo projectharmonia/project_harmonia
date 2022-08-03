@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends libxcb-shape0-dev libxcb-xfixes0-dev
+          sudo apt-get install --no-install-recommends libxcb-shape0-dev libxcb-xfixes0-dev libudev-dev
 
       - name: Cache crates
         uses: Swatinem/rust-cache@v1
@@ -61,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends libxcb-shape0-dev libxcb-xfixes0-dev
+          sudo apt-get install --no-install-recommends libxcb-shape0-dev libxcb-xfixes0-dev libudev-dev
 
       - name: Cache crates
         uses: Swatinem/rust-cache@v1
