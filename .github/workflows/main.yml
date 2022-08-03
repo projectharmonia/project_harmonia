@@ -79,7 +79,7 @@ jobs:
         run: cargo make coverage -o lcov.info
 
       - name: Upload code coverage results
-        if: github.actor != 'dependabot'
+        if: github.actor != 'dependabot[bot]'
         uses: actions/upload-artifact@v3
         with:
           name: code-coverage-report
@@ -87,7 +87,7 @@ jobs:
 
   codecov:
     name: Upload to Codecov
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     needs: [test, clippy, format]
     runs-on: ubuntu-latest
     steps:
