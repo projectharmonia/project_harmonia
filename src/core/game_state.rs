@@ -22,7 +22,7 @@ impl GameStatePlugin {
 }
 
 /// All entities with this component will be removed after leaving [`InGame`] state
-#[derive(Component)]
+#[derive(Component, Default)]
 pub(super) struct InGameOnly;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
