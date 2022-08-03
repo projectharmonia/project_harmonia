@@ -9,7 +9,7 @@ use bevy_egui::{
 use iyes_loopless::prelude::*;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::game_state::GameState;
+use crate::core::{city::City, family::Family, game_state::GameState};
 use cities_tab::CitiesTab;
 use families_tab::FamiliesTab;
 
@@ -23,7 +23,13 @@ impl Plugin for WorldMenuPlugin {
 }
 
 impl WorldMenuPlugin {
-    fn world_menu_system(mut egui: ResMut<EguiContext>, mut world_menu: ResMut<WorldMenu>) {
+    fn world_menu_system(
+        mut commands: Commands,
+        mut egui: ResMut<EguiContext>,
+        mut world_menu: ResMut<WorldMenu>,
+        families: Query<&'static Name, With<Family>>,
+        cities: Query<&'static Name, With<City>>,
+    ) {
         Window::new("World menu")
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
             .resizable(false)
@@ -35,8 +41,8 @@ impl WorldMenuPlugin {
                     }
                 });
                 match world_menu.current_tab {
-                    WorldMenuTab::Families => FamiliesTab::new(&["Test1", "Test2"]).show(ui),
-                    WorldMenuTab::Cities => CitiesTab::new(&["Test1", "Test2"]).show(ui),
+                    WorldMenuTab::Families => FamiliesTab::new(&mut commands, &families).show(ui),
+                    WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }
             });
     }
