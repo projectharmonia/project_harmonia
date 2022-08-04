@@ -23,4 +23,3 @@ derive_more = { version = "0.99", default-features = false, features = [
 ] }
 standard_paths = "1.1"
 anyhow = "1.0"
-tap = "1.0"

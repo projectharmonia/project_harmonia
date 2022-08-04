@@ -15,7 +15,6 @@ use std::{
     any::{type_name, TypeId},
     fs,
 };
-use tap::TapFallible;
 
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::InGameOnly};
 
@@ -130,9 +129,9 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     for entity_components in components {
         let entity = world.spawn().id();
         for component in entity_components {
-            deserialize_component(world, &read_registry, entity, &component)
-                .tap_err(|e| error!("{e:#}"))
-                .ok();
+            if let Err(error) = deserialize_component(world, &read_registry, entity, &component) {
+                error!("{error:#}");
+            }
         }
     }
 

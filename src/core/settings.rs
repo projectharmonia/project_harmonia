@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
-use tap::TapFallible;
 
 use super::{errors::log_err_system, game_paths::GamePaths};
 
@@ -13,17 +12,13 @@ impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
         let game_paths = app.world.resource::<GamePaths>();
 
-        app.insert_resource(
-            Settings::read(&game_paths.settings)
-                .tap_err(|e| error!("{e:#}"))
-                .unwrap_or_default(),
-        )
-        .add_event::<SettingsApplied>()
-        .add_system(
-            Self::write_system
-                .chain(log_err_system)
-                .run_on_event::<SettingsApplied>(),
-        );
+        app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
+            .add_event::<SettingsApplied>()
+            .add_system(
+                Self::write_system
+                    .chain(log_err_system)
+                    .run_on_event::<SettingsApplied>(),
+            );
     }
 }
 
