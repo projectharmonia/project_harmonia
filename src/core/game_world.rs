@@ -113,12 +113,11 @@ fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
             for entity in archetype.entities() {
                 if let Some(reflect) = reflect_component.reflect(world, *entity) {
                     let serializer = ReflectSerializer::new(reflect, &type_registry);
-                    match rmp_serde::to_vec(&serializer) {
-                        Ok(bytes) => {
-                            let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
-                            entry.push(bytes);
-                        }
-                        Err(error) => error!("Unable to serialize component: {error:#}"),
+                    if let Ok(bytes) = rmp_serde::to_vec(&serializer)
+                        .map_err(|e| error!("Unable to serialize component: {e:#}"))
+                    {
+                        let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
+                        entry.push(bytes);
                     }
                 }
             }
