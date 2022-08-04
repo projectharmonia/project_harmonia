@@ -36,7 +36,7 @@ impl WorldBrowserPlugin {
                                 Image::new(TextureId::Managed(0), (64.0, 64.0))
                                     .uv([WHITE_UV, WHITE_UV]),
                             );
-                            ui.label(world.to_str().unwrap());
+                            ui.label(world.to_string_lossy().to_string());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {}
                                 if ui.button("👥 Host").clicked() {}
