@@ -10,6 +10,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
+use modal_window::ModalWindowPlugin;
 use settings_menu::SettingsMenuPlugin;
 use ui_action::UiActionsPlugin;
 use world_browser::WorldBrowserPlugin;
@@ -22,6 +23,7 @@ pub(super) struct UiPlugins;
 impl PluginGroup for UiPlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
+            .add(ModalWindowPlugin)
             .add(MainMenuPlugin)
             .add(WorldBrowserPlugin)
             .add(SettingsMenuPlugin)
