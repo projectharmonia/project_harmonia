@@ -21,35 +21,38 @@ impl Plugin for WorldBrowserPlugin {
 impl WorldBrowserPlugin {
     fn world_browser_system(
         mut commands: Commands,
-        action_state: Res<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
         world_browser: Res<WorldBrowser>,
     ) {
         let mut is_open = true;
-        ModalWindow::new(&mut is_open, &action_state, "World browser").show(egui.ctx_mut(), |ui| {
-            for world in &world_browser.worlds {
-                ui.group(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.add(
-                            Image::new(TextureId::Managed(0), (64.0, 64.0))
-                                .uv([WHITE_UV, WHITE_UV]),
-                        );
-                        ui.label(world.to_str().unwrap());
-                        ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                            if ui.button("⏵ Play").clicked() {}
-                            if ui.button("👥 Host").clicked() {}
-                            if ui.button("🗑 Delete").clicked() {}
-                        })
+        ModalWindow::new(&mut is_open, &mut action_state, "World browser").show(
+            egui.ctx_mut(),
+            |ui| {
+                for world in &world_browser.worlds {
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                Image::new(TextureId::Managed(0), (64.0, 64.0))
+                                    .uv([WHITE_UV, WHITE_UV]),
+                            );
+                            ui.label(world.to_str().unwrap());
+                            ui.with_layout(Layout::top_down(Align::Max), |ui| {
+                                if ui.button("⏵ Play").clicked() {}
+                                if ui.button("👥 Host").clicked() {}
+                                if ui.button("🗑 Delete").clicked() {}
+                            })
+                        });
                     });
-                });
-            }
-            ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
-                if ui.button("➕ Create new").clicked() {
-                    commands.remove_resource::<WorldBrowser>();
-                    commands.insert_resource(NextState(GameState::InGame));
                 }
-            });
-        });
+                ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+                    if ui.button("➕ Create new").clicked() {
+                        commands.remove_resource::<WorldBrowser>();
+                        commands.insert_resource(NextState(GameState::InGame));
+                    }
+                });
+            },
+        );
 
         if !is_open {
             commands.remove_resource::<WorldBrowser>();

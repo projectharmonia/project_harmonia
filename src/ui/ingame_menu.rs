@@ -28,10 +28,10 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut exit_events: EventWriter<AppExit>,
         mut egui: ResMut<EguiContext>,
-        action_state: Res<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<UiAction>>,
     ) {
         let mut open = true;
-        ModalWindow::new(&mut open, &action_state, "Menu").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new(&mut open, &mut action_state, "Menu").show(egui.ctx_mut(), |ui| {
             ui.vertical_centered(|ui| {
                 if ui.button("Save").clicked() {}
                 if ui.button("Save as ...").clicked() {}

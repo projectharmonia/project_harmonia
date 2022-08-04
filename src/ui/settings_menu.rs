@@ -27,13 +27,13 @@ impl SettingsMenuPlugin {
     fn settings_menu_system(
         mut commands: Commands,
         mut apply_events: EventWriter<SettingsApplied>,
-        action_state: Res<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<UiAction>>,
         mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
     ) {
         let mut is_open = true;
-        ModalWindow::new(&mut is_open, &action_state, "Settings").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new(&mut is_open, &mut action_state, "Settings").show(egui.ctx_mut(), |ui| {
             ui.horizontal(|ui| {
                 for tab in SettingsTab::iter() {
                     ui.selectable_value(&mut settings_menu.current_tab, tab, tab.to_string());
