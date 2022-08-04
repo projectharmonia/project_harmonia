@@ -53,7 +53,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to create {world_path:?}"))?;
 
         let bytes = rmp_serde::to_vec(&serialize_game_world(world).values().collect::<Vec<_>>())
-            .context("Unable to serlialize world")?;
+            .expect("Unable to serlialize world");
 
         fs::write(&world_path, bytes)
             .with_context(|| format!("Unable to save game to {world_path:?}"))
@@ -68,7 +68,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to load world from {world_path:?}"))?;
 
         let components = rmp_serde::from_slice::<Vec<Vec<Vec<u8>>>>(&bytes)
-            .context("Unable to deserialize game world")?;
+            .expect("Unable to deserialize game world");
 
         deserialize_game_world(world, components);
 
@@ -111,15 +111,14 @@ fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
             .filter_map(|registration| registration.data::<ReflectComponent>())
         {
             for entity in archetype.entities() {
-                if let Some(reflect) = reflect_component.reflect(world, *entity) {
-                    let serializer = ReflectSerializer::new(reflect, &type_registry);
-                    if let Ok(bytes) = rmp_serde::to_vec(&serializer)
-                        .map_err(|e| error!("Unable to serialize component: {e:#}"))
-                    {
-                        let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
-                        entry.push(bytes);
-                    }
-                }
+                let reflect = reflect_component
+                    .reflect(world, *entity)
+                    .expect("Unable to reflect component");
+
+                let serializer = ReflectSerializer::new(reflect, &type_registry);
+                let bytes = rmp_serde::to_vec(&serializer).expect("Unable to serialize component");
+                let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
+                entry.push(bytes);
             }
         }
     }
@@ -137,8 +136,7 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     for entity_components in components {
         let entity = world.spawn().id();
         for component in entity_components {
-            deserialize_component(world, &read_registry, entity, &component)
-                .unwrap_or_else(|e| error!("{e:#}"));
+            deserialize_component(world, &read_registry, entity, &component);
         }
     }
 
@@ -151,25 +149,23 @@ fn deserialize_component(
     read_registry: &TypeRegistryInternal,
     entity: Entity,
     component: &[u8],
-) -> Result<()> {
+) {
     let reflect_deserializer = ReflectDeserializer::new(read_registry);
     let mut deserializer = rmp_serde::Deserializer::from_read_ref(&component);
 
     let reflect = reflect_deserializer
         .deserialize(&mut deserializer)
-        .context("Unable to deserialize component")?;
+        .expect("Unable to deserialize component");
 
     let registration = read_registry
         .get_with_name(reflect.type_name())
-        .with_context(|| format!("Unable to get registration for {}", reflect.type_name()))?;
+        .unwrap_or_else(|| panic!("Unable to get registration for {}", reflect.type_name()));
 
     let reflect_component = registration
         .data::<ReflectComponent>()
-        .with_context(|| format!("Unable to reflect component for {}", reflect.type_name()))?;
+        .unwrap_or_else(|| panic!("Unable to reflect component for {}", reflect.type_name()));
 
     reflect_component.insert(world, entity, &*reflect);
-
-    Ok(())
 }
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
