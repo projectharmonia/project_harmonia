@@ -17,6 +17,15 @@ pub(crate) struct GamePaths {
     pub(crate) worlds: PathBuf,
 }
 
+impl GamePaths {
+    pub(super) fn world_path(&self, world_name: &str) -> PathBuf {
+        let mut path = self.worlds.clone();
+        path.push(world_name);
+        path.set_extension("world");
+        path
+    }
+}
+
 impl Default for GamePaths {
     fn default() -> Self {
         #[cfg(test)]

@@ -4,6 +4,7 @@ pub(super) mod errors;
 pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
+pub(super) mod game_world;
 pub(super) mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
