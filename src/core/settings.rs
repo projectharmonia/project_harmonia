@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use tap::TapFallible;
 
-use super::game_paths::GamePaths;
+use super::{errors::log_err_system, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
@@ -19,16 +19,17 @@ impl Plugin for SettingsPlugin {
                 .unwrap_or_default(),
         )
         .add_event::<SettingsApplied>()
-        .add_system(Self::write_system.run_on_event::<SettingsApplied>());
+        .add_system(
+            Self::write_system
+                .chain(log_err_system)
+                .run_on_event::<SettingsApplied>(),
+        );
     }
 }
 
 impl SettingsPlugin {
-    fn write_system(settings: Res<Settings>, game_paths: Res<GamePaths>) {
-        settings
-            .write(&game_paths.settings)
-            .tap_err(|e| error!("{e:#}"))
-            .ok();
+    fn write_system(settings: Res<Settings>, game_paths: Res<GamePaths>) -> Result<()> {
+        settings.write(&game_paths.settings)
     }
 }
 
