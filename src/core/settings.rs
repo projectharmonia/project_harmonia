@@ -55,10 +55,12 @@ impl Settings {
     fn write(&self, file_name: &Path) -> Result<()> {
         let content = toml::to_string_pretty(&self).context("Unable to serialize settings")?;
 
-        if let Some(config_dir) = file_name.parent() {
-            fs::create_dir_all(&config_dir)
-                .with_context(|| format!("Unable to create {config_dir:?}"))?;
-        }
+        let parent_folder = file_name
+            .parent()
+            .unwrap_or_else(|| panic!("Unable to get settings directory from {file_name:?}"));
+
+        fs::create_dir_all(&parent_folder)
+            .with_context(|| format!("Unable to create {parent_folder:?}"))?;
 
         fs::write(file_name, content)
             .with_context(|| format!("Unable to write settings to {file_name:?}"))
