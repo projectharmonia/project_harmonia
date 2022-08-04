@@ -39,7 +39,7 @@ impl Default for GamePaths {
 
         let mut settings = config_dir.clone();
         settings.push(env!("CARGO_PKG_NAME"));
-        settings.set_extension("json");
+        settings.set_extension("toml");
 
         let mut worlds = config_dir;
         worlds.push("worlds");

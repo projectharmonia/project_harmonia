@@ -43,7 +43,7 @@ impl Settings {
     /// Will be initialed with defaults if the file does not exist.
     fn read(file_name: &Path) -> Result<Settings> {
         match fs::read_to_string(file_name) {
-            Ok(content) => serde_json::from_str::<Settings>(&content)
+            Ok(content) => toml::from_str::<Settings>(&content)
                 .with_context(|| format!("Unable to read settings from {file_name:?}")),
             Err(_) => Ok(Settings::default()),
         }
@@ -53,8 +53,7 @@ impl Settings {
     ///
     /// Automatically creates all parent folders.
     fn write(&self, file_name: &Path) -> Result<()> {
-        let content =
-            serde_json::to_string_pretty(&self).context("Unable to serialize settings")?;
+        let content = toml::to_string_pretty(&self).context("Unable to serialize settings")?;
 
         if let Some(config_dir) = file_name.parent() {
             fs::create_dir_all(&config_dir)
