@@ -138,9 +138,8 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     for entity_components in components {
         let entity = world.spawn().id();
         for component in entity_components {
-            if let Err(error) = deserialize_component(world, &read_registry, entity, &component) {
-                error!("{error:#}");
-            }
+            deserialize_component(world, &read_registry, entity, &component)
+                .unwrap_or_else(|e| error!("{e:#}"));
         }
     }
 
