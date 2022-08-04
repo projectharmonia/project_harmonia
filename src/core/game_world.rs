@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectDeserializer, ReflectSerializer},
-        TypeRegistry, TypeRegistryInternal,
+        TypeRegistry,
     },
     utils::HashMap,
 };
@@ -136,36 +136,29 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     for entity_components in components {
         let entity = world.spawn().id();
         for component in entity_components {
-            deserialize_component(world, &read_registry, entity, &component);
+            let reflect_deserializer = ReflectDeserializer::new(&read_registry);
+            let mut deserializer = rmp_serde::Deserializer::from_read_ref(&component);
+
+            let reflect = reflect_deserializer
+                .deserialize(&mut deserializer)
+                .expect("Unable to deserialize component");
+
+            let registration = read_registry
+                .get_with_name(reflect.type_name())
+                .unwrap_or_else(|| {
+                    panic!("Unable to get registration for {}", reflect.type_name())
+                });
+
+            let reflect_component = registration.data::<ReflectComponent>().unwrap_or_else(|| {
+                panic!("Unable to reflect component for {}", reflect.type_name())
+            });
+
+            reflect_component.insert(world, entity, &*reflect);
         }
     }
 
     drop(read_registry);
     world.insert_resource(type_registry);
-}
-
-fn deserialize_component(
-    world: &mut World,
-    read_registry: &TypeRegistryInternal,
-    entity: Entity,
-    component: &[u8],
-) {
-    let reflect_deserializer = ReflectDeserializer::new(read_registry);
-    let mut deserializer = rmp_serde::Deserializer::from_read_ref(&component);
-
-    let reflect = reflect_deserializer
-        .deserialize(&mut deserializer)
-        .expect("Unable to deserialize component");
-
-    let registration = read_registry
-        .get_with_name(reflect.type_name())
-        .unwrap_or_else(|| panic!("Unable to get registration for {}", reflect.type_name()));
-
-    let reflect_component = registration
-        .data::<ReflectComponent>()
-        .unwrap_or_else(|| panic!("Unable to reflect component for {}", reflect.type_name()));
-
-    reflect_component.insert(world, entity, &*reflect);
 }
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
