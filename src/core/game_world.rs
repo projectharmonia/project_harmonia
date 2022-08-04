@@ -8,7 +8,6 @@ use bevy::{
     },
     utils::HashMap,
 };
-use derive_more::Display;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::de::DeserializeSeed;
 use std::{
@@ -166,11 +165,9 @@ fn deserialize_component(
 }
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
-#[derive(Display)]
 struct GameSaved;
 
 /// Event that indicates that game is about to be loaded from the file name based on [`WorldName`].
-#[derive(Display)]
 struct GameLoaded;
 
 /// The name of the current world.
