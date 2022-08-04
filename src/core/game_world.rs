@@ -8,7 +8,7 @@ use bevy::{
     },
     utils::HashMap,
 };
-use iyes_loopless::prelude::IntoConditionalSystem;
+use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 use std::{
     any::{type_name, TypeId},
@@ -23,8 +23,21 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_system(Self::world_saving_system.chain(log_err_system).run_on_event::<GameSaved>())
-            .add_system(iyes_loopless::condition::IntoConditionalExclusiveSystem::run_on_event::<GameLoaded>(Self::world_loading_system).at_start());
+            .add_system(
+                Self::world_saving_system
+                    .chain(log_err_system)
+                    .run_on_event::<GameSaved>(),
+            );
+
+        {
+            // To avoid ambiguity: https://github.com/IyesGames/iyes_loopless/issues/15
+            use iyes_loopless::condition::IntoConditionalExclusiveSystem;
+            app.add_system(
+                (|world: &mut World| log_err_system(In(Self::world_loading_system(world))))
+                    .run_on_event::<GameLoaded>()
+                    .at_start(),
+            );
+        }
     }
 }
 
@@ -46,23 +59,20 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to save game to {world_path:?}"))
     }
 
-    fn world_loading_system(world: &mut World) {
+    fn world_loading_system(world: &mut World) -> Result<()> {
         let world_name = world.resource::<WorldName>();
         let game_paths = world.resource::<GamePaths>();
         let world_path = game_paths.world_path(&world_name.0);
 
-        let bytes = match fs::read(&world_path) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                error!("Unable to load world from {world_path:?}: {error:#}");
-                return;
-            }
-        };
+        let bytes = fs::read(&world_path)
+            .with_context(|| format!("Unable to load world from {world_path:?}"))?;
 
-        match rmp_serde::from_slice::<Vec<Vec<Vec<u8>>>>(&bytes) {
-            Ok(components) => deserialize_game_world(world, components),
-            Err(error) => error!("Unable to deserialize game world: {error:#}"),
-        }
+        let components = rmp_serde::from_slice::<Vec<Vec<Vec<u8>>>>(&bytes)
+            .context("Unable to deserialize game world")?;
+
+        deserialize_game_world(world, components);
+
+        Ok(())
     }
 }
 
