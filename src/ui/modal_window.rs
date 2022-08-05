@@ -1,5 +1,3 @@
-use std::mem;
-
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{
@@ -24,7 +22,7 @@ impl ModalWindowPlugin {
         egui.ctx_mut()
             .data()
             .get_temp_mut_or_default::<ModalIds>(Id::null())
-            .next_frame();
+            .retain_registered();
     }
 }
 
@@ -109,23 +107,26 @@ impl ModalWindow<'_> {
 /// so we remember modal window IDs from the previous frame to detect removals.
 #[derive(Clone, Default)]
 struct ModalIds {
-    current_frame: Vec<Id>,
-    previous_frame: Vec<Id>,
+    registered_ids: Vec<Id>,
+    stack: Vec<Id>,
 }
 
 impl ModalIds {
     /// Registers a new top-level dialog and returns `true` if a widget ID is a top-level modal dialog.
     fn register_modal(&mut self, new_id: Id) -> bool {
-        self.current_frame.push(new_id);
-        if let Some(pos) = self.previous_frame.iter().position(|&id| id == new_id) {
-            pos == self.previous_frame.len() - 1
+        self.registered_ids.push(new_id);
+
+        if let Some(pos) = self.stack.iter().position(|&id| id == new_id) {
+            pos == self.stack.len() - 1
         } else {
+            self.stack.push(new_id);
             true
         }
     }
 
-    /// Replaces registered IDs from the previous frame with the current one.
-    fn next_frame(&mut self) {
-        self.previous_frame = mem::take(&mut self.current_frame);
+    /// Removes IDs from the stack that wasn't registered and clears the register.
+    fn retain_registered(&mut self) {
+        self.stack.retain(|id| self.registered_ids.contains(id));
+        self.registered_ids.clear();
     }
 }
