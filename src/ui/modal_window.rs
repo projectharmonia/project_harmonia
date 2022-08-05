@@ -61,11 +61,6 @@ impl ModalWindow<'_> {
         ctx: &Context,
         add_contents: impl FnOnce(&mut Ui) -> R,
     ) -> Option<InnerResponse<Option<R>>> {
-        if self.action_state.just_pressed(UiAction::Back) {
-            self.action_state.consume(UiAction::Back);
-            *self.open = false;
-        }
-
         let inner_response = self
             .window
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
@@ -80,6 +75,11 @@ impl ModalWindow<'_> {
                 .get_temp_mut_or_default::<ModalIds>(Id::null())
                 .register_modal(inner_response.response.layer_id.id)
             {
+                if self.action_state.just_pressed(UiAction::Back) {
+                    self.action_state.consume(UiAction::Back);
+                    *self.open = false;
+                }
+
                 // Create an area to prevent interation with other widgets
                 // and display semi-transparent background
                 const BACKGROUND_ALPHA: u8 = 150;
