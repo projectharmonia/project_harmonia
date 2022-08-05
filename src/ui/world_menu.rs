@@ -18,11 +18,20 @@ pub(super) struct WorldMenuPlugin;
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::InGame, Self::open_world_menu_system)
+            .add_exit_system(GameState::InGame, Self::close_world_menu_system)
             .add_system(Self::world_menu_system.run_if_resource_exists::<WorldMenu>());
     }
 }
 
 impl WorldMenuPlugin {
+    fn open_world_menu_system(mut commands: Commands) {
+        commands.init_resource::<WorldMenu>();
+    }
+
+    fn close_world_menu_system(mut commands: Commands) {
+        commands.remove_resource::<WorldMenu>();
+    }
+
     fn world_menu_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
@@ -45,10 +54,6 @@ impl WorldMenuPlugin {
                     WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }
             });
-    }
-
-    fn open_world_menu_system(mut commands: Commands) {
-        commands.init_resource::<WorldMenu>();
     }
 }
 

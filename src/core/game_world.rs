@@ -16,11 +16,7 @@ use bevy::{
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{
-    errors::log_err_system,
-    game_paths::GamePaths,
-    game_state::GameState,
-};
+use super::{errors::log_err_system, game_paths::GamePaths, game_state::GameState};
 
 pub(super) struct GameWorldPlugin;
 
@@ -190,7 +186,8 @@ pub(crate) struct GameSaved;
 pub(crate) struct GameLoaded;
 
 /// The name of the current world.
-struct WorldName(String);
+#[derive(Default, Deref)]
+pub(crate) struct WorldName(pub(crate) String);
 
 #[cfg(test)]
 mod tests {
