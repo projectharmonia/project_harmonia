@@ -47,7 +47,7 @@ impl MainMenuPlugin {
                     ))
                     .clicked()
                 {
-                    exit_events.send(AppExit);
+                    exit_events.send_default();
                 }
             });
     }

@@ -44,7 +44,7 @@ impl InGameMenuPlugin {
                     commands.insert_resource(NextState(GameState::Menu));
                 }
                 if ui.button("Exit game").clicked() {
-                    exit_events.send(AppExit);
+                    exit_events.send_default();
                 }
             });
         });

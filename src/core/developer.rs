@@ -68,7 +68,7 @@ mod tests {
         settings.developer.debug_collisions = !settings.developer.debug_collisions;
 
         let mut apply_events = app.world.resource_mut::<Events<SettingsApplied>>();
-        apply_events.send(SettingsApplied);
+        apply_events.send_default();
 
         app.update();
 

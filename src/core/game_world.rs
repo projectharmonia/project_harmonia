@@ -163,10 +163,12 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
 }
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
-struct GameSaved;
+#[derive(Default)]
+pub(crate) struct GameSaved;
 
 /// Event that indicates that game is about to be loaded from the file name based on [`WorldName`].
-struct GameLoaded;
+#[derive(Default)]
+pub(crate) struct GameLoaded;
 
 /// The name of the current world.
 struct WorldName(String);
@@ -201,7 +203,7 @@ mod tests {
         let other_entity = app.world.spawn().insert(Transform::identity()).id();
 
         let mut save_events = app.world.resource_mut::<Events<GameSaved>>();
-        save_events.send(GameSaved);
+        save_events.send_default();
 
         app.update();
 
@@ -209,7 +211,7 @@ mod tests {
         app.world.entity_mut(other_entity).despawn();
 
         let mut save_events = app.world.resource_mut::<Events<GameLoaded>>();
-        save_events.send(GameLoaded);
+        save_events.send_default();
 
         app.update();
 

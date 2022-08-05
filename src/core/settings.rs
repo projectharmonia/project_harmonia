@@ -30,6 +30,7 @@ impl SettingsPlugin {
 }
 
 /// An event that applies the specified settings in the [`Settings`] resource.
+#[derive(Default)]
 pub(crate) struct SettingsApplied;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
@@ -120,7 +121,7 @@ mod tests {
         settings.video.msaa += 1;
 
         let mut apply_events = app.world.resource_mut::<Events<SettingsApplied>>();
-        apply_events.send(SettingsApplied);
+        apply_events.send_default();
 
         app.update();
 

@@ -46,15 +46,15 @@ impl SettingsMenuPlugin {
             ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
-                        apply_events.send(SettingsApplied);
+                        apply_events.send_default();
                         commands.remove_resource::<SettingsMenu>();
                     }
                     if ui.button("Apply").clicked() {
-                        apply_events.send(SettingsApplied);
+                        apply_events.send_default();
                     }
                     if ui.button("Restore defaults").clicked() {
                         *settings = Settings::default();
-                        apply_events.send(SettingsApplied);
+                        apply_events.send_default();
                     }
                 });
             });
