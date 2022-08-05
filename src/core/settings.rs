@@ -1,8 +1,9 @@
+use std::{fs, path::Path};
+
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
 
 use super::{errors::log_err_system, game_paths::GamePaths};
 

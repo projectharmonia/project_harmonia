@@ -1,3 +1,5 @@
+use std::mem;
+
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{
@@ -6,7 +8,6 @@ use bevy_egui::{
     EguiContext,
 };
 use leafwing_input_manager::prelude::*;
-use std::mem;
 
 use super::ui_action::UiAction;
 

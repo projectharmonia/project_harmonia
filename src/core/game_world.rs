@@ -1,3 +1,8 @@
+use std::{
+    any::{type_name, TypeId},
+    fs,
+};
+
 use anyhow::{Context, Result};
 use bevy::{
     ecs::archetype::ArchetypeId,
@@ -10,10 +15,6 @@ use bevy::{
 };
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
-use std::{
-    any::{type_name, TypeId},
-    fs,
-};
 
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::InGameOnly};
 

@@ -1,3 +1,5 @@
+use std::{fs, path::PathBuf};
+
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId},
@@ -5,7 +7,6 @@ use bevy_egui::{
 };
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
-use std::{fs, path::PathBuf};
 
 use super::{modal_window::ModalWindow, ui_action::UiAction};
 use crate::core::{game_paths::GamePaths, game_state::GameState};

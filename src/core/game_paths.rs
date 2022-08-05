@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use bevy::prelude::*;
 use standard_paths::{LocationType, StandardPaths};
-use std::path::PathBuf;
 
 /// Initializes [`GamePaths`] resource.
 pub(super) struct GamePathsPlugin;
