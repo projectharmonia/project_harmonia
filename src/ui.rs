@@ -12,7 +12,7 @@ use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
 use settings_menu::SettingsMenuPlugin;
-use ui_action::UiActionsPlugin;
+use ui_action::UiActionPlugin;
 use world_browser::WorldBrowserPlugin;
 use world_menu::WorldMenuPlugin;
 
@@ -29,6 +29,6 @@ impl PluginGroup for UiPlugins {
             .add(SettingsMenuPlugin)
             .add(InGameMenuPlugin)
             .add(WorldMenuPlugin)
-            .add(UiActionsPlugin);
+            .add(UiActionPlugin);
     }
 }

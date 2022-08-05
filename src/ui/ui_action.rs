@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-pub(super) struct UiActionsPlugin;
+pub(super) struct UiActionPlugin;
 
-impl Plugin for UiActionsPlugin {
+impl Plugin for UiActionPlugin {
     fn build(&self, app: &mut App) {
         let mut input_map = InputMap::default();
         input_map
