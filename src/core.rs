@@ -12,6 +12,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 use developer::DeveloperPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
+use game_world::GameWorldPlugin;
 use settings::SettingsPlugin;
 
 pub(super) struct CorePlugins;
@@ -20,8 +21,9 @@ impl PluginGroup for CorePlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
             .add(GamePathsPlugin)
-            .add(SettingsPlugin)
             .add(GameStatePlugin)
+            .add(GameWorldPlugin)
+            .add(SettingsPlugin)
             .add(DeveloperPlugin);
     }
 }

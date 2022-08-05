@@ -18,7 +18,7 @@ use serde::de::DeserializeSeed;
 
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::InGameOnly};
 
-struct GameWorldPlugin;
+pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
