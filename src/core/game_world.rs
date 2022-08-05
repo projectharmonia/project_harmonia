@@ -16,7 +16,11 @@ use bevy::{
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{errors::log_err_system, game_paths::GamePaths, game_state::InGameOnly};
+use super::{
+    errors::log_err_system,
+    game_paths::GamePaths,
+    game_state::GameState,
+};
 
 pub(super) struct GameWorldPlugin;
 
@@ -24,6 +28,7 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GameSaved>()
             .add_event::<GameLoaded>()
+            .add_exit_system(GameState::InGame, Self::cleanup_world_system)
             .add_system(
                 Self::world_saving_system
                     .chain(log_err_system)
@@ -43,6 +48,16 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
+    fn cleanup_world_system(
+        mut commands: Commands,
+        ingame_entities: Query<Entity, With<InGameOnly>>,
+    ) {
+        for entity in &ingame_entities {
+            commands.entity(entity).despawn_recursive();
+        }
+        commands.remove_resource::<WorldName>();
+    }
+
     fn world_saving_system(
         world: &World,
         world_name: Res<WorldName>,
@@ -162,6 +177,10 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     world.insert_resource(type_registry);
 }
 
+/// All entities with this component will be removed after leaving [`InGame`] state
+#[derive(Component, Default)]
+pub(super) struct InGameOnly;
+
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
 #[derive(Default)]
 pub(crate) struct GameSaved;
@@ -182,6 +201,39 @@ mod tests {
     use crate::core::game_paths::GamePaths;
 
     #[test]
+    fn world_cleanup() {
+        let mut app = App::new();
+        app.add_plugin(TestGameWorldPlugin);
+
+        let child_entity = app.world.spawn().id();
+        let ingame_entity = app
+            .world
+            .spawn()
+            .insert(InGameOnly)
+            .push_children(&[child_entity])
+            .id();
+
+        app.update();
+
+        app.world.insert_resource(NextState(GameState::Menu));
+
+        app.update();
+
+        assert!(
+            app.world.get_entity(ingame_entity).is_none(),
+            "Ingame entity should be despawned after leaving ingame state"
+        );
+        assert!(
+            app.world.get_entity(child_entity).is_none(),
+            "Children of ingame entity should be despawned with its parent"
+        );
+        assert!(
+            app.world.get_resource::<WorldName>().is_none(),
+            "Would name resource should be removed"
+        );
+    }
+
+    #[test]
     fn saving_and_loading() -> Result<()> {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
@@ -189,7 +241,7 @@ mod tests {
             .insert_resource(WorldName(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(GameWorldPlugin);
+            .add_plugin(TestGameWorldPlugin);
 
         let game_paths = app.world.resource::<GamePaths>();
         let world_path = game_paths.world_path(WORLD_NAME);
@@ -223,5 +275,14 @@ mod tests {
 
         fs::remove_file(&world_path)
             .with_context(|| format!("Unable to remove {world_path:?} after test"))
+    }
+
+    struct TestGameWorldPlugin;
+
+    impl Plugin for TestGameWorldPlugin {
+        fn build(&self, app: &mut App) {
+            app.add_loopless_state(GameState::InGame)
+                .add_plugin(GameWorldPlugin);
+        }
     }
 }

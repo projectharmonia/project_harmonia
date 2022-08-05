@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::game_state::InGameOnly;
+use super::game_world::InGameOnly;
 
 #[derive(Bundle, Default)]
 pub(crate) struct CityBundle {
