@@ -155,15 +155,14 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
                 .deserialize(&mut deserializer)
                 .expect("Unable to deserialize component");
 
+            let type_name = reflect.type_name();
             let registration = read_registry
-                .get_with_name(reflect.type_name())
-                .unwrap_or_else(|| {
-                    panic!("Unable to get registration for {}", reflect.type_name())
-                });
+                .get_with_name(type_name)
+                .unwrap_or_else(|| panic!("Unable to get registration for {type_name}"));
 
-            let reflect_component = registration.data::<ReflectComponent>().unwrap_or_else(|| {
-                panic!("Unable to reflect component for {}", reflect.type_name())
-            });
+            let reflect_component = registration
+                .data::<ReflectComponent>()
+                .unwrap_or_else(|| panic!("Unable to reflect component for {type_name}"));
 
             reflect_component.insert(world, entity, &*reflect);
         }
