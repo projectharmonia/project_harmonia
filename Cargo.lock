@@ -1177,6 +1177,7 @@ dependencies = [
  "leafwing-input-manager",
  "rmp-serde",
  "serde",
+ "smallvec",
  "standard_paths",
  "strum",
  "toml",

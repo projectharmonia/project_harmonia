@@ -6,6 +6,7 @@ use bevy_egui::{
     EguiContext,
 };
 use leafwing_input_manager::prelude::*;
+use smallvec::SmallVec;
 
 use super::ui_action::UiAction;
 
@@ -106,8 +107,8 @@ impl ModalWindow<'_> {
 /// so we remember modal window IDs from the previous frame to detect removals.
 #[derive(Clone, Default)]
 struct ModalIds {
-    registered_ids: Vec<Id>,
-    stack: Vec<Id>,
+    registered_ids: SmallVec<[Id; 3]>,
+    stack: SmallVec<[Id; 3]>,
 }
 
 impl ModalIds {
