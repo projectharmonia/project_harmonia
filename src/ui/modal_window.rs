@@ -5,6 +5,7 @@ use bevy_egui::{
     },
     EguiContext,
 };
+use bevy_inspector_egui::egui::LayerId;
 use leafwing_input_manager::prelude::*;
 use smallvec::SmallVec;
 
@@ -14,16 +15,36 @@ pub(super) struct ModalWindowPlugin;
 
 impl Plugin for ModalWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::PreUpdate, Self::update_modal_window_ids);
+        app.add_system_to_stage(CoreStage::PostUpdate, Self::modal_area_system);
     }
 }
 
 impl ModalWindowPlugin {
-    fn update_modal_window_ids(mut egui: ResMut<EguiContext>) {
-        egui.ctx_mut()
+    fn modal_area_system(mut egui: ResMut<EguiContext>) {
+        let id = match egui
+            .ctx_mut()
             .data()
             .get_temp_mut_or_default::<ModalIds>(Id::null())
-            .retain_registered();
+            .retain_registered()
+        {
+            Some(id) => id,
+            None => return,
+        };
+
+        const BACKGROUND_ALPHA: u8 = 150;
+        Area::new("Modal area")
+            .fixed_pos(Pos2::ZERO)
+            .show(egui.ctx_mut(), |ui| {
+                let screen = ui.ctx().input().screen_rect();
+                ui.painter().add(Shape::rect_filled(
+                    screen,
+                    0.0,
+                    Color32::from_black_alpha(BACKGROUND_ALPHA),
+                ));
+                ui.allocate_space(screen.size());
+            });
+
+        egui.ctx_mut().move_to_top(id);
     }
 }
 
@@ -78,7 +99,7 @@ impl ModalWindow<'_> {
             let mut data = ctx.data();
             if data
                 .get_temp_mut_or_default::<ModalIds>(Id::null())
-                .register_modal(inner_response.response.layer_id.id)
+                .register_modal(inner_response.response.layer_id)
             {
                 if let Some(open_state) = self.open_state {
                     if open_state.action_state.just_pressed(UiAction::Back) {
@@ -90,24 +111,6 @@ impl ModalWindow<'_> {
                         *open_state.open = false;
                     }
                 }
-                drop(data); // To avoid deadlock caused by drawing [`Area`] after.
-
-                // Create an area to prevent interation with other widgets
-                // and display semi-transparent background
-                const BACKGROUND_ALPHA: u8 = 150;
-                Area::new("Modal area")
-                    .fixed_pos(Pos2::ZERO)
-                    .show(ctx, |ui| {
-                        let screen = ui.ctx().input().screen_rect();
-                        ui.painter().add(Shape::rect_filled(
-                            screen,
-                            0.0,
-                            Color32::from_black_alpha(BACKGROUND_ALPHA),
-                        ));
-                        ui.allocate_space(screen.size());
-                    });
-
-                ctx.move_to_top(inner_response.response.layer_id);
             }
         }
 
@@ -126,27 +129,39 @@ struct OpenState<'open> {
 /// so we remember modal window IDs from the previous frame to detect removals.
 #[derive(Clone, Default)]
 struct ModalIds {
-    registered_ids: SmallVec<[Id; 3]>,
-    stack: SmallVec<[Id; 3]>,
+    /// IDs that was registered in the previous frame.
+    ///
+    /// Used to track removals. Order is undefined since [`Self::register_modal`] could be called from any system.
+    registered_ids: SmallVec<[LayerId; 3]>,
+
+    /// Stack with modal layers, top level layer is the last one.
+    ///
+    /// Order is preserved between frames.
+    stack: SmallVec<[LayerId; 3]>,
 }
 
 impl ModalIds {
-    /// Registers a new top-level dialog and returns `true` if a widget ID is a top-level modal dialog.
-    fn register_modal(&mut self, new_id: Id) -> bool {
-        self.registered_ids.push(new_id);
+    /// Registers a new top-level dialog and returns `true` if a layer ID is a top-level modal dialog.
+    fn register_modal(&mut self, new_layer: LayerId) -> bool {
+        self.registered_ids.push(new_layer);
 
-        if let Some(pos) = self.stack.iter().position(|&id| id == new_id) {
+        if let Some(pos) = self
+            .stack
+            .iter()
+            .position(|&layer| layer.id == new_layer.id)
+        {
             pos == self.stack.len() - 1
         } else {
-            self.stack.push(new_id);
+            self.stack.push(new_layer);
             true
         }
     }
 
-    /// Removes IDs from the stack that wasn't registered and clears the register.
-    fn retain_registered(&mut self) {
+    /// Removes IDs from the stack that wasn't registered, clears the register and returns top layer ID if present.
+    fn retain_registered(&mut self) -> Option<LayerId> {
         self.stack.retain(|id| self.registered_ids.contains(id));
         self.registered_ids.clear();
+        self.stack.last().copied()
     }
 }
 
