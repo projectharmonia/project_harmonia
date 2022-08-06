@@ -1,5 +1,3 @@
-use std::{fs, path::PathBuf};
-
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId},
@@ -48,7 +46,7 @@ impl WorldBrowserPlugin {
                                 Image::new(TextureId::Managed(0), (64.0, 64.0))
                                     .uv([WHITE_UV, WHITE_UV]),
                             );
-                            ui.label(world.to_string_lossy().to_string());
+                            ui.label(world);
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {}
                                 if ui.button("👥 Host").clicked() {}
@@ -102,25 +100,18 @@ impl WorldBrowserPlugin {
 }
 
 pub(super) struct WorldBrowser {
-    worlds: Vec<PathBuf>,
+    worlds: Vec<String>,
 }
 
 impl FromWorld for WorldBrowser {
     fn from_world(world: &mut World) -> Self {
-        let mut worlds = Vec::new();
-        let game_paths = world.resource::<GamePaths>();
-        if let Ok(entries) = fs::read_dir(&game_paths.worlds) {
-            for entry in entries.filter_map(Result::ok) {
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_file() {
-                        worlds.push(entry.path());
-                    }
-                }
-            }
-        };
-
-        worlds.push("Test".into());
-        Self { worlds }
+        Self {
+            worlds: world
+                .resource::<GamePaths>()
+                .get_world_names()
+                .map_err(|e| error!("{e:#}"))
+                .unwrap_or_default(),
+        }
     }
 }
 
