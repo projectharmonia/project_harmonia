@@ -85,16 +85,16 @@ impl InGameMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut world_name: ResMut<WorldName>,
-        mut save_as_menu: ResMut<SaveAsDialog>,
+        mut save_as_dialog: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
         ModalWindow::new("Save as...")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut save_as_menu.world_name);
+                ui.text_edit_singleline(&mut save_as_dialog.world_name);
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
-                        world_name.0 = mem::take(&mut save_as_menu.world_name);
+                        world_name.0 = mem::take(&mut save_as_dialog.world_name);
                         save_events.send_default();
                         ui.close_modal();
                     }
