@@ -30,7 +30,7 @@ impl ModalWindowPlugin {
 pub(super) struct ModalWindow<'a> {
     open: &'a mut bool,
     action_state: &'a mut ActionState<UiAction>,
-    window: Window<'a>,
+    title: WidgetText,
 }
 
 impl<'a> ModalWindow<'a> {
@@ -44,7 +44,7 @@ impl<'a> ModalWindow<'a> {
         Self {
             open,
             action_state,
-            window: Window::new(title),
+            title: title.into(),
         }
     }
 }
@@ -59,8 +59,7 @@ impl ModalWindow<'_> {
         ctx: &Context,
         add_contents: impl FnOnce(&mut Ui) -> R,
     ) -> Option<InnerResponse<Option<R>>> {
-        let inner_response = self
-            .window
+        let inner_response = Window::new(self.title)
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
             .collapsible(false)
             .resizable(false)
