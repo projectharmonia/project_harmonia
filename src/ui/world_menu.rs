@@ -49,8 +49,8 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut world_menu: ResMut<WorldMenu>,
-        families: Query<&'static Name, With<Family>>,
-        cities: Query<&'static Name, With<City>>,
+        families: Query<(Entity, &'static Name), With<Family>>,
+        cities: Query<(Entity, &'static Name), With<City>>,
     ) {
         Window::new("World menu")
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))

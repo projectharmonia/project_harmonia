@@ -6,14 +6,14 @@ use crate::core::city::City;
 
 pub(super) struct CitiesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
-    cities: &'a Query<'wq, 'sq, &'static Name, With<City>>,
+    cities: &'a Query<'wq, 'sq, (Entity, &'static Name), With<City>>,
 }
 
 impl<'a, 'w, 's, 'wq, 'sq> CitiesTab<'a, 'w, 's, 'wq, 'sq> {
     #[must_use]
     pub(super) fn new(
         commands: &'a mut Commands<'w, 's>,
-        cities: &'a Query<'wq, 'sq, &'static Name, With<City>>,
+        cities: &'a Query<'wq, 'sq, (Entity, &'static Name), With<City>>,
     ) -> Self {
         Self { cities, commands }
     }
@@ -21,7 +21,7 @@ impl<'a, 'w, 's, 'wq, 'sq> CitiesTab<'a, 'w, 's, 'wq, 'sq> {
 
 impl CitiesTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for name in self.cities {
+        for (entity, name) in self.cities {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(
@@ -30,6 +30,9 @@ impl CitiesTab<'_, '_, '_, '_, '_> {
                     ui.label(name.as_str());
                     ui.with_layout(Layout::top_down(Align::Max), |ui| {
                         if ui.button("✏ Edit").clicked() {}
+                        if ui.button("🗑 Delete").clicked() {
+                            self.commands.entity(entity).despawn();
+                        }
                     })
                 });
             });
