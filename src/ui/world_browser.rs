@@ -61,7 +61,6 @@ impl WorldBrowserPlugin {
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {
                                     commands.insert_resource(WorldName(world.clone()));
-                                    commands.insert_resource(NextState(GameState::InGame));
                                     load_events.send_default();
                                 }
                                 if ui.button("👥 Host").clicked() {}

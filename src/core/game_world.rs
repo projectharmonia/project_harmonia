@@ -73,6 +73,7 @@ impl GameWorldPlugin {
         commands.remove_resource::<WorldName>();
     }
 
+    /// Saves world to disk with the name from [`WorldName`] resource.
     fn world_saving_system(
         world: &World,
         world_name: Res<WorldName>,
@@ -90,6 +91,8 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to save game to {world_path:?}"))
     }
 
+    /// Loads world from disk with the name from [`WorldName`] resource
+    /// and sets state to [`GameState::InGame`].
     fn world_loading_system(world: &mut World) -> Result<()> {
         let world_name = world.resource::<WorldName>();
         let game_paths = world.resource::<GamePaths>();
@@ -102,6 +105,8 @@ impl GameWorldPlugin {
             .expect("Unable to deserialize game world");
 
         deserialize_game_world(world, components);
+
+        world.insert_resource(NextState(GameState::InGame));
 
         Ok(())
     }
@@ -289,6 +294,13 @@ mod tests {
             *app.world.query::<&Transform>().single(&app.world),
             TRANSFORM,
             "Loaded transform should be equal to the saved"
+        );
+
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::InGame,
+            "After loading world next game state should become {:?}",
+            GameState::InGame
         );
 
         fs::remove_file(&world_path)
