@@ -1,3 +1,5 @@
+use std::fs;
+
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId},
@@ -11,7 +13,11 @@ use super::{
     modal_window::{ModalUiExt, ModalWindow},
     ui_action::UiAction,
 };
-use crate::core::{game_paths::GamePaths, game_state::GameState, game_world::WorldName};
+use crate::core::{
+    game_paths::GamePaths,
+    game_state::GameState,
+    game_world::{GameLoaded, WorldName},
+};
 
 pub(super) struct WorldBrowserPlugin;
 
@@ -23,7 +29,8 @@ impl Plugin for WorldBrowserPlugin {
                 Self::create_world_system
                     .run_in_state(GameState::Menu)
                     .run_if_resource_exists::<WorldName>(),
-            );
+            )
+            .add_system(Self::remove_world_system.run_if_resource_exists::<RemoveWorldDialog>());
     }
 }
 
@@ -34,6 +41,7 @@ impl WorldBrowserPlugin {
 
     fn world_browser_system(
         mut commands: Commands,
+        mut load_events: EventWriter<GameLoaded>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
         world_browser: Res<WorldBrowser>,
@@ -42,7 +50,7 @@ impl WorldBrowserPlugin {
         ModalWindow::new("World browser")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                for world in &world_browser.worlds {
+                for (index, world) in world_browser.worlds.iter().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.add(
@@ -51,9 +59,15 @@ impl WorldBrowserPlugin {
                             );
                             ui.label(world);
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                                if ui.button("⏵ Play").clicked() {}
+                                if ui.button("⏵ Play").clicked() {
+                                    commands.insert_resource(WorldName(world.clone()));
+                                    commands.insert_resource(NextState(GameState::InGame));
+                                    load_events.send_default();
+                                }
                                 if ui.button("👥 Host").clicked() {}
-                                if ui.button("🗑 Delete").clicked() {}
+                                if ui.button("🗑 Delete").clicked() {
+                                    commands.insert_resource(RemoveWorldDialog::new(index));
+                                }
                             })
                         });
                     });
@@ -98,6 +112,41 @@ impl WorldBrowserPlugin {
             commands.remove_resource::<WorldName>();
         }
     }
+
+    fn remove_world_system(
+        mut commands: Commands,
+        mut egui: ResMut<EguiContext>,
+        mut action_state: ResMut<ActionState<UiAction>>,
+        mut world_browser: ResMut<WorldBrowser>,
+        game_paths: Res<GamePaths>,
+        remove_world_dialog: ResMut<RemoveWorldDialog>,
+    ) {
+        let mut is_open = true;
+        ModalWindow::new("Remove world")
+            .open(&mut is_open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
+                ui.label(format!(
+                    "Are you sure you want to remove world {}?",
+                    &world_browser.worlds[remove_world_dialog.world_index]
+                ));
+                ui.horizontal(|ui| {
+                    if ui.button("Remove").clicked() {
+                        let world = world_browser.worlds.remove(remove_world_dialog.world_index);
+                        fs::remove_file(game_paths.world_path(&world))
+                            .map_err(|e| error!("{e:#}"))
+                            .ok();
+                        ui.close_modal();
+                    }
+                    if ui.button("Cancel").clicked() {
+                        ui.close_modal();
+                    }
+                });
+            });
+
+        if !is_open {
+            commands.remove_resource::<RemoveWorldDialog>();
+        }
+    }
 }
 
 pub(super) struct WorldBrowser {
@@ -118,3 +167,14 @@ impl FromWorld for WorldBrowser {
 
 #[derive(Default)]
 struct CreateWorldDialog;
+
+#[derive(Default)]
+struct RemoveWorldDialog {
+    world_index: usize,
+}
+
+impl RemoveWorldDialog {
+    fn new(world_index: usize) -> Self {
+        Self { world_index }
+    }
+}
