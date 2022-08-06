@@ -144,7 +144,9 @@ fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
                     .expect("Unable to reflect component");
 
                 let serializer = ReflectSerializer::new(reflect, &type_registry);
-                let bytes = rmp_serde::to_vec(&serializer).expect("Unable to serialize component");
+                let type_name = reflect.type_name();
+                let bytes = rmp_serde::to_vec(&serializer)
+                    .unwrap_or_else(|error| panic!("Unable to serialize {type_name}: {error}"));
                 let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
                 entry.push(bytes);
             }
