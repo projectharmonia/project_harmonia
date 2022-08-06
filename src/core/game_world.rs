@@ -1,6 +1,6 @@
 use std::{
     any::{type_name, TypeId},
-    fs,
+    fs, borrow::Cow,
 };
 
 use anyhow::{Context, Result};
@@ -27,7 +27,8 @@ pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<GameSaved>()
+        app.register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
+            .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
             .add_exit_system(
                 GameState::InGame,
