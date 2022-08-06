@@ -36,9 +36,9 @@ impl WorldBrowserPlugin {
         world_browser: Res<WorldBrowser>,
     ) {
         let mut is_open = true;
-        ModalWindow::new("World browser", &mut is_open, &mut action_state).show(
-            egui.ctx_mut(),
-            |ui| {
+        ModalWindow::new("World browser")
+            .open(&mut is_open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
                 for world in &world_browser.worlds {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
@@ -60,8 +60,7 @@ impl WorldBrowserPlugin {
                         commands.init_resource::<WorldName>();
                     }
                 });
-            },
-        );
+            });
 
         if !is_open {
             commands.remove_resource::<WorldBrowser>();
@@ -75,9 +74,9 @@ impl WorldBrowserPlugin {
         mut world_name: ResMut<WorldName>,
     ) {
         let mut is_open = true;
-        ModalWindow::new("Create world", &mut is_open, &mut action_state).show(
-            egui.ctx_mut(),
-            |ui| {
+        ModalWindow::new("Create world")
+            .open(&mut is_open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
                 ui.text_edit_singleline(&mut world_name.0);
                 ui.horizontal(|ui| {
                     if ui
@@ -90,8 +89,7 @@ impl WorldBrowserPlugin {
                         commands.remove_resource::<WorldName>();
                     }
                 });
-            },
-        );
+            });
 
         if !is_open {
             commands.remove_resource::<WorldName>();

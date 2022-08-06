@@ -33,32 +33,34 @@ impl SettingsMenuPlugin {
         mut settings: ResMut<Settings>,
     ) {
         let mut is_open = true;
-        ModalWindow::new("Settings", &mut is_open, &mut action_state).show(egui.ctx_mut(), |ui| {
-            ui.horizontal(|ui| {
-                for tab in SettingsTab::iter() {
-                    ui.selectable_value(&mut settings_menu.current_tab, tab, tab.to_string());
-                }
-            });
-            match settings_menu.current_tab {
-                SettingsTab::Video => VideoTab::new(&mut settings.video).show(ui),
-                SettingsTab::Developer => DeveloperTab::new(&mut settings.developer).show(ui),
-            };
-            ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+        ModalWindow::new("Settings")
+            .open(&mut is_open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Ok").clicked() {
-                        apply_events.send_default();
-                        commands.remove_resource::<SettingsMenu>();
-                    }
-                    if ui.button("Apply").clicked() {
-                        apply_events.send_default();
-                    }
-                    if ui.button("Restore defaults").clicked() {
-                        *settings = Settings::default();
-                        apply_events.send_default();
+                    for tab in SettingsTab::iter() {
+                        ui.selectable_value(&mut settings_menu.current_tab, tab, tab.to_string());
                     }
                 });
+                match settings_menu.current_tab {
+                    SettingsTab::Video => VideoTab::new(&mut settings.video).show(ui),
+                    SettingsTab::Developer => DeveloperTab::new(&mut settings.developer).show(ui),
+                };
+                ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("Ok").clicked() {
+                            apply_events.send_default();
+                            commands.remove_resource::<SettingsMenu>();
+                        }
+                        if ui.button("Apply").clicked() {
+                            apply_events.send_default();
+                        }
+                        if ui.button("Restore defaults").clicked() {
+                            *settings = Settings::default();
+                            apply_events.send_default();
+                        }
+                    });
+                });
             });
-        });
 
         if !is_open {
             commands.remove_resource::<SettingsMenu>();

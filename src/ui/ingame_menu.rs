@@ -47,26 +47,28 @@ impl InGameMenuPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
     ) {
         let mut open = true;
-        ModalWindow::new("Menu", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
-            ui.vertical_centered(|ui| {
-                if ui.button("Save").clicked() {
-                    save_events.send_default();
-                    commands.remove_resource::<InGameMenu>();
-                }
-                if ui.button("Save as...").clicked() {
-                    commands.init_resource::<SaveAsDialog>();
-                }
-                if ui.button("Settings").clicked() {
-                    commands.init_resource::<SettingsMenu>();
-                }
-                if ui.button("Exit to main menu").clicked() {
-                    commands.init_resource::<ExitToMainMenuDialog>();
-                }
-                if ui.button("Exit game").clicked() {
-                    commands.init_resource::<ExitGameDialog>();
-                }
+        ModalWindow::new("Menu")
+            .open(&mut open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
+                ui.vertical_centered(|ui| {
+                    if ui.button("Save").clicked() {
+                        save_events.send_default();
+                        commands.remove_resource::<InGameMenu>();
+                    }
+                    if ui.button("Save as...").clicked() {
+                        commands.init_resource::<SaveAsDialog>();
+                    }
+                    if ui.button("Settings").clicked() {
+                        commands.init_resource::<SettingsMenu>();
+                    }
+                    if ui.button("Exit to main menu").clicked() {
+                        commands.init_resource::<ExitToMainMenuDialog>();
+                    }
+                    if ui.button("Exit game").clicked() {
+                        commands.init_resource::<ExitGameDialog>();
+                    }
+                });
             });
-        });
 
         if !open {
             commands.remove_resource::<InGameMenu>();
@@ -82,19 +84,21 @@ impl InGameMenuPlugin {
         mut save_as_menu: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
-        ModalWindow::new("Save as...", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
-            ui.text_edit_singleline(&mut save_as_menu.world_name);
-            ui.horizontal(|ui| {
-                if ui.button("Ok").clicked() {
-                    world_name.0 = mem::take(&mut save_as_menu.world_name);
-                    save_events.send_default();
-                    commands.remove_resource::<SaveAsDialog>();
-                }
-                if ui.button("Cancel").clicked() {
-                    commands.remove_resource::<SaveAsDialog>();
-                }
+        ModalWindow::new("Save as...")
+            .open(&mut open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
+                ui.text_edit_singleline(&mut save_as_menu.world_name);
+                ui.horizontal(|ui| {
+                    if ui.button("Ok").clicked() {
+                        world_name.0 = mem::take(&mut save_as_menu.world_name);
+                        save_events.send_default();
+                        commands.remove_resource::<SaveAsDialog>();
+                    }
+                    if ui.button("Cancel").clicked() {
+                        commands.remove_resource::<SaveAsDialog>();
+                    }
+                });
             });
-        });
 
         if !open {
             commands.remove_resource::<SaveAsDialog>();
@@ -108,9 +112,9 @@ impl InGameMenuPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
     ) {
         let mut open = true;
-        ModalWindow::new("Exit to main menu", &mut open, &mut action_state).show(
-            egui.ctx_mut(),
-            |ui| {
+        ModalWindow::new("Exit to main menu")
+            .open(&mut open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
                 ui.label("Would you like to save your world before exiting to the main menu?");
                 ui.horizontal(|ui| {
                     if ui.button("Save and exit").clicked() {
@@ -126,8 +130,7 @@ impl InGameMenuPlugin {
                         commands.remove_resource::<ExitToMainMenuDialog>();
                     }
                 });
-            },
-        );
+            });
 
         if !open {
             commands.remove_resource::<ExitToMainMenuDialog>();
@@ -142,21 +145,23 @@ impl InGameMenuPlugin {
         mut exit_events: EventWriter<AppExit>,
     ) {
         let mut open = true;
-        ModalWindow::new("Exit game", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
-            ui.label("Are you sure you want to exit the game?");
-            ui.horizontal(|ui| {
-                if ui.button("Save and exit").clicked() {
-                    save_events.send_default();
-                    exit_events.send_default();
-                }
-                if ui.button("Exit without saving").clicked() {
-                    exit_events.send_default();
-                }
-                if ui.button("Cancel").clicked() {
-                    commands.remove_resource::<ExitGameDialog>();
-                }
+        ModalWindow::new("Exit game")
+            .open(&mut open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
+                ui.label("Are you sure you want to exit the game?");
+                ui.horizontal(|ui| {
+                    if ui.button("Save and exit").clicked() {
+                        save_events.send_default();
+                        exit_events.send_default();
+                    }
+                    if ui.button("Exit without saving").clicked() {
+                        exit_events.send_default();
+                    }
+                    if ui.button("Cancel").clicked() {
+                        commands.remove_resource::<ExitGameDialog>();
+                    }
+                });
             });
-        });
 
         if !open {
             commands.remove_resource::<ExitGameDialog>();

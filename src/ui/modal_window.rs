@@ -28,25 +28,28 @@ impl ModalWindowPlugin {
 }
 
 /// A top level [`Window`] that blocks input to all other widgets.
-pub(super) struct ModalWindow<'a> {
+pub(super) struct ModalWindow<'open> {
     title: WidgetText,
-    open: &'a mut bool,
-    action_state: &'a mut ActionState<UiAction>,
+    open_state: Option<OpenState<'open>>,
 }
 
-impl<'a> ModalWindow<'a> {
+impl<'open> ModalWindow<'open> {
     #[must_use]
     /// Creates a new modal [`Window`] with the given state and title.
-    pub(super) fn new(
-        title: impl Into<WidgetText>,
-        open: &'a mut bool,
-        action_state: &'a mut ActionState<UiAction>,
-    ) -> Self {
+    pub(super) fn new(title: impl Into<WidgetText>) -> Self {
         Self {
             title: title.into(),
-            open,
-            action_state,
+            open_state: None,
         }
+    }
+
+    pub(super) fn open(
+        mut self,
+        open: &'open mut bool,
+        action_state: &'open mut ActionState<UiAction>,
+    ) -> Self {
+        self.open_state = Some(OpenState { open, action_state });
+        self
     }
 }
 
@@ -56,16 +59,20 @@ impl ModalWindow<'_> {
     /// `open` will be set to `false` if [`UiAction::Back`] has been pressed or the window has been closed.
     /// See [`Window::open`] for more details.
     pub fn show<R>(
-        self,
+        mut self,
         ctx: &Context,
         add_contents: impl FnOnce(&mut Ui) -> R,
     ) -> Option<InnerResponse<Option<R>>> {
-        let inner_response = Window::new(self.title)
+        let mut window = Window::new(self.title)
             .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
             .collapsible(false)
-            .resizable(false)
-            .open(self.open)
-            .show(ctx, |ui| add_contents(ui));
+            .resizable(false);
+
+        if let Some(open_state) = &mut self.open_state {
+            window = window.open(open_state.open);
+        }
+
+        let inner_response = window.show(ctx, |ui| add_contents(ui));
 
         if let Some(inner_response) = &inner_response {
             if ctx
@@ -73,9 +80,11 @@ impl ModalWindow<'_> {
                 .get_temp_mut_or_default::<ModalIds>(Id::null())
                 .register_modal(inner_response.response.layer_id.id)
             {
-                if self.action_state.just_pressed(UiAction::Back) {
-                    self.action_state.consume(UiAction::Back);
-                    *self.open = false;
+                if let Some(open_state) = self.open_state {
+                    if open_state.action_state.just_pressed(UiAction::Back) {
+                        open_state.action_state.consume(UiAction::Back);
+                        *open_state.open = false;
+                    }
                 }
 
                 // Create an area to prevent interation with other widgets
@@ -99,6 +108,11 @@ impl ModalWindow<'_> {
 
         inner_response
     }
+}
+
+struct OpenState<'open> {
+    open: &'open mut bool,
+    action_state: &'open mut ActionState<UiAction>,
 }
 
 /// Stack of modal widget IDs where last ID is the top modal window.
