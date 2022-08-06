@@ -9,7 +9,9 @@ pub(super) mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use city::CityPlugin;
 use developer::DeveloperPlugin;
+use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
@@ -20,11 +22,13 @@ pub(super) struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
+            .add(CityPlugin)
+            .add(DeveloperPlugin)
+            .add(FamilyPlugin)
             .add(GamePathsPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
-            .add(SettingsPlugin)
-            .add(DeveloperPlugin);
+            .add(SettingsPlugin);
     }
 }
 

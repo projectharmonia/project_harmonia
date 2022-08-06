@@ -192,7 +192,8 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
 }
 
 /// All entities with this component will be removed after leaving [`InGame`] state
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub(super) struct InGameOnly;
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
