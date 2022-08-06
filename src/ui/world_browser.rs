@@ -7,7 +7,10 @@ use bevy_inspector_egui::egui::Button;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{modal_window::ModalWindow, ui_action::UiAction};
+use super::{
+    modal_window::{ModalUiExt, ModalWindow},
+    ui_action::UiAction,
+};
 use crate::core::{game_paths::GamePaths, game_state::GameState, game_world::WorldName};
 
 pub(super) struct WorldBrowserPlugin;
@@ -86,7 +89,7 @@ impl WorldBrowserPlugin {
                         commands.insert_resource(NextState(GameState::InGame));
                     }
                     if ui.button("Cancel").clicked() {
-                        commands.remove_resource::<WorldName>();
+                        ui.close_modal();
                     }
                 });
             });

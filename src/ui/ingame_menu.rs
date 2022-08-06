@@ -10,7 +10,11 @@ use crate::core::{
     game_world::{GameSaved, WorldName},
 };
 
-use super::{modal_window::ModalWindow, settings_menu::SettingsMenu, ui_action::UiAction};
+use super::{
+    modal_window::{ModalUiExt, ModalWindow},
+    settings_menu::SettingsMenu,
+    ui_action::UiAction,
+};
 
 pub(super) struct InGameMenuPlugin;
 
@@ -53,7 +57,7 @@ impl InGameMenuPlugin {
                 ui.vertical_centered(|ui| {
                     if ui.button("Save").clicked() {
                         save_events.send_default();
-                        commands.remove_resource::<InGameMenu>();
+                        ui.close_modal();
                     }
                     if ui.button("Save as...").clicked() {
                         commands.init_resource::<SaveAsDialog>();
@@ -92,10 +96,10 @@ impl InGameMenuPlugin {
                     if ui.button("Ok").clicked() {
                         world_name.0 = mem::take(&mut save_as_menu.world_name);
                         save_events.send_default();
-                        commands.remove_resource::<SaveAsDialog>();
+                        ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
-                        commands.remove_resource::<SaveAsDialog>();
+                        ui.close_modal();
                     }
                 });
             });
@@ -119,15 +123,15 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if ui.button("Save and exit").clicked() {
                         save_events.send_default();
-                        commands.remove_resource::<ExitToMainMenuDialog>();
+                        ui.close_modal();
                         commands.insert_resource(NextState(GameState::Menu));
                     }
                     if ui.button("Exit to main menu").clicked() {
-                        commands.remove_resource::<ExitToMainMenuDialog>();
+                        ui.close_modal();
                         commands.insert_resource(NextState(GameState::Menu));
                     }
                     if ui.button("Cancel").clicked() {
-                        commands.remove_resource::<ExitToMainMenuDialog>();
+                        ui.close_modal();
                     }
                 });
             });
@@ -158,7 +162,7 @@ impl InGameMenuPlugin {
                         exit_events.send_default();
                     }
                     if ui.button("Cancel").clicked() {
-                        commands.remove_resource::<ExitGameDialog>();
+                        ui.close_modal();
                     }
                 });
             });

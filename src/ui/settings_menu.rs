@@ -10,7 +10,10 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{modal_window::ModalWindow, ui_action::UiAction};
+use super::{
+    modal_window::{ModalUiExt, ModalWindow},
+    ui_action::UiAction,
+};
 use crate::core::settings::{Settings, SettingsApplied};
 use developer_tab::DeveloperTab;
 use video_tab::VideoTab;
@@ -49,7 +52,7 @@ impl SettingsMenuPlugin {
                     ui.horizontal(|ui| {
                         if ui.button("Ok").clicked() {
                             apply_events.send_default();
-                            commands.remove_resource::<SettingsMenu>();
+                            ui.close_modal();
                         }
                         if ui.button("Apply").clicked() {
                             apply_events.send_default();

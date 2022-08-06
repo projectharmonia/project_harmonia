@@ -75,8 +75,8 @@ impl ModalWindow<'_> {
         let inner_response = window.show(ctx, |ui| add_contents(ui));
 
         if let Some(inner_response) = &inner_response {
-            if ctx
-                .data()
+            let mut data = ctx.data();
+            if data
                 .get_temp_mut_or_default::<ModalIds>(Id::null())
                 .register_modal(inner_response.response.layer_id.id)
             {
@@ -85,7 +85,12 @@ impl ModalWindow<'_> {
                         open_state.action_state.consume(UiAction::Back);
                         *open_state.open = false;
                     }
+                    if data.get_temp::<ModalClosed>(Id::null()).is_some() {
+                        data.remove::<ModalClosed>(Id::null());
+                        *open_state.open = false;
+                    }
                 }
+                drop(data); // To avoid deadlock caused by drawing [`Area`] after.
 
                 // Create an area to prevent interation with other widgets
                 // and display semi-transparent background
@@ -144,3 +149,16 @@ impl ModalIds {
         self.registered_ids.clear();
     }
 }
+
+pub(super) trait ModalUiExt {
+    fn close_modal(&self);
+}
+
+impl ModalUiExt for Ui {
+    fn close_modal(&self) {
+        self.data().insert_temp(Id::null(), ModalClosed);
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ModalClosed;
