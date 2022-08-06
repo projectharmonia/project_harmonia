@@ -33,7 +33,7 @@ impl SettingsMenuPlugin {
         mut settings: ResMut<Settings>,
     ) {
         let mut is_open = true;
-        ModalWindow::new(&mut is_open, &mut action_state, "Settings").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new("Settings", &mut is_open, &mut action_state).show(egui.ctx_mut(), |ui| {
             ui.horizontal(|ui| {
                 for tab in SettingsTab::iter() {
                     ui.selectable_value(&mut settings_menu.current_tab, tab, tab.to_string());

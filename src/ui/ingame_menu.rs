@@ -47,7 +47,7 @@ impl InGameMenuPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
     ) {
         let mut open = true;
-        ModalWindow::new(&mut open, &mut action_state, "Menu").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new("Menu", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
             ui.vertical_centered(|ui| {
                 if ui.button("Save").clicked() {
                     save_events.send_default();
@@ -82,7 +82,7 @@ impl InGameMenuPlugin {
         mut save_as_menu: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
-        ModalWindow::new(&mut open, &mut action_state, "Save as...").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new("Save as...", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
             ui.text_edit_singleline(&mut save_as_menu.world_name);
             ui.horizontal(|ui| {
                 if ui.button("Ok").clicked() {
@@ -108,7 +108,7 @@ impl InGameMenuPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
     ) {
         let mut open = true;
-        ModalWindow::new(&mut open, &mut action_state, "Exit to main menu").show(
+        ModalWindow::new("Exit to main menu", &mut open, &mut action_state).show(
             egui.ctx_mut(),
             |ui| {
                 ui.label("Would you like to save your world before exiting to the main menu?");
@@ -142,7 +142,7 @@ impl InGameMenuPlugin {
         mut exit_events: EventWriter<AppExit>,
     ) {
         let mut open = true;
-        ModalWindow::new(&mut open, &mut action_state, "Exit game").show(egui.ctx_mut(), |ui| {
+        ModalWindow::new("Exit game", &mut open, &mut action_state).show(egui.ctx_mut(), |ui| {
             ui.label("Are you sure you want to exit the game?");
             ui.horizontal(|ui| {
                 if ui.button("Save and exit").clicked() {

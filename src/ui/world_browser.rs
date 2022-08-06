@@ -36,7 +36,7 @@ impl WorldBrowserPlugin {
         world_browser: Res<WorldBrowser>,
     ) {
         let mut is_open = true;
-        ModalWindow::new(&mut is_open, &mut action_state, "World browser").show(
+        ModalWindow::new("World browser", &mut is_open, &mut action_state).show(
             egui.ctx_mut(),
             |ui| {
                 for world in &world_browser.worlds {
@@ -75,7 +75,7 @@ impl WorldBrowserPlugin {
         mut world_name: ResMut<WorldName>,
     ) {
         let mut is_open = true;
-        ModalWindow::new(&mut is_open, &mut action_state, "Create world").show(
+        ModalWindow::new("Create world", &mut is_open, &mut action_state).show(
             egui.ctx_mut(),
             |ui| {
                 ui.text_edit_singleline(&mut world_name.0);

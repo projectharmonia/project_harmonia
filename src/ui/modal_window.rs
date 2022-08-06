@@ -28,23 +28,23 @@ impl ModalWindowPlugin {
 
 /// A top level [`Window`] that blocks input to all other widgets.
 pub(super) struct ModalWindow<'a> {
+    title: WidgetText,
     open: &'a mut bool,
     action_state: &'a mut ActionState<UiAction>,
-    title: WidgetText,
 }
 
 impl<'a> ModalWindow<'a> {
     #[must_use]
     /// Creates a new modal [`Window`] with the given state and title.
     pub(super) fn new(
+        title: impl Into<WidgetText>,
         open: &'a mut bool,
         action_state: &'a mut ActionState<UiAction>,
-        title: impl Into<WidgetText>,
     ) -> Self {
         Self {
+            title: title.into(),
             open,
             action_state,
-            title: title.into(),
         }
     }
 }
