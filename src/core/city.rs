@@ -17,6 +17,16 @@ pub(crate) struct CityBundle {
     in_mage_only: InGameOnly,
 }
 
+impl CityBundle {
+    pub(crate) fn new(name: Name) -> Self {
+        Self {
+            name,
+            city: City,
+            in_mage_only: InGameOnly,
+        }
+    }
+}
+
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct City;

@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 
-use crate::core::{city::City, city::CityBundle};
+use super::CreateCityDialog;
+use crate::core::city::City;
 
 pub(super) struct CitiesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
@@ -35,7 +36,7 @@ impl CitiesTab<'_, '_, '_, '_, '_> {
         }
         ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
             if ui.button("➕ Create new").clicked() {
-                self.commands.spawn_bundle(CityBundle::default());
+                self.commands.init_resource::<CreateCityDialog>();
             }
         });
     }
