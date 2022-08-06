@@ -165,9 +165,6 @@ impl FromWorld for WorldBrowser {
 }
 
 #[derive(Default)]
-struct CreateWorldDialog;
-
-#[derive(Default)]
 struct RemoveWorldDialog {
     world_index: usize,
 }
