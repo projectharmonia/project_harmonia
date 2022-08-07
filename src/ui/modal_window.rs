@@ -32,7 +32,7 @@ impl ModalWindowPlugin {
         };
 
         const BACKGROUND_ALPHA: u8 = 150;
-        Area::new("Modal area")
+        Area::new(id) // Use id of the widget as an identifier to avoid ordering issues.
             .fixed_pos(Pos2::ZERO)
             .show(egui.ctx_mut(), |ui| {
                 let screen = ui.ctx().input().screen_rect();
