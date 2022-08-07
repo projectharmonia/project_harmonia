@@ -12,9 +12,10 @@ use bevy::{
         serde::{ReflectDeserializer, ReflectSerializer},
         TypeRegistry,
     },
-    utils::HashMap,
+    utils::{HashMap, HashSet},
 };
 use iyes_loopless::prelude::*;
+use once_cell::sync::Lazy;
 use serde::de::DeserializeSeed;
 
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::GameState};
@@ -115,6 +116,9 @@ impl GameWorldPlugin {
 /// Iterates over a world and serializes all components that implement [`Reflect`]
 /// on entities that have [`InGameOnly`] component.
 fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
+    static IGNORED_COMPONENTS: Lazy<HashSet<TypeId>> =
+        Lazy::new(|| HashSet::from([TypeId::of::<Camera>()]));
+
     let mut components = HashMap::new();
     let type_registry = world.resource::<TypeRegistry>().read();
     for archetype in world.archetypes().iter() {
@@ -143,6 +147,7 @@ fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
                 // SAFETY: `component_id` retrieved from the world.
                 unsafe { world.components().get_info_unchecked(component_id) }.type_id()
             })
+            .filter(|type_id| !IGNORED_COMPONENTS.contains(type_id))
             .filter_map(|type_id| type_registry.get(type_id))
             .filter_map(|registration| registration.data::<ReflectComponent>())
         {
@@ -260,7 +265,8 @@ mod tests {
     fn saving_and_loading() -> Result<()> {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
-        app.init_resource::<GamePaths>()
+        app.register_type::<Camera>()
+            .init_resource::<GamePaths>()
             .insert_resource(WorldName(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
@@ -274,7 +280,13 @@ mod tests {
         );
 
         const TRANSFORM: Transform = Transform::identity();
-        let ingame_entity = app.world.spawn().insert(TRANSFORM).insert(InGameOnly).id();
+        let ingame_entity = app
+            .world
+            .spawn()
+            .insert(TRANSFORM)
+            .insert(Camera::default())
+            .insert(InGameOnly)
+            .id();
         let other_entity = app.world.spawn().insert(Transform::identity()).id();
 
         let mut save_events = app.world.resource_mut::<Events<GameSaved>>();
@@ -295,7 +307,10 @@ mod tests {
             TRANSFORM,
             "Loaded transform should be equal to the saved"
         );
-
+        assert!(
+            app.world.query::<&Camera>().get_single(&app.world).is_err(),
+            "Camera object shouldn't be saved"
+        );
         assert_eq!(
             app.world.resource::<NextState<GameState>>().0,
             GameState::InGame,
