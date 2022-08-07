@@ -21,6 +21,7 @@ pub(crate) struct CityBundle {
 }
 
 impl CityBundle {
+    #[cfg_attr(coverage, no_coverage)]
     pub(crate) fn new(name: Name) -> Self {
         Self {
             name,
