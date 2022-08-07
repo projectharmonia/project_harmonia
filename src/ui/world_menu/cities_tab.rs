@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 
-use super::CreateCityDialog;
-use crate::core::city::City;
+use super::{CreateCityDialog, WorldMenu};
+use crate::core::{city::City, game_world::Control};
 
 pub(super) struct CitiesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
@@ -29,7 +29,10 @@ impl CitiesTab<'_, '_, '_, '_, '_> {
                     );
                     ui.label(name.as_str());
                     ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                        if ui.button("✏ Edit").clicked() {}
+                        if ui.button("✏ Edit").clicked() {
+                            self.commands.entity(entity).insert(Control);
+                            self.commands.remove_resource::<WorldMenu>();
+                        }
                         if ui.button("🗑 Delete").clicked() {
                             self.commands.entity(entity).despawn();
                         }

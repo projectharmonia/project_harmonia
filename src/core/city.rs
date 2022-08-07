@@ -15,6 +15,9 @@ pub(crate) struct CityBundle {
     name: Name,
     city: City,
     in_mage_only: InGameOnly,
+
+    #[bundle]
+    spatial: SpatialBundle,
 }
 
 impl CityBundle {
@@ -23,6 +26,7 @@ impl CityBundle {
             name,
             city: City,
             in_mage_only: InGameOnly,
+            spatial: Default::default(),
         }
     }
 }

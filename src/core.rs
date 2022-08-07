@@ -5,6 +5,7 @@ pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
+pub(super) mod orbit_camera;
 pub(super) mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
@@ -15,6 +16,7 @@ use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
+use orbit_camera::OrbitCameraPlugin;
 use settings::SettingsPlugin;
 
 pub(super) struct CorePlugins;
@@ -28,12 +30,20 @@ impl PluginGroup for CorePlugins {
             .add(GamePathsPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
+            .add(OrbitCameraPlugin)
             .add(SettingsPlugin);
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use bevy::{
+        asset::AssetPlugin,
+        core::CorePlugin,
+        pbr::PbrPlugin,
+        render::{settings::WgpuSettings, RenderPlugin},
+        window::WindowPlugin,
+    };
     use bevy_inspector_egui::WorldInspectorParams;
     use bevy_rapier3d::prelude::*;
 
@@ -45,6 +55,24 @@ mod tests {
             .init_resource::<WorldInspectorParams>()
             .init_resource::<DebugRenderContext>()
             .add_plugins(CorePlugins)
+            .add_plugin(HeadlessRenderPlugin)
             .update();
+    }
+
+    // Allows to run tests for systems containing rendering related things without GPU
+    pub(super) struct HeadlessRenderPlugin;
+
+    impl Plugin for HeadlessRenderPlugin {
+        fn build(&self, app: &mut App) {
+            app.insert_resource(WgpuSettings {
+                backends: None,
+                ..Default::default()
+            })
+            .add_plugin(CorePlugin::default())
+            .add_plugin(WindowPlugin::default())
+            .add_plugin(AssetPlugin::default())
+            .add_plugin(RenderPlugin::default())
+            .add_plugin(PbrPlugin::default());
+        }
     }
 }
