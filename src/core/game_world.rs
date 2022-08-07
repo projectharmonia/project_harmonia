@@ -21,7 +21,7 @@ use serde::de::DeserializeSeed;
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::GameState};
 
 #[derive(SystemLabel)]
-enum GameWorldSystem {
+pub(crate) enum GameWorldSystem {
     Saving,
 }
 
@@ -33,22 +33,13 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_exit_system(
-                GameState::InGame,
-                Self::world_saving_system
-                    .chain(log_err_system)
-                    .run_on_event::<GameSaved>()
-                    .label(GameWorldSystem::Saving),
-            )
-            .add_exit_system(
-                GameState::InGame,
-                Self::cleanup_world_system.after(GameWorldSystem::Saving),
-            )
+            .add_exit_system(GameState::InGame, Self::cleanup_world_system)
             .add_system(
                 Self::world_saving_system
                     .chain(log_err_system)
                     .run_in_state(GameState::InGame)
-                    .run_on_event::<GameSaved>(),
+                    .run_on_event::<GameSaved>()
+                    .label(GameWorldSystem::Saving),
             );
 
         {
