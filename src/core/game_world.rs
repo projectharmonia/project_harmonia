@@ -1,5 +1,5 @@
 use std::{
-    any::{type_name, TypeId},
+    any::{self, TypeId},
     borrow::Cow,
     fs,
 };
@@ -173,7 +173,7 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     // Temorary take resources to avoid borrowing issues
     let type_registry = world
         .remove_resource::<TypeRegistry>()
-        .unwrap_or_else(|| panic!("Unable to extract {}", type_name::<TypeRegistry>()));
+        .unwrap_or_else(|| panic!("Unable to extract {}", any::type_name::<TypeRegistry>()));
     let read_registry = type_registry.read();
 
     for entity_components in components {
