@@ -1,12 +1,13 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
-use super::game_world::Control;
+use super::{game_state::GameState, game_world::Control};
 
 pub(super) struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::spawn_test_world);
+        app.add_system(Self::spawn_test_world.run_in_state(GameState::InGame));
     }
 }
 
@@ -59,7 +60,8 @@ mod tests {
     #[test]
     fn update() {
         let mut app = App::new();
-        app.add_plugin(HeadlessRenderPlugin)
+        app.add_loopless_state(GameState::InGame)
+            .add_plugin(HeadlessRenderPlugin)
             .add_plugin(OrbitCameraPlugin);
 
         let controlled_entity = app.world.spawn().insert(Control).id();
