@@ -11,7 +11,7 @@ use bevy_inspector_egui::prelude::*;
 use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::CorePlugins;
+use crate::core::{control_action::ControlAction, CorePlugins};
 use ui::{ui_action::UiAction, UiPlugins};
 
 struct DollisPlugins;
@@ -23,6 +23,7 @@ impl PluginGroup for DollisPlugins {
         group
             .add(InputManagerPlugin::<UiAction>::default())
             .add(RapierDebugRenderPlugin::default())
+            .add(InputManagerPlugin::<ControlAction>::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(EguiPlugin)
             .add(WorldInspectorPlugin::new());

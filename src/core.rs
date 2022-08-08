@@ -1,4 +1,5 @@
 pub(super) mod city;
+pub(super) mod control_action;
 pub(super) mod developer;
 pub(super) mod errors;
 pub(super) mod family;
@@ -11,6 +12,7 @@ pub(super) mod settings;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use city::CityPlugin;
+use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
@@ -24,11 +26,12 @@ pub(super) struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
+            .add(GameStatePlugin)
             .add(CityPlugin)
+            .add(ControlActionsPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)
             .add(GamePathsPlugin)
-            .add(GameStatePlugin)
             .add(GameWorldPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin);
@@ -46,14 +49,16 @@ mod tests {
     };
     use bevy_inspector_egui::WorldInspectorParams;
     use bevy_rapier3d::prelude::*;
+    use leafwing_input_manager::plugin::InputManagerPlugin;
 
-    use super::*;
+    use super::{control_action::ControlAction, *};
 
     #[test]
     fn update() {
         App::new()
             .init_resource::<WorldInspectorParams>()
             .init_resource::<DebugRenderContext>()
+            .add_plugin(InputManagerPlugin::<ControlAction>::default())
             .add_plugins(CorePlugins)
             .add_plugin(HeadlessRenderPlugin)
             .update();

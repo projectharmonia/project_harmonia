@@ -3,9 +3,10 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
+use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{errors::log_err_system, game_paths::GamePaths};
+use super::{control_action::ControlAction, errors::log_err_system, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
@@ -37,6 +38,10 @@ pub(crate) struct SettingsApplied;
 #[serde(default)]
 pub(crate) struct Settings {
     pub(crate) video: VideoSettings,
+    // TODO: TOML implementations have issues with [`HashSet`]:
+    // https://github.com/alexcrichton/toml-rs/issues/469 and https://github.com/ordian/toml_edit/issues/319
+    #[serde(skip)]
+    pub(crate) controls: ControlsSettings,
     pub(crate) developer: DeveloperSettings,
 }
 
@@ -82,6 +87,29 @@ impl Default for VideoSettings {
             msaa: 1,
             perf_stats: false,
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(default)]
+pub(crate) struct ControlsSettings {
+    pub(crate) mappings: InputMap<ControlAction>,
+}
+
+impl Default for ControlsSettings {
+    fn default() -> Self {
+        let mut input = InputMap::default();
+        input
+            .insert(KeyCode::W, ControlAction::CameraForward)
+            .insert(KeyCode::S, ControlAction::CameraBackward)
+            .insert(KeyCode::A, ControlAction::CameraLeft)
+            .insert(KeyCode::D, ControlAction::CameraRight)
+            .insert(KeyCode::Up, ControlAction::CameraForward)
+            .insert(KeyCode::Down, ControlAction::CameraBackward)
+            .insert(KeyCode::Left, ControlAction::CameraLeft)
+            .insert(KeyCode::Right, ControlAction::CameraRight);
+
+        Self { mappings: input }
     }
 }
 
