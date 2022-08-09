@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, mem};
 
 use bevy::prelude::*;
 use bevy_egui::{
@@ -28,7 +28,7 @@ impl Plugin for WorldBrowserPlugin {
             .add_system(
                 Self::create_world_system
                     .run_in_state(GameState::Menu)
-                    .run_if_resource_exists::<WorldName>(),
+                    .run_if_resource_exists::<CreateWorldDialog>(),
             )
             .add_system(Self::remove_world_system.run_if_resource_exists::<RemoveWorldDialog>());
     }
@@ -73,7 +73,7 @@ impl WorldBrowserPlugin {
                 }
                 ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
                     if ui.button("➕ Create new").clicked() {
-                        commands.init_resource::<WorldName>();
+                        commands.init_resource::<CreateWorldDialog>();
                     }
                 });
             });
@@ -87,19 +87,21 @@ impl WorldBrowserPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
-        mut world_name: ResMut<WorldName>,
+        mut dialog: ResMut<CreateWorldDialog>,
     ) {
         let mut is_open = true;
         ModalWindow::new("Create world")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut world_name.0);
+                ui.text_edit_singleline(&mut dialog.world_name);
                 ui.horizontal(|ui| {
                     if ui
-                        .add_enabled(!world_name.is_empty(), Button::new("Create"))
+                        .add_enabled(!dialog.world_name.is_empty(), Button::new("Create"))
                         .clicked()
                     {
+                        commands.insert_resource(WorldName(mem::take(&mut dialog.world_name)));
                         commands.insert_resource(NextState(GameState::InGame));
+                        ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
                         ui.close_modal();
@@ -108,7 +110,7 @@ impl WorldBrowserPlugin {
             });
 
         if !is_open {
-            commands.remove_resource::<WorldName>();
+            commands.remove_resource::<CreateWorldDialog>();
         }
     }
 
@@ -162,6 +164,11 @@ impl FromWorld for WorldBrowser {
                 .unwrap_or_default(),
         }
     }
+}
+
+#[derive(Default)]
+struct CreateWorldDialog {
+    world_name: String,
 }
 
 struct RemoveWorldDialog {
