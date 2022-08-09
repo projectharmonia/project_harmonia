@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::game_world::InGameOnly;
+use super::game_world::GameEntity;
 
 pub(super) struct FamilyPlugin;
 
@@ -15,7 +15,7 @@ pub(crate) struct FamilyBundle {
     name: Name,
     family: Family,
     budget: Budget,
-    in_game_only: InGameOnly,
+    game_entity: GameEntity,
 }
 
 #[derive(Component, Default, Deref, DerefMut, Reflect)]

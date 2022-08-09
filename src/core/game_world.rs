@@ -1,8 +1,6 @@
-use std::{
-    any::{self, TypeId},
-    borrow::Cow,
-    fs,
-};
+mod ignore_rules;
+
+use std::{any, borrow::Cow, fs};
 
 use anyhow::{Context, Result};
 use bevy::{
@@ -12,13 +10,13 @@ use bevy::{
         serde::{ReflectDeserializer, ReflectSerializer},
         TypeRegistry,
     },
-    utils::{HashMap, HashSet},
+    utils::HashMap,
 };
 use iyes_loopless::prelude::*;
-use once_cell::sync::Lazy;
 use serde::de::DeserializeSeed;
 
 use super::{errors::log_err_system, game_paths::GamePaths, game_state::GameState};
+use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
@@ -29,7 +27,7 @@ pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<InGameOnly>()
+        app.register_type::<GameEntity>()
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
@@ -57,9 +55,9 @@ impl Plugin for GameWorldPlugin {
 impl GameWorldPlugin {
     fn cleanup_world_system(
         mut commands: Commands,
-        ingame_entities: Query<Entity, With<InGameOnly>>,
+        game_entities: Query<Entity, With<GameEntity>>,
     ) {
-        for entity in &ingame_entities {
+        for entity in &game_entities {
             commands.entity(entity).despawn_recursive();
         }
         commands.remove_resource::<WorldName>();
@@ -105,40 +103,26 @@ impl GameWorldPlugin {
 }
 
 /// Iterates over a world and serializes all components that implement [`Reflect`]
-/// on entities that have [`InGameOnly`] component.
+/// and not filtered using [`IgnoreRules`]
 fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
-    static IGNORED_COMPONENTS: Lazy<HashSet<TypeId>> =
-        Lazy::new(|| HashSet::from([TypeId::of::<Camera>()]));
-
+    let ignore_rules = IgnoreRules::global(world);
     let mut components = HashMap::new();
     let type_registry = world.resource::<TypeRegistry>().read();
-    for archetype in world.archetypes().iter() {
-        if matches!(
-            archetype.id(),
-            ArchetypeId::EMPTY | ArchetypeId::RESOURCE | ArchetypeId::INVALID
-        ) {
-            continue;
-        }
-
-        if archetype
-            .components()
-            .filter_map(|component_id| {
-                // SAFETY: `component_id` retrieved from the world.
-                unsafe { world.components().get_info_unchecked(component_id) }.type_id()
-            })
-            .all(|type_id| type_id != TypeId::of::<InGameOnly>())
-        {
-            // Not an ingame entity
-            continue;
-        }
-
+    for archetype in world
+        .archetypes()
+        .iter()
+        .filter(|archetype| !ignore_rules.ignored_archetype(archetype))
+        .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
+        .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
+        .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
+    {
         for reflect_component in archetype
             .components()
+            .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
             .filter_map(|component_id| {
                 // SAFETY: `component_id` retrieved from the world.
                 unsafe { world.components().get_info_unchecked(component_id) }.type_id()
             })
-            .filter(|type_id| !IGNORED_COMPONENTS.contains(type_id))
             .filter_map(|type_id| type_registry.get(type_id))
             .filter_map(|registration| registration.data::<ReflectComponent>())
         {
@@ -194,10 +178,10 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
     world.insert_resource(type_registry);
 }
 
-/// All entities with this component will be removed after leaving [`InGame`] state
+/// All entities with this component will be removed after leaving [`InGame`] state.
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-pub(super) struct InGameOnly;
+pub(super) struct GameEntity;
 
 /// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
 #[derive(Default)]
@@ -221,7 +205,7 @@ mod tests {
     use bevy::core::CorePlugin;
 
     use super::*;
-    use crate::core::game_paths::GamePaths;
+    use crate::core::{city::City, game_paths::GamePaths};
 
     #[test]
     fn world_cleanup() {
@@ -232,7 +216,7 @@ mod tests {
         let ingame_entity = app
             .world
             .spawn()
-            .insert(InGameOnly)
+            .insert(GameEntity)
             .push_children(&[child_entity])
             .id();
 
@@ -261,6 +245,7 @@ mod tests {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
         app.register_type::<Camera>()
+            .register_type::<City>()
             .init_resource::<GamePaths>()
             .insert_resource(WorldName(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
@@ -275,22 +260,40 @@ mod tests {
         );
 
         const TRANSFORM: Transform = Transform::identity();
-        let ingame_entity = app
+        let non_game_entity = app.world.spawn().insert(Transform::identity()).id();
+        let game_world_entity = app
             .world
             .spawn()
-            .insert(TRANSFORM)
+            .insert_bundle(SpatialBundle {
+                transform: TRANSFORM,
+                ..Default::default()
+            })
             .insert(Camera::default())
-            .insert(InGameOnly)
+            .insert(GameEntity)
             .id();
-        let other_entity = app.world.spawn().insert(Transform::identity()).id();
+        let non_game_city = app
+            .world
+            .spawn()
+            .insert_bundle(SpatialBundle::default())
+            .insert(City)
+            .id();
+        let city = app
+            .world
+            .spawn()
+            .insert_bundle(SpatialBundle::default())
+            .insert(City)
+            .insert(GameEntity)
+            .push_children(&[game_world_entity])
+            .id();
 
         let mut save_events = app.world.resource_mut::<Events<GameSaved>>();
         save_events.send_default();
 
         app.update();
 
-        app.world.entity_mut(ingame_entity).despawn();
-        app.world.entity_mut(other_entity).despawn();
+        app.world.entity_mut(non_game_entity).despawn();
+        app.world.entity_mut(non_game_city).despawn();
+        app.world.entity_mut(city).despawn_recursive();
 
         let mut save_events = app.world.resource_mut::<Events<GameLoaded>>();
         save_events.send_default();
@@ -303,8 +306,15 @@ mod tests {
             "Loaded transform should be equal to the saved"
         );
         assert!(
+            app.world
+                .query_filtered::<(), (With<City>, Without<Transform>)>()
+                .get_single(&app.world)
+                .is_ok(),
+            "Loaded city shouldn't contain transform"
+        );
+        assert!(
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
-            "Camera object shouldn't be saved"
+            "Camera component shouldn't be saved"
         );
         assert_eq!(
             app.world.resource::<NextState<GameState>>().0,
