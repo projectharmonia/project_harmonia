@@ -7,7 +7,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     game_state::GameState,
-    game_world::{GameSaved, GameWorldSystem, WorldName},
+    game_world::{GameSaved, GameWorld, GameWorldSystem},
 };
 
 use super::{
@@ -22,10 +22,10 @@ impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::open_ingame_menu_system
-                .run_in_state(GameState::InGame)
+                .run_not_in_state(GameState::MainMenu)
                 .run_unless_resource_exists::<InGameMenu>(),
         )
-        .add_exit_system(GameState::InGame, Self::close_ingame_menu)
+        .add_enter_system(GameState::MainMenu, Self::close_ingame_menu)
         .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())
         .add_system(Self::save_as_system.run_if_resource_exists::<SaveAsDialog>())
         .add_system(
@@ -88,7 +88,7 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSaved>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
-        mut world_name: ResMut<WorldName>,
+        mut game_world: ResMut<GameWorld>,
         mut dialog: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
@@ -98,7 +98,7 @@ impl InGameMenuPlugin {
                 ui.text_edit_singleline(&mut dialog.world_name);
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
-                        world_name.0 = mem::take(&mut dialog.world_name);
+                        game_world.world_name = mem::take(&mut dialog.world_name);
                         save_events.send_default();
                         ui.close_modal();
                     }
@@ -127,12 +127,12 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if ui.button("Save and exit").clicked() {
                         save_events.send_default();
+                        commands.remove_resource::<GameWorld>();
                         ui.close_modal();
-                        commands.insert_resource(NextState(GameState::Menu));
                     }
                     if ui.button("Exit to main menu").clicked() {
+                        commands.remove_resource::<GameWorld>();
                         ui.close_modal();
-                        commands.insert_resource(NextState(GameState::Menu));
                     }
                     if ui.button("Cancel").clicked() {
                         ui.close_modal();
@@ -187,7 +187,7 @@ struct SaveAsDialog {
 impl FromWorld for SaveAsDialog {
     fn from_world(world: &mut World) -> Self {
         SaveAsDialog {
-            world_name: world.resource::<WorldName>().0.clone(),
+            world_name: world.resource::<GameWorld>().world_name.clone(),
         }
     }
 }

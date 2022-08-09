@@ -29,26 +29,16 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::InGame, Self::open_world_menu_system)
-            .add_exit_system(GameState::InGame, Self::close_world_menu_system)
-            .add_system(Self::create_city_system.run_if_resource_exists::<CreateCityDialog>())
-            .add_system(Self::world_menu_system.run_if_resource_exists::<WorldMenu>());
+        app.add_system(Self::create_city_system.run_if_resource_exists::<CreateCityDialog>())
+            .add_system(Self::world_menu_system.run_in_state(GameState::World));
     }
 }
 
 impl WorldMenuPlugin {
-    fn open_world_menu_system(mut commands: Commands) {
-        commands.init_resource::<WorldMenu>();
-    }
-
-    fn close_world_menu_system(mut commands: Commands) {
-        commands.remove_resource::<WorldMenu>();
-    }
-
     fn world_menu_system(
+        mut current_tab: Local<WorldMenuTab>,
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut world_menu: ResMut<WorldMenu>,
         families: Query<(Entity, &'static Name), With<Family>>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
@@ -59,10 +49,10 @@ impl WorldMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     for tab in WorldMenuTab::iter() {
-                        ui.selectable_value(&mut world_menu.current_tab, tab, tab.to_string());
+                        ui.selectable_value(&mut *current_tab, tab, tab.to_string());
                     }
                 });
-                match world_menu.current_tab {
+                match *current_tab {
                     WorldMenuTab::Families => FamiliesTab::new(&mut commands, &families).show(ui),
                     WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }
@@ -99,11 +89,6 @@ impl WorldMenuPlugin {
             commands.remove_resource::<CreateCityDialog>();
         }
     }
-}
-
-#[derive(Default)]
-pub(super) struct WorldMenu {
-    current_tab: WorldMenuTab,
 }
 
 #[derive(Default, Display, Clone, Copy, EnumIter, PartialEq)]

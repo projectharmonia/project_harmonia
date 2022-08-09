@@ -16,20 +16,16 @@ use super::{
 use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoaded, WorldName},
+    game_world::{GameLoaded, GameWorld},
 };
 
 pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_exit_system(GameState::Menu, Self::close_world_browser)
+        app.add_exit_system(GameState::MainMenu, Self::close_world_browser)
             .add_system(Self::world_browser_system.run_if_resource_exists::<WorldBrowser>())
-            .add_system(
-                Self::create_world_system
-                    .run_in_state(GameState::Menu)
-                    .run_if_resource_exists::<CreateWorldDialog>(),
-            )
+            .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
             .add_system(Self::remove_world_system.run_if_resource_exists::<RemoveWorldDialog>());
     }
 }
@@ -44,23 +40,23 @@ impl WorldBrowserPlugin {
         mut load_events: EventWriter<GameLoaded>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
-        world_browser: Res<WorldBrowser>,
+        mut world_browser: ResMut<WorldBrowser>,
     ) {
         let mut is_open = true;
         ModalWindow::new("World browser")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                for (index, world) in world_browser.worlds.iter().enumerate() {
+                for (index, world) in world_browser.worlds.iter_mut().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.add(
                                 Image::new(TextureId::Managed(0), (64.0, 64.0))
                                     .uv([WHITE_UV, WHITE_UV]),
                             );
-                            ui.label(world);
+                            ui.label(world.as_str());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {
-                                    commands.insert_resource(WorldName(world.clone()));
+                                    commands.insert_resource(GameWorld::new(mem::take(world)));
                                     load_events.send_default();
                                 }
                                 if ui.button("👥 Host").clicked() {}
@@ -99,8 +95,7 @@ impl WorldBrowserPlugin {
                         .add_enabled(!dialog.world_name.is_empty(), Button::new("Create"))
                         .clicked()
                     {
-                        commands.insert_resource(WorldName(mem::take(&mut dialog.world_name)));
-                        commands.insert_resource(NextState(GameState::InGame));
+                        commands.insert_resource(GameWorld::new(mem::take(&mut dialog.world_name)));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {

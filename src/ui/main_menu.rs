@@ -12,7 +12,7 @@ pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::main_menu_system.run_in_state(GameState::Menu));
+        app.add_system(Self::main_menu_system.run_in_state(GameState::MainMenu));
     }
 }
 

@@ -7,19 +7,20 @@ pub(super) struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::spawn_test_world.run_in_state(GameState::InGame));
+        app.add_enter_system(GameState::City, Self::spawn_test_world);
     }
 }
 
 impl OrbitCameraPlugin {
     fn spawn_test_world(
-        controlled_entities: Query<Entity, Added<Control>>,
+        controlled_entity: Query<Entity, Added<Control>>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
-        for entity in controlled_entities.iter() {
-            commands.entity(entity).add_children(|parent| {
+        commands
+            .entity(controlled_entity.single())
+            .add_children(|parent| {
                 parent.spawn_bundle(PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
                     material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
@@ -45,7 +46,6 @@ impl OrbitCameraPlugin {
                     ..default()
                 });
             });
-        }
     }
 }
 
@@ -60,11 +60,12 @@ mod tests {
     #[test]
     fn update() {
         let mut app = App::new();
-        app.add_loopless_state(GameState::InGame)
+        app.add_loopless_state(GameState::World)
             .add_plugin(HeadlessRenderPlugin)
             .add_plugin(OrbitCameraPlugin);
 
         let controlled_entity = app.world.spawn().insert(Control).id();
+        app.world.insert_resource(NextState(GameState::City));
 
         app.update();
 

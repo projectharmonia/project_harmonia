@@ -31,11 +31,12 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_exit_system(GameState::InGame, Self::cleanup_world_system)
+            .add_system(Self::init_world_system.run_if_resource_added::<GameWorld>())
+            .add_system(Self::cleanup_world_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::world_saving_system
                     .chain(log_err_system)
-                    .run_in_state(GameState::InGame)
+                    .run_if_resource_exists::<GameWorld>()
                     .run_on_event::<GameSaved>()
                     .label(GameWorldSystem::Saving),
             );
@@ -53,6 +54,12 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
+    /// Sets state to [`GameState::World`].
+    fn init_world_system(mut commands: Commands) {
+        commands.insert_resource(NextState(GameState::World));
+    }
+
+    /// Removes all game world entities and sets state to [`GameState::MainMenu`].
     fn cleanup_world_system(
         mut commands: Commands,
         game_entities: Query<Entity, With<GameEntity>>,
@@ -60,16 +67,16 @@ impl GameWorldPlugin {
         for entity in &game_entities {
             commands.entity(entity).despawn_recursive();
         }
-        commands.remove_resource::<WorldName>();
+        commands.insert_resource(NextState(GameState::MainMenu));
     }
 
-    /// Saves world to disk with the name from [`WorldName`] resource.
+    /// Saves world to disk with the name from [`GameWorld`] resource.
     fn world_saving_system(
         world: &World,
-        world_name: Res<WorldName>,
+        game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&world_name.0);
+        let world_path = game_paths.world_path(&game_world.world_name);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("Unable to create {world_path:?}"))?;
@@ -81,12 +88,11 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to save game to {world_path:?}"))
     }
 
-    /// Loads world from disk with the name from [`WorldName`] resource
-    /// and sets state to [`GameState::InGame`].
+    /// Loads world from disk with the name from [`GameWorld`] resource.
     fn world_loading_system(world: &mut World) -> Result<()> {
-        let world_name = world.resource::<WorldName>();
+        let game_world = world.resource::<GameWorld>();
         let game_paths = world.resource::<GamePaths>();
-        let world_path = game_paths.world_path(&world_name.0);
+        let world_path = game_paths.world_path(&game_world.world_name);
 
         let bytes = fs::read(&world_path)
             .with_context(|| format!("Unable to load world from {world_path:?}"))?;
@@ -95,8 +101,6 @@ impl GameWorldPlugin {
             .expect("Unable to deserialize game world");
 
         deserialize_game_world(world, components);
-
-        world.insert_resource(NextState(GameState::InGame));
 
         Ok(())
     }
@@ -183,17 +187,25 @@ fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
 #[reflect(Component)]
 pub(super) struct GameEntity;
 
-/// Event that indicates that game is about to be saved to the file name based on [`WorldName`].
+/// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
 #[derive(Default)]
 pub(crate) struct GameSaved;
 
-/// Event that indicates that game is about to be loaded from the file name based on [`WorldName`].
+/// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
 #[derive(Default)]
 pub(crate) struct GameLoaded;
 
 /// The name of the current world.
 #[derive(Default, Deref)]
-pub(crate) struct WorldName(pub(crate) String);
+pub(crate) struct GameWorld {
+    pub(crate) world_name: String,
+}
+
+impl GameWorld {
+    pub(crate) fn new(world_name: String) -> Self {
+        Self { world_name }
+    }
+}
 
 /// Indicates the player's control over the specified entity (for example, family or city).
 #[derive(Component)]
@@ -210,7 +222,7 @@ mod tests {
     #[test]
     fn world_cleanup() {
         let mut app = App::new();
-        app.add_plugin(TestGameWorldPlugin);
+        app.init_resource::<GameWorld>().add_plugin(GameWorldPlugin);
 
         let child_entity = app.world.spawn().id();
         let ingame_entity = app
@@ -222,7 +234,15 @@ mod tests {
 
         app.update();
 
-        app.world.insert_resource(NextState(GameState::Menu));
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::World,
+            "After adding {} state should become {}",
+            any::type_name::<GameWorld>(),
+            GameState::World,
+        );
+
+        app.world.remove_resource::<GameWorld>();
 
         app.update();
 
@@ -234,9 +254,12 @@ mod tests {
             app.world.get_entity(child_entity).is_none(),
             "Children of ingame entity should be despawned with its parent"
         );
-        assert!(
-            app.world.get_resource::<WorldName>().is_none(),
-            "Would name resource should be removed"
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::MainMenu,
+            "After removing {} state should become {}",
+            any::type_name::<GameWorld>(),
+            GameState::MainMenu,
         );
     }
 
@@ -247,10 +270,10 @@ mod tests {
         app.register_type::<Camera>()
             .register_type::<City>()
             .init_resource::<GamePaths>()
-            .insert_resource(WorldName(WORLD_NAME.to_string()))
+            .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(TestGameWorldPlugin);
+            .add_plugin(GameWorldPlugin);
 
         let game_paths = app.world.resource::<GamePaths>();
         let world_path = game_paths.world_path(WORLD_NAME);
@@ -316,23 +339,8 @@ mod tests {
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
             "Camera component shouldn't be saved"
         );
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::InGame,
-            "After loading world next game state should become {:?}",
-            GameState::InGame
-        );
 
         fs::remove_file(&world_path)
             .with_context(|| format!("Unable to remove {world_path:?} after test"))
-    }
-
-    struct TestGameWorldPlugin;
-
-    impl Plugin for TestGameWorldPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_loopless_state(GameState::InGame)
-                .add_plugin(GameWorldPlugin);
-        }
     }
 }

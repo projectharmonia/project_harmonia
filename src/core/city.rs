@@ -8,7 +8,7 @@ pub(super) struct CityPlugin;
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<City>()
-            .add_system(Self::insert_spatial_system.run_in_state(GameState::InGame));
+            .add_system(Self::insert_spatial_system.run_in_state(GameState::World));
     }
 }
 
@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn spatial_insertion() {
         let mut app = App::new();
-        app.add_loopless_state(GameState::InGame)
+        app.add_loopless_state(GameState::World)
             .add_plugin(CityPlugin);
 
         let city = app.world.spawn().insert_bundle(CityBundle::default()).id();

@@ -18,8 +18,8 @@ impl Plugin for ControlActionsPlugin {
 
         app.insert_resource(toggle_actions)
             .add_startup_system(Self::load_mappings_system)
-            .add_enter_system(GameState::InGame, Self::enable_actions)
-            .add_exit_system(GameState::InGame, Self::disable_actions)
+            .add_enter_system(GameState::City, Self::enable_actions)
+            .add_exit_system(GameState::City, Self::disable_actions)
             .add_system(Self::load_mappings_system.run_on_event::<SettingsApplied>());
     }
 }
@@ -101,22 +101,22 @@ mod tests {
             "Control actions should be disabled at startup"
         );
 
-        app.world.insert_resource(NextState(GameState::InGame));
+        app.world.insert_resource(NextState(GameState::City));
         app.update();
 
         assert!(
             app.world.resource::<ToggleActions<ControlAction>>().enabled,
             "Control actions should be enabled after entering {}",
-            GameState::InGame
+            GameState::City
         );
 
-        app.world.insert_resource(NextState(GameState::Menu));
+        app.world.insert_resource(NextState(GameState::MainMenu));
         app.update();
 
         assert!(
             !app.world.resource::<ToggleActions<ControlAction>>().enabled,
             "Control actions should be disabled after exiting {}",
-            GameState::InGame
+            GameState::City
         );
     }
 
@@ -124,7 +124,7 @@ mod tests {
 
     impl Plugin for TestControlActionsPlugin {
         fn build(&self, app: &mut App) {
-            app.add_loopless_state(GameState::Menu)
+            app.add_loopless_state(GameState::MainMenu)
                 .add_event::<SettingsApplied>()
                 .init_resource::<Settings>()
                 .add_plugin(ControlActionsPlugin);

@@ -6,12 +6,13 @@ pub(super) struct GameStatePlugin;
 
 impl Plugin for GameStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(GameState::Menu);
+        app.add_loopless_state(GameState::MainMenu);
     }
 }
 
 #[derive(Clone, Debug, Display, Eq, Hash, PartialEq)]
 pub(crate) enum GameState {
-    Menu,
-    InGame,
+    MainMenu,
+    World,
+    City,
 }
