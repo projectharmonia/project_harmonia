@@ -73,24 +73,20 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
-        mut create_city_dialog: ResMut<CreateCityDialog>,
+        mut dialog: ResMut<CreateCityDialog>,
     ) {
         let mut open = true;
         ModalWindow::new("Create city")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut create_city_dialog.city_name);
+                ui.text_edit_singleline(&mut dialog.city_name);
                 ui.horizontal(|ui| {
                     if ui
-                        .add_enabled(
-                            !create_city_dialog.city_name.is_empty(),
-                            Button::new("Create"),
-                        )
+                        .add_enabled(!dialog.city_name.is_empty(), Button::new("Create"))
                         .clicked()
                     {
-                        commands.spawn_bundle(CityBundle::new(
-                            mem::take(&mut create_city_dialog.city_name).into(),
-                        ));
+                        commands
+                            .spawn_bundle(CityBundle::new(mem::take(&mut dialog.city_name).into()));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {

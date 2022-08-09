@@ -27,7 +27,7 @@ impl Plugin for InGameMenuPlugin {
         )
         .add_exit_system(GameState::InGame, Self::close_ingame_menu)
         .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())
-        .add_system(Self::save_as_dialog_system.run_if_resource_exists::<SaveAsDialog>())
+        .add_system(Self::save_as_system.run_if_resource_exists::<SaveAsDialog>())
         .add_system(
             Self::exit_to_main_menu_system
                 .run_if_resource_exists::<ExitToMainMenuDialog>()
@@ -83,22 +83,22 @@ impl InGameMenuPlugin {
         }
     }
 
-    fn save_as_dialog_system(
+    fn save_as_system(
         mut commands: Commands,
         mut save_events: EventWriter<GameSaved>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut world_name: ResMut<WorldName>,
-        mut save_as_dialog: ResMut<SaveAsDialog>,
+        mut dialog: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
         ModalWindow::new("Save as...")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut save_as_dialog.world_name);
+                ui.text_edit_singleline(&mut dialog.world_name);
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
-                        world_name.0 = mem::take(&mut save_as_dialog.world_name);
+                        world_name.0 = mem::take(&mut dialog.world_name);
                         save_events.send_default();
                         ui.close_modal();
                     }

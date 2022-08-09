@@ -120,7 +120,7 @@ impl WorldBrowserPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
         mut world_browser: ResMut<WorldBrowser>,
         game_paths: Res<GamePaths>,
-        remove_world_dialog: ResMut<RemoveWorldDialog>,
+        dialog: ResMut<RemoveWorldDialog>,
     ) {
         let mut is_open = true;
         ModalWindow::new("Remove world")
@@ -128,11 +128,11 @@ impl WorldBrowserPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.label(format!(
                     "Are you sure you want to remove world {}?",
-                    &world_browser.worlds[remove_world_dialog.world_index]
+                    &world_browser.worlds[dialog.world_index]
                 ));
                 ui.horizontal(|ui| {
                     if ui.button("Remove").clicked() {
-                        let world = world_browser.worlds.remove(remove_world_dialog.world_index);
+                        let world = world_browser.worlds.remove(dialog.world_index);
                         fs::remove_file(game_paths.world_path(&world))
                             .map_err(|e| error!("{e:#}"))
                             .ok();
