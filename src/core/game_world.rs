@@ -207,10 +207,6 @@ impl GameWorld {
     }
 }
 
-/// Indicates the player's control over the specified entity (for example, family or city).
-#[derive(Component)]
-pub(crate) struct Control;
-
 #[cfg(test)]
 mod tests {
     use anyhow::{Context, Result};

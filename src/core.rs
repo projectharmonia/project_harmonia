@@ -6,6 +6,7 @@ pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
+pub(super) mod ground;
 pub(super) mod orbit_camera;
 pub(super) mod settings;
 
@@ -18,6 +19,7 @@ use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
+use ground::GroundPlugin;
 use orbit_camera::OrbitCameraPlugin;
 use settings::SettingsPlugin;
 
@@ -28,6 +30,7 @@ impl PluginGroup for CorePlugins {
         group
             .add(GameStatePlugin)
             .add(CityPlugin)
+            .add(GroundPlugin)
             .add(ControlActionsPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)

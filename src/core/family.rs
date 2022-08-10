@@ -25,3 +25,7 @@ pub(crate) struct Family(Vec<Entity>);
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
+
+/// Indicates the player's control over a dolly.
+#[derive(Component)]
+pub(crate) struct Control;

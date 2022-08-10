@@ -1,18 +1,14 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::{
-    game_state::GameState,
-    game_world::{Control, GameEntity, GameWorld},
-};
+use super::game_world::{GameEntity, GameWorld};
 
 pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<City>()
-            .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
-            .add_enter_system(GameState::City, Self::city_visibility_system);
+            .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>());
     }
 }
 
@@ -40,16 +36,6 @@ impl CityPlugin {
             placed_cities += 1;
         }
     }
-
-    /// Makes a controlled city visible.
-    fn city_visibility_system(
-        mut commands: Commands,
-        controlled_city: Query<Entity, (Added<Control>, With<City>)>,
-    ) {
-        commands
-            .entity(controlled_city.single())
-            .insert_bundle(VisibilityBundle::default());
-    }
 }
 
 #[derive(Bundle, Default)]
@@ -76,14 +62,12 @@ pub(crate) struct City;
 
 #[cfg(test)]
 mod tests {
-    use std::any;
-
     use super::*;
 
     #[test]
     fn placing() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(TestCityPlugin);
+        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
 
         app.update();
 
@@ -102,37 +86,6 @@ mod tests {
                 Transform::from_translation(Vec3::X * CityPlugin::CITY_SIZE * index as f32),
                 "City {index} should be placed with offset",
             );
-        }
-    }
-
-    #[test]
-    fn city_visibility() {
-        let mut app = App::new();
-        app.add_plugin(TestCityPlugin);
-        app.world.insert_resource(NextState(GameState::City));
-
-        let city = app
-            .world
-            .spawn()
-            .insert_bundle(CityBundle::default())
-            .insert(Control)
-            .id();
-
-        app.update();
-
-        assert!(
-            app.world.entity(city).contains::<Visibility>(),
-            "City should receive visibility after adding {} to it",
-            any::type_name::<Control>()
-        );
-    }
-
-    struct TestCityPlugin;
-
-    impl Plugin for TestCityPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_loopless_state(GameState::MainMenu)
-                .add_plugin(CityPlugin);
         }
     }
 }
