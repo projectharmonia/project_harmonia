@@ -1,6 +1,7 @@
 // Conditionally enable nightly-only `no_coverage` attribute. Will be removed after stabilization, should happen soon: https://github.com/rust-lang/rust/issues/84605
 #![cfg_attr(coverage, feature(no_coverage))]
 #![warn(clippy::doc_markdown)]
+#![allow(clippy::type_complexity)] // Do not warn about long queries
 
 mod core;
 mod ui;

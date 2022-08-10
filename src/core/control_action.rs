@@ -16,7 +16,8 @@ impl Plugin for ControlActionsPlugin {
         let mut toggle_actions = ToggleActions::<ControlAction>::default();
         toggle_actions.enabled = false;
 
-        app.insert_resource(toggle_actions)
+        app.init_resource::<ActionState<ControlAction>>()
+            .insert_resource(toggle_actions)
             .add_startup_system(Self::load_mappings_system)
             .add_enter_system(GameState::City, Self::enable_actions)
             .add_exit_system(GameState::City, Self::disable_actions)
@@ -39,7 +40,6 @@ impl ControlActionsPlugin {
 }
 
 #[derive(Actionlike, Clone, Copy, Debug, Deserialize, Display, Hash, PartialEq, Serialize)]
-#[allow(clippy::enum_variant_names)]
 pub(crate) enum ControlAction {
     #[strum(serialize = "Camera Forward")]
     CameraForward,
@@ -49,6 +49,10 @@ pub(crate) enum ControlAction {
     CameraLeft,
     #[strum(serialize = "Camera Right")]
     CameraRight,
+    #[strum(serialize = "Rotate Camera")]
+    RotateCamera,
+    #[strum(serialize = "Zoom Camera")]
+    ZoomCamera,
 }
 
 #[cfg(test)]
