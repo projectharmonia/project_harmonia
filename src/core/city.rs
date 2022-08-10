@@ -7,8 +7,10 @@ pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<City>()
-            .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>());
+        app.init_resource::<PlacedCities>()
+            .register_type::<City>()
+            .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::reset_paced_cities_system.run_if_resource_removed::<GameWorld>());
     }
 }
 
@@ -19,22 +21,22 @@ impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn placement_system(
         mut commands: Commands,
+        mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, Added<City>>,
-        placed_cities: Query<(), (With<City>, With<Transform>)>,
     ) {
-        if added_cities.is_empty() {
-            return;
-        }
-
-        let mut placed_cities = placed_cities.iter().count();
         for city in &added_cities {
             let transform =
-                Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_cities as f32);
+                Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_citites.0 as f32);
             commands
                 .entity(city)
                 .insert_bundle(TransformBundle::from_transform(transform));
-            placed_cities += 1;
+            placed_citites.0 += 1;
         }
+    }
+
+    /// Resets [`PlacedCities`] counter to 0.
+    fn reset_paced_cities_system(mut placed_citites: ResMut<PlacedCities>) {
+        placed_citites.0 = 0;
     }
 }
 
@@ -60,8 +62,17 @@ impl CityBundle {
 #[reflect(Component)]
 pub(crate) struct City;
 
+/// Number of placed cities.
+///
+/// The number increases when a city is placed, but does not decrease
+/// when it is removed to assign a unique position to new each city.
+#[derive(Default)]
+struct PlacedCities(usize);
+
 #[cfg(test)]
 mod tests {
+    use std::any;
+
     use super::*;
 
     #[test]
@@ -71,7 +82,7 @@ mod tests {
 
         app.update();
 
-        for index in 0..3 {
+        for index in 0..2 {
             let city = app.world.spawn().insert_bundle(CityBundle::default()).id();
 
             app.update();
@@ -87,5 +98,25 @@ mod tests {
                 "City {index} should be placed with offset",
             );
         }
+    }
+
+    #[test]
+    fn placed_citites_reset() {
+        let mut app = App::new();
+        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+
+        app.world.resource_mut::<PlacedCities>().0 += 1;
+
+        app.update();
+
+        app.world.remove_resource::<GameWorld>();
+        app.update();
+
+        assert_eq!(
+            app.world.resource::<PlacedCities>().0,
+            0,
+            "Number of placed cities should be resetted after removing {}",
+            any::type_name::<GameWorld>(),
+        );
     }
 }
