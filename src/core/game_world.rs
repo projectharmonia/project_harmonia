@@ -15,7 +15,7 @@ use bevy::{
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{cli::Cli, errors::log_err_system, game_paths::GamePaths, game_state::GameState};
+use super::{cli::Cli, errors::log_err_system, game_paths::GamePaths};
 use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
@@ -32,7 +32,6 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
             .add_startup_system(Self::load_from_cli_system.chain(log_err_system))
-            .add_system(Self::set_state_system.run_if_resource_added::<GameWorld>())
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
@@ -71,17 +70,11 @@ impl GameWorldPlugin {
         Ok(())
     }
 
-    /// Sets state to [`GameState::World`].
-    fn set_state_system(mut commands: Commands) {
-        commands.insert_resource(NextState(GameState::World));
-    }
-
     /// Removes all game world entities and sets state to [`GameState::MainMenu`].
     fn cleanup_system(mut commands: Commands, game_entities: Query<Entity, With<GameEntity>>) {
         for entity in &game_entities {
             commands.entity(entity).despawn_recursive();
         }
-        commands.insert_resource(NextState(GameState::MainMenu));
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
@@ -277,14 +270,6 @@ mod tests {
 
         app.update();
 
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::World,
-            "After adding {} state should become {}",
-            any::type_name::<GameWorld>(),
-            GameState::World,
-        );
-
         app.world.remove_resource::<GameWorld>();
 
         app.update();
@@ -296,13 +281,6 @@ mod tests {
         assert!(
             app.world.get_entity(child_entity).is_none(),
             "Children of ingame entity should be despawned with its parent"
-        );
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::MainMenu,
-            "After removing {} state should become {}",
-            any::type_name::<GameWorld>(),
-            GameState::MainMenu,
         );
     }
 

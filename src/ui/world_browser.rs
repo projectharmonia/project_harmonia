@@ -57,6 +57,7 @@ impl WorldBrowserPlugin {
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {
                                     commands.insert_resource(GameWorld::new(mem::take(world)));
+                                    commands.insert_resource(NextState(GameState::World));
                                     load_events.send_default();
                                 }
                                 if ui.button("👥 Host").clicked() {}
@@ -96,6 +97,7 @@ impl WorldBrowserPlugin {
                         .clicked()
                     {
                         commands.insert_resource(GameWorld::new(mem::take(&mut dialog.world_name)));
+                        commands.insert_resource(NextState(GameState::World));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
