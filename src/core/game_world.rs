@@ -62,12 +62,15 @@ impl Plugin for GameWorldPlugin {
 impl GameWorldPlugin {
     fn load_from_cli_system(
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoaded>,
+        mut load_events: ResMut<Events<GameLoaded>>,
         cli: Res<Cli>,
     ) -> Result<()> {
-        if let Some(GameCommand::Play { world_name }) = &cli.subcommand {
+        if let Some(GameCommand::Play { world_name, .. }) = &cli.subcommand {
             commands.insert_resource(GameWorld::new(world_name.clone()));
             load_events.send_default();
+            // Should be called to avoid other systems reacting on the event twice
+            // See https://github.com/IyesGames/iyes_loopless/issues/31
+            load_events.update();
         }
 
         Ok(())
