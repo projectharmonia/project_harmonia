@@ -248,6 +248,7 @@ mod tests {
 
         app.world.resource_mut::<Cli>().subcommand = Some(GameCommand::Play {
             world_name: WORLD_NAME.to_string(),
+            city: None,
         });
 
         app.update();

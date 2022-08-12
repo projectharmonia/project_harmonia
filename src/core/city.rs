@@ -1,7 +1,14 @@
+use anyhow::{Context, Result};
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::game_world::{GameEntity, GameWorld};
+use crate::core::game_state::GameState;
+
+use super::{
+    cli::{Cli, GameCommand},
+    errors::log_err_system,
+    game_world::{GameEntity, GameWorld},
+};
 
 pub(super) struct CityPlugin;
 
@@ -9,6 +16,11 @@ impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
+            .add_system(
+                Self::load_from_cli
+                    .chain(log_err_system)
+                    .run_if_resource_added::<Cli>(),
+            )
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::reset_paced_cities_system.run_if_resource_removed::<GameWorld>());
     }
@@ -17,6 +29,31 @@ impl Plugin for CityPlugin {
 impl CityPlugin {
     /// Size of one size of a city.
     const CITY_SIZE: f32 = 100.0;
+
+    fn load_from_cli(
+        mut commands: Commands,
+        cli: Res<Cli>,
+        cities: Query<(Entity, &Name), With<City>>,
+    ) -> Result<()> {
+        if let Some(GameCommand::Play {
+            world_name: _,
+            city: Some(load_city),
+        }) = &cli.subcommand
+        {
+            let city = cities
+                .iter()
+                .find(|(_, name)| name.as_str() == load_city)
+                .map(|(city, _)| city)
+                .with_context(|| format!("Unable to find city named {load_city}"))?;
+
+            commands
+                .entity(city)
+                .insert_bundle(VisibilityBundle::default());
+            commands.insert_resource(NextState(GameState::City));
+        }
+
+        Ok(())
+    }
 
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn placement_system(
@@ -74,6 +111,40 @@ mod tests {
     use std::any;
 
     use super::*;
+
+    #[test]
+    fn loading_from_cli() {
+        let mut app = App::new();
+        app.add_plugin(CityPlugin);
+
+        const CITY_NAME: &str = "City from CLI";
+        let city = app
+            .world
+            .spawn()
+            .insert_bundle(CityBundle::new(CITY_NAME.into()))
+            .id();
+
+        app.insert_resource(Cli {
+            subcommand: Some(GameCommand::Play {
+                world_name: String::new(),
+                city: Some(CITY_NAME.to_string()),
+            }),
+        });
+
+        app.update();
+
+        assert!(
+            app.world.entity(city).contains::<Visibility>(),
+            "{} component should be added to the selected city",
+            any::type_name::<Visibility>()
+        );
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::City,
+            "State should be changed to {}",
+            GameState::City
+        );
+    }
 
     #[test]
     fn placing() {

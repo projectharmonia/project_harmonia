@@ -23,5 +23,9 @@ pub(crate) enum GameCommand {
         /// World name to load.
         #[clap(short, long)]
         world_name: String,
+
+        /// City name to load.
+        #[clap(short, long)]
+        city: Option<String>,
     },
 }
