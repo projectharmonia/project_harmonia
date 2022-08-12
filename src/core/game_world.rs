@@ -31,10 +31,10 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_system(Self::init_world_system.run_if_resource_added::<GameWorld>())
-            .add_system(Self::cleanup_world_system.run_if_resource_removed::<GameWorld>())
+            .add_system(Self::set_state_system.run_if_resource_added::<GameWorld>())
+            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(
-                Self::world_saving_system
+                Self::saving_system
                     .chain(log_err_system)
                     .run_if_resource_exists::<GameWorld>()
                     .run_on_event::<GameSaved>()
@@ -45,7 +45,7 @@ impl Plugin for GameWorldPlugin {
             // To avoid ambiguity: https://github.com/IyesGames/iyes_loopless/issues/15
             use iyes_loopless::condition::IntoConditionalExclusiveSystem;
             app.add_system(
-                (|world: &mut World| log_err_system(In(Self::world_loading_system(world))))
+                Self::logged_loading_system
                     .run_on_event::<GameLoaded>()
                     .at_start(),
             );
@@ -55,15 +55,12 @@ impl Plugin for GameWorldPlugin {
 
 impl GameWorldPlugin {
     /// Sets state to [`GameState::World`].
-    fn init_world_system(mut commands: Commands) {
+    fn set_state_system(mut commands: Commands) {
         commands.insert_resource(NextState(GameState::World));
     }
 
     /// Removes all game world entities and sets state to [`GameState::MainMenu`].
-    fn cleanup_world_system(
-        mut commands: Commands,
-        game_entities: Query<Entity, With<GameEntity>>,
-    ) {
+    fn cleanup_system(mut commands: Commands, game_entities: Query<Entity, With<GameEntity>>) {
         for entity in &game_entities {
             commands.entity(entity).despawn_recursive();
         }
@@ -71,7 +68,7 @@ impl GameWorldPlugin {
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    fn world_saving_system(
+    fn saving_system(
         world: &World,
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
@@ -89,7 +86,7 @@ impl GameWorldPlugin {
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
-    fn world_loading_system(world: &mut World) -> Result<()> {
+    fn loading_system(world: &mut World) -> Result<()> {
         let game_world = world.resource::<GameWorld>();
         let game_paths = world.resource::<GamePaths>();
         let world_path = game_paths.world_path(&game_world.world_name);
@@ -103,6 +100,11 @@ impl GameWorldPlugin {
         deserialize_game_world(world, components);
 
         Ok(())
+    }
+
+    /// Calls [`Self::loading_system`] with log errors.
+    fn logged_loading_system(world: &mut World) {
+        log_err_system(In(Self::loading_system(world)));
     }
 }
 
