@@ -12,7 +12,7 @@ use bevy_inspector_egui::prelude::*;
 use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::{control_action::ControlAction, CorePlugins};
+use crate::core::{cli::Cli, control_action::ControlAction, CorePlugins};
 use ui::{ui_action::UiAction, UiPlugins};
 
 struct DollisPlugins;
@@ -35,5 +35,8 @@ impl PluginGroup for DollisPlugins {
 }
 
 fn main() {
-    App::new().add_plugins(DollisPlugins).run();
+    App::new()
+        .init_resource::<Cli>()
+        .add_plugins(DollisPlugins)
+        .run();
 }

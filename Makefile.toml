@@ -27,6 +27,8 @@ args = [
   "src/ui*",
   "--ignore",
   "*/main.rs",
+  "--ignore",
+  "src/core/cli.rs",                               # Contains some macro expansions that cannot be covered
   "${@}",
 ]
 dependencies = ["raw-coverage"]

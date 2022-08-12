@@ -1,4 +1,5 @@
 pub(super) mod city;
+pub(super) mod cli;
 pub(super) mod control_action;
 pub(super) mod developer;
 pub(super) mod errors;
@@ -54,11 +55,12 @@ mod tests {
     use bevy_rapier3d::prelude::*;
     use leafwing_input_manager::plugin::InputManagerPlugin;
 
-    use super::{control_action::ControlAction, *};
+    use super::{cli::Cli, control_action::ControlAction, *};
 
     #[test]
     fn update() {
         App::new()
+            .init_resource::<Cli>()
             .init_resource::<WorldInspectorParams>()
             .init_resource::<DebugRenderContext>()
             .add_plugin(InputManagerPlugin::<ControlAction>::default())

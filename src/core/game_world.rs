@@ -15,7 +15,12 @@ use bevy::{
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{errors::log_err_system, game_paths::GamePaths, game_state::GameState};
+use super::{
+    cli::{Cli, GameCommand},
+    errors::log_err_system,
+    game_paths::GamePaths,
+    game_state::GameState,
+};
 use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
@@ -31,6 +36,7 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
+            .add_startup_system(Self::load_from_cli_system.chain(log_err_system))
             .add_system(Self::set_state_system.run_if_resource_added::<GameWorld>())
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(
@@ -54,6 +60,19 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
+    fn load_from_cli_system(
+        mut commands: Commands,
+        mut load_events: EventWriter<GameLoaded>,
+        cli: Res<Cli>,
+    ) -> Result<()> {
+        if let Some(GameCommand::Play { world_name }) = &cli.subcommand {
+            commands.insert_resource(GameWorld::new(world_name.clone()));
+            load_events.send_default();
+        }
+
+        Ok(())
+    }
+
     /// Sets state to [`GameState::World`].
     fn set_state_system(mut commands: Commands) {
         commands.insert_resource(NextState(GameState::World));
@@ -95,7 +114,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("Unable to load world from {world_path:?}"))?;
 
         let components = rmp_serde::from_slice::<Vec<Vec<Vec<u8>>>>(&bytes)
-            .expect("Unable to deserialize game world");
+            .context("Unable to deserialize game world")?;
 
         deserialize_game_world(world, components);
 
@@ -215,12 +234,39 @@ mod tests {
     use bevy::core::CorePlugin;
 
     use super::*;
-    use crate::core::{city::City, game_paths::GamePaths};
+    use crate::core::city::City;
+
+    #[test]
+    fn loading_from_cli() {
+        const WORLD_NAME: &str = "World from CLI";
+        let mut app = App::new();
+        app.init_resource::<GamePaths>()
+            .add_plugin(TestGameWorldPlugin);
+
+        app.world.resource_mut::<Cli>().subcommand = Some(GameCommand::Play {
+            world_name: WORLD_NAME.to_string(),
+        });
+
+        app.update();
+
+        assert_eq!(
+            app.world.resource::<Events<GameLoaded>>().len(),
+            1,
+            "{} event should be fired",
+            any::type_name::<GameLoaded>()
+        );
+        assert_eq!(
+            app.world.resource::<GameWorld>().world_name,
+            WORLD_NAME,
+            "Loaded world name should match the one from CLI"
+        );
+    }
 
     #[test]
     fn world_cleanup() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(GameWorldPlugin);
+        app.init_resource::<GameWorld>()
+            .add_plugin(TestGameWorldPlugin::default());
 
         let child_entity = app.world.spawn().id();
         let ingame_entity = app
@@ -271,7 +317,7 @@ mod tests {
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(GameWorldPlugin);
+            .add_plugin(TestGameWorldPlugin::default());
 
         let game_paths = app.world.resource::<GamePaths>();
         let world_path = game_paths.world_path(WORLD_NAME);
@@ -340,5 +386,14 @@ mod tests {
 
         fs::remove_file(&world_path)
             .with_context(|| format!("Unable to remove {world_path:?} after test"))
+    }
+
+    #[derive(Default)]
+    struct TestGameWorldPlugin;
+
+    impl Plugin for TestGameWorldPlugin {
+        fn build(&self, app: &mut App) {
+            app.init_resource::<Cli>().add_plugin(GameWorldPlugin);
+        }
     }
 }
