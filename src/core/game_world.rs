@@ -15,12 +15,7 @@ use bevy::{
 use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{
-    cli::{Cli, GameCommand},
-    errors::log_err_system,
-    game_paths::GamePaths,
-    game_state::GameState,
-};
+use super::{cli::Cli, errors::log_err_system, game_paths::GamePaths, game_state::GameState};
 use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
@@ -65,7 +60,7 @@ impl GameWorldPlugin {
         mut load_events: ResMut<Events<GameLoaded>>,
         cli: Res<Cli>,
     ) -> Result<()> {
-        if let Some(GameCommand::Play { world_name, .. }) = &cli.subcommand {
+        if let Some(world_name) = cli.world_name() {
             commands.insert_resource(GameWorld::new(world_name.clone()));
             load_events.send_default();
             // Should be called to avoid other systems reacting on the event twice
@@ -237,7 +232,7 @@ mod tests {
     use bevy::core::CorePlugin;
 
     use super::*;
-    use crate::core::city::City;
+    use crate::core::{city::City, cli::GameCommand};
 
     #[test]
     fn loading_from_cli() {

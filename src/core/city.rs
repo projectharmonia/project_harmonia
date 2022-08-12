@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 use crate::core::game_state::GameState;
 
 use super::{
-    cli::{Cli, GameCommand},
+    cli::Cli,
     errors::log_err_system,
     game_world::{GameEntity, GameWorld},
 };
@@ -35,11 +35,7 @@ impl CityPlugin {
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
     ) -> Result<()> {
-        if let Some(GameCommand::Play {
-            world_name: _,
-            city: Some(load_city),
-        }) = &cli.subcommand
-        {
+        if let Some(load_city) = cli.city() {
             let city = cities
                 .iter()
                 .find(|(_, name)| name.as_str() == load_city)
@@ -110,6 +106,7 @@ mod tests {
     use std::any;
 
     use super::*;
+    use crate::core::cli::GameCommand;
 
     #[test]
     fn loading_from_cli() {

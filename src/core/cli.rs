@@ -8,6 +8,27 @@ pub(crate) struct Cli {
     pub(crate) subcommand: Option<GameCommand>,
 }
 
+impl Cli {
+    /// Returns city to load if was specified from any subcommand.
+    pub(crate) fn city(&self) -> Option<&String> {
+        match &self.subcommand {
+            Some(GameCommand::Play {
+                world_name: _,
+                city,
+            }) => city.as_ref(),
+            None => None,
+        }
+    }
+
+    /// Returns world to load if was specified from any subcommand.
+    pub(crate) fn world_name(&self) -> Option<&String> {
+        match &self.subcommand {
+            Some(GameCommand::Play { world_name, .. }) => Some(world_name),
+            None => None,
+        }
+    }
+}
+
 impl Default for Cli {
     fn default() -> Self {
         #[cfg(test)]
