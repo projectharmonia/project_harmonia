@@ -6,6 +6,13 @@ use leafwing_input_manager::prelude::ActionState;
 
 use super::{city::City, control_action::ControlAction, game_state::GameState};
 
+#[derive(SystemLabel)]
+enum OrbitCameraSystem {
+    Rotation,
+    Position,
+    Arm,
+}
+
 pub(super) struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
@@ -14,16 +21,25 @@ impl Plugin for OrbitCameraPlugin {
             .add_system(
                 Self::rotation_system
                     .run_in_state(GameState::City)
-                    .run_if(is_rotating_camera),
+                    .run_if(is_rotating_camera)
+                    .label(OrbitCameraSystem::Rotation),
             )
-            .add_system(Self::position_system.run_in_state(GameState::City))
-            .add_system(Self::arm_system.run_in_state(GameState::City))
+            .add_system(
+                Self::position_system
+                    .run_in_state(GameState::City)
+                    .label(OrbitCameraSystem::Position),
+            )
+            .add_system(
+                Self::arm_system
+                    .run_in_state(GameState::City)
+                    .label(OrbitCameraSystem::Arm),
+            )
             .add_system(
                 Self::transform_system
                     .run_in_state(GameState::City)
-                    .after(Self::position_system)
-                    .after(Self::rotation_system)
-                    .after(Self::arm_system),
+                    .after(OrbitCameraSystem::Rotation)
+                    .after(OrbitCameraSystem::Position)
+                    .after(OrbitCameraSystem::Arm),
             );
     }
 }
