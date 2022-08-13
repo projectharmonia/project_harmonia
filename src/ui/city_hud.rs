@@ -8,7 +8,7 @@ use bevy_egui::{
 use iyes_loopless::prelude::*;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::game_state::GameState;
+use crate::core::{asset_metadata::AssetMetadata, game_state::GameState};
 
 use self::objects_tab::ObjectsTab;
 
@@ -21,7 +21,11 @@ impl Plugin for CityHudPlugin {
 }
 
 impl CityHudPlugin {
-    fn bottom_panel_system(mut current_tab: Local<CityTab>, mut egui: ResMut<EguiContext>) {
+    fn bottom_panel_system(
+        mut current_tab: Local<CityTab>,
+        mut egui: ResMut<EguiContext>,
+        metadata: Res<Assets<AssetMetadata>>,
+    ) {
         Window::new("City bottom panel")
             .resizable(false)
             .title_bar(false)
@@ -39,7 +43,7 @@ impl CityHudPlugin {
                         }
                     });
                     match *current_tab {
-                        CityTab::Objects => ObjectsTab.show(ui),
+                        CityTab::Objects => ObjectsTab::new(&metadata).show(ui),
                         CityTab::Dolls | CityTab::Terrain | CityTab::Lots => (),
                     }
                 });

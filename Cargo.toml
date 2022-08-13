@@ -5,7 +5,10 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
-bevy = { version = "0.8", default-features = false, features = ["x11"] }
+bevy = { version = "0.8", default-features = false, features = [
+  "filesystem_watcher",
+  "x11",
+] }
 bevy_egui = "0.15"
 bevy_rapier3d = "0.16"
 bevy-inspector-egui = { version = "0.12", default-features = false, features = [

@@ -1,3 +1,4 @@
+pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
 pub(super) mod control_action;
@@ -13,6 +14,7 @@ pub(super) mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
 use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
@@ -29,6 +31,7 @@ pub(super) struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
+            .add(AssetMetadataPlugin)
             .add(GameStatePlugin)
             .add(CityPlugin)
             .add(GroundPlugin)
@@ -63,9 +66,9 @@ mod tests {
             .init_resource::<Cli>()
             .init_resource::<WorldInspectorParams>()
             .init_resource::<DebugRenderContext>()
+            .add_plugin(HeadlessRenderPlugin)
             .add_plugin(InputManagerPlugin::<ControlAction>::default())
             .add_plugins(CorePlugins)
-            .add_plugin(HeadlessRenderPlugin)
             .update();
     }
 
@@ -78,11 +81,11 @@ mod tests {
                 backends: None,
                 ..Default::default()
             })
-            .add_plugin(CorePlugin::default())
-            .add_plugin(WindowPlugin::default())
-            .add_plugin(AssetPlugin::default())
-            .add_plugin(RenderPlugin::default())
-            .add_plugin(PbrPlugin::default());
+            .add_plugin(CorePlugin)
+            .add_plugin(WindowPlugin)
+            .add_plugin(AssetPlugin)
+            .add_plugin(RenderPlugin)
+            .add_plugin(PbrPlugin);
         }
     }
 }
