@@ -1,3 +1,4 @@
+mod city_hud;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
@@ -8,6 +9,7 @@ mod world_menu;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use city_hud::CityHudPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
@@ -23,11 +25,12 @@ pub(super) struct UiPlugins;
 impl PluginGroup for UiPlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
-            .add(ModalWindowPlugin)
-            .add(MainMenuPlugin)
-            .add(WorldBrowserPlugin)
-            .add(SettingsMenuPlugin)
+            .add(CityHudPlugin)
             .add(InGameMenuPlugin)
+            .add(MainMenuPlugin)
+            .add(ModalWindowPlugin)
+            .add(SettingsMenuPlugin)
+            .add(WorldBrowserPlugin)
             .add(WorldMenuPlugin)
             .add(UiActionPlugin);
     }

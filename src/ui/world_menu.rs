@@ -5,10 +5,9 @@ use std::mem;
 
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{Align2, Window},
+    egui::{Align2, Button, Window},
     EguiContext,
 };
-use bevy_inspector_egui::egui::Button;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
