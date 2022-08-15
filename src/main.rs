@@ -6,7 +6,7 @@
 mod core;
 mod ui;
 
-use bevy::prelude::*;
+use bevy::{asset::AssetServerSettings, prelude::*};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::prelude::*;
 use bevy_rapier3d::prelude::*;
@@ -37,6 +37,10 @@ impl PluginGroup for DollisPlugins {
 fn main() {
     App::new()
         .init_resource::<Cli>()
+        .insert_resource(AssetServerSettings {
+            watch_for_changes: true,
+            ..Default::default()
+        })
         .add_plugins(DollisPlugins)
         .run();
 }

@@ -1234,6 +1234,7 @@ dependencies = [
  "standard_paths",
  "strum",
  "toml",
+ "walkdir",
 ]
 
 [[package]]

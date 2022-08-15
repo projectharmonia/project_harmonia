@@ -1,13 +1,16 @@
-use anyhow::{Context, Result};
+use std::{env, path::PathBuf};
+
+use anyhow::Result;
 use bevy::{
-    asset::{AssetLoader, LoadContext, LoadedAsset},
+    asset::{AssetLoader, AssetServerSettings, LoadContext, LoadedAsset},
     prelude::*,
     reflect::TypeUuid,
     utils::BoxedFuture,
 };
 use serde::Deserialize;
+use walkdir::WalkDir;
 
-use super::errors::log_err_system;
+const EXTENSION: &str = "toml";
 
 pub(super) struct AssetMetadataPlugin;
 
@@ -15,20 +18,36 @@ impl Plugin for AssetMetadataPlugin {
     fn build(&self, app: &mut App) {
         app.add_asset::<AssetMetadata>()
             .init_asset_loader::<AssetMetadataLoader>()
-            .add_startup_system(Self::load_metadata.chain(log_err_system));
+            .add_startup_system(Self::load_metadata);
     }
 }
 
 impl AssetMetadataPlugin {
-    fn load_metadata(mut commands: Commands, asset_server: ResMut<AssetServer>) -> Result<()> {
-        let handles = asset_server
-            .load_folder("base")
-            .context("Unable to load base game assets metadata")?;
-        commands.insert_resource(MetadataHandles(handles));
+    fn load_metadata(
+        mut commands: Commands,
+        asset_server: ResMut<AssetServer>,
+        settings: Res<AssetServerSettings>,
+    ) {
+        let mut folder: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap_or_default().into();
+        folder.push(&settings.asset_folder);
 
-        asset_server
-            .watch_for_changes()
-            .context("Unable to subscribe for listening for changes")
+        let mut handles = Vec::new();
+        for entry in WalkDir::new(&folder)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
+        {
+            if let Some(extension) = entry.path().extension() {
+                if extension == EXTENSION {
+                    let path = entry
+                        .path()
+                        .strip_prefix(&folder)
+                        .unwrap_or_else(|e| panic!("Entries should start with {folder:?}: {e:#}"));
+                    handles.push(asset_server.load::<AssetMetadata, _>(path));
+                }
+            }
+        }
+
+        commands.insert_resource(MetadataHandles(handles));
     }
 }
 
@@ -49,12 +68,12 @@ impl AssetLoader for AssetMetadataLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["toml"]
+        &[EXTENSION]
     }
 }
 
 #[derive(Deref, DerefMut)]
-struct MetadataHandles(Vec<HandleUntyped>);
+struct MetadataHandles(Vec<Handle<AssetMetadata>>);
 
 #[derive(Deserialize, TypeUuid)]
 #[uuid = "39cadc56-aa9c-4543-8640-a018b74b5052"]
