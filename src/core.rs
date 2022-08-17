@@ -10,6 +10,7 @@ pub(super) mod game_state;
 pub(super) mod game_world;
 pub(super) mod ground;
 pub(super) mod orbit_camera;
+pub(super) mod preview;
 pub(super) mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
@@ -24,6 +25,7 @@ use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
 use orbit_camera::OrbitCameraPlugin;
+use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 
 pub(super) struct CorePlugins;
@@ -39,6 +41,7 @@ impl PluginGroup for CorePlugins {
             .add(DeveloperPlugin)
             .add(FamilyPlugin)
             .add(GamePathsPlugin)
+            .add(PreviewPlugin)
             .add(GameWorldPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin);
@@ -48,7 +51,7 @@ impl PluginGroup for CorePlugins {
 #[cfg(test)]
 mod tests {
     use bevy::{
-        asset::AssetPlugin,
+        asset::{AssetPlugin, LoadState},
         core::CorePlugin,
         pbr::PbrPlugin,
         render::{settings::WgpuSettings, RenderPlugin},
@@ -72,6 +75,24 @@ mod tests {
             .update();
     }
 
+    pub(super) fn wait_for_asset_loading(app: &mut App, path: &str) {
+        let asset_server = app.world.resource::<AssetServer>();
+        let handle: Handle<Scene> = asset_server.load(path);
+
+        loop {
+            app.update();
+            let asset_server = app.world.resource::<AssetServer>();
+            match asset_server.get_load_state(&handle) {
+                LoadState::NotLoaded => unreachable!("Asset {path} should start loading"),
+                LoadState::Loading => continue,
+                LoadState::Loaded => return,
+                LoadState::Failed => panic!("Unable to load {path}"),
+                LoadState::Unloaded => {
+                    unreachable!("Asset {path} can't be unloaded while holding handle")
+                }
+            }
+        }
+    }
     // Allows to run tests for systems containing rendering related things without GPU
     pub(super) struct HeadlessRenderPlugin;
 

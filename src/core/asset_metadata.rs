@@ -1,6 +1,9 @@
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use bevy::{
     asset::{AssetLoader, AssetServerSettings, LoadContext, LoadedAsset},
     prelude::*,
@@ -72,6 +75,21 @@ impl AssetLoader for AssetMetadataLoader {
     }
 }
 
+/// Converts metadata path (path to a TOML file) into
+/// the corresponding scene path loadable by [`AssetServer`].
+pub(super) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> Result<String> {
+    let mut scene_path = metadata_path
+        .as_ref()
+        .with_extension("gltf")
+        .into_os_string()
+        .into_string()
+        .ok()
+        .context("Not a UTF-8 asset path")?;
+
+    scene_path += "#Scene0";
+    Ok(scene_path)
+}
+
 #[derive(Deref, DerefMut)]
 struct MetadataHandles(Vec<Handle<AssetMetadata>>);
 
@@ -80,15 +98,6 @@ struct MetadataHandles(Vec<Handle<AssetMetadata>>);
 #[serde(rename_all = "snake_case")]
 pub(crate) enum AssetMetadata {
     Object(ObjectMetadata),
-}
-
-impl AssetMetadata {
-    #[cfg_attr(coverage, no_coverage)]
-    pub(crate) fn object(&self) -> Option<&ObjectMetadata> {
-        match self {
-            Self::Object(object) => Some(object),
-        }
-    }
 }
 
 #[derive(Deserialize)]

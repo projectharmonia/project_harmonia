@@ -2,6 +2,7 @@
 #![cfg_attr(coverage, feature(no_coverage))]
 #![warn(clippy::doc_markdown)]
 #![allow(clippy::type_complexity)] // Do not warn about long queries
+#![allow(clippy::too_many_arguments)] // Do not warn about big systems
 
 mod core;
 mod ui;
@@ -10,6 +11,7 @@ use bevy::{asset::AssetServerSettings, log::LogSettings, prelude::*};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::prelude::*;
 use bevy_rapier3d::prelude::*;
+use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
 use crate::core::{cli::Cli, control_action::ControlAction, CorePlugins};
@@ -22,10 +24,11 @@ impl PluginGroup for DollisPlugins {
         DefaultPlugins.build(group);
 
         group
+            .add(HookPlugin)
             .add(InputManagerPlugin::<UiAction>::default())
-            .add(RapierDebugRenderPlugin::default())
             .add(InputManagerPlugin::<ControlAction>::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
+            .add(RapierDebugRenderPlugin::default())
             .add(EguiPlugin)
             .add(WorldInspectorPlugin::new());
 

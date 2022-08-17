@@ -6,7 +6,9 @@ license = "AGPL-3.0-or-later"
 
 [dependencies]
 bevy = { version = "0.8", default-features = false, features = [
+  "bevy_gltf",
   "filesystem_watcher",
+  "png",
   "x11",
 ] }
 bevy_egui = "0.15"
@@ -15,6 +17,7 @@ bevy-inspector-egui = { version = "0.12", default-features = false, features = [
   "clipboard",
   "bevy_pbr",
 ] }
+bevy-scene-hook = "4.0"
 iyes_loopless = "0.7"
 leafwing-input-manager = { version = "0.5", default-features = false }
 serde = "1.0"
