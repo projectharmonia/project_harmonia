@@ -54,6 +54,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn no_input() {
+        let mut app = App::new();
+        app.add_plugin(InputPlugin);
+
+        let mut system_state: SystemState<InputEvents> = SystemState::new(&mut app.world);
+        let mut input_events = system_state.get_mut(&mut app.world);
+        assert_eq!(input_events.input_kind(), None);
+    }
+
+    #[test]
     fn keyboard_release() {
         let mut app = App::new();
         app.add_plugin(InputPlugin);
