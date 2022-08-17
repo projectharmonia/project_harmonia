@@ -15,29 +15,31 @@ pub(super) struct InputEvents<'w, 's> {
 
 impl InputEvents<'_, '_> {
     pub(super) fn input_kind(&mut self) -> Option<InputKind> {
-        if let Some(keyboard_input) = self.keys.iter().next() {
-            if keyboard_input.state == ButtonState::Released {
-                if let Some(key_code) = keyboard_input.key_code {
-                    return Some(key_code.into());
-                }
-            }
-        }
-
-        if let Some(mouse_input) = self.mouse_buttons.iter().next() {
-            if mouse_input.state == ButtonState::Released {
-                return Some(mouse_input.button.into());
-            }
-        }
-
-        if let Some(GamepadEvent {
-            gamepad: _,
-            event_type,
-        }) = self.gamepad_events.iter().next()
+        if let Some(input) = self
+            .keys
+            .iter()
+            .filter(|input| input.state == ButtonState::Released)
+            .find_map(|input| input.key_code)
         {
-            if let GamepadEventType::ButtonChanged(button, strength) = event_type.to_owned() {
-                if strength <= 0.5 {
-                    return Some(button.into());
-                }
+            return Some(input.into());
+        }
+
+        if let Some(input) = self
+            .mouse_buttons
+            .iter()
+            .find(|input| input.state == ButtonState::Released)
+        {
+            return Some(input.button.into());
+        }
+
+        if let Some(GamepadEventType::ButtonChanged(button, strength)) = self
+            .gamepad_events
+            .iter()
+            .map(|event| event.event_type.to_owned())
+            .next()
+        {
+            if strength <= 0.5 {
+                return Some(button.into());
             }
         }
 
