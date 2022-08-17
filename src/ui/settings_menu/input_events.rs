@@ -38,7 +38,7 @@ impl InputEvents<'_, '_> {
             .map(|event| event.event_type.to_owned())
             .next()
         {
-            if strength <= 0.5 {
+            if strength == 1.0 {
                 return Some(button.into());
             }
         }
@@ -49,13 +49,12 @@ impl InputEvents<'_, '_> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{Context, Result};
     use bevy::{ecs::event::Events, ecs::system::SystemState, input::InputPlugin};
 
     use super::*;
 
     #[test]
-    fn input_events_reads_keyboard() -> Result<()> {
+    fn keyboard_release() {
         let mut app = App::new();
         app.add_plugin(InputPlugin);
 
@@ -69,21 +68,14 @@ mod tests {
 
         let mut system_state: SystemState<InputEvents> = SystemState::new(&mut app.world);
         let mut input_events = system_state.get_mut(&mut app.world);
-        let input_kind = input_events
-            .input_kind()
-            .context("Input should be detected")?;
-
-        assert_eq!(
-            input_kind,
-            InputKind::Keyboard(KEY),
-            "Input should be equal to the released keyboard key"
-        );
-
-        Ok(())
+        assert!(matches!(
+            input_events.input_kind(),
+            Some(InputKind::Keyboard(KEY))
+        ));
     }
 
     #[test]
-    fn input_events_reads_mouse() -> Result<()> {
+    fn mouse_release() {
         let mut app = App::new();
         app.add_plugin(InputPlugin);
 
@@ -96,58 +88,29 @@ mod tests {
 
         let mut system_state: SystemState<InputEvents> = SystemState::new(&mut app.world);
         let mut input_events = system_state.get_mut(&mut app.world);
-        let input_kind = input_events
-            .input_kind()
-            .context("Input should be detected")?;
-
-        assert_eq!(
-            input_kind,
-            InputKind::Mouse(BUTTON),
-            "Input should be equal to the released mouse button"
-        );
-
-        Ok(())
+        assert!(matches!(
+            input_events.input_kind(),
+            Some(InputKind::Mouse(BUTTON))
+        ));
     }
 
     #[test]
-    fn input_events_reads_gamepad() -> Result<()> {
+    fn gamepad_release() {
         let mut app = App::new();
         app.add_plugin(InputPlugin);
 
         const BUTTON: GamepadButtonType = GamepadButtonType::Z;
-        const PRESSED_STRENGTH: f32 = 0.6;
         let mut gamepad_events = app.world.resource_mut::<Events<GamepadEvent>>();
         gamepad_events.send(GamepadEvent {
             gamepad: Gamepad { id: 0 },
-            event_type: GamepadEventType::ButtonChanged(BUTTON, PRESSED_STRENGTH),
+            event_type: GamepadEventType::ButtonChanged(BUTTON, 1.0),
         });
 
         let mut system_state: SystemState<InputEvents> = SystemState::new(&mut app.world);
         let mut input_events = system_state.get_mut(&mut app.world);
-        assert_eq!(
+        assert!(matches!(
             input_events.input_kind(),
-            None,
-            "Input shouldn't be detected when pressed strength is {PRESSED_STRENGTH}"
-        );
-
-        const RELEASED_STRENGTH: f32 = 0.5;
-        let mut gamepad_events = app.world.resource_mut::<Events<GamepadEvent>>();
-        gamepad_events.send(GamepadEvent {
-            gamepad: Gamepad { id: 0 },
-            event_type: GamepadEventType::ButtonChanged(BUTTON, RELEASED_STRENGTH),
-        });
-
-        let mut input_events = system_state.get_mut(&mut app.world);
-        let input_kind = input_events.input_kind().with_context(|| {
-            format!("Input should be detected with {RELEASED_STRENGTH} strength")
-        })?;
-
-        assert_eq!(
-            input_kind,
-            InputKind::GamepadButton(BUTTON),
-            "Input should be equal to the released gamepad button"
-        );
-
-        Ok(())
+            Some(InputKind::GamepadButton(BUTTON))
+        ));
     }
 }
