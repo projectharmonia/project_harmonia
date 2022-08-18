@@ -51,7 +51,7 @@ impl PluginGroup for CorePlugins {
 #[cfg(test)]
 mod tests {
     use bevy::{
-        asset::{AssetPlugin, LoadState},
+        asset::{Asset, AssetPlugin, LoadState},
         core::CorePlugin,
         pbr::PbrPlugin,
         render::{settings::WgpuSettings, RenderPlugin},
@@ -75,20 +75,17 @@ mod tests {
             .update();
     }
 
-    pub(super) fn wait_for_asset_loading(app: &mut App, path: &str) {
-        let asset_server = app.world.resource::<AssetServer>();
-        let handle: Handle<Scene> = asset_server.load(path);
-
+    pub(super) fn wait_for_asset_loading<T: Asset>(app: &mut App, handle: Handle<T>) {
         loop {
             app.update();
             let asset_server = app.world.resource::<AssetServer>();
             match asset_server.get_load_state(&handle) {
-                LoadState::NotLoaded => unreachable!("Asset {path} should start loading"),
+                LoadState::NotLoaded => unreachable!("Asset should start loading"),
                 LoadState::Loading => continue,
                 LoadState::Loaded => return,
-                LoadState::Failed => panic!("Unable to load {path}"),
+                LoadState::Failed => panic!("Unable to load asset"),
                 LoadState::Unloaded => {
-                    unreachable!("Asset {path} can't be unloaded while holding handle")
+                    unreachable!("Asset can't be unloaded while holding handle")
                 }
             }
         }

@@ -255,8 +255,9 @@ struct PreviewMetadataId(HandleId);
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Ok;
-    use bevy::{gltf::GltfPlugin, input::InputPlugin, scene::ScenePlugin, time::TimePlugin};
+    use bevy::{
+        gltf::GltfPlugin, input::InputPlugin, scene::ScenePlugin, time::TimePlugin, utils::Uuid,
+    };
     use bevy_egui::EguiPlugin;
 
     use super::*;
@@ -265,45 +266,83 @@ mod tests {
         tests::{self, HeadlessRenderPlugin},
     };
 
+    const METADATA_PATH: &str = "base/objects/rocks/stone_1.toml";
+
     #[test]
-    fn preview_generation() -> Result<()> {
+    fn preview_event() {
         let mut app = App::new();
         app.add_plugin(TestPreviewPlugin);
 
-        const ASSET_PATH: &str = "base/objects/rocks/stone_1.toml";
         let asset_server = app.world.resource::<AssetServer>();
-        let asset_metadata: Handle<AssetMetadata> = asset_server.load(ASSET_PATH);
+        let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
         let mut events = app.world.resource_mut::<Events<PreviewRequested>>();
-        events.send(PreviewRequested(asset_metadata.id));
+        events.send(PreviewRequested(metadata.id));
 
         app.update();
-
-        let preview_camera = app
-            .world
-            .query_filtered::<Entity, With<PreviewCamera>>()
-            .single(&app.world);
-
-        assert!(!app.world.get::<Camera>(preview_camera).unwrap().is_active);
-
-        app.update();
-
-        let preview_target = app
-            .world
-            .query_filtered::<Entity, With<PreviewMetadataId>>()
-            .single(&app.world);
 
         assert_eq!(
-            app.world.resource::<CurrentState<PreviewState>>().0,
+            app.world.resource::<NextState<PreviewState>>().0,
             PreviewState::LoadingAsset,
         );
+        assert_eq!(
+            app.world.query::<&PreviewMetadataId>().single(&app.world).0,
+            metadata.id,
+        );
+    }
 
-        tests::wait_for_asset_loading(&mut app, &asset_metadata::scene_path(ASSET_PATH)?);
+    #[test]
+    fn asset_loading() -> Result<()> {
+        let mut app = App::new();
+        app.add_plugin(TestPreviewPlugin);
+
+        app.update();
+
+        let asset_server = app.world.resource::<AssetServer>();
+        let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
+        let preview: Handle<Scene> = asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
+
+        let camera = app
+            .world
+            .query_filtered::<Entity, With<Camera>>()
+            .single(&app.world);
+        app.world.entity_mut(camera).with_children(|parent| {
+            parent
+                .spawn()
+                .insert(PreviewMetadataId(metadata.id))
+                .insert(preview.clone());
+        });
+
+        app.insert_resource(NextState(PreviewState::LoadingAsset));
+
+        tests::wait_for_asset_loading(&mut app, preview);
 
         assert_eq!(
             app.world.resource::<NextState<PreviewState>>().0,
             PreviewState::Rendering,
         );
-        assert!(app.world.get::<Camera>(preview_camera).unwrap().is_active);
+
+        Ok(())
+    }
+
+    #[test]
+    fn rendering_frame() {
+        let mut app = App::new();
+        app.add_plugin(TestPreviewPlugin);
+
+        app.update();
+
+        let preview = app
+            .world
+            .spawn()
+            .insert(PreviewMetadataId(HandleId::Id(Uuid::nil(), 0)))
+            .id();
+        let camera = app
+            .world
+            .query_filtered::<Entity, With<Camera>>()
+            .single(&app.world);
+        app.world.entity_mut(camera).push_children(&[preview]);
+
+        app.insert_resource(NextState(PreviewState::Rendering));
 
         app.update();
 
@@ -311,14 +350,7 @@ mod tests {
             app.world.resource::<CurrentState<PreviewState>>().0,
             PreviewState::Inactive,
         );
-        assert!(
-            app.world.get_entity(preview_target).is_none(),
-            "Preview target should be removed"
-        );
-
-        assert!(!app.world.get::<Camera>(preview_camera).unwrap().is_active);
-
-        Ok(())
+        assert!(app.world.get_entity(preview).is_none());
     }
 
     struct TestPreviewPlugin;
