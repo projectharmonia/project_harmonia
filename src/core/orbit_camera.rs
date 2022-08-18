@@ -193,8 +193,6 @@ impl Default for SpringArm {
 
 #[cfg(test)]
 mod tests {
-    use std::any;
-
     use super::*;
     use bevy::{core::CorePlugin, time::TimePlugin};
 
@@ -205,8 +203,8 @@ mod tests {
         action_state.press(ControlAction::CameraRight);
 
         let direction = movement_direction(&action_state, Quat::IDENTITY);
-        assert!(direction.is_normalized(), "Should be normalized");
-        assert_eq!(direction.y, 0.0, "Shouldn't point up");
+        assert!(direction.is_normalized());
+        assert_eq!(direction.y, 0.0);
     }
 
     #[test]
@@ -218,14 +216,8 @@ mod tests {
         action_state.press(ControlAction::CameraLeft);
 
         let direction = movement_direction(&action_state, Quat::IDENTITY);
-        assert_eq!(
-            direction.x, 0.0,
-            "Should be 0 when opposite buttons are pressed"
-        );
-        assert_eq!(
-            direction.z, 0.0,
-            "Should be 0 when opposite buttons are pressed"
-        );
+        assert_eq!(direction.x, 0.0);
+        assert_eq!(direction.z, 0.0);
     }
 
     #[test]
@@ -233,11 +225,7 @@ mod tests {
         let action_state = ActionState::<ControlAction>::default();
 
         let direction = movement_direction(&action_state, Quat::IDENTITY);
-        assert_eq!(
-            direction,
-            Vec3::ZERO,
-            "Should be zero when no buttons are pressed"
-        );
+        assert_eq!(direction, Vec3::ZERO);
     }
 
     #[test]
@@ -268,8 +256,7 @@ mod tests {
         assert_eq!(
             parent.get(),
             controlled_entity,
-            "Camera should be spawned as a child after inserting {} component",
-            any::type_name::<Visibility>()
+            "Camera should be spawned as a child",
         );
 
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
@@ -278,16 +265,8 @@ mod tests {
 
         app.update();
 
-        let transform = app
-            .world
-            .get::<Transform>(camera)
-            .expect("Unable to get transform from camera");
-
-        assert_ne!(
-            transform.translation,
-            Vec3::ZERO,
-            "Translation should be updated"
-        );
-        assert!(!transform.rotation.is_nan(), "Rotation should be updated");
+        let transform = app.world.get::<Transform>(camera).unwrap();
+        assert_ne!(transform.translation, Vec3::ZERO);
+        assert!(!transform.rotation.is_nan());
     }
 }
