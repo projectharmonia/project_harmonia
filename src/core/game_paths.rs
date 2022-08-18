@@ -1,7 +1,8 @@
-use std::{fs::DirEntry, path::PathBuf};
+use std::{env, fs::DirEntry, path::PathBuf};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
+#[cfg(not(test))]
 use standard_paths::{LocationType, StandardPaths};
 
 /// Initializes [`GamePaths`] resource.
@@ -44,14 +45,20 @@ impl GamePaths {
 }
 
 impl Default for GamePaths {
+    /// Creates paths from the game settings directory.
+    ///
+    /// In tests points to a temporary folder that will be removed on destruction.
     fn default() -> Self {
         #[cfg(test)]
-        let location = LocationType::TempLocation;
-        #[cfg(not(test))]
-        let location = LocationType::AppConfigLocation;
+        let config_dir = env::temp_dir().join(
+            std::iter::repeat_with(fastrand::alphanumeric)
+                .take(10)
+                .collect::<String>(),
+        );
 
+        #[cfg(not(test))]
         let config_dir = StandardPaths::default()
-            .writable_location(location)
+            .writable_location(LocationType::AppConfigLocation)
             .expect("Unable to locate configuration directory");
 
         let mut settings = config_dir.clone();
@@ -62,6 +69,18 @@ impl Default for GamePaths {
         worlds.push("worlds");
 
         Self { settings, worlds }
+    }
+}
+
+#[cfg(test)]
+/// Cleanup temporary directory used in tests.
+impl Drop for GamePaths {
+    fn drop(&mut self) {
+        let config_dir = self
+            .settings
+            .parent()
+            .expect("Unable to get config dir from setting path");
+        std::fs::remove_dir_all(config_dir).ok();
     }
 }
 

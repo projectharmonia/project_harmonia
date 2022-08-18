@@ -129,25 +129,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn read_write() -> Result<()> {
+    fn defaults() {
         let mut app = App::new();
         app.init_resource::<GamePaths>().add_plugin(SettingsPlugin);
 
         let game_paths = app.world.resource::<GamePaths>();
-        assert!(
-            !game_paths.settings.exists(),
-            "Settings file {:?} shouldn't be created on startup",
-            game_paths.settings
-        );
+        assert!(!game_paths.settings.exists());
 
-        let mut settings = app.world.resource_mut::<Settings>();
-        assert_eq!(
-            *settings,
-            Settings::default(),
-            "Settings should be defaulted if settings file does not exist"
-        );
+        let settings = app.world.resource::<Settings>();
+        assert_eq!(*settings, Settings::default());
+    }
+
+    #[test]
+    fn read_write() -> Result<()> {
+        let mut app = App::new();
+        app.init_resource::<GamePaths>().add_plugin(SettingsPlugin);
 
         // Modify settings
+        let mut settings = app.world.resource_mut::<Settings>();
         settings.video.msaa += 1;
 
         let mut apply_events = app.world.resource_mut::<Events<SettingsApplied>>();
@@ -156,18 +155,12 @@ mod tests {
         app.update();
 
         let game_paths = app.world.resource::<GamePaths>();
-        assert!(
-            game_paths.settings.exists(),
-            "Configuration file should be created on apply event"
-        );
+        assert!(game_paths.settings.exists());
 
         let loaded_settings = Settings::read(&game_paths.settings)?;
         let settings = app.world.resource::<Settings>();
-        assert_eq!(
-            *settings, loaded_settings,
-            "Loaded settings should be equal to saved"
-        );
+        assert_eq!(*settings, loaded_settings);
 
-        fs::remove_file(&game_paths.settings).context("Unable to remove saved file after the test")
+        Ok(())
     }
 }
