@@ -122,12 +122,7 @@ mod tests {
         File::create(game_paths.world_path(WORLD_NAME))?;
 
         let world_names = game_paths.get_world_names()?;
-        assert_eq!(
-            world_names,
-            &[WORLD_NAME],
-            "Only files with a {} extension should be in the list of names",
-            GamePaths::WORLD_EXTENSION
-        );
+        assert_eq!(world_names, &[WORLD_NAME]);
 
         Ok(())
     }
