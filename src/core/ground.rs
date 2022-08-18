@@ -69,7 +69,7 @@ mod tests {
         assert_eq!(
             ground_parent.get(),
             controlled_entity,
-            "Ground should be spawned after the city becomes visible",
+            "Ground should be spawned as parent",
         );
     }
 }
