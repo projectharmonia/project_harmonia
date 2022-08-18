@@ -62,7 +62,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn loading_settings() {
+    fn defaults() {
         let mut app = App::new();
         app.add_plugin(TestControlActionsPlugin);
 
@@ -70,12 +70,14 @@ mod tests {
 
         let mappings = app.world.resource::<InputMap<ControlAction>>();
         let settings = app.world.resource::<Settings>();
-        assert_eq!(
-            settings.controls.mappings, *mappings,
-            "Added mappings should the same as in settings"
-        );
+        assert_eq!(settings.controls.mappings, *mappings);
+    }
 
-        // Change settings to test reloading
+    #[test]
+    fn applying() {
+        let mut app = App::new();
+        app.add_plugin(TestControlActionsPlugin);
+
         let mut settings = app.world.resource_mut::<Settings>();
         settings
             .controls
@@ -89,10 +91,7 @@ mod tests {
 
         let settings = app.world.resource::<Settings>();
         let mappings = app.world.resource::<InputMap<ControlAction>>();
-        assert_eq!(
-            settings.controls.mappings, *mappings,
-            "Mappings should be updated on apply event"
-        );
+        assert_eq!(settings.controls.mappings, *mappings);
     }
 
     #[test]
@@ -100,28 +99,17 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestControlActionsPlugin);
 
-        assert!(
-            !app.world.resource::<ToggleActions<ControlAction>>().enabled,
-            "Control actions should be disabled at startup"
-        );
+        assert!(!app.world.resource::<ToggleActions<ControlAction>>().enabled);
 
         app.world.insert_resource(NextState(GameState::City));
         app.update();
 
-        assert!(
-            app.world.resource::<ToggleActions<ControlAction>>().enabled,
-            "Control actions should be enabled after entering {}",
-            GameState::City
-        );
+        assert!(app.world.resource::<ToggleActions<ControlAction>>().enabled);
 
         app.world.insert_resource(NextState(GameState::MainMenu));
         app.update();
 
-        assert!(
-            !app.world.resource::<ToggleActions<ControlAction>>().enabled,
-            "Control actions should be disabled after exiting {}",
-            GameState::City
-        );
+        assert!(!app.world.resource::<ToggleActions<ControlAction>>().enabled);
     }
 
     struct TestControlActionsPlugin;
