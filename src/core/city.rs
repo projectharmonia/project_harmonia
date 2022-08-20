@@ -21,6 +21,7 @@ impl Plugin for CityPlugin {
                     .chain(log_err_system)
                     .run_if_resource_added::<Cli>(),
             )
+            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::reset_paced_cities_system.run_if_resource_removed::<GameWorld>());
     }
@@ -49,6 +50,13 @@ impl CityPlugin {
         }
 
         Ok(())
+    }
+
+    /// Removes all cities and their children.
+    fn cleanup_system(mut commands: Commands, cities: Query<Entity, With<City>>) {
+        for city in &cities {
+            commands.entity(city).despawn_recursive();
+        }
     }
 
     /// Inserts [`TransformBundle`] and places cities next to each other.
@@ -132,6 +140,29 @@ mod tests {
             app.world.resource::<NextState<GameState>>().0,
             GameState::City,
         );
+    }
+
+    #[test]
+    fn cleanup() {
+        let mut app = App::new();
+        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+
+        let city_child = app.world.spawn().id();
+        let city = app
+            .world
+            .spawn()
+            .insert(City)
+            .push_children(&[city_child])
+            .id();
+
+        app.update();
+
+        app.world.remove_resource::<GameWorld>();
+
+        app.update();
+
+        assert!(app.world.get_entity(city).is_none());
+        assert!(app.world.get_entity(city_child).is_none());
     }
 
     #[test]

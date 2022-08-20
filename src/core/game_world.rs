@@ -32,7 +32,6 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
             .add_startup_system(Self::load_from_cli_system.chain(log_err_system))
-            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
                     .chain(log_err_system)
@@ -68,13 +67,6 @@ impl GameWorldPlugin {
         }
 
         Ok(())
-    }
-
-    /// Removes all game world entities and sets state to [`GameState::MainMenu`].
-    fn cleanup_system(mut commands: Commands, game_entities: Query<Entity, With<GameEntity>>) {
-        for entity in &game_entities {
-            commands.entity(entity).despawn_recursive();
-        }
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
@@ -243,37 +235,6 @@ mod tests {
 
         assert_eq!(app.world.resource::<Events<GameLoaded>>().len(), 1);
         assert_eq!(app.world.resource::<GameWorld>().world_name, WORLD_NAME);
-    }
-
-    #[test]
-    fn world_cleanup() {
-        let mut app = App::new();
-        app.init_resource::<Cli>()
-            .init_resource::<GameWorld>()
-            .add_plugin(GameWorldPlugin);
-
-        let child_entity = app.world.spawn().id();
-        let ingame_entity = app
-            .world
-            .spawn()
-            .insert(GameEntity)
-            .push_children(&[child_entity])
-            .id();
-
-        app.update();
-
-        app.world.remove_resource::<GameWorld>();
-
-        app.update();
-
-        assert!(
-            app.world.get_entity(ingame_entity).is_none(),
-            "Ingame entity should be despawned after leaving ingame state"
-        );
-        assert!(
-            app.world.get_entity(child_entity).is_none(),
-            "Children of ingame entity should be despawned with its parent"
-        );
     }
 
     #[test]
