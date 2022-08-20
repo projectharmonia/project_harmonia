@@ -103,8 +103,6 @@ struct PlacedCities(usize);
 
 #[cfg(test)]
 mod tests {
-    use std::any;
-
     use super::*;
     use crate::core::cli::GameCommand;
 
@@ -129,16 +127,10 @@ mod tests {
 
         app.update();
 
-        assert!(
-            app.world.entity(city).contains::<Visibility>(),
-            "{} component should be added to the selected city",
-            any::type_name::<Visibility>()
-        );
+        assert!(app.world.entity(city).contains::<Visibility>(),);
         assert_eq!(
             app.world.resource::<NextState<GameState>>().0,
             GameState::City,
-            "State should be changed to {}",
-            GameState::City
         );
     }
 
@@ -179,11 +171,6 @@ mod tests {
         app.world.remove_resource::<GameWorld>();
         app.update();
 
-        assert_eq!(
-            app.world.resource::<PlacedCities>().0,
-            0,
-            "Number of placed cities should be resetted after removing {}",
-            any::type_name::<GameWorld>(),
-        );
+        assert_eq!(app.world.resource::<PlacedCities>().0, 0);
     }
 }
