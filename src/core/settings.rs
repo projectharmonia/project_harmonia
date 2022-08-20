@@ -129,7 +129,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn defaults() {
+    fn loading() {
         let mut app = App::new();
         app.init_resource::<GamePaths>().add_plugin(SettingsPlugin);
 
@@ -141,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn read_write() -> Result<()> {
+    fn applying() -> Result<()> {
         let mut app = App::new();
         app.init_resource::<GamePaths>().add_plugin(SettingsPlugin);
 

@@ -62,7 +62,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn defaults() {
+    fn loading() {
         let mut app = App::new();
         app.add_plugin(TestControlActionsPlugin);
 
@@ -95,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn actions_toggling() {
+    fn toggling() {
         let mut app = App::new();
         app.add_plugin(TestControlActionsPlugin);
 

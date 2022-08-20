@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn spawning() {
+    fn spawning_and_controlling() {
         let mut app = App::new();
         app.add_event::<MouseMotion>()
             .init_resource::<ActionState<ControlAction>>()
