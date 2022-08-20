@@ -42,28 +42,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn settings_propagation() {
+    fn loading() {
         let mut app = App::new();
-        app.init_resource::<WorldInspectorParams>()
-            .init_resource::<DebugRenderContext>()
-            .init_resource::<Settings>()
-            .add_event::<SettingsApplied>()
-            .add_plugin(DeveloperPlugin);
+        app.add_plugin(TestDeveloperPlugin);
 
         app.update();
 
         let world_inspector = app.world.resource::<WorldInspectorParams>().enabled;
         let debug_collisions = app.world.resource::<DebugRenderContext>().enabled;
-        let mut settings = app.world.resource_mut::<Settings>();
-        assert_eq!(
-            settings.developer.world_inspector, world_inspector,
-            "World inspector setting should be loaded at startup"
-        );
-        assert_eq!(
-            settings.developer.debug_collisions, debug_collisions,
-            "Debug collisions setting should be loaded at startup"
-        );
+        let settings = app.world.resource::<Settings>();
+        assert_eq!(settings.developer.world_inspector, world_inspector,);
+        assert_eq!(settings.developer.debug_collisions, debug_collisions,);
+    }
 
+    #[test]
+    fn applying() {
+        let mut app = App::new();
+        app.add_plugin(TestDeveloperPlugin);
+
+        let mut settings = app.world.resource_mut::<Settings>();
         settings.developer.world_inspector = !settings.developer.world_inspector;
         settings.developer.debug_collisions = !settings.developer.debug_collisions;
 
@@ -75,13 +72,19 @@ mod tests {
         let world_inspector = app.world.resource::<WorldInspectorParams>().enabled;
         let debug_collisions = app.world.resource::<DebugRenderContext>().enabled;
         let settings = app.world.resource::<Settings>();
-        assert_eq!(
-            settings.developer.world_inspector, world_inspector,
-            "World inspector setting should be modified after applying settings"
-        );
-        assert_eq!(
-            settings.developer.debug_collisions, debug_collisions,
-            "Debug collisions setting should be modified after applying settings"
-        );
+        assert_eq!(settings.developer.world_inspector, world_inspector,);
+        assert_eq!(settings.developer.debug_collisions, debug_collisions,);
+    }
+
+    struct TestDeveloperPlugin;
+
+    impl Plugin for TestDeveloperPlugin {
+        fn build(&self, app: &mut App) {
+            app.init_resource::<WorldInspectorParams>()
+                .init_resource::<DebugRenderContext>()
+                .init_resource::<Settings>()
+                .add_event::<SettingsApplied>()
+                .add_plugin(DeveloperPlugin);
+        }
     }
 }
