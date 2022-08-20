@@ -16,7 +16,7 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::errors::log_err_system;
+use super::{errors::log_err_system, game_world::GameWorld};
 use crate::core::asset_metadata;
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
@@ -29,7 +29,8 @@ impl Plugin for PreviewPlugin {
             .add_event::<PreviewRequested>()
             .init_resource::<Previews>()
             .add_startup_system(Self::spawn_camera_system)
-            .add_enter_system(PreviewState::Inactive, Self::cleanup_system)
+            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
+            .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
             .add_system(
                 Self::load_asset_system
                     .chain(log_err_system)
@@ -43,6 +44,12 @@ impl Plugin for PreviewPlugin {
 impl PreviewPlugin {
     fn spawn_camera_system(mut commands: Commands) {
         commands.spawn_bundle(PreviewCameraBundle::default());
+    }
+
+    fn cleanup_system(mut commands: Commands, preview_cameras: Query<Entity, With<PreviewCamera>>) {
+        for camera in &preview_cameras {
+            commands.entity(camera).despawn_recursive();
+        }
     }
 
     fn load_asset_system(
@@ -154,7 +161,7 @@ impl PreviewPlugin {
         commands.insert_resource(NextState(PreviewState::Inactive));
     }
 
-    fn cleanup_system(
+    fn deactivation_system(
         mut commands: Commands,
         mut preview_camera: Query<&mut Camera, With<PreviewCamera>>,
         preview_target: Query<Entity, With<PreviewMetadataId>>,
@@ -271,6 +278,31 @@ mod tests {
     };
 
     const METADATA_PATH: &str = "base/objects/rocks/stone_1.toml";
+
+    #[test]
+    fn cleanup() {
+        let mut app = App::new();
+        app.init_resource::<GameWorld>()
+            .add_plugin(TestPreviewPlugin);
+
+        app.update();
+
+        let preview_camera = app
+            .world
+            .query_filtered::<Entity, With<PreviewCamera>>()
+            .single(&app.world);
+        let preview_target = app.world.spawn().id();
+        app.world
+            .entity_mut(preview_camera)
+            .push_children(&[preview_target]);
+
+        app.world.remove_resource::<GameWorld>();
+
+        app.update();
+
+        assert!(app.world.get_entity(preview_target).is_none());
+        assert!(app.world.get_entity(preview_camera).is_none());
+    }
 
     #[test]
     fn preview_event() {
