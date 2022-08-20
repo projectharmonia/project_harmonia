@@ -221,7 +221,6 @@ impl GameWorld {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{Context, Result};
     use bevy::core::CorePlugin;
 
     use super::*;
@@ -231,8 +230,9 @@ mod tests {
     fn loading_from_cli() {
         const WORLD_NAME: &str = "World from CLI";
         let mut app = App::new();
-        app.init_resource::<GamePaths>()
-            .add_plugin(TestGameWorldPlugin);
+        app.init_resource::<Cli>()
+            .init_resource::<GamePaths>()
+            .add_plugin(GameWorldPlugin);
 
         app.world.resource_mut::<Cli>().subcommand = Some(GameCommand::Play {
             world_name: WORLD_NAME.to_string(),
@@ -241,24 +241,16 @@ mod tests {
 
         app.update();
 
-        assert_eq!(
-            app.world.resource::<Events<GameLoaded>>().len(),
-            1,
-            "{} event should be fired",
-            any::type_name::<GameLoaded>()
-        );
-        assert_eq!(
-            app.world.resource::<GameWorld>().world_name,
-            WORLD_NAME,
-            "Loaded world name should match the one from CLI"
-        );
+        assert_eq!(app.world.resource::<Events<GameLoaded>>().len(), 1);
+        assert_eq!(app.world.resource::<GameWorld>().world_name, WORLD_NAME);
     }
 
     #[test]
     fn world_cleanup() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>()
-            .add_plugin(TestGameWorldPlugin::default());
+        app.init_resource::<Cli>()
+            .init_resource::<GameWorld>()
+            .add_plugin(GameWorldPlugin);
 
         let child_entity = app.world.spawn().id();
         let ingame_entity = app
@@ -285,23 +277,17 @@ mod tests {
     }
 
     #[test]
-    fn saving_and_loading() -> Result<()> {
+    fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
-        app.register_type::<Camera>()
+        app.init_resource::<Cli>()
+            .register_type::<Camera>()
             .register_type::<City>()
             .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(TestGameWorldPlugin::default());
-
-        let game_paths = app.world.resource::<GamePaths>();
-        let world_path = game_paths.world_path(WORLD_NAME);
-        assert!(
-            !world_path.exists(),
-            "File {world_path:?} shouldn't exists after the plugin initialization"
-        );
+            .add_plugin(GameWorldPlugin);
 
         const TRANSFORM: Transform = Transform::identity();
         let non_game_entity = app.world.spawn().insert(Transform::identity()).id();
@@ -347,7 +333,6 @@ mod tests {
         assert_eq!(
             *app.world.query::<&Transform>().single(&app.world),
             TRANSFORM,
-            "Loaded transform should be equal to the saved"
         );
         assert!(
             app.world
@@ -360,17 +345,5 @@ mod tests {
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
             "Camera component shouldn't be saved"
         );
-
-        fs::remove_file(&world_path)
-            .with_context(|| format!("Unable to remove {world_path:?} after test"))
-    }
-
-    #[derive(Default)]
-    struct TestGameWorldPlugin;
-
-    impl Plugin for TestGameWorldPlugin {
-        fn build(&self, app: &mut App) {
-            app.init_resource::<Cli>().add_plugin(GameWorldPlugin);
-        }
     }
 }
