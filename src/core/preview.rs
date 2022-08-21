@@ -17,7 +17,7 @@ use iyes_loopless::prelude::*;
 use strum::Display;
 
 use super::{errors::log_err_system, game_world::GameWorld};
-use crate::core::asset_metadata;
+use crate::core::asset_metadata::AssetServerMetadataExt;
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -63,21 +63,14 @@ impl PreviewPlugin {
             .iter()
             .find(|preview_event| !previews.contains_key(&preview_event.0))
         {
-            let metadata_path = asset_server
-                .get_handle_path(preview_event.0)
-                .context("Unable to get asset metadata path for preview")?;
-            let scene_path = asset_metadata::scene_path(metadata_path.path())
-                .context("Invalid asset path for preview")?;
-
-            debug!("Loading {scene_path} to generate preview");
+            let scene = asset_server
+                .load_from_metadata(preview_event.0)
+                .context("Unable to load asset for preview")?;
 
             commands
                 .entity(preview_camera.single())
                 .with_children(|parent| {
-                    parent.spawn_bundle(PreviewTargetBundle::new(
-                        asset_server.load(&scene_path),
-                        preview_event.0,
-                    ));
+                    parent.spawn_bundle(PreviewTargetBundle::new(scene, preview_event.0));
                 });
 
             commands.insert_resource(NextState(PreviewState::LoadingAsset));
@@ -335,7 +328,7 @@ mod tests {
 
         let asset_server = app.world.resource::<AssetServer>();
         let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
-        let preview: Handle<Scene> = asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
+        let preview: Handle<Scene> = asset_server.load_from_metadata(metadata.id)?;
 
         let camera = app
             .world

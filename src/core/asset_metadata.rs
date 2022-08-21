@@ -1,11 +1,8 @@
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::{env, path::PathBuf};
 
 use anyhow::{Context, Result};
 use bevy::{
-    asset::{AssetLoader, AssetServerSettings, LoadContext, LoadedAsset},
+    asset::{AssetLoader, AssetServerSettings, HandleId, LoadContext, LoadedAsset},
     prelude::*,
     reflect::TypeUuid,
     utils::BoxedFuture,
@@ -75,19 +72,30 @@ impl AssetLoader for AssetMetadataLoader {
     }
 }
 
-/// Converts metadata path (path to a TOML file) into
-/// the corresponding scene path loadable by [`AssetServer`].
-pub(super) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> Result<String> {
-    let mut scene_path = metadata_path
-        .as_ref()
-        .with_extension("gltf")
-        .into_os_string()
-        .into_string()
-        .ok()
-        .context("Not a UTF-8 asset path")?;
+pub(crate) trait AssetServerMetadataExt {
+    /// Loads a scene corresponding to a metadata.
+    fn load_from_metadata(&self, metadata: HandleId) -> Result<Handle<Scene>>;
+}
 
-    scene_path += "#Scene0";
-    Ok(scene_path)
+impl AssetServerMetadataExt for AssetServer {
+    fn load_from_metadata(&self, metadata: HandleId) -> Result<Handle<Scene>> {
+        let metadata_path = self
+            .get_handle_path(metadata)
+            .context("Unable to get metadata path")?;
+
+        let mut scene_path = metadata_path
+            .path()
+            .with_extension("gltf")
+            .into_os_string()
+            .into_string()
+            .ok()
+            .context("Not a UTF-8 asset path")?;
+
+        scene_path += "#Scene0";
+        debug!("Loading {scene_path} to generate preview");
+
+        Ok(self.load(&scene_path))
+    }
 }
 
 #[derive(Deref, DerefMut)]
