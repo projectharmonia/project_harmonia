@@ -35,7 +35,6 @@ impl Plugin for GameWorldPlugin {
             .add_system(
                 Self::saving_system
                     .chain(log_err_system)
-                    .run_if_resource_exists::<GameWorld>()
                     .run_on_event::<GameSaved>()
                     .label(GameWorldSystem::Saving),
             );
