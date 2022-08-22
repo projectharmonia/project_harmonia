@@ -370,9 +370,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_egui"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ab46f07c3f360507fae9bc3b9c000c583e0d67661f0dd6dd5a24a709775b1e"
+checksum = "acbf44ff770566dca66b805a6829df783f64700bd01d35aec1034dff31b531a4"
 dependencies = [
  "arboard",
  "bevy",
