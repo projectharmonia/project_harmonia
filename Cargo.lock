@@ -1933,9 +1933,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "leafwing-input-manager"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524be04b15812de73b2e07add91538a3a67026259421285ae2b2ff0dec308261"
+checksum = "dc0e2dd6c5d8c0bc64951036855bb3fb8f4ed88442cb6c02ed490b29cae5c186"
 dependencies = [
  "bevy",
  "derive_more",
