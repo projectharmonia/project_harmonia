@@ -1,26 +1,17 @@
-mod ignore_rules;
-
-use std::{any, borrow::Cow, fs};
+use std::{borrow::Cow, fs};
 
 use anyhow::{Context, Result};
-use bevy::{
-    ecs::archetype::ArchetypeId,
-    prelude::*,
-    reflect::{
-        serde::{ReflectDeserializer, ReflectSerializer},
-        TypeRegistry,
-    },
-    utils::HashMap,
-};
+use bevy::{prelude::*, reflect::TypeRegistry, scene::serde::SceneDeserializer};
 use iyes_loopless::prelude::*;
+use iyes_scene_tools::SceneBuilder;
+use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{cli::Cli, errors::log_err_system, game_paths::GamePaths};
-use ignore_rules::IgnoreRules;
+use super::{city::City, cli::Cli, errors::log_err_system, game_paths::GamePaths};
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
-    Saving,
+    Loading,
 }
 
 pub(super) struct GameWorldPlugin;
@@ -33,19 +24,19 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameLoaded>()
             .add_startup_system(Self::load_from_cli_system.chain(log_err_system))
             .add_system(
-                Self::saving_system
+                Self::loading_system
                     .chain(log_err_system)
-                    .run_on_event::<GameSaved>()
-                    .label(GameWorldSystem::Saving),
+                    .run_on_event::<GameLoaded>()
+                    .label(GameWorldSystem::Loading),
             );
 
         {
             // To avoid ambiguity: https://github.com/IyesGames/iyes_loopless/issues/15
             use iyes_loopless::condition::IntoConditionalExclusiveSystem;
             app.add_system(
-                Self::logged_loading_system
-                    .run_on_event::<GameLoaded>()
-                    .at_start(),
+                Self::logged_saving_system
+                    .run_on_event::<GameSaved>()
+                    .before_commands(),
             );
         }
     }
@@ -69,120 +60,54 @@ impl GameWorldPlugin {
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    fn saving_system(
-        world: &World,
-        game_world: Res<GameWorld>,
-        game_paths: Res<GamePaths>,
-    ) -> Result<()> {
-        let world_path = game_paths.world_path(&game_world.world_name);
-
-        fs::create_dir_all(&game_paths.worlds)
-            .with_context(|| format!("Unable to create {world_path:?}"))?;
-
-        let bytes = rmp_serde::to_vec(&serialize_game_world(world).values().collect::<Vec<_>>())
-            .expect("Unable to serlialize world");
-
-        fs::write(&world_path, bytes)
-            .with_context(|| format!("Unable to save game to {world_path:?}"))
-    }
-
-    /// Loads world from disk with the name from [`GameWorld`] resource.
-    fn loading_system(world: &mut World) -> Result<()> {
+    fn saving_system(world: &mut World) -> Result<()> {
         let game_world = world.resource::<GameWorld>();
         let game_paths = world.resource::<GamePaths>();
         let world_path = game_paths.world_path(&game_world.world_name);
+        fs::create_dir_all(&game_paths.worlds)
+            .with_context(|| format!("Unable to create {:?}", game_paths.worlds))?;
 
-        let bytes = fs::read(&world_path)
-            .with_context(|| format!("Unable to load world from {world_path:?}"))?;
+        let mut builder = SceneBuilder::new(world);
+        builder.add_from_query_filter::<With<GameEntity>>();
+        builder.add_with_components::<(&City, &Name), ()>();
+        builder
+            .ignore_components::<(&Camera, &GlobalTransform, &Visibility, &ComputedVisibility)>();
+        builder
+            .export_to_file(&world_path)
+            .map(|_| ())
+            .with_context(|| format!("Unable to save world to {world_path:?}"))
+    }
 
-        let components = rmp_serde::from_slice::<Vec<Vec<Vec<u8>>>>(&bytes)
-            .context("Unable to deserialize game world")?;
+    /// Loads world from disk with the name from [`GameWorld`] resource.
+    fn loading_system(
+        mut scene_spawner: ResMut<SceneSpawner>,
+        mut scenes: ResMut<Assets<DynamicScene>>,
+        game_world: Res<GameWorld>,
+        game_paths: Res<GamePaths>,
+        type_registry: Res<TypeRegistry>,
+    ) -> Result<()> {
+        let world_path = game_paths.world_path(&game_world.world_name);
 
-        deserialize_game_world(world, components);
+        let bytes =
+            fs::read(&world_path).with_context(|| format!("Unable to load {world_path:?}"))?;
+        let mut deserializer = Deserializer::from_bytes(&bytes)
+            .with_context(|| format!("Unable to parse {world_path:?}"))?;
+        let scene_deserializer = SceneDeserializer {
+            type_registry: &type_registry.read(),
+        };
+        let scene = scene_deserializer
+            .deserialize(&mut deserializer)
+            .with_context(|| format!("Unable to deserialize {world_path:?}"))?;
+
+        scene_spawner.spawn_dynamic(scenes.add(scene));
 
         Ok(())
     }
 
-    /// Calls [`Self::loading_system`] with log errors.
-    fn logged_loading_system(world: &mut World) {
-        log_err_system(In(Self::loading_system(world)));
+    /// Calls [`Self::loading_system`] with error logging.
+    fn logged_saving_system(world: &mut World) {
+        log_err_system(In(Self::saving_system(world)));
     }
-}
-
-/// Iterates over a world and serializes all components that implement [`Reflect`]
-/// and not filtered using [`IgnoreRules`]
-fn serialize_game_world(world: &World) -> HashMap<Entity, Vec<Vec<u8>>> {
-    let ignore_rules = IgnoreRules::global(world);
-    let mut components = HashMap::new();
-    let type_registry = world.resource::<TypeRegistry>().read();
-    for archetype in world
-        .archetypes()
-        .iter()
-        .filter(|archetype| !ignore_rules.ignored_archetype(archetype))
-        .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
-        .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
-        .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
-    {
-        for reflect_component in archetype
-            .components()
-            .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
-            .filter_map(|component_id| {
-                // SAFETY: `component_id` retrieved from the world.
-                unsafe { world.components().get_info_unchecked(component_id) }.type_id()
-            })
-            .filter_map(|type_id| type_registry.get(type_id))
-            .filter_map(|registration| registration.data::<ReflectComponent>())
-        {
-            for entity in archetype.entities() {
-                let reflect = reflect_component
-                    .reflect(world, *entity)
-                    .expect("Unable to reflect component");
-
-                let serializer = ReflectSerializer::new(reflect, &type_registry);
-                let type_name = reflect.type_name();
-                let bytes = rmp_serde::to_vec(&serializer)
-                    .unwrap_or_else(|error| panic!("Unable to serialize {type_name}: {error}"));
-                let entry: &mut Vec<Vec<u8>> = components.entry(*entity).or_default();
-                entry.push(bytes);
-            }
-        }
-    }
-
-    components
-}
-
-fn deserialize_game_world(world: &mut World, components: Vec<Vec<Vec<u8>>>) {
-    // Temorary take resources to avoid borrowing issues
-    let type_registry = world
-        .remove_resource::<TypeRegistry>()
-        .unwrap_or_else(|| panic!("Unable to extract {}", any::type_name::<TypeRegistry>()));
-    let read_registry = type_registry.read();
-
-    for entity_components in components {
-        let entity = world.spawn().id();
-        for component in entity_components {
-            let reflect_deserializer = ReflectDeserializer::new(&read_registry);
-            let mut deserializer = rmp_serde::Deserializer::from_read_ref(&component);
-
-            let reflect = reflect_deserializer
-                .deserialize(&mut deserializer)
-                .expect("Unable to deserialize component");
-
-            let type_name = reflect.type_name();
-            let registration = read_registry
-                .get_with_name(type_name)
-                .unwrap_or_else(|| panic!("Unable to get registration for {type_name}"));
-
-            let reflect_component = registration
-                .data::<ReflectComponent>()
-                .unwrap_or_else(|| panic!("Unable to reflect component for {type_name}"));
-
-            reflect_component.insert(world, entity, &*reflect);
-        }
-    }
-
-    drop(read_registry);
-    world.insert_resource(type_registry);
 }
 
 /// All entities with this component will be removed after leaving [`InGame`] state.
@@ -212,18 +137,19 @@ impl GameWorld {
 
 #[cfg(test)]
 mod tests {
-    use bevy::core::CorePlugin;
+    use bevy::{asset::AssetPlugin, core::CorePlugin, scene::ScenePlugin};
 
     use super::*;
-    use crate::core::{city::City, cli::GameCommand};
+    use crate::core::{
+        city::{City, CityBundle},
+        cli::GameCommand,
+    };
 
     #[test]
     fn loading_from_cli() {
         const WORLD_NAME: &str = "World from CLI";
         let mut app = App::new();
-        app.init_resource::<Cli>()
-            .init_resource::<GamePaths>()
-            .add_plugin(GameWorldPlugin);
+        app.add_plugin(TestGameWorldPlugin);
 
         app.world.resource_mut::<Cli>().subcommand = Some(GameCommand::Play {
             world_name: WORLD_NAME.to_string(),
@@ -240,14 +166,12 @@ mod tests {
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
-        app.init_resource::<Cli>()
-            .register_type::<Camera>()
+        app.register_type::<Camera>()
             .register_type::<City>()
-            .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(GameWorldPlugin);
+            .add_plugin(TestGameWorldPlugin);
 
         const TRANSFORM: Transform = Transform::identity();
         let non_game_entity = app.world.spawn().insert(Transform::identity()).id();
@@ -261,18 +185,11 @@ mod tests {
             .insert(Camera::default())
             .insert(GameEntity)
             .id();
-        let non_game_city = app
-            .world
-            .spawn()
-            .insert_bundle(SpatialBundle::default())
-            .insert(City)
-            .id();
         let city = app
             .world
             .spawn()
             .insert_bundle(SpatialBundle::default())
-            .insert(City)
-            .insert(GameEntity)
+            .insert_bundle(CityBundle::default())
             .push_children(&[game_world_entity])
             .id();
 
@@ -282,12 +199,12 @@ mod tests {
         app.update();
 
         app.world.entity_mut(non_game_entity).despawn();
-        app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
         let mut save_events = app.world.resource_mut::<Events<GameLoaded>>();
         save_events.send_default();
 
+        app.update();
         app.update();
 
         assert_eq!(
@@ -305,5 +222,17 @@ mod tests {
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
             "Camera component shouldn't be saved"
         );
+    }
+
+    struct TestGameWorldPlugin;
+
+    impl Plugin for TestGameWorldPlugin {
+        fn build(&self, app: &mut App) {
+            app.init_resource::<Cli>()
+                .init_resource::<GamePaths>()
+                .add_plugin(AssetPlugin)
+                .add_plugin(ScenePlugin)
+                .add_plugin(GameWorldPlugin);
+        }
     }
 }

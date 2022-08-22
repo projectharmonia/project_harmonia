@@ -7,7 +7,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     game_state::GameState,
-    game_world::{GameSaved, GameWorld, GameWorldSystem},
+    game_world::{GameSaved, GameWorld},
 };
 
 use super::{
@@ -28,11 +28,7 @@ impl Plugin for InGameMenuPlugin {
         .add_enter_system(GameState::MainMenu, Self::close_ingame_menu)
         .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())
         .add_system(Self::save_as_system.run_if_resource_exists::<SaveAsDialog>())
-        .add_system(
-            Self::exit_to_main_menu_system
-                .run_if_resource_exists::<ExitToMainMenuDialog>()
-                .before(GameWorldSystem::Saving),
-        )
+        .add_system(Self::exit_to_main_menu_system.run_if_resource_exists::<ExitToMainMenuDialog>())
         .add_system(Self::exit_game_system.run_if_resource_exists::<ExitGameDialog>());
     }
 }
@@ -127,7 +123,7 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if ui.button("Save and exit").clicked() {
                         save_events.send_default();
-                        // Should be called to avoid other systems reacting on the event twice
+                        // Should be called to avoid the exclusive saving system react on the event twice.
                         // See https://github.com/IyesGames/iyes_loopless/issues/31
                         save_events.update();
                         commands.remove_resource::<GameWorld>();

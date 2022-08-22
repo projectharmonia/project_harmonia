@@ -4,11 +4,7 @@ use iyes_loopless::prelude::*;
 
 use crate::core::game_state::GameState;
 
-use super::{
-    cli::Cli,
-    errors::log_err_system,
-    game_world::{GameEntity, GameWorld},
-};
+use super::{cli::Cli, errors::log_err_system, game_world::GameWorld};
 
 pub(super) struct CityPlugin;
 
@@ -19,7 +15,7 @@ impl Plugin for CityPlugin {
             .add_system(
                 Self::load_from_cli
                     .chain(log_err_system)
-                    .run_if_resource_added::<Cli>(),
+                    .run_if(is_world_loaded_once),
             )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
@@ -81,20 +77,28 @@ impl CityPlugin {
     }
 }
 
+fn is_world_loaded_once(mut was_called: Local<bool>, added_scenes: Query<(), Added<City>>) -> bool {
+    if *was_called {
+        return false;
+    }
+
+    if added_scenes.is_empty() {
+        false
+    } else {
+        *was_called = true;
+        true
+    }
+}
+
 #[derive(Bundle, Default)]
 pub(crate) struct CityBundle {
     name: Name,
     city: City,
-    game_world: GameEntity,
 }
 
 impl CityBundle {
     pub(crate) fn new(name: Name) -> Self {
-        Self {
-            name,
-            city: City,
-            game_world: GameEntity,
-        }
+        Self { name, city: City }
     }
 }
 
@@ -145,7 +149,9 @@ mod tests {
     #[test]
     fn cleanup() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+        app.init_resource::<Cli>()
+            .init_resource::<GameWorld>()
+            .add_plugin(CityPlugin);
 
         let city_child = app.world.spawn().id();
         let city = app
@@ -168,7 +174,9 @@ mod tests {
     #[test]
     fn placing() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+        app.init_resource::<Cli>()
+            .init_resource::<GameWorld>()
+            .add_plugin(CityPlugin);
 
         app.update();
 

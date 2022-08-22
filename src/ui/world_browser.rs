@@ -16,7 +16,7 @@ use super::{
 use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoaded, GameWorld},
+    game_world::{GameLoaded, GameWorld, GameWorldSystem},
 };
 
 pub(super) struct WorldBrowserPlugin;
@@ -24,7 +24,11 @@ pub(super) struct WorldBrowserPlugin;
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
         app.add_exit_system(GameState::MainMenu, Self::close_world_browser)
-            .add_system(Self::world_browser_system.run_if_resource_exists::<WorldBrowser>())
+            .add_system(
+                Self::world_browser_system
+                    .run_if_resource_exists::<WorldBrowser>()
+                    .after(GameWorldSystem::Loading),
+            )
             .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
             .add_system(Self::remove_world_system.run_if_resource_exists::<RemoveWorldDialog>());
     }
