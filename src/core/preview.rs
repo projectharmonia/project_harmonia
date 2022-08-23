@@ -16,8 +16,7 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::{errors::log_err_system, game_world::GameWorld};
-use crate::core::asset_metadata::AssetServerMetadataExt;
+use super::{asset_metadata, errors::log_err_system, game_world::GameWorld};
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -63,9 +62,14 @@ impl PreviewPlugin {
             .iter()
             .find(|preview_event| !previews.contains_key(&preview_event.0))
         {
-            let scene = asset_server
-                .load_from_metadata(preview_event.0)
-                .context("Unable to load asset for preview")?;
+            let metadata_path = asset_server
+                .get_handle_path(preview_event.0)
+                .context("Unable to get metadata path for preview")?;
+            let scene_path = asset_metadata::scene_path(metadata_path.path())
+                .context("Unable to get scene path for preview")?;
+            let scene = asset_server.load(&scene_path);
+
+            debug!("Loading {scene_path} to generate preview");
 
             commands
                 .entity(preview_camera.single())
@@ -266,7 +270,7 @@ mod tests {
 
     use super::*;
     use crate::core::{
-        asset_metadata::{AssetMetadata, AssetMetadataLoader},
+        asset_metadata::{self, AssetMetadata, AssetMetadataLoader},
         tests::{self, HeadlessRenderPlugin},
     };
 
@@ -328,7 +332,7 @@ mod tests {
 
         let asset_server = app.world.resource::<AssetServer>();
         let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
-        let preview: Handle<Scene> = asset_server.load_from_metadata(metadata.id)?;
+        let preview: Handle<Scene> = asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
 
         let camera = app
             .world
