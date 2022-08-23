@@ -64,7 +64,7 @@ impl PreviewPlugin {
         {
             let metadata_path = asset_server
                 .get_handle_path(preview_event.0)
-                .context("Unable to get metadata path for preview")?;
+                .expect("Unable to get metadata path for preview");
             let scene_path = asset_metadata::scene_path(metadata_path.path())
                 .context("Unable to get scene path for preview")?;
             let scene = asset_server.load(&scene_path);
