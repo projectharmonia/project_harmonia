@@ -2,6 +2,7 @@ mod city_hud;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
+mod selected_object;
 mod settings_menu;
 pub(super) mod ui_action;
 mod world_browser;
@@ -13,6 +14,7 @@ use city_hud::CityHudPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
+use selected_object::SelectedObjectPlugin;
 use settings_menu::SettingsMenuPlugin;
 use ui_action::UiActionPlugin;
 use world_browser::WorldBrowserPlugin;
@@ -29,6 +31,7 @@ impl PluginGroup for UiPlugins {
             .add(InGameMenuPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)
+            .add(SelectedObjectPlugin)
             .add(SettingsMenuPlugin)
             .add(WorldBrowserPlugin)
             .add(WorldMenuPlugin)

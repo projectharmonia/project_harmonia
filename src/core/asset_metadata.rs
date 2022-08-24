@@ -77,7 +77,7 @@ impl AssetLoader for AssetMetadataLoader {
 
 /// Converts metadata path (path to a TOML file) into
 /// the corresponding scene path loadable by [`AssetServer`].
-pub(super) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> Result<String> {
+pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> Result<String> {
     let mut scene_path = metadata_path
         .as_ref()
         .with_extension("gltf")

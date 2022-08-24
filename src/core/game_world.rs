@@ -70,8 +70,15 @@ impl GameWorldPlugin {
         let mut builder = SceneBuilder::new(world);
         builder.add_from_query_filter::<With<GameEntity>>();
         builder.add_with_components::<(&City, &Name), ()>();
-        builder
-            .ignore_components::<(&Camera, &GlobalTransform, &Visibility, &ComputedVisibility)>();
+        builder.ignore_components::<(
+            &Camera,
+            &GlobalTransform,
+            &Visibility,
+            &ComputedVisibility,
+            &Children,
+            &Handle<Scene>,
+        )>();
+
         builder
             .export_to_file(&world_path)
             .map(|_| ())
@@ -113,7 +120,7 @@ impl GameWorldPlugin {
 /// All entities with this component will be removed after leaving [`InGame`] state.
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-pub(super) struct GameEntity;
+pub(crate) struct GameEntity;
 
 /// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
 #[derive(Default)]

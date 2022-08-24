@@ -9,6 +9,7 @@ pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
 pub(super) mod ground;
+pub(super) mod movable_object;
 pub(super) mod object;
 pub(super) mod orbit_camera;
 pub(super) mod preview;
@@ -25,6 +26,8 @@ use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
+use movable_object::MovableObjectPlugin;
+use object::ObjectPlugin;
 use orbit_camera::OrbitCameraPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
@@ -38,6 +41,8 @@ impl PluginGroup for CorePlugins {
             .add(GameStatePlugin)
             .add(CityPlugin)
             .add(GroundPlugin)
+            .add(MovableObjectPlugin)
+            .add(ObjectPlugin)
             .add(ControlActionsPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)

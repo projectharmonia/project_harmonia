@@ -109,7 +109,9 @@ impl Default for ControlsSettings {
             .insert(KeyCode::Left, ControlAction::CameraLeft)
             .insert(KeyCode::Right, ControlAction::CameraRight)
             .insert(MouseButton::Right, ControlAction::RotateCamera)
-            .insert(SingleAxis::mouse_wheel_y(), ControlAction::ZoomCamera);
+            .insert(SingleAxis::mouse_wheel_y(), ControlAction::ZoomCamera)
+            .insert(MouseButton::Left, ControlAction::ConfirmPlacement)
+            .insert(KeyCode::Escape, ControlAction::CancelPlacement);
 
         Self { mappings: input }
     }

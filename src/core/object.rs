@@ -1,14 +1,19 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
+use derive_more::From;
 use iyes_loopless::prelude::*;
 
-use super::{asset_metadata, errors::log_err_system, game_world::GameWorld};
+use super::{
+    asset_metadata,
+    errors::log_err_system,
+    game_world::{GameEntity, GameWorld},
+};
 
-struct ObjectPlugin;
+pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
+        app.register_type::<ObjectPath>().add_system(
             Self::spawn_scene_system
                 .chain(log_err_system)
                 .run_if_resource_exists::<GameWorld>(),
@@ -38,9 +43,17 @@ impl ObjectPlugin {
     }
 }
 
+#[derive(Bundle, Default)]
+pub(crate) struct ObjectBundle {
+    pub(crate) path: ObjectPath,
+    pub(crate) transform: Transform,
+    pub(crate) game_entity: GameEntity,
+}
+
 /// Contains path to a an object metadata file.
-#[derive(Component)]
-struct ObjectPath(String);
+#[derive(Component, Default, From, Reflect)]
+#[reflect(Component)]
+pub(crate) struct ObjectPath(String);
 
 #[cfg(test)]
 mod tests {

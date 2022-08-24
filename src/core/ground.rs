@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::{Collider, RigidBody};
 use iyes_loopless::prelude::*;
 
 use super::{city::City, game_state::GameState};
@@ -18,14 +19,18 @@ impl GroundPlugin {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
+        const SIZE: f32 = 5.0;
         commands
             .entity(visible_city.single())
             .add_children(|parent| {
-                parent.spawn_bundle(PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
-                    material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-                    ..default()
-                });
+                parent
+                    .spawn_bundle(PbrBundle {
+                        mesh: meshes.add(Mesh::from(shape::Plane { size: SIZE })),
+                        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+                        ..default()
+                    })
+                    .insert(RigidBody::Fixed)
+                    .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0));
                 parent.spawn_bundle(PointLightBundle {
                     point_light: PointLight {
                         intensity: 1500.0,

@@ -8,13 +8,13 @@ use bevy_egui::{
 use iyes_loopless::prelude::*;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
+use super::selected_object::SelectedObject;
 use crate::core::{
     asset_metadata::AssetMetadata,
     game_state::GameState,
     preview::{PreviewRequested, Previews},
 };
-
-use self::objects_tab::ObjectsTab;
+use objects_tab::ObjectsTab;
 
 pub(super) struct CityHudPlugin;
 
@@ -27,10 +27,12 @@ impl Plugin for CityHudPlugin {
 impl CityHudPlugin {
     fn bottom_panel_system(
         mut current_tab: Local<CityTab>,
+        mut commands: Commands,
         mut preview_events: EventWriter<PreviewRequested>,
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
         metadata: Res<Assets<AssetMetadata>>,
+        selected_object: Option<Res<SelectedObject>>,
     ) {
         Window::new("City bottom panel")
             .resizable(false)
@@ -49,9 +51,14 @@ impl CityHudPlugin {
                         }
                     });
                     match *current_tab {
-                        CityTab::Objects => {
-                            ObjectsTab::new(&metadata, &previews, &mut preview_events).show(ui)
-                        }
+                        CityTab::Objects => ObjectsTab::new(
+                            &mut commands,
+                            &metadata,
+                            &previews,
+                            &mut preview_events,
+                            selected_object.map(|object| object.0),
+                        )
+                        .show(ui),
                         CityTab::Dolls | CityTab::Terrain | CityTab::Lots => (),
                     }
                 });

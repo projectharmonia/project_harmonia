@@ -53,6 +53,10 @@ pub(crate) enum ControlAction {
     RotateCamera,
     #[strum(serialize = "Zoom Camera")]
     ZoomCamera,
+    #[strum(serialize = "Confirm Placement")]
+    ConfirmPlacement,
+    #[strum(serialize = "Cancel Placement")]
+    CancelPlacement,
 }
 
 #[cfg(test)]
