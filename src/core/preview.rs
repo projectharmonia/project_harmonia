@@ -267,6 +267,7 @@ mod tests {
         gltf::GltfPlugin, input::InputPlugin, scene::ScenePlugin, time::TimePlugin, utils::Uuid,
     };
     use bevy_egui::EguiPlugin;
+    use bevy_scene_hook::HookPlugin;
 
     use super::*;
     use crate::core::{
@@ -326,7 +327,7 @@ mod tests {
     #[test]
     fn asset_loading() -> Result<()> {
         let mut app = App::new();
-        app.add_plugin(TestPreviewPlugin);
+        app.add_plugin(TestPreviewPlugin).add_plugin(HookPlugin);
 
         app.update();
 
@@ -341,8 +342,7 @@ mod tests {
         app.world.entity_mut(camera).with_children(|parent| {
             parent
                 .spawn()
-                .insert(PreviewMetadataId(metadata.id))
-                .insert(preview.clone());
+                .insert_bundle(PreviewTargetBundle::new(preview.clone(), metadata.id));
         });
 
         app.insert_resource(NextState(PreviewState::LoadingAsset));
@@ -353,6 +353,12 @@ mod tests {
             app.world.resource::<NextState<PreviewState>>().0,
             PreviewState::Rendering,
         );
+
+        let render_layer = *app
+            .world
+            .query_filtered::<&RenderLayers, With<Handle<Mesh>>>()
+            .single(&app.world);
+        assert_eq!(render_layer, PREVIEW_RENDER_LAYER);
 
         Ok(())
     }
