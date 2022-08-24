@@ -53,17 +53,17 @@ impl OrbitCameraPlugin {
         controlled_city: Query<(Entity, Option<&Children>), (With<Visibility>, With<City>)>,
         camera: Query<Entity, With<OrbitOrigin>>,
     ) {
-        let (city, children) = controlled_city.single();
-        let camera = children
+        let (city_entity, children) = controlled_city.single();
+        let camera_entity = children
             .and_then(|children| camera.iter_many(children).next())
             .unwrap_or_else(|| {
                 commands
-                    .entity(city)
+                    .entity(city_entity)
                     .add_children(|parent| parent.spawn_bundle(OrbitCameraBundle::default()).id())
             });
 
         commands
-            .entity(camera)
+            .entity(camera_entity)
             .insert_bundle(Camera3dBundle::default());
     }
 
@@ -248,7 +248,7 @@ mod tests {
         app.world.insert_resource(NextState(GameState::City));
         app.update();
 
-        let (camera, parent) = app
+        let (camera_entity, parent) = app
             .world
             .query_filtered::<(Entity, &Parent), With<Camera>>()
             .single(&app.world);
@@ -265,7 +265,7 @@ mod tests {
 
         app.update();
 
-        let transform = app.world.get::<Transform>(camera).unwrap();
+        let transform = app.world.get::<Transform>(camera_entity).unwrap();
         assert_ne!(transform.translation, Vec3::ZERO);
         assert!(!transform.rotation.is_nan());
     }

@@ -27,14 +27,14 @@ impl ObjectPlugin {
         asset_server: Res<AssetServer>,
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
     ) -> Result<()> {
-        for (object, object_path) in &spawned_objects {
+        for (entity, object_path) in &spawned_objects {
             let scene_path = asset_metadata::scene_path(&object_path.0)
                 .context("Unable to get scene path to spawn object")?;
-            let scene: Handle<Scene> = asset_server.load(&scene_path);
+            let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
 
             commands
-                .entity(object)
-                .insert(scene)
+                .entity(entity)
+                .insert(scene_handle)
                 .insert(GlobalTransform::default())
                 .insert_bundle(VisibilityBundle::default());
         }

@@ -14,14 +14,14 @@ impl Plugin for GroundPlugin {
 
 impl GroundPlugin {
     fn spawn_system(
-        visible_city: Query<Entity, (With<City>, With<Visibility>)>,
+        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
         const SIZE: f32 = 5.0;
         commands
-            .entity(visible_city.single())
+            .entity(visible_cities.single())
             .add_children(|parent| {
                 parent
                     .spawn_bundle(PbrBundle {

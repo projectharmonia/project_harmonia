@@ -46,8 +46,8 @@ impl PreviewPlugin {
     }
 
     fn cleanup_system(mut commands: Commands, preview_cameras: Query<Entity, With<PreviewCamera>>) {
-        for camera in &preview_cameras {
-            commands.entity(camera).despawn_recursive();
+        for entity in &preview_cameras {
+            commands.entity(entity).despawn_recursive();
         }
     }
 
@@ -56,7 +56,7 @@ impl PreviewPlugin {
         mut preview_events: EventReader<PreviewRequested>,
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
-        preview_camera: Query<Entity, With<PreviewCamera>>,
+        preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) -> Result<()> {
         if let Some(preview_event) = preview_events
             .iter()
@@ -67,14 +67,14 @@ impl PreviewPlugin {
                 .expect("Unable to get metadata path for preview");
             let scene_path = asset_metadata::scene_path(metadata_path.path())
                 .context("Unable to get scene path for preview")?;
-            let scene = asset_server.load(&scene_path);
+            let scene_handle = asset_server.load(&scene_path);
 
             debug!("Loading {scene_path} to generate preview");
 
             commands
-                .entity(preview_camera.single())
+                .entity(preview_cameras.single())
                 .with_children(|parent| {
-                    parent.spawn_bundle(PreviewTargetBundle::new(scene, preview_event.0));
+                    parent.spawn_bundle(PreviewTargetBundle::new(scene_handle, preview_event.0));
                 });
 
             commands.insert_resource(NextState(PreviewState::LoadingAsset));
@@ -96,11 +96,11 @@ impl PreviewPlugin {
         preview_target: Query<(&PreviewMetadataId, &Handle<Scene>)>,
     ) {
         let mut camera = preview_camera.single_mut();
-        let (metadata_handle, scene) = preview_target.single();
-        match asset_server.get_load_state(scene) {
+        let (metadata_id, scene_handle) = preview_target.single();
+        match asset_server.get_load_state(scene_handle) {
             LoadState::NotLoaded => unreachable!(
                 "Asset {:?} wasn't loaded when entering {} state",
-                asset_server.get_handle_path(metadata_handle.0),
+                asset_server.get_handle_path(metadata_id.0),
                 PreviewState::LoadingAsset
             ),
             LoadState::Loading => (),
@@ -109,7 +109,7 @@ impl PreviewPlugin {
                 #[cfg(not(test))]
                 debug!(
                     "Asset {:?} was sucessfully loaded to generate preview",
-                    asset_server.get_handle_path(metadata_handle.0)
+                    asset_server.get_handle_path(metadata_id.0)
                 );
 
                 let mut image = Image::default();
@@ -122,7 +122,7 @@ impl PreviewPlugin {
 
                 let image_handle = images.add(image);
                 let texture_id = egui.add_image(image_handle.clone());
-                previews.insert(metadata_handle.0, texture_id);
+                previews.insert(metadata_id.0, texture_id);
 
                 // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595
                 asset_events.send(AssetEvent::Modified {
@@ -138,16 +138,16 @@ impl PreviewPlugin {
                 #[cfg(not(test))]
                 error!(
                     "Unable to load preview for {:?}",
-                    asset_server.get_handle_path(metadata_handle.0)
+                    asset_server.get_handle_path(metadata_id.0)
                 );
 
-                previews.insert(metadata_handle.0, TextureId::Managed(0));
+                previews.insert(metadata_id.0, TextureId::Managed(0));
                 commands.insert_resource(NextState(PreviewState::Inactive));
             }
             LoadState::Unloaded => {
                 unreachable!(
                     "Asset {:?} was unloaded during the generating preview",
-                    asset_server.get_handle_path(metadata_handle.0)
+                    asset_server.get_handle_path(metadata_id.0)
                 );
             }
         }
@@ -160,13 +160,13 @@ impl PreviewPlugin {
 
     fn deactivation_system(
         mut commands: Commands,
-        mut preview_camera: Query<&mut Camera, With<PreviewCamera>>,
-        preview_target: Query<Entity, With<PreviewMetadataId>>,
+        mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
+        preview_targets: Query<Entity, With<PreviewMetadataId>>,
     ) {
-        if let Ok(preview_target) = preview_target.get_single() {
-            commands.entity(preview_target).despawn_recursive();
+        if let Ok(entity) = preview_targets.get_single() {
+            commands.entity(entity).despawn_recursive();
         }
-        preview_camera.single_mut().is_active = false;
+        preview_cameras.single_mut().is_active = false;
     }
 }
 
@@ -236,13 +236,13 @@ struct PreviewTargetBundle {
 }
 
 impl PreviewTargetBundle {
-    fn new(scene: Handle<Scene>, metadata_id: HandleId) -> Self {
+    fn new(preview_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
         Self {
             name: "Preview target".into(),
             metadata_id: metadata_id.into(),
             scene: HookedSceneBundle {
                 scene: SceneBundle {
-                    scene,
+                    scene: preview_handle,
                     // Keep object a little far from the camera
                     transform: Transform::from_translation(Vec3::new(0.0, -0.25, -1.5)),
                     ..Default::default()
@@ -285,21 +285,21 @@ mod tests {
 
         app.update();
 
-        let preview_camera = app
+        let preview_camera_entity = app
             .world
             .query_filtered::<Entity, With<PreviewCamera>>()
             .single(&app.world);
-        let preview_target = app.world.spawn().id();
+        let preview_target_entity = app.world.spawn().id();
         app.world
-            .entity_mut(preview_camera)
-            .push_children(&[preview_target]);
+            .entity_mut(preview_camera_entity)
+            .push_children(&[preview_target_entity]);
 
         app.world.remove_resource::<GameWorld>();
 
         app.update();
 
-        assert!(app.world.get_entity(preview_target).is_none());
-        assert!(app.world.get_entity(preview_camera).is_none());
+        assert!(app.world.get_entity(preview_target_entity).is_none());
+        assert!(app.world.get_entity(preview_camera_entity).is_none());
     }
 
     #[test]
@@ -308,9 +308,9 @@ mod tests {
         app.add_plugin(TestPreviewPlugin);
 
         let asset_server = app.world.resource::<AssetServer>();
-        let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
+        let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
         let mut events = app.world.resource_mut::<Events<PreviewRequested>>();
-        events.send(PreviewRequested(metadata.id));
+        events.send(PreviewRequested(metadata_handle.id));
 
         app.update();
 
@@ -320,7 +320,7 @@ mod tests {
         );
         assert_eq!(
             app.world.query::<&PreviewMetadataId>().single(&app.world).0,
-            metadata.id,
+            metadata_handle.id,
         );
     }
 
@@ -332,22 +332,24 @@ mod tests {
         app.update();
 
         let asset_server = app.world.resource::<AssetServer>();
-        let metadata: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
-        let preview: Handle<Scene> = asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
+        let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
+        let preview_handle: Handle<Scene> =
+            asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
 
-        let camera = app
+        let camera_entity = app
             .world
             .query_filtered::<Entity, With<Camera>>()
             .single(&app.world);
-        app.world.entity_mut(camera).with_children(|parent| {
-            parent
-                .spawn()
-                .insert_bundle(PreviewTargetBundle::new(preview.clone(), metadata.id));
+        app.world.entity_mut(camera_entity).with_children(|parent| {
+            parent.spawn().insert_bundle(PreviewTargetBundle::new(
+                preview_handle.clone(),
+                metadata_handle.id,
+            ));
         });
 
         app.insert_resource(NextState(PreviewState::LoadingAsset));
 
-        tests::wait_for_asset_loading(&mut app, preview);
+        tests::wait_for_asset_loading(&mut app, preview_handle);
 
         assert_eq!(
             app.world.resource::<NextState<PreviewState>>().0,
@@ -370,16 +372,18 @@ mod tests {
 
         app.update();
 
-        let preview = app
+        let preview_entity = app
             .world
             .spawn()
             .insert(PreviewMetadataId(HandleId::Id(Uuid::nil(), 0)))
             .id();
-        let camera = app
+        let camera_entity = app
             .world
             .query_filtered::<Entity, With<Camera>>()
             .single(&app.world);
-        app.world.entity_mut(camera).push_children(&[preview]);
+        app.world
+            .entity_mut(camera_entity)
+            .push_children(&[preview_entity]);
 
         app.insert_resource(NextState(PreviewState::Rendering));
 
@@ -389,7 +393,7 @@ mod tests {
             app.world.resource::<CurrentState<PreviewState>>().0,
             PreviewState::Inactive,
         );
-        assert!(app.world.get_entity(preview).is_none());
+        assert!(app.world.get_entity(preview_entity).is_none());
     }
 
     struct TestPreviewPlugin;

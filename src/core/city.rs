@@ -32,15 +32,15 @@ impl CityPlugin {
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
     ) -> Result<()> {
-        if let Some(load_city) = cli.city() {
-            let city = cities
+        if let Some(city_name) = cli.city() {
+            let city_entity = cities
                 .iter()
-                .find(|(_, name)| name.as_str() == load_city)
+                .find(|(_, name)| name.as_str() == city_name)
                 .map(|(city, _)| city)
-                .with_context(|| format!("Unable to find city named {load_city}"))?;
+                .with_context(|| format!("Unable to find city named {city_name}"))?;
 
             commands
-                .entity(city)
+                .entity(city_entity)
                 .insert_bundle(VisibilityBundle::default());
             commands.insert_resource(NextState(GameState::City));
         }
@@ -50,8 +50,8 @@ impl CityPlugin {
 
     /// Removes all cities and their children.
     fn cleanup_system(mut commands: Commands, cities: Query<Entity, With<City>>) {
-        for city in &cities {
-            commands.entity(city).despawn_recursive();
+        for entity in &cities {
+            commands.entity(entity).despawn_recursive();
         }
     }
 
@@ -61,11 +61,11 @@ impl CityPlugin {
         mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, Added<City>>,
     ) {
-        for city in &added_cities {
+        for entity in &added_cities {
             let transform =
                 Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_citites.0 as f32);
             commands
-                .entity(city)
+                .entity(entity)
                 .insert_bundle(TransformBundle::from_transform(transform));
             placed_citites.0 += 1;
         }
@@ -124,7 +124,7 @@ mod tests {
         app.add_plugin(CityPlugin);
 
         const CITY_NAME: &str = "City from CLI";
-        let city = app
+        let city_entity = app
             .world
             .spawn()
             .insert_bundle(CityBundle::new(CITY_NAME.into()))
@@ -139,7 +139,7 @@ mod tests {
 
         app.update();
 
-        assert!(app.world.entity(city).contains::<Visibility>(),);
+        assert!(app.world.entity(city_entity).contains::<Visibility>());
         assert_eq!(
             app.world.resource::<NextState<GameState>>().0,
             GameState::City,
@@ -153,12 +153,12 @@ mod tests {
             .init_resource::<GameWorld>()
             .add_plugin(CityPlugin);
 
-        let city_child = app.world.spawn().id();
-        let city = app
+        let child_entity = app.world.spawn().id();
+        let city_entity = app
             .world
             .spawn()
             .insert(City)
-            .push_children(&[city_child])
+            .push_children(&[child_entity])
             .id();
 
         app.update();
@@ -167,8 +167,8 @@ mod tests {
 
         app.update();
 
-        assert!(app.world.get_entity(city).is_none());
-        assert!(app.world.get_entity(city_child).is_none());
+        assert!(app.world.get_entity(city_entity).is_none());
+        assert!(app.world.get_entity(child_entity).is_none());
     }
 
     #[test]
@@ -181,13 +181,13 @@ mod tests {
         app.update();
 
         for index in 0..2 {
-            let city = app.world.spawn().insert_bundle(CityBundle::default()).id();
+            let city_entity = app.world.spawn().insert_bundle(CityBundle::default()).id();
 
             app.update();
 
             let transform = *app
                 .world
-                .get::<Transform>(city)
+                .get::<Transform>(city_entity)
                 .unwrap_or_else(|| panic!("Added city {index} should be placed"));
 
             assert_eq!(

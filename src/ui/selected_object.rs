@@ -86,8 +86,8 @@ mod tests {
         app.update();
 
         let asset_server = app.world.resource::<AssetServer>();
-        let dummy_object: Handle<AssetMetadata> = asset_server.load("dummy.toml");
-        app.world.insert_resource(SelectedObject(dummy_object.id));
+        let dummy_handle: Handle<AssetMetadata> = asset_server.load("dummy.toml");
+        app.world.insert_resource(SelectedObject(dummy_handle.id));
 
         app.update();
 

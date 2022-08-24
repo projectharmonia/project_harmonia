@@ -14,7 +14,7 @@ pub(super) struct ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
     metadata: &'a Assets<AssetMetadata>,
     previews: &'a Previews,
     preview_events: &'a mut EventWriter<'w, 's, PreviewRequested>,
-    selected_object: Option<HandleId>,
+    selected_id: Option<HandleId>,
 }
 
 impl<'a, 'w, 's, 'wc, 'sc> ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
@@ -24,14 +24,14 @@ impl<'a, 'w, 's, 'wc, 'sc> ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
         metadata: &'a Assets<AssetMetadata>,
         previews: &'a Previews,
         preview_events: &'a mut EventWriter<'w, 's, PreviewRequested>,
-        selected_object: Option<HandleId>,
+        selected_id: Option<HandleId>,
     ) -> Self {
         Self {
             commands,
             metadata,
             previews,
             preview_events,
-            selected_object,
+            selected_id,
         }
     }
 }
@@ -53,7 +53,7 @@ impl ObjectsTab<'_, '_, '_, '_, '_> {
                 if ui
                     .add(
                         ImageButton::new(*texture_id, (PREVIEW_SIZE as f32, PREVIEW_SIZE as f32))
-                            .selected(matches!(self.selected_object, Some(object) if object == id)),
+                            .selected(matches!(self.selected_id, Some(object) if object == id)),
                     )
                     .on_hover_text(&object.name)
                     .clicked()

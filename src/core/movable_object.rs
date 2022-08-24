@@ -57,14 +57,14 @@ impl MovableObjectPlugin {
     }
 
     fn cancel_system(mut commands: Commands, moving_objects: Query<Entity, With<MovableObject>>) {
-        if let Ok(object) = moving_objects.get_single() {
-            commands.entity(object).despawn();
+        if let Ok(entity) = moving_objects.get_single() {
+            commands.entity(entity).despawn();
         }
     }
 
     fn confirm_system(mut commands: Commands, moving_objects: Query<Entity, With<MovableObject>>) {
-        if let Ok(object) = moving_objects.get_single() {
-            commands.entity(object).remove::<MovableObject>();
+        if let Ok(entity) = moving_objects.get_single() {
+            commands.entity(entity).remove::<MovableObject>();
         }
     }
 }
@@ -89,13 +89,13 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestMovableObjectPlugin);
 
-        let movable_object = app.world.spawn().insert(MovableObject).id();
+        let movable_entity = app.world.spawn().insert(MovableObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
         action_state.press(ControlAction::ConfirmPlacement);
 
         app.update();
 
-        assert!(!app.world.entity(movable_object).contains::<MovableObject>());
+        assert!(!app.world.entity(movable_entity).contains::<MovableObject>());
     }
 
     #[test]
@@ -103,13 +103,13 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestMovableObjectPlugin);
 
-        let movable_object = app.world.spawn().insert(MovableObject).id();
+        let movable_entity = app.world.spawn().insert(MovableObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
         action_state.press(ControlAction::CancelPlacement);
 
         app.update();
 
-        assert!(app.world.get_entity(movable_object).is_none());
+        assert!(app.world.get_entity(movable_entity).is_none());
     }
 
     struct TestMovableObjectPlugin;
