@@ -6,9 +6,9 @@ use leafwing_input_manager::prelude::*;
 
 use super::{control_action::ControlAction, game_world::GameWorld, preview::PreviewCamera};
 
-pub(super) struct MovableObjectPlugin;
+pub(super) struct MovingObjectPlugin;
 
-impl Plugin for MovableObjectPlugin {
+impl Plugin for MovingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::movement_system.run_if_resource_exists::<GameWorld>())
             .add_system(
@@ -24,12 +24,12 @@ impl Plugin for MovableObjectPlugin {
     }
 }
 
-impl MovableObjectPlugin {
+impl MovingObjectPlugin {
     fn movement_system(
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
         camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-        mut moving_objects: Query<&mut Transform, With<MovableObject>>,
+        mut moving_objects: Query<&mut Transform, With<MovingObject>>,
     ) {
         if let Ok(mut transform) = moving_objects.get_single_mut() {
             if let Some(cursor_pos) = windows
@@ -56,15 +56,15 @@ impl MovableObjectPlugin {
         }
     }
 
-    fn cancel_system(mut commands: Commands, moving_objects: Query<Entity, With<MovableObject>>) {
+    fn cancel_system(mut commands: Commands, moving_objects: Query<Entity, With<MovingObject>>) {
         if let Ok(entity) = moving_objects.get_single() {
             commands.entity(entity).despawn();
         }
     }
 
-    fn confirm_system(mut commands: Commands, moving_objects: Query<Entity, With<MovableObject>>) {
+    fn confirm_system(mut commands: Commands, moving_objects: Query<Entity, With<MovingObject>>) {
         if let Ok(entity) = moving_objects.get_single() {
-            commands.entity(entity).remove::<MovableObject>();
+            commands.entity(entity).remove::<MovingObject>();
         }
     }
 }
@@ -78,7 +78,7 @@ fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool
 }
 
 #[derive(Component)]
-pub(crate) struct MovableObject;
+pub(crate) struct MovingObject;
 
 #[cfg(test)]
 mod tests {
@@ -87,40 +87,40 @@ mod tests {
     #[test]
     fn confirmation() {
         let mut app = App::new();
-        app.add_plugin(TestMovableObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin);
 
-        let movable_entity = app.world.spawn().insert(MovableObject).id();
+        let moving_entity = app.world.spawn().insert(MovingObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
         action_state.press(ControlAction::ConfirmPlacement);
 
         app.update();
 
-        assert!(!app.world.entity(movable_entity).contains::<MovableObject>());
+        assert!(!app.world.entity(moving_entity).contains::<MovingObject>());
     }
 
     #[test]
     fn cancellation() {
         let mut app = App::new();
-        app.add_plugin(TestMovableObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin);
 
-        let movable_entity = app.world.spawn().insert(MovableObject).id();
+        let moving_entity = app.world.spawn().insert(MovingObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
         action_state.press(ControlAction::CancelPlacement);
 
         app.update();
 
-        assert!(app.world.get_entity(movable_entity).is_none());
+        assert!(app.world.get_entity(moving_entity).is_none());
     }
 
-    struct TestMovableObjectPlugin;
+    struct TestMovingObjectPlugin;
 
-    impl Plugin for TestMovableObjectPlugin {
+    impl Plugin for TestMovingObjectPlugin {
         fn build(&self, app: &mut App) {
             app.init_resource::<RapierContext>()
                 .init_resource::<Windows>()
                 .init_resource::<ActionState<ControlAction>>()
                 .init_resource::<GameWorld>()
-                .add_plugin(MovableObjectPlugin);
+                .add_plugin(MovingObjectPlugin);
         }
     }
 }

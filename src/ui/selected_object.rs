@@ -3,7 +3,7 @@ use bevy::{asset::HandleId, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    asset_metadata, errors::log_err_system, game_state::GameState, movable_object::MovableObject,
+    asset_metadata, errors::log_err_system, game_state::GameState, moving_object::MovingObject,
     object::ObjectBundle,
 };
 
@@ -13,7 +13,7 @@ impl Plugin for SelectedObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_to_stage(
             // Should run in state before `Self::removal_selection_system` to flush spawn command,
-            // otherwise `MovableObject` will be missing and it will be detected as removal.
+            // otherwise `MovingObject` will be missing and it will be detected as removal.
             CoreStage::PreUpdate,
             Self::spawn_selection_system
                 .chain(log_err_system)
@@ -48,14 +48,14 @@ impl SelectedObjectPlugin {
                 path: scene_path.into(),
                 ..Default::default()
             })
-            .insert(MovableObject);
+            .insert(MovingObject);
 
         Ok(())
     }
 
     fn remove_selection_system(
         mut commands: Commands,
-        moving_objects: Query<(), With<MovableObject>>,
+        moving_objects: Query<(), With<MovingObject>>,
     ) {
         if moving_objects.is_empty() {
             commands.remove_resource::<SelectedObject>();
@@ -92,7 +92,7 @@ mod tests {
         app.update();
 
         app.world
-            .query_filtered::<(), (With<MovableObject>, With<ObjectPath>)>()
+            .query_filtered::<(), (With<MovingObject>, With<ObjectPath>)>()
             .single(&app.world);
     }
 
@@ -107,7 +107,7 @@ mod tests {
 
         assert!(
             app.world.get_resource::<SelectedObject>().is_none(),
-            "Selection should be removed when there is no movable object"
+            "Selection should be removed when there is no moving object"
         );
     }
 }
