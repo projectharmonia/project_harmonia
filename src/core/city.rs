@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 
 use crate::core::game_state::GameState;
 
-use super::{cli::Cli, errors::log_err_system, game_world::GameWorld};
+use super::{cli::Cli, errors, game_world::GameWorld};
 
 pub(super) struct CityPlugin;
 
@@ -14,7 +14,7 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .add_system(
                 Self::load_from_cli
-                    .chain(log_err_system)
+                    .chain(errors::log_err_system)
                     .run_if(is_world_loaded_once),
             )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())

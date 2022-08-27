@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{control_action::ControlAction, errors::log_err_system, game_paths::GamePaths};
+use super::{control_action::ControlAction, errors, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
@@ -18,7 +18,7 @@ impl Plugin for SettingsPlugin {
             .add_event::<SettingsApplied>()
             .add_system(
                 Self::write_system
-                    .chain(log_err_system)
+                    .chain(errors::log_err_system)
                     .run_on_event::<SettingsApplied>(),
             );
     }

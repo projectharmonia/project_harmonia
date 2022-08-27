@@ -16,7 +16,7 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::{asset_metadata, errors::log_err_system, game_world::GameWorld};
+use super::{asset_metadata, errors, game_world::GameWorld};
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -32,7 +32,7 @@ impl Plugin for PreviewPlugin {
             .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
             .add_system(
                 Self::load_asset_system
-                    .chain(log_err_system)
+                    .chain(errors::log_err_system)
                     .run_in_state(PreviewState::Inactive),
             )
             .add_system(Self::wait_for_loading_system.run_in_state(PreviewState::LoadingAsset))

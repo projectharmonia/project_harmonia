@@ -7,7 +7,7 @@ use iyes_scene_tools::SceneBuilder;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{city::City, cli::Cli, errors::log_err_system, game_paths::GamePaths};
+use super::{city::City, cli::Cli, errors, game_paths::GamePaths};
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
@@ -22,10 +22,10 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_startup_system(Self::load_from_cli_system.chain(log_err_system))
+            .add_startup_system(Self::load_from_cli_system.chain(errors::log_err_system))
             .add_system(
                 Self::loading_system
-                    .chain(log_err_system)
+                    .chain(errors::log_err_system)
                     .run_on_event::<GameLoaded>()
                     .label(GameWorldSystem::Loading),
             );
@@ -113,7 +113,7 @@ impl GameWorldPlugin {
 
     /// Calls [`Self::loading_system`] with error logging.
     fn logged_saving_system(world: &mut World) {
-        log_err_system(In(Self::saving_system(world)));
+        errors::log_err_system(In(Self::saving_system(world)));
     }
 }
 

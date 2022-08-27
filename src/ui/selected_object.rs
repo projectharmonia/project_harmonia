@@ -3,8 +3,7 @@ use bevy::{asset::HandleId, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    asset_metadata,
-    errors::log_err_system,
+    asset_metadata, errors,
     game_state::GameState,
     object::{MovingObject, ObjectBundle},
 };
@@ -18,7 +17,7 @@ impl Plugin for SelectedObjectPlugin {
             // otherwise `MovingObject` will be missing and it will be detected as removal.
             CoreStage::PreUpdate,
             Self::spawn_selection_system
-                .chain(log_err_system)
+                .chain(errors::log_err_system)
                 .run_in_state(GameState::City)
                 .run_if_resource_added::<SelectedObject>(),
         )

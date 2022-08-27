@@ -9,7 +9,7 @@ use leafwing_input_manager::prelude::ActionState;
 use super::{
     asset_metadata,
     control_action::ControlAction,
-    errors::log_err_system,
+    errors,
     game_world::{GameEntity, GameWorld},
     preview::PreviewCamera,
 };
@@ -21,7 +21,7 @@ impl Plugin for ObjectPlugin {
         app.register_type::<ObjectPath>()
             .add_system(
                 Self::spawn_scene_system
-                    .chain(log_err_system)
+                    .chain(errors::log_err_system)
                     .run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::movement_system.run_if_resource_exists::<GameWorld>())
