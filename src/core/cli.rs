@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use iyes_loopless::prelude::*;
 
 use super::{
@@ -8,6 +8,7 @@ use super::{
     errors,
     game_state::GameState,
     game_world::{GameLoaded, GameWorld},
+    network::{client::ConnectionSettings, server::ServerSettings},
 };
 
 /// Logic for command line interface.
@@ -19,6 +20,8 @@ pub(super) struct CliPlugin;
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(Self::world_loading_system.chain(errors::log_err_system))
+            .add_startup_system(Self::host_system.chain(errors::log_err_system))
+            .add_startup_system(Self::join_system.chain(errors::log_err_system))
             .add_system(
                 Self::city_loading_system
                     .chain(errors::log_err_system)
@@ -28,12 +31,40 @@ impl Plugin for CliPlugin {
 }
 
 impl CliPlugin {
+    fn host_system(mut commands: Commands, cli: Res<Cli>) -> Result<()> {
+        if let Some(GameCommand::Host {
+            quick_load: _,
+            server_settings,
+        }) = &cli.subcommand
+        {
+            let server = server_settings
+                .create_server()
+                .context("Unable to create server")?;
+            commands.insert_resource(server);
+            commands.insert_resource(server_settings.clone());
+        }
+
+        Ok(())
+    }
+
+    fn join_system(mut commands: Commands, cli: Res<Cli>) -> Result<()> {
+        if let Some(GameCommand::Join(connection_settings)) = &cli.subcommand {
+            let client = connection_settings
+                .create_client()
+                .context("Unable to create client")?;
+            commands.insert_resource(client);
+            commands.insert_resource(connection_settings.clone());
+        }
+
+        Ok(())
+    }
+
     fn world_loading_system(
         mut commands: Commands,
         mut load_events: ResMut<Events<GameLoaded>>,
         cli: Res<Cli>,
     ) -> Result<()> {
-        if let Some(world_name) = cli.world_name() {
+        if let Some(QuickLoad { world_name, .. }) = cli.get_quick_load() {
             commands.insert_resource(GameWorld::new(world_name.clone()));
             load_events.send_default();
             // Should be called to avoid other systems reacting on the event twice
@@ -49,7 +80,10 @@ impl CliPlugin {
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
     ) -> Result<()> {
-        if let Some(city_name) = cli.city_name() {
+        if let Some(city_name) = cli
+            .get_quick_load()
+            .and_then(|quick_load| quick_load.city_name.as_ref())
+        {
             let city_entity = cities
                 .iter()
                 .find(|(_, name)| name.as_str() == city_name)
@@ -88,22 +122,49 @@ pub(crate) struct Cli {
 }
 
 impl Cli {
-    /// Returns city to load if was specified from any subcommand.
-    pub(crate) fn city_name(&self) -> Option<&String> {
-        match &self.subcommand {
-            Some(GameCommand::Play {
-                world_name: _,
+    /// Creates an instance with `GameMode::Play` variant.
+    #[cfg(test)]
+    fn with_play(world_name: String, city_name: Option<String>) -> Self {
+        Self {
+            subcommand: Some(GameCommand::Play(QuickLoad {
+                world_name,
                 city_name,
-            }) => city_name.as_ref(),
-            None => None,
+            })),
         }
     }
 
-    /// Returns world to load if was specified from any subcommand.
-    pub(crate) fn world_name(&self) -> Option<&String> {
+    /// Creates an instance with `GameMode::Host` variant.
+    #[cfg(test)]
+    fn with_host(
+        world_name: String,
+        city_name: Option<String>,
+        server_settings: ServerSettings,
+    ) -> Self {
+        Self {
+            subcommand: Some(GameCommand::Host {
+                quick_load: QuickLoad {
+                    world_name,
+                    city_name,
+                },
+                server_settings,
+            }),
+        }
+    }
+
+    /// Creates an instance with `GameMode::Join` variant.
+    #[cfg(test)]
+    fn with_join(connection_settings: ConnectionSettings) -> Self {
+        Self {
+            subcommand: Some(GameCommand::Join(connection_settings)),
+        }
+    }
+
+    /// Returns arguments for quick load if was specified from any subcommand.
+    pub(crate) fn get_quick_load(&self) -> Option<&QuickLoad> {
         match &self.subcommand {
-            Some(GameCommand::Play { world_name, .. }) => Some(world_name),
-            None => None,
+            Some(GameCommand::Play(quick_load)) => Some(quick_load),
+            Some(GameCommand::Host { quick_load, .. }) => Some(quick_load),
+            _ => None,
         }
     }
 }
@@ -119,33 +180,43 @@ impl Default for Cli {
 
 #[derive(Subcommand, Clone)]
 pub(crate) enum GameCommand {
-    Play {
-        /// World name to load.
-        #[clap(short, long)]
-        world_name: String,
+    Play(QuickLoad),
+    Host {
+        #[clap(flatten)]
+        quick_load: QuickLoad,
 
-        /// City name to load.
-        #[clap(short, long)]
-        city_name: Option<String>,
+        #[clap(flatten)]
+        server_settings: ServerSettings,
     },
+    Join(ConnectionSettings),
+}
+
+/// Arguments for quick load.
+#[derive(Args, Clone)]
+pub(crate) struct QuickLoad {
+    /// World name to load.
+    #[clap(short, long)]
+    world_name: String,
+
+    /// City name to load.
+    #[clap(short, long)]
+    city_name: Option<String>,
 }
 
 #[cfg(test)]
 mod tests {
+    use bevy_renet::renet::{RenetClient, RenetServer};
+
     use super::*;
     use crate::core::city::CityBundle;
 
+    const WORLD_NAME: &str = "World from CLI";
+
     #[test]
     fn loading_world() {
-        const WORLD_NAME: &str = "World from CLI";
         let mut app = App::new();
         app.add_event::<GameLoaded>()
-            .insert_resource(Cli {
-                subcommand: Some(GameCommand::Play {
-                    world_name: WORLD_NAME.to_string(),
-                    city_name: None,
-                }),
-            })
+            .insert_resource(Cli::with_play(WORLD_NAME.to_string(), None))
             .add_plugin(CliPlugin);
 
         app.update();
@@ -166,12 +237,7 @@ mod tests {
             .insert_bundle(CityBundle::new(CITY_NAME.into()))
             .id();
 
-        app.insert_resource(Cli {
-            subcommand: Some(GameCommand::Play {
-                world_name: String::new(),
-                city_name: Some(CITY_NAME.to_string()),
-            }),
-        });
+        app.insert_resource(Cli::with_play(String::new(), Some(CITY_NAME.to_string())));
 
         app.update();
 
@@ -180,5 +246,45 @@ mod tests {
             app.world.resource::<NextState<GameState>>().0,
             GameState::City,
         );
+    }
+
+    #[test]
+    fn hosting() {
+        let mut app = App::new();
+        app.add_event::<GameLoaded>().add_plugin(CliPlugin);
+        let server_settings = ServerSettings {
+            port: 0,
+            ..Default::default()
+        };
+        app.world.insert_resource(Cli::with_host(
+            WORLD_NAME.to_string(),
+            None,
+            server_settings.clone(),
+        ));
+
+        app.update();
+
+        assert_eq!(*app.world.resource::<ServerSettings>(), server_settings);
+        assert!(app.world.get_resource::<RenetServer>().is_some());
+    }
+
+    #[test]
+    fn joining() {
+        let mut app = App::new();
+        app.add_event::<GameLoaded>().add_plugin(CliPlugin);
+        let connection_settings = ConnectionSettings {
+            port: 0,
+            ..Default::default()
+        };
+        app.world
+            .insert_resource(Cli::with_join(connection_settings.clone()));
+
+        app.update();
+
+        assert_eq!(
+            *app.world.resource::<ConnectionSettings>(),
+            connection_settings,
+        );
+        assert!(app.world.get_resource::<RenetClient>().is_some());
     }
 }

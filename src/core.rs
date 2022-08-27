@@ -9,6 +9,7 @@ pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
 pub(super) mod ground;
+pub(super) mod network;
 pub(super) mod object;
 pub(super) mod orbit_camera;
 pub(super) mod preview;
@@ -26,6 +27,7 @@ use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
+use network::NetworkPlugins;
 use object::ObjectPlugin;
 use orbit_camera::OrbitCameraPlugin;
 use preview::PreviewPlugin;
@@ -50,6 +52,8 @@ impl PluginGroup for CorePlugins {
             .add(GameWorldPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin);
+
+        NetworkPlugins.build(group);
     }
 }
 

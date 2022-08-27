@@ -12,6 +12,8 @@ coverage *ARGS: raw-coverage
     --ignore "/*" \
     --ignore "src/ui*" \
     --ignore "*/main.rs" \
+    --ignore "src/core/network/client.rs" \
+    --ignore "src/core/network/server.rs" \
     --ignore "src/core/cli.rs" \
     --ignore "src/core/object.rs" \
     {{ ARGS }}
