@@ -1,3 +1,5 @@
+use std::f32::consts::FRAC_PI_4;
+
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy_mod_outline::{Outline, OutlineBundle};
@@ -44,6 +46,8 @@ impl Plugin for ObjectPlugin {
             );
     }
 }
+
+const ROTATION_STEP: f32 = -FRAC_PI_4;
 
 impl ObjectPlugin {
     fn spawn_scene_system(
@@ -136,6 +140,7 @@ impl ObjectPlugin {
     fn movement_system(
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
+        action_state: Res<ActionState<ControlAction>>,
         camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
         mut moving_objects: Query<&mut Transform, With<MovingObject>>,
     ) {
@@ -160,6 +165,9 @@ impl ObjectPlugin {
                     .unwrap_or_default();
 
                 transform.translation = ray.origin() + ray.direction() * toi;
+                if action_state.just_pressed(ControlAction::RotateObject) {
+                    transform.rotate_y(ROTATION_STEP);
+                }
             }
         }
     }
