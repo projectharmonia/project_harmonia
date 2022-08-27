@@ -18,6 +18,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
+use cli::CliPlugin;
 use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
 use family::FamilyPlugin;
@@ -38,6 +39,7 @@ impl PluginGroup for CorePlugins {
             .add(AssetMetadataPlugin)
             .add(GameStatePlugin)
             .add(CityPlugin)
+            .add(CliPlugin)
             .add(GroundPlugin)
             .add(ObjectPlugin)
             .add(ControlActionsPlugin)

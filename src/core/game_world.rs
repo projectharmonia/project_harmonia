@@ -7,7 +7,7 @@ use iyes_scene_tools::SceneBuilder;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{city::City, cli::Cli, errors, game_paths::GamePaths};
+use super::{city::City, errors, game_paths::GamePaths};
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
@@ -22,7 +22,6 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
-            .add_startup_system(Self::load_from_cli_system.chain(errors::log_err_system))
             .add_system(
                 Self::loading_system
                     .chain(errors::log_err_system)
@@ -43,22 +42,6 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
-    fn load_from_cli_system(
-        mut commands: Commands,
-        mut load_events: ResMut<Events<GameLoaded>>,
-        cli: Res<Cli>,
-    ) -> Result<()> {
-        if let Some(world_name) = cli.world_name() {
-            commands.insert_resource(GameWorld::new(world_name.clone()));
-            load_events.send_default();
-            // Should be called to avoid other systems reacting on the event twice
-            // See https://github.com/IyesGames/iyes_loopless/issues/31
-            load_events.update();
-        }
-
-        Ok(())
-    }
-
     /// Saves world to disk with the name from [`GameWorld`] resource.
     fn saving_system(world: &mut World) -> Result<()> {
         let game_world = world.resource::<GameWorld>();
@@ -147,27 +130,7 @@ mod tests {
     use bevy::{asset::AssetPlugin, core::CorePlugin, scene::ScenePlugin};
 
     use super::*;
-    use crate::core::{
-        city::{City, CityBundle},
-        cli::GameCommand,
-    };
-
-    #[test]
-    fn loading_from_cli() {
-        const WORLD_NAME: &str = "World from CLI";
-        let mut app = App::new();
-        app.add_plugin(TestGameWorldPlugin);
-
-        app.world.resource_mut::<Cli>().subcommand = Some(GameCommand::Play {
-            world_name: WORLD_NAME.to_string(),
-            city: None,
-        });
-
-        app.update();
-
-        assert_eq!(app.world.resource::<Events<GameLoaded>>().len(), 1);
-        assert_eq!(app.world.resource::<GameWorld>().world_name, WORLD_NAME);
-    }
+    use crate::core::city::{City, CityBundle};
 
     #[test]
     fn saving_and_loading() {
@@ -235,8 +198,7 @@ mod tests {
 
     impl Plugin for TestGameWorldPlugin {
         fn build(&self, app: &mut App) {
-            app.init_resource::<Cli>()
-                .init_resource::<GamePaths>()
+            app.init_resource::<GamePaths>()
                 .add_plugin(AssetPlugin)
                 .add_plugin(ScenePlugin)
                 .add_plugin(GameWorldPlugin);
