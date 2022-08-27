@@ -101,7 +101,7 @@ impl ObjectPlugin {
         action_state: Res<ActionState<ControlAction>>,
     ) -> Option<Entity> {
         if let Some(entity) = entity {
-            if action_state.just_pressed(ControlAction::ConfirmPlacement) {
+            if action_state.just_pressed(ControlAction::Confirm) {
                 commands.entity(entity).insert(MovingObject);
                 None
             } else {
@@ -209,11 +209,11 @@ fn set_outline_recursive(
 }
 
 fn is_placement_canceled(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::CancelPlacement)
+    action_state.just_pressed(ControlAction::Cancel)
 }
 
 fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::ConfirmPlacement)
+    action_state.just_pressed(ControlAction::Confirm)
 }
 
 fn is_moving_object(moving_objects: Query<(), With<MovingObject>>) -> bool {
@@ -317,7 +317,7 @@ mod tests {
 
         let moving_entity = app.world.spawn().insert(MovingObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
-        action_state.press(ControlAction::ConfirmPlacement);
+        action_state.press(ControlAction::Confirm);
 
         app.update();
 
@@ -331,7 +331,7 @@ mod tests {
 
         let moving_entity = app.world.spawn().insert(MovingObject).id();
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
-        action_state.press(ControlAction::CancelPlacement);
+        action_state.press(ControlAction::Cancel);
 
         app.update();
 
@@ -446,7 +446,7 @@ mod tests {
 
         app.world
             .resource_mut::<ActionState<ControlAction>>()
-            .press(ControlAction::ConfirmPlacement);
+            .press(ControlAction::Confirm);
 
         app.update();
 
