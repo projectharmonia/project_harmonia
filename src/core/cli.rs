@@ -49,7 +49,7 @@ impl CliPlugin {
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
     ) -> Result<()> {
-        if let Some(city_name) = cli.city() {
+        if let Some(city_name) = cli.city_name() {
             let city_entity = cities
                 .iter()
                 .find(|(_, name)| name.as_str() == city_name)
@@ -89,12 +89,12 @@ pub(crate) struct Cli {
 
 impl Cli {
     /// Returns city to load if was specified from any subcommand.
-    pub(crate) fn city(&self) -> Option<&String> {
+    pub(crate) fn city_name(&self) -> Option<&String> {
         match &self.subcommand {
             Some(GameCommand::Play {
                 world_name: _,
-                city,
-            }) => city.as_ref(),
+                city_name,
+            }) => city_name.as_ref(),
             None => None,
         }
     }
@@ -126,7 +126,7 @@ pub(crate) enum GameCommand {
 
         /// City name to load.
         #[clap(short, long)]
-        city: Option<String>,
+        city_name: Option<String>,
     },
 }
 
@@ -143,7 +143,7 @@ mod tests {
             .insert_resource(Cli {
                 subcommand: Some(GameCommand::Play {
                     world_name: WORLD_NAME.to_string(),
-                    city: None,
+                    city_name: None,
                 }),
             })
             .add_plugin(CliPlugin);
@@ -169,7 +169,7 @@ mod tests {
         app.insert_resource(Cli {
             subcommand: Some(GameCommand::Play {
                 world_name: String::new(),
-                city: Some(CITY_NAME.to_string()),
+                city_name: Some(CITY_NAME.to_string()),
             }),
         });
 
