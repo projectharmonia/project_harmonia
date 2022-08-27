@@ -10,11 +10,13 @@ mod ui;
 use bevy::{asset::AssetServerSettings, log::LogSettings, prelude::*};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::prelude::*;
+use bevy_mod_outline::OutlinePlugin;
+use bevy_mod_raycast::DefaultRaycastingPlugin;
 use bevy_rapier3d::prelude::*;
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::{cli::Cli, control_action::ControlAction, CorePlugins};
+use crate::core::{cli::Cli, control_action::ControlAction, object::ObjectPath, CorePlugins};
 use ui::{ui_action::UiAction, UiPlugins};
 
 struct DollisPlugins;
@@ -29,6 +31,8 @@ impl PluginGroup for DollisPlugins {
             .add(InputManagerPlugin::<ControlAction>::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(RapierDebugRenderPlugin::default())
+            .add(DefaultRaycastingPlugin::<ObjectPath>::default())
+            .add(OutlinePlugin)
             .add(EguiPlugin)
             .add(WorldInspectorPlugin::new());
 

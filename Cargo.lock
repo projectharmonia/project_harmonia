@@ -537,6 +537,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_outline"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76c166415837ecceae65abf0eb092d301a167d4880514fc941cccdd0dc59e1e8"
+dependencies = [
+ "bevy",
+ "thiserror",
+]
+
+[[package]]
 name = "bevy_mod_raycast"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1306,6 +1316,7 @@ dependencies = [
  "bevy-inspector-egui",
  "bevy-scene-hook",
  "bevy_egui",
+ "bevy_mod_outline",
  "bevy_mod_raycast",
  "bevy_rapier3d",
  "clap",

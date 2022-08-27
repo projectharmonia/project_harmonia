@@ -1,17 +1,17 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
+use bevy_mod_outline::{Outline, OutlineBundle};
 use bevy_mod_raycast::Ray3d;
+use bevy_mod_raycast::{RayCastMesh, RayCastSource};
 use bevy_rapier3d::prelude::*;
+use bevy_scene_hook::SceneHook;
 use derive_more::From;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::{
-    asset_metadata,
-    control_action::ControlAction,
-    errors,
-    game_world::{GameEntity, GameWorld},
-    preview::PreviewCamera,
+    asset_metadata, control_action::ControlAction, errors, game_state::GameState,
+    game_world::GameEntity, preview::PreviewCamera,
 };
 
 pub(super) struct ObjectPlugin;
@@ -22,18 +22,25 @@ impl Plugin for ObjectPlugin {
             .add_system(
                 Self::spawn_scene_system
                     .chain(errors::log_err_system)
-                    .run_if_resource_exists::<GameWorld>(),
+                    .run_in_state(GameState::City),
             )
-            .add_system(Self::movement_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
                 Self::confirm_system
-                    .run_if_resource_exists::<GameWorld>()
+                    .run_in_state(GameState::City)
                     .run_if(is_placement_confirmed),
             )
             .add_system(
                 Self::cancel_system
-                    .run_if_resource_exists::<GameWorld>()
+                    .run_in_state(GameState::City)
                     .run_if(is_placement_canceled),
+            )
+            .add_system(
+                Self::ray_system
+                    .chain(Self::selection_system)
+                    .chain(Self::outline_system)
+                    .run_in_state(GameState::City)
+                    .run_if(is_moving_object),
             );
     }
 }
@@ -53,10 +60,77 @@ impl ObjectPlugin {
                 .entity(entity)
                 .insert(scene_handle)
                 .insert(GlobalTransform::default())
+                .insert(SceneHook::new(|entity, commands| {
+                    if entity.contains::<Handle<Mesh>>() {
+                        commands
+                            .insert_bundle(OutlineBundle {
+                                outline: Outline {
+                                    visible: false,
+                                    colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
+                                    width: 2.0,
+                                },
+                                ..Default::default()
+                            })
+                            .insert(RayCastMesh::<ObjectPath>::default());
+                    }
+                }))
                 .insert_bundle(VisibilityBundle::default());
         }
 
         Ok(())
+    }
+
+    fn ray_system(
+        ray_sources: Query<&RayCastSource<ObjectPath>>,
+        parents: Query<(Option<&Parent>, Option<&ObjectPath>)>,
+    ) -> Option<Entity> {
+        for source in &ray_sources {
+            if let Some((child_entity, _)) = source.intersect_top() {
+                let entity = find_parent_object(child_entity, &parents)
+                    .expect("Unable to find an object entity");
+                return Some(entity);
+            }
+        }
+
+        None
+    }
+
+    fn selection_system(
+        In(entity): In<Option<Entity>>,
+        mut commands: Commands,
+        action_state: Res<ActionState<ControlAction>>,
+    ) -> Option<Entity> {
+        if let Some(entity) = entity {
+            if action_state.just_pressed(ControlAction::ConfirmPlacement) {
+                commands.entity(entity).insert(MovingObject);
+                None
+            } else {
+                Some(entity)
+            }
+        } else {
+            None
+        }
+    }
+
+    fn outline_system(
+        In(entity): In<Option<Entity>>,
+        mut previous_entity: Local<Option<Entity>>,
+        mut outlines: Query<&mut Outline>,
+        children: Query<&Children>,
+    ) {
+        if *previous_entity == entity {
+            return;
+        }
+
+        if let Some(entity) = entity {
+            set_outline_recursive(entity, true, &mut outlines, &children);
+        }
+
+        if let Some(entity) = *previous_entity {
+            set_outline_recursive(entity, false, &mut outlines, &children);
+        }
+
+        *previous_entity = entity;
     }
 
     fn movement_system(
@@ -103,12 +177,47 @@ impl ObjectPlugin {
     }
 }
 
+/// Iterates up the hierarchy until it finds a parent with an [`ObjectPath`] component if exists.
+// TODO: Remove option from parent when object will be spawned as city children.
+fn find_parent_object(
+    entity: Entity,
+    parents: &Query<(Option<&Parent>, Option<&ObjectPath>)>,
+) -> Option<Entity> {
+    let (parent, object_path) = parents.get(entity).unwrap();
+    if object_path.is_some() {
+        return Some(entity);
+    }
+
+    find_parent_object(parent?.get(), parents)
+}
+
+fn set_outline_recursive(
+    entity: Entity,
+    visible: bool,
+    outlines: &mut Query<&mut Outline>,
+    children: &Query<&Children>,
+) {
+    if let Ok(mut outline) = outlines.get_mut(entity) {
+        outline.visible = visible;
+    }
+
+    if let Ok(entity_children) = children.get(entity) {
+        for &child in entity_children {
+            set_outline_recursive(child, visible, outlines, children);
+        }
+    }
+}
+
 fn is_placement_canceled(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::CancelPlacement)
 }
 
 fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::ConfirmPlacement)
+}
+
+fn is_moving_object(moving_objects: Query<(), With<MovingObject>>) -> bool {
+    moving_objects.is_empty()
 }
 
 #[derive(Component)]
@@ -128,9 +237,63 @@ pub(crate) struct ObjectPath(String);
 
 #[cfg(test)]
 mod tests {
-    use bevy::asset::AssetPlugin;
+    use bevy::{asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState};
+    use bevy_mod_raycast::IntersectionData;
 
     use super::*;
+
+    #[test]
+    fn parent_search() {
+        let mut world = World::new();
+        let child_entity = world.spawn().id();
+        let root_entity = world
+            .spawn()
+            .insert(ObjectPath::default())
+            .with_children(|parent| {
+                parent.spawn().push_children(&[child_entity]);
+            })
+            .id();
+
+        let mut system_state: SystemState<Query<(Option<&Parent>, Option<&ObjectPath>)>> =
+            SystemState::new(&mut world);
+
+        let entity = find_parent_object(child_entity, &system_state.get(&world))
+            .expect("Unable to find parent entity");
+        assert_eq!(entity, root_entity);
+    }
+
+    #[test]
+    fn recursive_outline() {
+        let mut world = World::new();
+        let child_entity1 = world.spawn().insert(Outline::default()).id();
+        let child_entity2 = world
+            .spawn()
+            .insert(Outline::default())
+            .push_children(&[child_entity1])
+            .id();
+        let root_entity = world
+            .spawn()
+            .insert(Outline::default())
+            .push_children(&[child_entity2])
+            .id();
+
+        let mut system_state: SystemState<(Query<&mut Outline>, Query<&Children>)> =
+            SystemState::new(&mut world);
+
+        const VISIBLE: bool = false;
+        let (mut outlines, children) = system_state.get_mut(&mut world);
+        set_outline_recursive(root_entity, VISIBLE, &mut outlines, &children);
+
+        assert_eq!(
+            world.get::<Outline>(child_entity1).unwrap().visible,
+            VISIBLE
+        );
+        assert_eq!(
+            world.get::<Outline>(child_entity2).unwrap().visible,
+            VISIBLE
+        );
+        assert_eq!(world.get::<Outline>(root_entity).unwrap().visible, VISIBLE);
+    }
 
     #[test]
     fn spawning() {
@@ -175,14 +338,131 @@ mod tests {
         assert!(app.world.get_entity(moving_entity).is_none());
     }
 
+    #[test]
+    fn hovering() {
+        let mut app = App::new();
+        app.add_plugin(CorePlugin)
+            .add_plugin(TestMovingObjectPlugin);
+
+        let outline_entity = app
+            .world
+            .spawn()
+            .insert(Outline {
+                visible: false,
+                ..Default::default()
+            })
+            .insert(ObjectPath::default())
+            .id();
+
+        let mut ray_source = RayCastSource::<ObjectPath>::default();
+        ray_source.intersections_mut().push((
+            outline_entity,
+            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
+        ));
+        let ray_entity = app.world.spawn().insert(ray_source).id();
+
+        app.update();
+
+        assert!(app.world.get::<Outline>(outline_entity).unwrap().visible);
+
+        let next_outline_entity = app
+            .world
+            .spawn()
+            .insert(Outline {
+                visible: false,
+                ..Default::default()
+            })
+            .insert(ObjectPath::default())
+            .id();
+        let mut ray_source = app
+            .world
+            .get_mut::<RayCastSource<ObjectPath>>(ray_entity)
+            .unwrap();
+        ray_source.intersections_mut().clear();
+        ray_source.intersections_mut().push((
+            next_outline_entity,
+            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
+        ));
+
+        app.update();
+
+        assert!(!app.world.get::<Outline>(outline_entity).unwrap().visible);
+        assert!(
+            app.world
+                .get::<Outline>(next_outline_entity)
+                .unwrap()
+                .visible
+        );
+    }
+
+    #[test]
+    fn no_hovering() {
+        let mut app = App::new();
+        app.add_plugin(CorePlugin)
+            .add_plugin(TestMovingObjectPlugin);
+
+        let outline_entity = app
+            .world
+            .spawn()
+            .insert(Outline {
+                visible: false,
+                ..Default::default()
+            })
+            .insert(ObjectPath::default())
+            .id();
+
+        app.world
+            .spawn()
+            .insert(RayCastSource::<ObjectPath>::default());
+
+        app.update();
+
+        let outline = app.world.get::<Outline>(outline_entity).unwrap();
+        assert!(!outline.visible);
+    }
+
+    #[test]
+    fn selection() {
+        let mut app = App::new();
+        app.add_plugin(CorePlugin)
+            .add_plugin(TestMovingObjectPlugin);
+
+        let outline_entity = app
+            .world
+            .spawn()
+            .insert(Outline {
+                visible: false,
+                ..Default::default()
+            })
+            .insert(ObjectPath::default())
+            .id();
+
+        let mut ray_source = RayCastSource::<ObjectPath>::default();
+        ray_source.intersections_mut().push((
+            outline_entity,
+            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
+        ));
+        app.world.spawn().insert(ray_source);
+
+        app.world
+            .resource_mut::<ActionState<ControlAction>>()
+            .press(ControlAction::ConfirmPlacement);
+
+        app.update();
+
+        let outlined_entity = app.world.entity(outline_entity);
+        assert!(!outlined_entity.get::<Outline>().unwrap().visible);
+        assert!(outlined_entity.contains::<MovingObject>());
+    }
+
     struct TestMovingObjectPlugin;
 
     impl Plugin for TestMovingObjectPlugin {
         fn build(&self, app: &mut App) {
-            app.init_resource::<RapierContext>()
+            app.add_loopless_state(GameState::City)
+                .init_resource::<RapierContext>()
                 .init_resource::<Windows>()
                 .init_resource::<ActionState<ControlAction>>()
-                .init_resource::<GameWorld>()
                 .add_plugin(AssetPlugin)
                 .add_plugin(ObjectPlugin);
         }

@@ -13,6 +13,7 @@ bevy = { version = "0.8", default-features = false, features = [
 ] }
 bevy_rapier3d = "0.16"
 bevy_mod_raycast = "0.6"
+bevy_mod_outline = { version = "0.2", default-features = false }
 bevy_egui = "0.15"
 bevy-inspector-egui = { version = "0.12", default-features = false, features = [
   "clipboard",

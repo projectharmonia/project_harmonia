@@ -1,10 +1,11 @@
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{input::mouse::MouseMotion, prelude::*};
+use bevy_mod_raycast::{RayCastMethod, RayCastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{city::City, control_action::ControlAction, game_state::GameState};
+use super::{city::City, control_action::ControlAction, game_state::GameState, object::ObjectPath};
 
 #[derive(SystemLabel)]
 enum OrbitCameraSystem {
@@ -40,7 +41,8 @@ impl Plugin for OrbitCameraPlugin {
                     .after(OrbitCameraSystem::Rotation)
                     .after(OrbitCameraSystem::Position)
                     .after(OrbitCameraSystem::Arm),
-            );
+            )
+            .add_system(Self::update_raycast_source_system.run_in_state(GameState::City));
     }
 }
 
@@ -118,6 +120,17 @@ impl OrbitCameraPlugin {
             orbit_rotation.sphere_pos() * spring_arm.interpolated + orbit_origin.interpolated;
         transform.look_at(orbit_origin.interpolated, Vec3::Y);
     }
+
+    fn update_raycast_source_system(
+        mut cursor_events: EventReader<CursorMoved>,
+        mut ray_sources: Query<&mut RayCastSource<ObjectPath>>,
+    ) {
+        if let Some(cursor_pos) = cursor_events.iter().last().map(|event| event.position) {
+            for mut ray_source in &mut ray_sources {
+                ray_source.cast_method = RayCastMethod::Screenspace(cursor_pos);
+            }
+        }
+    }
 }
 
 fn is_rotating_camera(action_state: Res<ActionState<ControlAction>>) -> bool {
@@ -150,6 +163,7 @@ pub(super) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arg: SpringArm,
+    ray_source: RayCastSource<ObjectPath>,
 }
 
 /// The origin of a camera.
@@ -194,7 +208,7 @@ impl Default for SpringArm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::{core::CorePlugin, time::TimePlugin};
+    use bevy::{core::CorePlugin, time::TimePlugin, window::WindowId};
 
     #[test]
     fn movement_direction_normalization() {
@@ -231,21 +245,16 @@ mod tests {
     #[test]
     fn spawning_and_controlling() {
         let mut app = App::new();
-        app.add_event::<MouseMotion>()
-            .init_resource::<ActionState<ControlAction>>()
-            .add_loopless_state(GameState::World)
-            .add_plugin(CorePlugin)
-            .add_plugin(TimePlugin)
-            .add_plugin(OrbitCameraPlugin);
+        app.add_plugin(TestOrbitCameraPlugin);
 
-        let controlled_entity = app
+        let city_entity = app
             .world
             .spawn()
             .insert(City)
             .insert(Visibility::default())
             .id();
-
         app.world.insert_resource(NextState(GameState::City));
+
         app.update();
 
         let (camera_entity, parent) = app
@@ -255,7 +264,7 @@ mod tests {
 
         assert_eq!(
             parent.get(),
-            controlled_entity,
+            city_entity,
             "Camera should be spawned as a child",
         );
 
@@ -268,5 +277,49 @@ mod tests {
         let transform = app.world.get::<Transform>(camera_entity).unwrap();
         assert_ne!(transform.translation, Vec3::ZERO);
         assert!(!transform.rotation.is_nan());
+    }
+
+    #[test]
+    fn ray_source_updating() {
+        let mut app = App::new();
+        app.add_plugin(TestOrbitCameraPlugin);
+
+        app.world.spawn().insert(City).insert(Visibility::default());
+        app.world.insert_resource(NextState(GameState::City));
+
+        app.update();
+
+        const CURSOR_POS: Vec2 = Vec2::ONE;
+        let mut cursor_events = app.world.resource_mut::<Events<CursorMoved>>();
+        cursor_events.send(CursorMoved {
+            id: WindowId::new(),
+            position: CURSOR_POS,
+        });
+
+        app.world.insert_resource(NextState(GameState::City));
+
+        app.update();
+
+        let ray_source = app
+            .world
+            .query::<&RayCastSource<ObjectPath>>()
+            .single(&app.world);
+        assert!(
+            matches!(ray_source.cast_method, RayCastMethod::Screenspace(pos) if pos == CURSOR_POS)
+        )
+    }
+
+    struct TestOrbitCameraPlugin;
+
+    impl Plugin for TestOrbitCameraPlugin {
+        fn build(&self, app: &mut App) {
+            app.add_event::<CursorMoved>()
+                .add_event::<MouseMotion>()
+                .init_resource::<ActionState<ControlAction>>()
+                .add_loopless_state(GameState::World)
+                .add_plugin(CorePlugin)
+                .add_plugin(TimePlugin)
+                .add_plugin(OrbitCameraPlugin);
+        }
     }
 }
