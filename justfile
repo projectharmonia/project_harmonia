@@ -13,5 +13,5 @@ coverage *ARGS: raw-coverage
     --ignore "src/ui*" \
     --ignore "*/main.rs" \
     --ignore "src/core/cli.rs" \
-    --ignore "src/core/moving_object.rs" \
+    --ignore "src/core/object.rs" \
     {{ ARGS }}

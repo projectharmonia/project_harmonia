@@ -3,8 +3,10 @@ use bevy::{asset::HandleId, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    asset_metadata, errors::log_err_system, game_state::GameState, moving_object::MovingObject,
-    object::ObjectBundle,
+    asset_metadata,
+    errors::log_err_system,
+    game_state::GameState,
+    object::{MovingObject, ObjectBundle},
 };
 
 pub(super) struct SelectedObjectPlugin;
