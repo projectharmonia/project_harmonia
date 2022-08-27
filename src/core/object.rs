@@ -104,11 +104,11 @@ impl ObjectPlugin {
 }
 
 fn is_placement_canceled(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.pressed(ControlAction::CancelPlacement)
+    action_state.just_pressed(ControlAction::CancelPlacement)
 }
 
 fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.pressed(ControlAction::ConfirmPlacement)
+    action_state.just_pressed(ControlAction::ConfirmPlacement)
 }
 
 #[derive(Component)]
