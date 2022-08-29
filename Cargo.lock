@@ -718,7 +718,7 @@ dependencies = [
  "bevy_render",
  "bevy_transform",
  "bevy_utils",
- "ron",
+ "ron 0.7.1",
  "serde",
  "thiserror",
  "uuid",
@@ -1402,7 +1402,7 @@ dependencies = [
  "iyes_scene_tools",
  "leafwing-input-manager",
  "once_cell",
- "ron",
+ "ron 0.8.0",
  "serde",
  "smallvec",
  "standard_paths",
@@ -2011,7 +2011,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0d5c42d3ea0709cdf262149eaaa9de3e869ee75b0c09f23e9a6b9721dfd2cdc"
 dependencies = [
  "bevy",
- "ron",
+ "ron 0.7.1",
  "thiserror",
 ]
 
@@ -3032,6 +3032,17 @@ name = "ron"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88073939a61e5b7680558e6be56b419e208420c2adb92be54921fa6b72283f1a"
+dependencies = [
+ "base64",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
+name = "ron"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
 dependencies = [
  "base64",
  "bitflags",
