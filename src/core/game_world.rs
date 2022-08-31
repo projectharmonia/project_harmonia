@@ -1,16 +1,24 @@
+mod ignore_rules;
+
 use std::{borrow::Cow, fs};
 
 use anyhow::{Context, Result};
-use bevy::{prelude::*, reflect::TypeRegistry, scene::serde::SceneDeserializer};
+use bevy::{
+    ecs::archetype::ArchetypeId,
+    prelude::*,
+    reflect::TypeRegistry,
+    scene::{serde::SceneDeserializer, DynamicEntity},
+};
 use iyes_loopless::prelude::*;
-use iyes_scene_tools::SceneBuilder;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{city::City, errors, game_paths::GamePaths};
+use super::{errors, game_paths::GamePaths};
+use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
+    Saving,
     Loading,
 }
 
@@ -20,52 +28,45 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<GameEntity>()
             .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
+            .init_resource::<IgnoreRules>()
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
+            .add_system(
+                Self::saving_system
+                    .chain(errors::log_err_system)
+                    .run_on_event::<GameSaved>()
+                    .label(GameWorldSystem::Saving),
+            )
             .add_system(
                 Self::loading_system
                     .chain(errors::log_err_system)
                     .run_on_event::<GameLoaded>()
                     .label(GameWorldSystem::Loading),
             );
-
-        {
-            // To avoid ambiguity: https://github.com/IyesGames/iyes_loopless/issues/15
-            use iyes_loopless::condition::IntoConditionalExclusiveSystem;
-            app.add_system(
-                Self::logged_saving_system
-                    .run_on_event::<GameSaved>()
-                    .before_commands(),
-            );
-        }
     }
 }
 
 impl GameWorldPlugin {
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    fn saving_system(world: &mut World) -> Result<()> {
-        let game_world = world.resource::<GameWorld>();
-        let game_paths = world.resource::<GamePaths>();
+    fn saving_system(
+        world: &World,
+        game_world: Res<GameWorld>,
+        game_paths: Res<GamePaths>,
+        type_registry: Res<TypeRegistry>,
+        ignore_rules: Res<IgnoreRules>,
+    ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
+
         fs::create_dir_all(&game_paths.worlds)
-            .with_context(|| format!("Unable to create {:?}", game_paths.worlds))?;
+            .with_context(|| format!("Unable to create {world_path:?}"))?;
 
-        let mut builder = SceneBuilder::new(world);
-        builder.add_from_query_filter::<With<GameEntity>>();
-        builder.add_with_components::<(&City, &Name), ()>();
-        builder.ignore_components::<(
-            &Camera,
-            &GlobalTransform,
-            &Visibility,
-            &ComputedVisibility,
-            &Children,
-            &Handle<Scene>,
-        )>();
+        let scene = save_to_scene(world, &*type_registry, &*ignore_rules);
+        let bytes = scene
+            .serialize_ron(&type_registry)
+            .expect("Unable to serlialize world");
 
-        builder
-            .export_to_file(&world_path)
-            .map(|_| ())
-            .with_context(|| format!("Unable to save world to {world_path:?}"))
+        fs::write(&world_path, bytes)
+            .with_context(|| format!("Unable to save game to {world_path:?}"))
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
@@ -93,11 +94,56 @@ impl GameWorldPlugin {
 
         Ok(())
     }
+}
 
-    /// Calls [`Self::loading_system`] with error logging.
-    fn logged_saving_system(world: &mut World) {
-        errors::log_err_system(In(Self::saving_system(world)));
+/// Iterates over a world and serializes all components that implement [`Reflect`]
+/// and not filtered using [`IgnoreRules`]
+fn save_to_scene(
+    world: &World,
+    type_registry: &TypeRegistry,
+    ignore_rules: &IgnoreRules,
+) -> DynamicScene {
+    let mut scene = DynamicScene::default();
+    let type_registry = type_registry.read();
+    for archetype in world
+        .archetypes()
+        .iter()
+        .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
+        .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
+        .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
+        .filter(|archetype| !ignore_rules.ignored_archetype(archetype))
+    {
+        let entities_offset = scene.entities.len();
+        for entity in archetype.entities() {
+            scene.entities.push(DynamicEntity {
+                entity: entity.id(),
+                components: Vec::new(),
+            });
+        }
+
+        for reflect_component in archetype
+            .components()
+            .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
+            .filter_map(|component_id| {
+                // SAFETY: `component_id` retrieved from the world.
+                unsafe { world.components().get_info_unchecked(component_id) }.type_id()
+            })
+            .filter_map(|type_id| type_registry.get(type_id))
+            .filter_map(|registration| registration.data::<ReflectComponent>())
+        {
+            for (index, entity) in archetype.entities().iter().enumerate() {
+                let reflect = reflect_component
+                    .reflect(world, *entity)
+                    .expect("Unable to reflect component");
+
+                scene.entities[entities_offset + index]
+                    .components
+                    .push(reflect.clone_value());
+            }
+        }
     }
+
+    scene
 }
 
 /// All entities with this component will be removed after leaving [`InGame`] state.
@@ -138,10 +184,13 @@ mod tests {
         let mut app = App::new();
         app.register_type::<Camera>()
             .register_type::<City>()
+            .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin)
+            .add_plugin(AssetPlugin)
+            .add_plugin(ScenePlugin)
             .add_plugin(TransformPlugin)
-            .add_plugin(TestGameWorldPlugin);
+            .add_plugin(GameWorldPlugin);
 
         const TRANSFORM: Transform = Transform::identity();
         let non_game_entity = app.world.spawn().insert(Transform::identity()).id();
@@ -154,6 +203,12 @@ mod tests {
             })
             .insert(Camera::default())
             .insert(GameEntity)
+            .id();
+        let non_game_city = app
+            .world
+            .spawn()
+            .insert_bundle(SpatialBundle::default())
+            .insert(City)
             .id();
         let city = app
             .world
@@ -169,6 +224,7 @@ mod tests {
         app.update();
 
         app.world.entity_mut(non_game_entity).despawn();
+        app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
         let mut save_events = app.world.resource_mut::<Events<GameLoaded>>();
@@ -192,16 +248,5 @@ mod tests {
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
             "Camera component shouldn't be saved"
         );
-    }
-
-    struct TestGameWorldPlugin;
-
-    impl Plugin for TestGameWorldPlugin {
-        fn build(&self, app: &mut App) {
-            app.init_resource::<GamePaths>()
-                .add_plugin(AssetPlugin)
-                .add_plugin(ScenePlugin)
-                .add_plugin(GameWorldPlugin);
-        }
     }
 }

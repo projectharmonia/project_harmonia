@@ -1399,7 +1399,6 @@ dependencies = [
  "derive_more",
  "fastrand",
  "iyes_loopless",
- "iyes_scene_tools",
  "leafwing-input-manager",
  "once_cell",
  "ron",
@@ -2002,17 +2001,6 @@ dependencies = [
  "bevy_ecs",
  "bevy_time",
  "bevy_utils",
-]
-
-[[package]]
-name = "iyes_scene_tools"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0d5c42d3ea0709cdf262149eaaa9de3e869ee75b0c09f23e9a6b9721dfd2cdc"
-dependencies = [
- "bevy",
- "ron",
- "thiserror",
 ]
 
 [[package]]

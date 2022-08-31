@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::game_world::GameWorld;
+use super::game_world::{GameEntity, GameWorld};
 
 pub(super) struct CityPlugin;
 
@@ -52,11 +52,16 @@ impl CityPlugin {
 pub(crate) struct CityBundle {
     name: Name,
     city: City,
+    game_world: GameEntity,
 }
 
 impl CityBundle {
     pub(crate) fn new(name: Name) -> Self {
-        Self { name, city: City }
+        Self {
+            name,
+            city: City,
+            game_world: GameEntity,
+        }
     }
 }
 
