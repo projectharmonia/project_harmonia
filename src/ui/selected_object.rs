@@ -1,9 +1,8 @@
-use anyhow::{Context, Result};
 use bevy::{asset::HandleId, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    asset_metadata, errors,
+    asset_metadata,
     game_state::GameState,
     object::{MovingObject, ObjectBundle},
 };
@@ -17,7 +16,6 @@ impl Plugin for SelectedObjectPlugin {
             // otherwise `MovingObject` will be missing and it will be detected as removal.
             CoreStage::PreUpdate,
             Self::spawn_selection_system
-                .chain(errors::log_err_system)
                 .run_in_state(GameState::City)
                 .run_if_resource_added::<SelectedObject>(),
         )
@@ -34,13 +32,12 @@ impl SelectedObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         selected_object: Res<SelectedObject>,
-    ) -> Result<()> {
+    ) {
         let metadata_path = asset_server
             .get_handle_path(selected_object.0)
             .expect("Unable to get metadata path from selected object");
 
-        let scene_path = asset_metadata::scene_path(metadata_path.path())
-            .context("Unable to get metadata path")?;
+        let scene_path = asset_metadata::scene_path(metadata_path.path());
 
         // TODO: Spawn it as a child of the selected city
         // once https://github.com/IyesGames/iyes_scene_tools/issues/5 will be fixed.
@@ -50,8 +47,6 @@ impl SelectedObjectPlugin {
                 ..Default::default()
             })
             .insert(MovingObject);
-
-        Ok(())
     }
 
     fn remove_selection_system(

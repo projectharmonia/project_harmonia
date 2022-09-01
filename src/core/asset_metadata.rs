@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bevy::{
     asset::{AssetLoader, AssetServerSettings, LoadContext, LoadedAsset},
     prelude::*,
@@ -77,17 +77,20 @@ impl AssetLoader for AssetMetadataLoader {
 
 /// Converts metadata path (path to a TOML file) into
 /// the corresponding scene path loadable by [`AssetServer`].
-pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> Result<String> {
+///
+/// # Panics
+///
+/// Panics if path is an invalid UTF-8 string.
+pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
     let mut scene_path = metadata_path
         .as_ref()
         .with_extension("gltf")
         .into_os_string()
         .into_string()
-        .ok()
-        .context("Not a UTF-8 asset path")?;
+        .expect("Resource metadata cannot have a non-UTF-8 path"); // Such metadata won't be loaded in the first place.
 
     scene_path += "#Scene0";
-    Ok(scene_path)
+    scene_path
 }
 
 #[derive(Deref, DerefMut)]

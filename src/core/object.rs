@@ -1,6 +1,5 @@
 use std::f32::consts::FRAC_PI_4;
 
-use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy_mod_outline::{Outline, OutlineBundle};
 use bevy_mod_raycast::Ray3d;
@@ -12,8 +11,8 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::{
-    asset_metadata, control_action::ControlAction, errors, game_state::GameState,
-    game_world::GameEntity, preview::PreviewCamera,
+    asset_metadata, control_action::ControlAction, game_state::GameState, game_world::GameEntity,
+    preview::PreviewCamera,
 };
 
 pub(super) struct ObjectPlugin;
@@ -21,11 +20,7 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<ObjectPath>()
-            .add_system(
-                Self::spawn_scene_system
-                    .chain(errors::log_err_system)
-                    .run_in_state(GameState::City),
-            )
+            .add_system(Self::spawn_scene_system.run_in_state(GameState::City))
             .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
                 Self::confirm_system
@@ -54,10 +49,9 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
-    ) -> Result<()> {
+    ) {
         for (entity, object_path) in &spawned_objects {
-            let scene_path = asset_metadata::scene_path(&object_path.0)
-                .context("Unable to get scene path to spawn object")?;
+            let scene_path = asset_metadata::scene_path(&object_path.0);
             let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
 
             commands
@@ -80,8 +74,6 @@ impl ObjectPlugin {
                 }))
                 .insert_bundle(VisibilityBundle::default());
         }
-
-        Ok(())
     }
 
     fn ray_system(

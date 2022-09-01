@@ -1,4 +1,3 @@
-use anyhow::{Context, Result};
 use bevy::{
     asset::{HandleId, LoadState},
     prelude::*,
@@ -16,7 +15,7 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::{asset_metadata, errors, game_world::GameWorld};
+use super::{asset_metadata, game_world::GameWorld};
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -30,11 +29,7 @@ impl Plugin for PreviewPlugin {
             .add_startup_system(Self::spawn_camera_system)
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
-            .add_system(
-                Self::load_asset_system
-                    .chain(errors::log_err_system)
-                    .run_in_state(PreviewState::Inactive),
-            )
+            .add_system(Self::load_asset_system.run_in_state(PreviewState::Inactive))
             .add_system(Self::wait_for_loading_system.run_in_state(PreviewState::LoadingAsset))
             .add_enter_system(PreviewState::Rendering, Self::finish_rendering_system);
     }
@@ -57,7 +52,7 @@ impl PreviewPlugin {
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
-    ) -> Result<()> {
+    ) {
         if let Some(preview_event) = preview_events
             .iter()
             .find(|preview_event| !previews.contains_key(&preview_event.0))
@@ -65,8 +60,7 @@ impl PreviewPlugin {
             let metadata_path = asset_server
                 .get_handle_path(preview_event.0)
                 .expect("Unable to get metadata path for preview");
-            let scene_path = asset_metadata::scene_path(metadata_path.path())
-                .context("Unable to get scene path for preview")?;
+            let scene_path = asset_metadata::scene_path(metadata_path.path());
             let scene_handle = asset_server.load(&scene_path);
 
             debug!("Loading {scene_path} to generate preview");
@@ -80,8 +74,6 @@ impl PreviewPlugin {
             commands.insert_resource(NextState(PreviewState::LoadingAsset));
         }
         preview_events.clear();
-
-        Ok(())
     }
 
     #[cfg_attr(coverage, no_coverage)]
@@ -325,7 +317,7 @@ mod tests {
     }
 
     #[test]
-    fn asset_loading() -> Result<()> {
+    fn asset_loading() {
         let mut app = App::new();
         app.add_plugin(TestPreviewPlugin).add_plugin(HookPlugin);
 
@@ -334,7 +326,7 @@ mod tests {
         let asset_server = app.world.resource::<AssetServer>();
         let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
         let preview_handle: Handle<Scene> =
-            asset_server.load(&asset_metadata::scene_path(METADATA_PATH)?);
+            asset_server.load(&asset_metadata::scene_path(METADATA_PATH));
 
         let camera_entity = app
             .world
@@ -361,8 +353,6 @@ mod tests {
             .query_filtered::<&RenderLayers, With<Handle<Mesh>>>()
             .single(&app.world);
         assert_eq!(render_layer, PREVIEW_RENDER_LAYER);
-
-        Ok(())
     }
 
     #[test]
