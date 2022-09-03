@@ -39,8 +39,9 @@ impl ConnectionSettings {
     pub(crate) fn create_client(&self) -> Result<RenetClient> {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         let client_id = current_time.as_millis() as u64;
-        let server_addr = SocketAddr::new(self.ip.parse()?, 0);
-        let socket = UdpSocket::bind(server_addr)?;
+        let ip = self.ip.parse()?;
+        let server_addr = SocketAddr::new(ip, self.port);
+        let socket = UdpSocket::bind((ip, 0))?;
         let authentication = ClientAuthentication::Unsecure {
             client_id,
             protocol_id: PROTOCOL_ID,
