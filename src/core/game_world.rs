@@ -52,7 +52,7 @@ impl GameWorldPlugin {
         world: &World,
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
-        type_registry: Res<TypeRegistry>,
+        registry: Res<TypeRegistry>,
         ignore_rules: Res<IgnoreRules>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
@@ -60,9 +60,9 @@ impl GameWorldPlugin {
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("Unable to create {world_path:?}"))?;
 
-        let scene = save_to_scene(world, &*type_registry, &*ignore_rules);
+        let scene = save_to_scene(world, &*registry, &*ignore_rules);
         let bytes = scene
-            .serialize_ron(&type_registry)
+            .serialize_ron(&registry)
             .expect("Unable to serlialize world");
 
         fs::write(&world_path, bytes)
@@ -75,7 +75,7 @@ impl GameWorldPlugin {
         mut scenes: ResMut<Assets<DynamicScene>>,
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
-        type_registry: Res<TypeRegistry>,
+        registry: Res<TypeRegistry>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
 
@@ -84,7 +84,7 @@ impl GameWorldPlugin {
         let mut deserializer = Deserializer::from_bytes(&bytes)
             .with_context(|| format!("Unable to parse {world_path:?}"))?;
         let scene_deserializer = SceneDeserializer {
-            type_registry: &type_registry.read(),
+            type_registry: &registry.read(),
         };
         let scene = scene_deserializer
             .deserialize(&mut deserializer)
@@ -100,11 +100,11 @@ impl GameWorldPlugin {
 /// and not filtered using [`IgnoreRules`]
 fn save_to_scene(
     world: &World,
-    type_registry: &TypeRegistry,
+    registry: &TypeRegistry,
     ignore_rules: &IgnoreRules,
 ) -> DynamicScene {
     let mut scene = DynamicScene::default();
-    let type_registry = type_registry.read();
+    let registry = registry.read();
     for archetype in world
         .archetypes()
         .iter()
@@ -128,7 +128,7 @@ fn save_to_scene(
                 // SAFETY: `component_id` retrieved from the world.
                 unsafe { world.components().get_info_unchecked(component_id) }.type_id()
             })
-            .filter_map(|type_id| type_registry.get(type_id))
+            .filter_map(|type_id| registry.get(type_id))
             .filter_map(|registration| registration.data::<ReflectComponent>())
         {
             for (index, entity) in archetype.entities().iter().enumerate() {
