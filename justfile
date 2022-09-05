@@ -1,9 +1,12 @@
 #!/usr/bin/env just --justfile
 
+clean:
+  cargo clean
+
 raw-coverage $RUSTC_BOOTSTRAP="1" $LLVM_PROFILE_FILE="target/coverage/profile-%p.profraw" $RUSTFLAGS="-C instrument-coverage --cfg coverage":
   cargo test 
 
-coverage *ARGS: raw-coverage
+coverage *ARGS: clean raw-coverage && clean
   grcov target/coverage \
     --binary-path target/debug/ \
     --source-dir . \
