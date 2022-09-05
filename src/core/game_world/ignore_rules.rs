@@ -8,7 +8,7 @@ use crate::core::{city::City, game_world::GameEntity};
 
 /// Contains [`ComponentId`]'s that used to decide if a component or
 /// the whole archetype should be excluded from serialization.
-pub(super) struct IgnoreRules {
+pub(crate) struct IgnoreRules {
     /// Components that should never be serialized.
     ignored: HashSet<ComponentId>,
     /// Ignore a key component if its value is present in an archetype.
@@ -43,12 +43,12 @@ impl FromWorld for IgnoreRules {
 
 impl IgnoreRules {
     /// Returns `true` if an archetype should be ignored.
-    pub(super) fn ignored_archetype(&self, archetype: &Archetype) -> bool {
+    pub(crate) fn ignored_archetype(&self, archetype: &Archetype) -> bool {
         !archetype.contains(self.game_entity_id)
     }
 
     /// Returns `true` if a component of an archetype should be ignored.
-    pub(super) fn ignored_component(
+    pub(crate) fn ignored_component(
         &self,
         archetype: &Archetype,
         component_id: ComponentId,

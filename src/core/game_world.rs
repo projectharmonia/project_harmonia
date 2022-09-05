@@ -1,4 +1,4 @@
-mod ignore_rules;
+pub(super) mod ignore_rules;
 
 use std::{borrow::Cow, fs};
 
