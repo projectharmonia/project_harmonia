@@ -59,11 +59,11 @@ impl PreviewPlugin {
         {
             let metadata_path = asset_server
                 .get_handle_path(preview_event.0)
-                .expect("Unable to get metadata path for preview");
+                .expect("metadata handle should have a path");
             let scene_path = asset_metadata::scene_path(metadata_path.path());
             let scene_handle = asset_server.load(&scene_path);
 
-            debug!("Loading {scene_path} to generate preview");
+            debug!("loading {scene_path} to generate preview");
 
             commands
                 .entity(preview_cameras.single())
@@ -91,7 +91,7 @@ impl PreviewPlugin {
         let (metadata_id, scene_handle) = preview_target.single();
         match asset_server.get_load_state(scene_handle) {
             LoadState::NotLoaded => unreachable!(
-                "Asset {:?} wasn't loaded when entering {} state",
+                "asset {:?} should have started loading when entering {} state",
                 asset_server.get_handle_path(metadata_id.0),
                 PreviewState::LoadingAsset
             ),
@@ -100,7 +100,7 @@ impl PreviewPlugin {
                 // Ignore logging in tests to exclude it from coverage.
                 #[cfg(not(test))]
                 debug!(
-                    "Asset {:?} was sucessfully loaded to generate preview",
+                    "asset {:?} was sucessfully loaded to generate preview",
                     asset_server.get_handle_path(metadata_id.0)
                 );
 
@@ -129,7 +129,7 @@ impl PreviewPlugin {
                 // Ignore logging in tests to exclude it from coverage.
                 #[cfg(not(test))]
                 error!(
-                    "Unable to load preview for {:?}",
+                    "unable to load preview for {:?}",
                     asset_server.get_handle_path(metadata_id.0)
                 );
 
@@ -138,7 +138,7 @@ impl PreviewPlugin {
             }
             LoadState::Unloaded => {
                 unreachable!(
-                    "Asset {:?} was unloaded during the generating preview",
+                    "asset {:?} shouldn't be unloaded during the generating preview",
                     asset_server.get_handle_path(metadata_id.0)
                 );
             }
@@ -146,7 +146,7 @@ impl PreviewPlugin {
     }
 
     fn finish_rendering_system(mut commands: Commands) {
-        debug!("Requested inactive state after rendering");
+        debug!("requested inactive state after rendering");
         commands.insert_resource(NextState(PreviewState::Inactive));
     }
 

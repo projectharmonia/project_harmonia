@@ -35,7 +35,7 @@ impl SelectedObjectPlugin {
     ) {
         let metadata_path = asset_server
             .get_handle_path(selected_object.0)
-            .expect("Unable to get metadata path from selected object");
+            .expect("selected object metadata should have a path");
 
         let scene_path = asset_metadata::scene_path(metadata_path.path());
 
@@ -103,7 +103,7 @@ mod tests {
 
         assert!(
             app.world.get_resource::<SelectedObject>().is_none(),
-            "Selection should be removed when there is no moving object"
+            "selection should be removed when there is no moving object"
         );
     }
 }

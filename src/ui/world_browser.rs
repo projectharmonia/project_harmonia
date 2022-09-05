@@ -135,8 +135,9 @@ impl WorldBrowserPlugin {
                 ui.horizontal(|ui| {
                     if ui.button("Remove").clicked() {
                         let world = world_browser.worlds.remove(dialog.world_index);
-                        fs::remove_file(game_paths.world_path(&world))
-                            .tap_err(|e| error!("{e:#}"))
+                        let world_path = game_paths.world_path(&world);
+                        fs::remove_file(&world_path)
+                            .tap_err(|e| error!("unable to remove {world_path:?}: {e}"))
                             .ok();
                         ui.close_modal();
                     }
@@ -162,7 +163,7 @@ impl FromWorld for WorldBrowser {
             worlds: world
                 .resource::<GamePaths>()
                 .get_world_names()
-                .tap_err(|e| error!("{e:#}"))
+                .tap_err(|e| error!("unable to get world names: {e}"))
                 .unwrap_or_default(),
         }
     }

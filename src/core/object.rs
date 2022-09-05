@@ -83,7 +83,7 @@ impl ObjectPlugin {
         for source in &ray_sources {
             if let Some((child_entity, _)) = source.intersect_top() {
                 let entity = find_parent_object(child_entity, &parents)
-                    .expect("Unable to find an object entity");
+                    .expect("object entity should have a parent");
                 return Some(entity);
             }
         }
@@ -143,7 +143,7 @@ impl ObjectPlugin {
             {
                 let (&camera_transform, camera) = camera.single();
                 let ray = Ray3d::from_screenspace(cursor_pos, camera, &camera_transform)
-                    .expect("Unable to create ray from screenspace");
+                    .expect("ray should be created from screen coordinates");
 
                 let toi = rapier_ctx
                     .cast_ray(
@@ -258,7 +258,7 @@ mod tests {
             SystemState::new(&mut world);
 
         let entity = find_parent_object(child_entity, &system_state.get(&world))
-            .expect("Unable to find parent entity");
+            .expect("object should have a parent");
         assert_eq!(entity, root_entity);
     }
 

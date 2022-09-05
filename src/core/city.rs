@@ -118,12 +118,12 @@ mod tests {
             let transform = *app
                 .world
                 .get::<Transform>(city_entity)
-                .unwrap_or_else(|| panic!("Added city {index} should be placed"));
+                .unwrap_or_else(|| panic!("added city {index} should be placed"));
 
             assert_eq!(
                 transform,
                 Transform::from_translation(Vec3::X * CityPlugin::CITY_SIZE * index as f32),
-                "City {index} should be placed with offset",
+                "city {index} should be placed with offset",
             );
         }
     }

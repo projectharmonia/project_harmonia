@@ -39,7 +39,7 @@ impl CliPlugin {
         {
             let server = server_settings
                 .create_server()
-                .context("Unable to create server")?;
+                .context("unable to create server")?;
             commands.insert_resource(server);
             commands.insert_resource(server_settings.clone());
         }
@@ -51,7 +51,7 @@ impl CliPlugin {
         if let Some(GameCommand::Join(connection_settings)) = &cli.subcommand {
             let client = connection_settings
                 .create_client()
-                .context("Unable to create client")?;
+                .context("unable to create client")?;
             commands.insert_resource(client);
             commands.insert_resource(connection_settings.clone());
         }
@@ -88,7 +88,7 @@ impl CliPlugin {
                 .iter()
                 .find(|(_, name)| name.as_str() == city_name)
                 .map(|(city, _)| city)
-                .with_context(|| format!("Unable to find city named {city_name}"))?;
+                .with_context(|| format!("unable to find city named {city_name}"))?;
 
             commands
                 .entity(city_entity)

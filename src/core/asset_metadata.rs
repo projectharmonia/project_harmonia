@@ -44,7 +44,7 @@ impl AssetMetadataPlugin {
                     let path = entry
                         .path()
                         .strip_prefix(&folder)
-                        .unwrap_or_else(|e| panic!("Entries should start with {folder:?}: {e:#}"));
+                        .unwrap_or_else(|e| panic!("entries should start with {folder:?}: {e}"));
                     handles.push(asset_server.load::<AssetMetadata, _>(path));
                 }
             }
@@ -87,7 +87,7 @@ pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
         .with_extension("gltf")
         .into_os_string()
         .into_string()
-        .expect("Resource metadata cannot have a non-UTF-8 path"); // Such metadata won't be loaded in the first place.
+        .expect("resource metadata path should be a UTF-8 string");
 
     scene_path += "#Scene0";
     scene_path
@@ -140,7 +140,7 @@ mod tests {
 
         assert!(
             !app.world.resource::<MetadataHandles>().is_empty(),
-            "Handles should be populated with assets"
+            "handles should be populated with assets"
         );
     }
 }

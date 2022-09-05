@@ -33,7 +33,7 @@ impl GamePaths {
         let entries = self
             .worlds
             .read_dir()
-            .with_context(|| format!("Unable to read {:?}", self.worlds))?;
+            .with_context(|| format!("unable to read {:?}", self.worlds))?;
         let mut worlds = Vec::new();
         for entry in entries.filter_map(Result::ok) {
             if let Some(name) = world_name(&entry) {
@@ -59,7 +59,7 @@ impl Default for GamePaths {
         #[cfg(not(test))]
         let config_dir = StandardPaths::default()
             .writable_location(LocationType::AppConfigLocation)
-            .expect("Unable to locate configuration directory");
+            .expect("app configuration directory should be found");
 
         let mut settings = config_dir.clone();
         settings.push(env!("CARGO_PKG_NAME"));
@@ -79,7 +79,7 @@ impl Drop for GamePaths {
         let config_dir = self
             .settings
             .parent()
-            .expect("Unable to get config dir from setting path");
+            .expect("settings location should have a parent dir");
         std::fs::remove_dir_all(config_dir).ok();
     }
 }

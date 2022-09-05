@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(
             parent.get(),
             city_entity,
-            "Camera should be spawned as a child",
+            "camera should be spawned as a child",
         );
 
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();

@@ -51,7 +51,7 @@ impl Settings {
     fn read(file_name: &Path) -> Result<Settings> {
         match fs::read_to_string(file_name) {
             Ok(content) => toml::from_str::<Settings>(&content)
-                .with_context(|| format!("Unable to read settings from {file_name:?}")),
+                .with_context(|| format!("unable to read settings from {file_name:?}")),
             Err(_) => Ok(Settings::default()),
         }
     }
@@ -60,17 +60,17 @@ impl Settings {
     ///
     /// Automatically creates all parent folders.
     fn write(&self, file_name: &Path) -> Result<()> {
-        let content = toml::to_string_pretty(&self).context("Unable to serialize settings")?;
+        let content = toml::to_string_pretty(&self).context("unable to serialize settings")?;
 
         let parent_folder = file_name
             .parent()
-            .unwrap_or_else(|| panic!("Unable to get settings directory from {file_name:?}"));
+            .expect("settings filename should have a parent dir");
 
         fs::create_dir_all(&parent_folder)
-            .with_context(|| format!("Unable to create {parent_folder:?}"))?;
+            .with_context(|| format!("unable to create {parent_folder:?}"))?;
 
         fs::write(file_name, content)
-            .with_context(|| format!("Unable to write settings to {file_name:?}"))
+            .with_context(|| format!("unable to write settings to {file_name:?}"))
     }
 }
 

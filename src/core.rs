@@ -89,12 +89,12 @@ mod tests {
             app.update();
             let asset_server = app.world.resource::<AssetServer>();
             match asset_server.get_load_state(&handle) {
-                LoadState::NotLoaded => unreachable!("Asset should start loading"),
+                LoadState::NotLoaded => unreachable!("asset should have started loading"),
                 LoadState::Loading => continue,
                 LoadState::Loaded => return,
-                LoadState::Failed => panic!("Unable to load asset"),
+                LoadState::Failed => panic!("asset loading failed"),
                 LoadState::Unloaded => {
-                    unreachable!("Asset can't be unloaded while holding handle")
+                    unreachable!("asset shouldn't be unloaded while holding handle")
                 }
             }
         }

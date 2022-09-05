@@ -58,15 +58,15 @@ impl GameWorldPlugin {
         let world_path = game_paths.world_path(&game_world.world_name);
 
         fs::create_dir_all(&game_paths.worlds)
-            .with_context(|| format!("Unable to create {world_path:?}"))?;
+            .with_context(|| format!("unable to create {world_path:?}"))?;
 
         let scene = save_to_scene(world, &*registry, &*ignore_rules);
         let bytes = scene
             .serialize_ron(&registry)
-            .expect("Unable to serlialize world");
+            .expect("game world should be serialized");
 
         fs::write(&world_path, bytes)
-            .with_context(|| format!("Unable to save game to {world_path:?}"))
+            .with_context(|| format!("unable to save game to {world_path:?}"))
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
@@ -80,15 +80,15 @@ impl GameWorldPlugin {
         let world_path = game_paths.world_path(&game_world.world_name);
 
         let bytes =
-            fs::read(&world_path).with_context(|| format!("Unable to load {world_path:?}"))?;
+            fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
         let mut deserializer = Deserializer::from_bytes(&bytes)
-            .with_context(|| format!("Unable to parse {world_path:?}"))?;
+            .with_context(|| format!("unable to parse {world_path:?}"))?;
         let scene_deserializer = SceneDeserializer {
             type_registry: &registry.read(),
         };
         let scene = scene_deserializer
             .deserialize(&mut deserializer)
-            .with_context(|| format!("Unable to deserialize {world_path:?}"))?;
+            .with_context(|| format!("unable to deserialize {world_path:?}"))?;
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
 
@@ -134,7 +134,7 @@ fn save_to_scene(
             for (index, entity) in archetype.entities().iter().enumerate() {
                 let reflect = reflect_component
                     .reflect(world, *entity)
-                    .expect("Unable to reflect component");
+                    .expect("object should reflect component");
 
                 scene.entities[entities_offset + index]
                     .components
@@ -242,11 +242,11 @@ mod tests {
                 .query_filtered::<(), (With<City>, Without<Transform>)>()
                 .get_single(&app.world)
                 .is_ok(),
-            "Loaded city shouldn't contain transform"
+            "loaded city shouldn't contain transform"
         );
         assert!(
             app.world.query::<&Camera>().get_single(&app.world).is_err(),
-            "Camera component shouldn't be saved"
+            "camera component shouldn't be saved"
         );
     }
 }
