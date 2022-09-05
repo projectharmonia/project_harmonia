@@ -8,6 +8,7 @@ use bevy_egui::{
 use bevy_inspector_egui::egui::Button;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
+use tap::TapFallible;
 
 use super::{
     modal_window::{ModalUiExt, ModalWindow},
@@ -135,7 +136,7 @@ impl WorldBrowserPlugin {
                     if ui.button("Remove").clicked() {
                         let world = world_browser.worlds.remove(dialog.world_index);
                         fs::remove_file(game_paths.world_path(&world))
-                            .map_err(|e| error!("{e:#}"))
+                            .tap_err(|e| error!("{e:#}"))
                             .ok();
                         ui.close_modal();
                     }
@@ -161,7 +162,7 @@ impl FromWorld for WorldBrowser {
             worlds: world
                 .resource::<GamePaths>()
                 .get_world_names()
-                .map_err(|e| error!("{e:#}"))
+                .tap_err(|e| error!("{e:#}"))
                 .unwrap_or_default(),
         }
     }
