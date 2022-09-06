@@ -15,7 +15,7 @@
     "nodes" : [
         {
             "mesh" : 0,
-            "name" : "Stone"
+            "name" : "Small stone"
         }
     ],
     "materials" : [
@@ -37,7 +37,7 @@
     ],
     "meshes" : [
         {
-            "name" : "Stone",
+            "name" : "Small stone",
             "primitives" : [
                 {
                     "attributes" : {
@@ -68,18 +68,18 @@
     "images" : [
         {
             "mimeType" : "image/png",
-            "name" : "stone_1_stone_normal",
-            "uri" : "stone_1_stone_normal.png"
+            "name" : "stone_normal",
+            "uri" : "stone_normal.png"
         },
         {
             "mimeType" : "image/png",
-            "name" : "stone_1_stone_base_color",
-            "uri" : "stone_1_stone_base_color.png"
+            "name" : "stone_base_color",
+            "uri" : "stone_base_color.png"
         },
         {
             "mimeType" : "image/png",
-            "name" : "stone_1_stone_metallic_roughness",
-            "uri" : "stone_1_stone_metallic_roughness.png"
+            "name" : "stone_metallic_roughness",
+            "uri" : "stone_metallic_roughness.png"
         }
     ],
     "accessors" : [
@@ -149,7 +149,7 @@
     "buffers" : [
         {
             "byteLength" : 2116,
-            "uri" : "stone_1.bin"
+            "uri" : "small_stone.bin"
         }
     ]
 }

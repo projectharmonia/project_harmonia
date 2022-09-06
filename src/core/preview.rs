@@ -267,7 +267,7 @@ mod tests {
         tests::{self, HeadlessRenderPlugin},
     };
 
-    const METADATA_PATH: &str = "base/objects/rocks/stone_1.toml";
+    const METADATA_PATH: &str = "base/objects/rocks/small_stone/small_stone.toml";
 
     #[test]
     fn cleanup() {
