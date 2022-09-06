@@ -1,0 +1,161 @@
+{
+    "asset" : {
+        "copyright" : "Yara Gargaria",
+        "generator" : "Khronos glTF Blender I/O v3.2.43",
+        "version" : "2.0"
+    },
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "Medium stone",
+            "scale" : [
+                0.39117690920829773,
+                0.39117690920829773,
+                0.39117690920829773
+            ]
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "name" : "Stone",
+            "normalTexture" : {
+                "index" : 0
+            },
+            "pbrMetallicRoughness" : {
+                "baseColorTexture" : {
+                    "index" : 1
+                },
+                "metallicRoughnessTexture" : {
+                    "index" : 2
+                }
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Medium stone",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1,
+                        "TEXCOORD_0" : 2
+                    },
+                    "indices" : 3,
+                    "material" : 0
+                }
+            ]
+        }
+    ],
+    "textures" : [
+        {
+            "sampler" : 0,
+            "source" : 0
+        },
+        {
+            "sampler" : 0,
+            "source" : 1
+        },
+        {
+            "sampler" : 0,
+            "source" : 2
+        }
+    ],
+    "images" : [
+        {
+            "mimeType" : "image/png",
+            "name" : "stone_normal",
+            "uri" : "stone_normal.png"
+        },
+        {
+            "mimeType" : "image/png",
+            "name" : "stone_base_color",
+            "uri" : "stone_base_color.png"
+        },
+        {
+            "mimeType" : "image/png",
+            "name" : "stone_metallic_roughness",
+            "uri" : "stone_metallic_roughness.png"
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 464,
+            "max" : [
+                2.090441942214966,
+                2.556675910949707,
+                1.608773112297058
+            ],
+            "min" : [
+                -1.2024931907653809,
+                -0.007129311561584473,
+                -1.2345197200775146
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 464,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 464,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5123,
+            "count" : 1662,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 5568,
+            "byteOffset" : 0
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 5568,
+            "byteOffset" : 5568
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 3712,
+            "byteOffset" : 11136
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 3324,
+            "byteOffset" : 14848
+        }
+    ],
+    "samplers" : [
+        {
+            "magFilter" : 9729,
+            "minFilter" : 9987
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 18172,
+            "uri" : "medium_stone.bin"
+        }
+    ]
+}
