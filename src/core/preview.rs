@@ -15,7 +15,10 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::{asset_metadata, game_world::GameWorld};
+use super::{
+    asset_metadata::{self, AssetMetadata},
+    game_world::GameWorld,
+};
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -51,12 +54,18 @@ impl PreviewPlugin {
         mut preview_events: EventReader<PreviewRequested>,
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
+        metadata: Res<Assets<AssetMetadata>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
         if let Some(preview_event) = preview_events
             .iter()
             .find(|preview_event| !previews.contains_key(&preview_event.0))
         {
+            let metadata_handle = metadata.get_handle(preview_event.0);
+            let metadata = metadata
+                .get(&metadata_handle)
+                .expect("preview event handle should be a metadata handle");
+
             let metadata_path = asset_server
                 .get_handle_path(preview_event.0)
                 .expect("metadata handle should have a path");
@@ -68,7 +77,11 @@ impl PreviewPlugin {
             commands
                 .entity(preview_cameras.single())
                 .with_children(|parent| {
-                    parent.spawn_bundle(PreviewTargetBundle::new(scene_handle, preview_event.0));
+                    parent.spawn_bundle(PreviewTargetBundle::new(
+                        metadata.general.preview_translation,
+                        scene_handle,
+                        preview_event.0,
+                    ));
                 });
 
             commands.insert_resource(NextState(PreviewState::LoadingAsset));
@@ -228,7 +241,7 @@ struct PreviewTargetBundle {
 }
 
 impl PreviewTargetBundle {
-    fn new(preview_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
+    fn new(translation: Vec3, preview_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
         Self {
             name: "Preview target".into(),
             metadata_id: metadata_id.into(),
@@ -236,7 +249,7 @@ impl PreviewTargetBundle {
                 scene: SceneBundle {
                     scene: preview_handle,
                     // Keep object a little far from the camera
-                    transform: Transform::from_translation(Vec3::new(0.0, -0.25, -1.5)),
+                    transform: Transform::from_translation(translation),
                     ..Default::default()
                 },
                 hook: SceneHook::new(|entity, commands| {
@@ -334,6 +347,7 @@ mod tests {
             .single(&app.world);
         app.world.entity_mut(camera_entity).with_children(|parent| {
             parent.spawn().insert_bundle(PreviewTargetBundle::new(
+                Vec3::default(),
                 preview_handle.clone(),
                 metadata_handle.id,
             ));

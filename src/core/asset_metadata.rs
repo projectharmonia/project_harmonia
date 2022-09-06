@@ -107,6 +107,7 @@ pub(crate) struct AssetMetadata {
 #[derive(Deserialize)]
 pub(crate) struct GeneralMetadata {
     pub(crate) name: String,
+    pub(crate) preview_translation: Vec3,
 }
 
 #[derive(Deserialize)]
