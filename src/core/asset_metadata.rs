@@ -98,29 +98,40 @@ struct MetadataHandles(Vec<Handle<AssetMetadata>>);
 
 #[derive(Deserialize, TypeUuid)]
 #[uuid = "39cadc56-aa9c-4543-8640-a018b74b5052"]
+pub(crate) struct AssetMetadata {
+    pub(crate) general: GeneralMetadata,
+    #[serde(flatten)]
+    pub(crate) kind: MetadataKind,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct GeneralMetadata {
+    pub(crate) name: String,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum AssetMetadata {
+pub(crate) enum MetadataKind {
     Object(ObjectMetadata),
 }
 
 #[derive(Deserialize)]
 pub(crate) struct ObjectMetadata {
-    pub(crate) name: String,
     pub(crate) category: ObjectCategory,
 }
 
-impl ObjectMetadata {
+#[derive(Deserialize, Clone, Copy)]
+pub(crate) enum ObjectCategory {
+    Rocks,
+}
+
+impl ObjectCategory {
     #[cfg_attr(coverage, no_coverage)]
-    pub(crate) fn is_placable_in_city(&self) -> bool {
-        match self.category {
+    pub(crate) fn is_placable_in_city(self) -> bool {
+        match self {
             ObjectCategory::Rocks => true,
         }
     }
-}
-
-#[derive(Deserialize)]
-pub(crate) enum ObjectCategory {
-    Rocks,
 }
 
 #[cfg(test)]

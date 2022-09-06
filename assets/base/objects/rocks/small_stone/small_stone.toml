@@ -1,3 +1,5 @@
-[object]
+[general]
 name = "Small stone"
+
+[object]
 category = "Rocks"

@@ -3,7 +3,7 @@ use bevy_egui::egui::{ImageButton, TextureId, Ui};
 
 use crate::{
     core::{
-        asset_metadata::AssetMetadata,
+        asset_metadata::{AssetMetadata, MetadataKind},
         preview::{PreviewRequested, Previews, PREVIEW_SIZE},
     },
     ui::selected_object::SelectedObject,
@@ -39,12 +39,7 @@ impl<'a, 'w, 's, 'wc, 'sc> ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
 impl ObjectsTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
         ui.group(|ui| {
-            for (id, metadata) in self.metadata.iter() {
-                let object = match metadata {
-                    AssetMetadata::Object(object) if object.is_placable_in_city() => object,
-                    _ => continue,
-                };
-
+            for (id, metadata) in self.metadata.iter().filter(|(_, metadata)| matches!(&metadata.kind, MetadataKind::Object(object) if object.category.is_placable_in_city())) {
                 let texture_id = self.previews.get(&id).unwrap_or_else(|| {
                     self.preview_events.send(PreviewRequested(id));
                     &TextureId::Managed(0)
@@ -55,7 +50,7 @@ impl ObjectsTab<'_, '_, '_, '_, '_> {
                         ImageButton::new(*texture_id, (PREVIEW_SIZE as f32, PREVIEW_SIZE as f32))
                             .selected(matches!(self.selected_id, Some(object) if object == id)),
                     )
-                    .on_hover_text(&object.name)
+                    .on_hover_text(&metadata.general.name)
                     .clicked()
                 {
                     self.commands.insert_resource(SelectedObject(id))
