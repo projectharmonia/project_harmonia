@@ -4,26 +4,34 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 
-use crate::core::{city::City, game_world::GameEntity};
+use crate::core::{
+    city::City,
+    family::{Budget, Family},
+    game_world::GameEntity,
+    object::ObjectPath,
+};
 
-/// Contains [`ComponentId`]'s that used to decide if a component or
-/// the whole archetype should be excluded from serialization.
+/// Contains [`ComponentId`]'s that used to decide
+/// if a component should be serialized.
 pub(crate) struct IgnoreRules {
-    /// Components that should never be serialized.
-    ignored: HashSet<ComponentId>,
+    /// Components that should be serialized.
+    pub(crate) serializable: HashSet<ComponentId>,
     /// Ignore a key component if its value is present in an archetype.
-    ignored_if_present: HashMap<ComponentId, ComponentId>,
+    pub(crate) ignored_if_present: HashMap<ComponentId, ComponentId>,
     /// ID of [`GameWorld`] component, only entities with this components should be serialized.
-    game_entity_id: ComponentId,
+    pub(crate) game_entity_id: ComponentId,
 }
 
 impl FromWorld for IgnoreRules {
     fn from_world(world: &mut World) -> Self {
-        let ignored = HashSet::from([
-            world.init_component::<Camera>(),
-            world.init_component::<GlobalTransform>(),
-            world.init_component::<Visibility>(),
-            world.init_component::<ComputedVisibility>(),
+        let serializable = HashSet::from([
+            world.init_component::<Transform>(),
+            world.init_component::<Name>(),
+            world.init_component::<City>(),
+            world.init_component::<Family>(),
+            world.init_component::<Budget>(),
+            world.init_component::<ObjectPath>(),
+            world.init_component::<GameEntity>(),
         ]);
 
         let ignored_if_present = HashMap::from([(
@@ -34,7 +42,7 @@ impl FromWorld for IgnoreRules {
         let game_entity_id = world.init_component::<GameEntity>();
 
         Self {
-            ignored,
+            serializable,
             ignored_if_present,
             game_entity_id,
         }
@@ -59,6 +67,6 @@ impl IgnoreRules {
             }
         }
 
-        self.ignored.contains(&component_id)
+        !self.serializable.contains(&component_id)
     }
 }

@@ -27,7 +27,7 @@ pub(super) struct GameWorldPlugin;
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<GameEntity>()
-            .register_type::<Cow<'static, str>>() // https://github.com/bevyengine/bevy/issues/5597
+            .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
             .init_resource::<IgnoreRules>()
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
@@ -121,20 +121,22 @@ fn save_to_scene(
             });
         }
 
-        for reflect_component in archetype
+        for component_id in archetype
             .components()
             .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
-            .filter_map(|component_id| {
-                // SAFETY: `component_id` retrieved from the world.
-                unsafe { world.components().get_info_unchecked(component_id) }.type_id()
-            })
-            .filter_map(|type_id| registry.get(type_id))
-            .filter_map(|registration| registration.data::<ReflectComponent>())
         {
+            let component_info = unsafe { world.components().get_info_unchecked(component_id) };
+            let type_name = component_info.name();
+            let reflect_component = component_info
+                .type_id()
+                .and_then(|type_id| registry.get(type_id))
+                .and_then(|registration| registration.data::<ReflectComponent>())
+                .expect("non-ignored component should have ReflectComponent");
+
             for (index, entity) in archetype.entities().iter().enumerate() {
                 let reflect = reflect_component
                     .reflect(world, *entity)
-                    .expect("object should reflect component");
+                    .unwrap_or_else(|| panic!("object should reflect {type_name}"));
 
                 scene.entities[entities_offset + index]
                     .components

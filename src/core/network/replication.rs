@@ -190,19 +190,16 @@ fn client_diffs(
         {
             let storage_type = archetype
                 .get_storage_type(component_id)
-                .expect("archetype have a storage type");
+                .expect("archetype should have a storage type");
 
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
-            let reflect_component = match component_info
+            let type_name = component_info.name();
+            let reflect_component = component_info
                 .type_id()
                 .and_then(|type_id| registry.get(type_id))
                 .and_then(|registration| registration.data::<ReflectComponent>())
-            {
-                Some(reflect_component) => reflect_component,
-                None => continue,
-            };
+                .expect("non-ignored component should have ReflectComponent");
 
-            let type_name = component_info.name();
             match storage_type {
                 StorageType::Table => {
                     let column = table
@@ -376,6 +373,13 @@ mod tests {
                 connected: true,
             }))
             .add_plugin(ReplicationPlugin);
+
+        app.world
+            .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
+                ignore_rules
+                    .serializable
+                    .insert(world.init_component::<SparseSetComponent>());
+            });
 
         let server_entity = app
             .world
