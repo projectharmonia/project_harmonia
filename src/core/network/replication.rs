@@ -1,3 +1,4 @@
+mod removal_tracker;
 mod world_diff;
 
 use std::time::Duration;
