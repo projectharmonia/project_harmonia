@@ -314,6 +314,9 @@ mod tests {
 
         let asset_server = app.world.resource::<AssetServer>();
         let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
+
+        tests::wait_for_asset_loading(&mut app, &metadata_handle);
+
         let mut events = app.world.resource_mut::<Events<PreviewRequested>>();
         events.send(PreviewRequested(metadata_handle.id));
 
@@ -355,7 +358,7 @@ mod tests {
 
         app.insert_resource(NextState(PreviewState::LoadingAsset));
 
-        tests::wait_for_asset_loading(&mut app, preview_handle);
+        tests::wait_for_asset_loading(&mut app, &preview_handle);
 
         assert_eq!(
             app.world.resource::<NextState<PreviewState>>().0,

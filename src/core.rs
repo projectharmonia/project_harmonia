@@ -84,11 +84,11 @@ mod tests {
             .update();
     }
 
-    pub(super) fn wait_for_asset_loading<T: Asset>(app: &mut App, handle: Handle<T>) {
+    pub(super) fn wait_for_asset_loading<T: Asset>(app: &mut App, handle: &Handle<T>) {
         loop {
             app.update();
             let asset_server = app.world.resource::<AssetServer>();
-            match asset_server.get_load_state(&handle) {
+            match asset_server.get_load_state(handle) {
                 LoadState::NotLoaded => unreachable!("asset should have started loading"),
                 LoadState::Loading => continue,
                 LoadState::Loaded => return,
