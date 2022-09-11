@@ -1,13 +1,13 @@
 mod despawn_tracker;
 mod removal_tracker;
-mod replication_message;
+mod replication_messaging;
 mod world_diff;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use despawn_tracker::DespawnTrackerPlugin;
 use removal_tracker::RemovalTrackerPlugin;
-use replication_message::ReplicationMessagePlugin;
+use replication_messaging::ReplicationMessagingPlugin;
 
 pub(super) struct ReplicationPlugins;
 
@@ -16,6 +16,6 @@ impl PluginGroup for ReplicationPlugins {
         group
             .add(RemovalTrackerPlugin)
             .add(DespawnTrackerPlugin)
-            .add(ReplicationMessagePlugin);
+            .add(ReplicationMessagingPlugin);
     }
 }

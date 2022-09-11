@@ -2,7 +2,7 @@ use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::replication_message::ClientAcks;
+use super::replication_messaging::ClientAcks;
 use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};
 
 /// Stores component removals in [`RemovalTracker`] component

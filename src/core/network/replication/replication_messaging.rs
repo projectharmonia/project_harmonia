@@ -27,9 +27,9 @@ enum ReplicationStage {
     Tick,
 }
 
-pub(super) struct ReplicationMessagePlugin;
+pub(super) struct ReplicationMessagingPlugin;
 
-impl Plugin for ReplicationMessagePlugin {
+impl Plugin for ReplicationMessagingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TickAck>()
             .init_resource::<ClientAcks>()
@@ -61,7 +61,7 @@ impl Plugin for ReplicationMessagePlugin {
     }
 }
 
-impl ReplicationMessagePlugin {
+impl ReplicationMessagingPlugin {
     const TIMESTEP: f64 = 0.1;
 
     fn client_acks_cleanup_system(
@@ -381,7 +381,7 @@ mod tests {
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }))
-            .add_plugin(ReplicationMessagePlugin);
+            .add_plugin(ReplicationMessagingPlugin);
 
         let mut client = app.world.resource_mut::<RenetClient>();
         client.disconnect();
@@ -405,7 +405,7 @@ mod tests {
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }))
-            .add_plugin(ReplicationMessagePlugin);
+            .add_plugin(ReplicationMessagingPlugin);
 
         app.world
             .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
@@ -463,7 +463,7 @@ mod tests {
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }))
-            .add_plugin(ReplicationMessagePlugin);
+            .add_plugin(ReplicationMessagingPlugin);
 
         // Mark transform component as removed
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
@@ -496,7 +496,7 @@ mod tests {
     fn client_resets() {
         let mut app = App::new();
         app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Client))
-            .add_plugin(ReplicationMessagePlugin);
+            .add_plugin(ReplicationMessagingPlugin);
 
         app.update();
 
@@ -517,7 +517,7 @@ mod tests {
     fn server_reset() {
         let mut app = App::new();
         app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
-            .add_plugin(ReplicationMessagePlugin);
+            .add_plugin(ReplicationMessagingPlugin);
 
         app.update();
 
@@ -534,7 +534,7 @@ mod tests {
         let init_time = app.world.resource::<Time>().seconds_since_startup();
         app.update();
         while app.world.resource::<Time>().seconds_since_startup() - init_time
-            < ReplicationMessagePlugin::TIMESTEP
+            < ReplicationMessagingPlugin::TIMESTEP
         {
             app.update();
         }
