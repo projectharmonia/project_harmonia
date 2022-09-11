@@ -300,14 +300,15 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestMovingObjectPlugin);
 
-        let object = app.world.spawn().insert(ObjectPath(String::default())).id();
+        let object_entity = app.world.spawn().insert(ObjectPath(String::default())).id();
 
         app.update();
 
-        assert!(app.world.entity(object).contains::<Handle<Scene>>());
-        assert!(app.world.entity(object).contains::<GlobalTransform>());
-        assert!(app.world.entity(object).contains::<Visibility>());
-        assert!(app.world.entity(object).contains::<ComputedVisibility>());
+        let object_entity = app.world.entity(object_entity);
+        assert!(object_entity.contains::<Handle<Scene>>());
+        assert!(object_entity.contains::<GlobalTransform>());
+        assert!(object_entity.contains::<Visibility>());
+        assert!(object_entity.contains::<ComputedVisibility>());
     }
 
     #[test]
@@ -450,9 +451,9 @@ mod tests {
 
         app.update();
 
-        let outlined_entity = app.world.entity(outline_entity);
-        assert!(!outlined_entity.get::<Outline>().unwrap().visible);
-        assert!(outlined_entity.contains::<MovingObject>());
+        let outline_entity = app.world.entity(outline_entity);
+        assert!(!outline_entity.get::<Outline>().unwrap().visible);
+        assert!(outline_entity.contains::<MovingObject>());
     }
 
     struct TestMovingObjectPlugin;
