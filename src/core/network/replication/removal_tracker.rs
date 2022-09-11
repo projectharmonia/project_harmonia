@@ -6,7 +6,7 @@ use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};
 
 use super::ClientAcks;
 
-struct RemovalTrackerPlugin;
+pub(super) struct RemovalTrackerPlugin;
 
 impl Plugin for RemovalTrackerPlugin {
     fn build(&self, app: &mut App) {
@@ -29,9 +29,13 @@ impl RemovalTrackerPlugin {
         }
     }
 
-    fn cleanup_system(client_acks: Res<ClientAcks>, mut trackers: Query<&mut RemovalTracker>) {
-        for mut tracker in &mut trackers {
-            tracker.drain_filter(|_, tick| client_acks.values().all(|last_tick| last_tick > tick));
+    fn cleanup_system(
+        client_acks: Res<ClientAcks>,
+        mut removal_trackers: Query<&mut RemovalTracker>,
+    ) {
+        for mut removal_tracker in &mut removal_trackers {
+            removal_tracker
+                .drain_filter(|_, tick| client_acks.values().all(|last_tick| last_tick > tick));
         }
     }
 
@@ -43,8 +47,8 @@ impl RemovalTrackerPlugin {
         for component_id in ignore_rules.serializable.iter().copied() {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
-                if let Ok(mut tracker) = set.p1().get_mut(entity) {
-                    tracker.insert(component_id, tick);
+                if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {
+                    removal_tracker.insert(component_id, tick);
                 }
             }
         }
@@ -52,7 +56,7 @@ impl RemovalTrackerPlugin {
 }
 
 #[derive(Component, Default, Deref, DerefMut)]
-struct RemovalTracker(HashMap<ComponentId, u32>);
+pub(super) struct RemovalTracker(pub(super) HashMap<ComponentId, u32>);
 
 #[cfg(test)]
 mod tests {
@@ -92,6 +96,7 @@ mod tests {
 
         let removal_tracker = app.world.get::<RemovalTracker>(game_entity).unwrap();
         assert!(!removal_tracker.contains_key(&COMPONENT_ID));
+        assert!(removal_tracker.is_empty());
     }
 
     #[test]
@@ -107,18 +112,20 @@ mod tests {
             .insert(RemovalTracker::default())
             .id();
 
-        // A non-trackable entity.
-        app.world.spawn().insert(Transform::default());
-
-        app.update();
-
         app.world.entity_mut(game_entity).remove::<Transform>();
+
+        // A non-trackable entity.
+        app.world
+            .spawn()
+            .insert(Transform::default())
+            .remove::<Transform>();
 
         app.update();
 
         let transform_id = app.world.component_id::<Transform>().unwrap();
         let removal_tracker = app.world.get::<RemovalTracker>(game_entity).unwrap();
         assert!(removal_tracker.contains_key(&transform_id));
+        assert_eq!(removal_tracker.len(), 1);
     }
 
     struct TestRemovalTrackerPlugin;
