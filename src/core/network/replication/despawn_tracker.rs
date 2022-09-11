@@ -11,7 +11,8 @@ impl Plugin for DespawnTrackerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DespawnTracker>()
             .add_system(Self::entity_tracking_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::detection_system.run_if_resource_exists::<RenetServer>());
+            .add_system(Self::detection_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::reset_system.run_if_resource_removed::<RenetServer>());
     }
 }
 
@@ -43,6 +44,11 @@ impl DespawnTrackerPlugin {
                 true
             }
         });
+    }
+
+    fn reset_system(mut tracker: ResMut<DespawnTracker>) {
+        tracker.tracked_entities.clear();
+        tracker.despawns.clear();
     }
 }
 
@@ -92,5 +98,28 @@ mod tests {
             .despawns
             .iter()
             .any(|(entity, _)| *entity == removed_entity));
+    }
+
+    #[test]
+    fn reset() {
+        let mut app = App::new();
+        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
+            .add_plugin(DespawnTrackerPlugin);
+
+        app.update();
+
+        let dummy_entity = Entity::from_raw(0);
+        const DUMMY_TICK: u32 = 0;
+        let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
+        despawn_tracker.despawns.push((dummy_entity, DUMMY_TICK));
+        despawn_tracker.tracked_entities.insert(dummy_entity);
+
+        app.world.remove_resource::<RenetServer>();
+
+        app.update();
+
+        let despawn_tracker = app.world.resource::<DespawnTracker>();
+        assert!(despawn_tracker.despawns.is_empty());
+        assert!(despawn_tracker.tracked_entities.is_empty());
     }
 }
