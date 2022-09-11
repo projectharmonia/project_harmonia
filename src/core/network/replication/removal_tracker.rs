@@ -36,7 +36,7 @@ impl RemovalTrackerPlugin {
     ) {
         for mut removal_tracker in &mut removal_trackers {
             removal_tracker
-                .drain_filter(|_, tick| client_acks.values().all(|last_tick| last_tick > tick));
+                .retain(|_, tick| client_acks.values().any(|last_tick| last_tick < tick));
         }
     }
 
@@ -82,16 +82,15 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestRemovalTrackerPlugin);
 
-        const REMOVAL_TICK: u32 = 0;
+        let tick = app.world.read_change_tick();
         const COMPONENT_ID: ComponentId = ComponentId::new(0);
-        let removal_tracker = RemovalTracker(HashMap::from([(COMPONENT_ID, REMOVAL_TICK)]));
+        let removal_tracker = RemovalTracker(HashMap::from([(COMPONENT_ID, tick)]));
         let game_entity = app.world.spawn().insert(removal_tracker).id();
 
-        const LAST_TICK: u32 = 1;
-        const CLIENT_ID: u64 = 0;
+        const DUMMY_CLIENT_ID: u64 = 0;
         app.world
             .resource_mut::<ClientAcks>()
-            .insert(CLIENT_ID, LAST_TICK);
+            .insert(DUMMY_CLIENT_ID, tick);
 
         app.update();
 
