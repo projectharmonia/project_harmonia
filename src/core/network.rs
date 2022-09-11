@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_renet::renet::{ChannelConfig, ReliableChannelConfig, UnreliableChannelConfig};
 
 use client::ClientPlugin;
+use replication::ReplicationPlugins;
 use server::ServerPlugin;
 
 pub(super) struct NetworkPlugins;
@@ -13,6 +14,8 @@ pub(super) struct NetworkPlugins;
 impl PluginGroup for NetworkPlugins {
     fn build(&mut self, group: &mut bevy::app::PluginGroupBuilder) {
         group.add(ServerPlugin).add(ClientPlugin);
+
+        ReplicationPlugins.build(group)
     }
 }
 

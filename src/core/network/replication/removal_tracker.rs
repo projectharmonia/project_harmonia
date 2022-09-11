@@ -2,10 +2,11 @@ use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
+use super::replication_message::ClientAcks;
 use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};
 
-use super::ClientAcks;
-
+/// Stores component removals in [`RemovalTracker`] component
+/// to make them persistent across ticks.
 pub(super) struct RemovalTrackerPlugin;
 
 impl Plugin for RemovalTrackerPlugin {
@@ -22,9 +23,9 @@ impl Plugin for RemovalTrackerPlugin {
 impl RemovalTrackerPlugin {
     fn insertion_system(
         mut commands: Commands,
-        game_entities: Query<Entity, (Added<GameEntity>, Without<RemovalTracker>)>,
+        new_game_entities: Query<Entity, (Added<GameEntity>, Without<RemovalTracker>)>,
     ) {
-        for entity in &game_entities {
+        for entity in &new_game_entities {
             commands.entity(entity).insert(RemovalTracker::default());
         }
     }
