@@ -2,6 +2,7 @@ use bevy::{ecs::system::SystemChangeTick, prelude::*, utils::HashSet};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
+use super::replication_messaging::ClientAcks;
 use crate::core::game_world::GameEntity;
 
 /// Tracks entity despawns in [`DespawnTracker`] resource.
@@ -11,6 +12,7 @@ impl Plugin for DespawnTrackerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DespawnTracker>()
             .add_system(Self::entity_tracking_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::cleanup_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::detection_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::reset_system.run_if_resource_removed::<RenetServer>());
     }
@@ -24,6 +26,12 @@ impl DespawnTrackerPlugin {
         for entity in &new_game_entities {
             tracker.tracked_entities.insert(entity);
         }
+    }
+
+    fn cleanup_system(mut despawn_tracker: ResMut<DespawnTracker>, client_acks: Res<ClientAcks>) {
+        despawn_tracker
+            .despawns
+            .retain(|(_, tick)| client_acks.values().any(|last_tick| last_tick < tick));
     }
 
     fn detection_system(
@@ -68,8 +76,7 @@ mod tests {
     #[test]
     fn entity_tracking() {
         let mut app = App::new();
-        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
-            .add_plugin(DespawnTrackerPlugin);
+        app.add_plugin(TestDespawnTrackerPlugin);
 
         let game_entity = app.world.spawn().insert(GameEntity).id();
 
@@ -80,16 +87,43 @@ mod tests {
     }
 
     #[test]
+    fn cleanup() {
+        let mut app = App::new();
+        app.add_plugin(TestDespawnTrackerPlugin);
+
+        let tick = app.world.read_change_tick();
+        let removed_entity = Entity::from_raw(0);
+        let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
+        despawn_tracker.despawns.push((removed_entity, tick));
+
+        const DUMMY_CLIENT_ID: u64 = 0;
+        app.world
+            .resource_mut::<ClientAcks>()
+            .insert(DUMMY_CLIENT_ID, tick);
+
+        app.update();
+
+        let despawn_tracker = app.world.resource::<DespawnTracker>();
+        assert!(despawn_tracker.despawns.is_empty())
+    }
+
+    #[test]
     fn detection() {
         let mut app = App::new();
-        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
-            .add_plugin(DespawnTrackerPlugin);
+        app.add_plugin(TestDespawnTrackerPlugin);
 
         let existing_entity = app.world.spawn().id();
         let removed_entity = Entity::from_raw(existing_entity.id() + 1);
         let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
         despawn_tracker.tracked_entities.insert(existing_entity);
         despawn_tracker.tracked_entities.insert(removed_entity);
+
+        // To avoid cleanup. Removal tick will be greater.
+        const DUMMY_CLIENT_ID: u64 = 0;
+        let tick = app.world.read_change_tick();
+        app.world
+            .resource_mut::<ClientAcks>()
+            .insert(DUMMY_CLIENT_ID, tick);
 
         app.update();
 
@@ -103,8 +137,7 @@ mod tests {
     #[test]
     fn reset() {
         let mut app = App::new();
-        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
-            .add_plugin(DespawnTrackerPlugin);
+        app.add_plugin(TestDespawnTrackerPlugin);
 
         app.update();
 
@@ -121,5 +154,15 @@ mod tests {
         let despawn_tracker = app.world.resource::<DespawnTracker>();
         assert!(despawn_tracker.despawns.is_empty());
         assert!(despawn_tracker.tracked_entities.is_empty());
+    }
+
+    struct TestDespawnTrackerPlugin;
+
+    impl Plugin for TestDespawnTrackerPlugin {
+        fn build(&self, app: &mut App) {
+            app.init_resource::<ClientAcks>()
+                .add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
+                .add_plugin(DespawnTrackerPlugin);
+        }
     }
 }
