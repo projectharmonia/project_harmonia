@@ -44,12 +44,12 @@ impl RemovalTrackerPlugin {
         mut set: ParamSet<(&World, Query<&mut RemovalTracker>)>,
         ignore_rules: Res<IgnoreRules>,
     ) {
-        let tick = set.p0().read_change_tick();
+        let current_tick = set.p0().read_change_tick();
         for component_id in ignore_rules.serializable.iter().copied() {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
                 if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {
-                    removal_tracker.insert(component_id, tick);
+                    removal_tracker.insert(component_id, current_tick);
                 }
             }
         }
@@ -82,15 +82,15 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestRemovalTrackerPlugin);
 
-        let tick = app.world.read_change_tick();
+        let current_tick = app.world.read_change_tick();
         const COMPONENT_ID: ComponentId = ComponentId::new(0);
-        let removal_tracker = RemovalTracker(HashMap::from([(COMPONENT_ID, tick)]));
+        let removal_tracker = RemovalTracker(HashMap::from([(COMPONENT_ID, current_tick)]));
         let game_entity = app.world.spawn().insert(removal_tracker).id();
 
         const DUMMY_CLIENT_ID: u64 = 0;
         app.world
             .resource_mut::<ClientAcks>()
-            .insert(DUMMY_CLIENT_ID, tick);
+            .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
 

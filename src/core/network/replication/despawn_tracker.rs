@@ -91,15 +91,17 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestDespawnTrackerPlugin);
 
-        let tick = app.world.read_change_tick();
+        let current_tick = app.world.read_change_tick();
         let removed_entity = Entity::from_raw(0);
         let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
-        despawn_tracker.despawns.push((removed_entity, tick));
+        despawn_tracker
+            .despawns
+            .push((removed_entity, current_tick));
 
         const DUMMY_CLIENT_ID: u64 = 0;
         app.world
             .resource_mut::<ClientAcks>()
-            .insert(DUMMY_CLIENT_ID, tick);
+            .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
 
@@ -120,10 +122,10 @@ mod tests {
 
         // To avoid cleanup. Removal tick will be greater.
         const DUMMY_CLIENT_ID: u64 = 0;
-        let tick = app.world.read_change_tick();
+        let current_tick = app.world.read_change_tick();
         app.world
             .resource_mut::<ClientAcks>()
-            .insert(DUMMY_CLIENT_ID, tick);
+            .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
 
