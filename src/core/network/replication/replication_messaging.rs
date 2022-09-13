@@ -170,28 +170,6 @@ impl ReplicationMessagingPlugin {
     }
 }
 
-fn collect_removals(
-    client_diffs: &mut HashMap<u64, WorldDiff>,
-    world: &World,
-    removal_trackers: &Query<(Entity, &RemovalTracker)>,
-) {
-    for (entity, removal_tracker) in removal_trackers {
-        for world_diff in client_diffs.values_mut() {
-            for (&component_id, &tick) in removal_tracker.iter() {
-                if world_diff.tick < tick {
-                    let component_info =
-                        unsafe { world.components().get_info_unchecked(component_id) };
-                    world_diff
-                        .entities
-                        .entry(entity)
-                        .or_default()
-                        .push(ComponentDiff::Removed(component_info.name().to_string()));
-                }
-            }
-        }
-    }
-}
-
 fn collect_changes(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
@@ -301,6 +279,28 @@ fn collect_if_changed(
                 .entry(entity)
                 .or_default()
                 .push(ComponentDiff::Changed(reflect));
+        }
+    }
+}
+
+fn collect_removals(
+    client_diffs: &mut HashMap<u64, WorldDiff>,
+    world: &World,
+    removal_trackers: &Query<(Entity, &RemovalTracker)>,
+) {
+    for (entity, removal_tracker) in removal_trackers {
+        for world_diff in client_diffs.values_mut() {
+            for (&component_id, &tick) in removal_tracker.iter() {
+                if world_diff.tick < tick {
+                    let component_info =
+                        unsafe { world.components().get_info_unchecked(component_id) };
+                    world_diff
+                        .entities
+                        .entry(entity)
+                        .or_default()
+                        .push(ComponentDiff::Removed(component_info.name().to_string()));
+                }
+            }
         }
     }
 }
