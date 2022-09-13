@@ -106,17 +106,17 @@ impl ReplicationMessagingPlugin {
         ignore_rules: Res<IgnoreRules>,
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
-        let mut client_diffs = HashMap::new();
-        collect_changes(
-            &mut client_diffs,
-            set.p0(),
-            &client_acks,
-            &registry,
-            &ignore_rules,
-        );
-        collect_removals(&mut client_diffs, set.p0(), &client_acks, &removal_trackers);
+        // Initialize [`WorldDiff`]s with latest acknowledged tick for each client.
+        let mut client_diffs: HashMap<_, _> = client_acks
+            .iter()
+            .map(|(&client_id, &tick)| (client_id, WorldDiff::new(tick)))
+            .collect();
+        collect_changes(&mut client_diffs, set.p0(), &registry, &ignore_rules);
+        collect_removals(&mut client_diffs, set.p0(), &removal_trackers);
 
-        for (client_id, world_diff) in client_diffs {
+        let current_tick = set.p0().read_change_tick();
+        for (client_id, mut world_diff) in client_diffs {
+            world_diff.tick = current_tick; // Replace last acknowledged tick with the current.
             let serializer = WorldDiffSerializer::new(&registry, &world_diff);
             let message = rmp_serde::to_vec(&serializer).expect("world diff should be serialized");
             set.p1()
@@ -173,17 +173,12 @@ impl ReplicationMessagingPlugin {
 fn collect_removals(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
-    client_acks: &ClientAcks,
     removal_trackers: &Query<(Entity, &RemovalTracker)>,
 ) {
     for (entity, removal_tracker) in removal_trackers {
-        for (&client_id, &last_tick) in client_acks.iter() {
-            let world_diff = client_diffs
-                .entry(client_id)
-                .or_insert_with(|| WorldDiff::new(world.read_change_tick()));
-
+        for world_diff in client_diffs.values_mut() {
             for (&component_id, &tick) in removal_tracker.iter() {
-                if last_tick < tick {
+                if world_diff.tick < tick {
                     let component_info =
                         unsafe { world.components().get_info_unchecked(component_id) };
                     world_diff
@@ -200,7 +195,6 @@ fn collect_removals(
 fn collect_changes(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
-    client_acks: &ClientAcks,
     registry: &TypeRegistry,
     ignore_rules: &IgnoreRules,
 ) {
@@ -253,7 +247,6 @@ fn collect_changes(
                             client_diffs,
                             *entity,
                             world,
-                            client_acks,
                             ticks,
                             reflect_component,
                             type_name,
@@ -278,7 +271,6 @@ fn collect_changes(
                             client_diffs,
                             *entity,
                             world,
-                            client_acks,
                             ticks,
                             reflect_component,
                             type_name,
@@ -294,17 +286,12 @@ fn collect_if_changed(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     entity: Entity,
     world: &World,
-    client_acks: &ClientAcks,
     ticks: &ComponentTicks,
     reflect_component: &ReflectComponent,
     type_name: &str,
 ) {
-    for (&client_id, &last_tick) in client_acks.iter() {
-        let world_diff = client_diffs
-            .entry(client_id)
-            .or_insert_with(|| WorldDiff::new(world.read_change_tick()));
-
-        if ticks.is_changed(last_tick, world.read_change_tick()) {
+    for world_diff in client_diffs.values_mut() {
+        if ticks.is_changed(world_diff.tick, world.read_change_tick()) {
             let reflect = reflect_component
                 .reflect(world, entity)
                 .unwrap_or_else(|| panic!("unable to reflect {type_name}"))
