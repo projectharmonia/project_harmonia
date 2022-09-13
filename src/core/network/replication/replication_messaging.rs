@@ -17,6 +17,7 @@ use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::{TapFallible, TapOptional};
 
 use super::{
+    despawn_tracker::DespawnTracker,
     removal_tracker::RemovalTracker,
     world_diff::{ComponentDiff, WorldDiff, WorldDiffDeserializer, WorldDiffSerializer},
 };
@@ -104,6 +105,7 @@ impl ReplicationMessagingPlugin {
         client_acks: Res<ClientAcks>,
         registry: Res<TypeRegistry>,
         ignore_rules: Res<IgnoreRules>,
+        despawn_tracker: Res<DespawnTracker>,
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
         // Initialize [`WorldDiff`]s with latest acknowledged tick for each client.
@@ -113,6 +115,7 @@ impl ReplicationMessagingPlugin {
             .collect();
         collect_changes(&mut client_diffs, set.p0(), &registry, &ignore_rules);
         collect_removals(&mut client_diffs, set.p0(), &removal_trackers);
+        collect_despawns(&mut client_diffs, &despawn_tracker);
 
         let current_tick = set.p0().read_change_tick();
         for (client_id, mut world_diff) in client_diffs {
@@ -305,6 +308,16 @@ fn collect_removals(
     }
 }
 
+fn collect_despawns(client_diffs: &mut HashMap<u64, WorldDiff>, despawn_tracker: &DespawnTracker) {
+    for (entity, tick) in despawn_tracker.despawns.iter().copied() {
+        for world_diff in client_diffs.values_mut() {
+            if world_diff.tick < tick {
+                world_diff.despawns.push(entity);
+            }
+        }
+    }
+}
+
 fn apply_diffs(
     world: &mut World,
     entity_map: &mut NetworkEntityMap,
@@ -331,6 +344,14 @@ fn apply_diffs(
                     ComponentDiff::Removed(_) => reflect_component.remove(world, local_entity),
                 }
             }
+        }
+    }
+    for server_entity in world_diff.despawns.iter().copied() {
+        if let Ok(local_entity) = entity_map
+            .get(server_entity)
+            .tap_err(|e| error!("received an invalid entity despawn: {e}"))
+        {
+            world.entity_mut(local_entity).despawn();
         }
     }
 }
@@ -389,6 +410,7 @@ mod tests {
         app.register_type::<GameEntity>()
             .register_type::<SparseSetComponent>()
             .init_resource::<IgnoreRules>()
+            .init_resource::<DespawnTracker>()
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }))
@@ -447,6 +469,7 @@ mod tests {
         app.register_type::<NonReflectedComponent>()
             .register_type::<Transform>()
             .init_resource::<IgnoreRules>()
+            .init_resource::<DespawnTracker>()
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }))
@@ -477,6 +500,35 @@ mod tests {
         let replicated_entity = app.world.entity(replicated_entity);
         assert!(replicated_entity.contains::<NonReflectedComponent>());
         assert!(!replicated_entity.contains::<Transform>());
+    }
+
+    #[test]
+    fn despawn_replication() {
+        let mut app = App::new();
+        app.init_resource::<IgnoreRules>()
+            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
+                connected: true,
+            }))
+            .add_plugin(ReplicationMessagingPlugin);
+
+        let client_entity = app.world.spawn().id();
+        let current_tick = app.world.read_change_tick();
+        let mut despawn_tracker = DespawnTracker::default();
+        despawn_tracker.despawns.push((client_entity, current_tick));
+        app.insert_resource(despawn_tracker);
+
+        let clinet_id = app.world.resource::<RenetClient>().client_id();
+        app.world
+            .resource_mut::<ClientAcks>()
+            .insert(clinet_id, current_tick - 1);
+        app.world
+            .resource_mut::<NetworkEntityMap>()
+            .insert(client_entity, client_entity);
+
+        wait_for_network_tick(&mut app);
+        wait_for_network_tick(&mut app);
+
+        assert!(app.world.get_entity(client_entity).is_none());
     }
 
     #[test]

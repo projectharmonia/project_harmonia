@@ -47,6 +47,7 @@ enum ComponentDiffField {
 pub(super) struct WorldDiff {
     pub(super) tick: u32,
     pub(super) entities: HashMap<Entity, Vec<ComponentDiff>>,
+    pub(super) despawns: Vec<Entity>,
 }
 
 impl WorldDiff {
@@ -55,6 +56,7 @@ impl WorldDiff {
         Self {
             tick,
             entities: Default::default(),
+            despawns: Default::default(),
         }
     }
 }
@@ -64,6 +66,7 @@ impl WorldDiff {
 enum WorldDiffField {
     Tick,
     Entities,
+    Despawned,
 }
 
 #[derive(Constructor)]
@@ -83,6 +86,7 @@ impl<'a> Serialize for WorldDiffSerializer<'a> {
             WorldDiffField::Entities.into(),
             &EntitiesSerializer::new(&self.registry.read(), &self.world_diff.entities),
         )?;
+        state.serialize_field(WorldDiffField::Despawned.into(), &self.world_diff.despawns)?;
         state.end()
     }
 }
@@ -179,7 +183,14 @@ impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
         let entities = seq
             .next_element_seed(EntitiesDeserializer::new(&self.registry.read()))?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Entities as usize, &self))?;
-        Ok(WorldDiff { tick, entities })
+        let despawned = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Despawned as usize, &self))?;
+        Ok(WorldDiff {
+            tick,
+            entities,
+            despawns: despawned,
+        })
     }
 }
 
@@ -423,13 +434,16 @@ mod tests {
             &[
                 Token::Struct {
                     name: any::type_name::<WorldDiff>(),
-                    len: 2,
+                    len: WorldDiffField::VARIANTS.len(),
                 },
                 Token::Str(WorldDiffField::Tick.into()),
                 Token::U32(TICK),
                 Token::Str(WorldDiffField::Entities.into()),
                 Token::Map { len: Some(0) },
                 Token::MapEnd,
+                Token::Str(WorldDiffField::Despawned.into()),
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
                 Token::StructEnd,
             ],
         );
@@ -444,6 +458,7 @@ mod tests {
                 Entity::from_raw(ENTITY_ID),
                 Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
             )]),
+            despawns: Vec::from([Entity::from_raw(ENTITY_ID)]),
         };
         let serializer = WorldDiffSerializer::new(&registry, &world_diff);
 
@@ -452,7 +467,7 @@ mod tests {
             &[
                 Token::Struct {
                     name: any::type_name::<WorldDiff>(),
-                    len: 2,
+                    len: WorldDiffField::VARIANTS.len(),
                 },
                 Token::Str(WorldDiffField::Tick.into()),
                 Token::U32(TICK),
@@ -467,6 +482,10 @@ mod tests {
                 Token::Str(COMPONENT_NAME),
                 Token::SeqEnd,
                 Token::MapEnd,
+                Token::Str(WorldDiffField::Despawned.into()),
+                Token::Seq { len: Some(1) },
+                Token::U32(ENTITY_ID),
+                Token::SeqEnd,
                 Token::StructEnd,
             ],
         );
