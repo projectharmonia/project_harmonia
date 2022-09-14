@@ -21,7 +21,11 @@ use super::{
     removal_tracker::RemovalTracker,
     world_diff::{ComponentDiff, WorldDiff, WorldDiffDeserializer, WorldDiffSerializer},
 };
-use crate::core::{game_world::ignore_rules::IgnoreRules, network::Channel};
+use crate::core::{
+    game_state::GameState,
+    game_world::{ignore_rules::IgnoreRules, GameWorld},
+    network::Channel,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
 enum ReplicationStage {
@@ -154,6 +158,10 @@ impl ReplicationMessagingPlugin {
             world.resource_scope(|world, mut entity_map: Mut<NetworkEntityMap>| {
                 apply_diffs(world, &mut entity_map, world_diff, &registry);
             });
+            if !world.contains_resource::<GameWorld>() {
+                world.insert_resource(GameWorld::default()); // TODO: Replicate this resource.
+                world.insert_resource(NextState(GameState::World));
+            }
         });
     }
 
@@ -412,10 +420,15 @@ mod tests {
         ));
 
         wait_for_network_tick(&mut app);
+        wait_for_network_tick(&mut app);
 
         let client_acks = app.world.resource::<ClientAcks>();
         let client = app.world.resource::<RenetClient>();
-        assert!(client_acks.contains_key(&client.client_id()));
+        assert!(matches!(client_acks.get(&client.client_id()), Some(&tick) if tick > 0));
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::World
+        );
     }
 
     #[test]

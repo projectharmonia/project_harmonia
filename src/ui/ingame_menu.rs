@@ -1,7 +1,8 @@
 use std::mem;
 
 use bevy::{app::AppExit, prelude::*};
-use bevy_egui::EguiContext;
+use bevy_egui::{egui::Button, EguiContext};
+use bevy_renet::renet::RenetClient;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -53,13 +54,17 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSaved>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
+        client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
         ModalWindow::new("Menu")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.vertical_centered(|ui| {
-                    if ui.button("Save").clicked() {
+                    if ui
+                        .add_enabled(client.is_none(), Button::new("Save"))
+                        .clicked()
+                    {
                         save_events.send_default();
                         ui.close_modal();
                     }
@@ -118,14 +123,15 @@ impl InGameMenuPlugin {
         mut save_events: ResMut<Events<GameSaved>>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
+        client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
         ModalWindow::new("Exit to main menu")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.label("Would you like to save your world before exiting to the main menu?");
+                ui.label("Are you sure you want to exit to the main menu?");
                 ui.horizontal(|ui| {
-                    if ui.button("Save and exit").clicked() {
+                    if client.is_none() && ui.button("Save and exit").clicked() {
                         save_events.send_default();
                         // Should be called to avoid the exclusive saving system react on the event twice.
                         // See https://github.com/IyesGames/iyes_loopless/issues/31
@@ -153,9 +159,10 @@ impl InGameMenuPlugin {
     fn exit_game_system(
         mut commands: Commands,
         mut save_events: EventWriter<GameSaved>,
+        mut exit_events: EventWriter<AppExit>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
-        mut exit_events: EventWriter<AppExit>,
+        client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
         ModalWindow::new("Exit game")
@@ -163,11 +170,11 @@ impl InGameMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.label("Are you sure you want to exit the game?");
                 ui.horizontal(|ui| {
-                    if ui.button("Save and exit").clicked() {
+                    if client.is_none() && ui.button("Save and exit").clicked() {
                         save_events.send_default();
                         exit_events.send_default();
                     }
-                    if ui.button("Exit without saving").clicked() {
+                    if ui.button("Exit game").clicked() {
                         exit_events.send_default();
                     }
                     if ui.button("Cancel").clicked() {

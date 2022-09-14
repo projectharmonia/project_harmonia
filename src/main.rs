@@ -13,6 +13,7 @@ use bevy_inspector_egui::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
 use bevy_rapier3d::prelude::*;
+use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
@@ -31,6 +32,8 @@ impl PluginGroup for DollisPlugins {
             .add(InputManagerPlugin::<ControlAction>::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(RapierDebugRenderPlugin::default())
+            .add(RenetServerPlugin)
+            .add(RenetClientPlugin)
             .add(DefaultRaycastingPlugin::<ObjectPath>::default())
             .add(OutlinePlugin)
             .add(EguiPlugin)
