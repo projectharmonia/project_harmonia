@@ -1,4 +1,5 @@
 mod city_hud;
+mod error_message;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
@@ -11,6 +12,7 @@ mod world_menu;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use city_hud::CityHudPlugin;
+use error_message::ErrorMessagePlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
@@ -28,13 +30,14 @@ impl PluginGroup for UiPlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
             .add(CityHudPlugin)
+            .add(ErrorMessagePlugin)
             .add(InGameMenuPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)
             .add(SelectedObjectPlugin)
             .add(SettingsMenuPlugin)
+            .add(UiActionPlugin)
             .add(WorldBrowserPlugin)
-            .add(WorldMenuPlugin)
-            .add(UiActionPlugin);
+            .add(WorldMenuPlugin);
     }
 }

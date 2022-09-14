@@ -3,7 +3,7 @@ pub(super) mod city;
 pub(super) mod cli;
 pub(super) mod control_action;
 pub(super) mod developer;
-pub(super) mod errors;
+pub(super) mod error;
 pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
