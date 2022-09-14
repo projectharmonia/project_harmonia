@@ -208,7 +208,7 @@ fn collect_changes(
                 .type_id()
                 .and_then(|type_id| registry.get(type_id))
                 .and_then(|registration| registration.data::<ReflectComponent>())
-                .expect("non-ignored component should have ReflectComponent");
+                .expect("non-ignored components should be registered and have reflect(Component)");
 
             match storage_type {
                 StorageType::Table => {
@@ -376,6 +376,8 @@ struct NetworkEntityMap(EntityMap);
 
 #[cfg(test)]
 mod tests {
+    use derive_more::Constructor;
+
     use super::*;
     use crate::core::{
         game_world::GameEntity,
@@ -385,11 +387,9 @@ mod tests {
     #[test]
     fn client_acks_cleanup() {
         let mut app = App::new();
-        app.init_resource::<IgnoreRules>()
-            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }))
-            .add_plugin(ReplicationMessagingPlugin);
+        app.add_plugin(TestReplicationMessagingPlugin::new(
+            NetworkPreset::ServerAndClient { connected: true },
+        ));
 
         let mut client = app.world.resource_mut::<RenetClient>();
         client.disconnect();
@@ -405,35 +405,33 @@ mod tests {
     }
 
     #[test]
-    fn change_replicaiton() {
+    fn ack_receive() {
         let mut app = App::new();
-        app.register_type::<GameEntity>()
-            .register_type::<SparseSetComponent>()
-            .init_resource::<IgnoreRules>()
-            .init_resource::<DespawnTracker>()
-            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }))
-            .add_plugin(ReplicationMessagingPlugin);
-
-        app.world
-            .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
-                ignore_rules
-                    .serializable
-                    .insert(world.init_component::<SparseSetComponent>());
-            });
-
-        let server_entity = app
-            .world
-            .spawn()
-            .insert(GameEntity)
-            .insert(SparseSetComponent)
-            .insert(NonReflectedComponent)
-            .id();
+        app.add_plugin(TestReplicationMessagingPlugin::new(
+            NetworkPreset::ServerAndClient { connected: true },
+        ));
 
         wait_for_network_tick(&mut app);
 
-        // Remove server entity before client replicates it (since in test client and server in the same world)
+        let client_acks = app.world.resource::<ClientAcks>();
+        let client = app.world.resource::<RenetClient>();
+        assert!(client_acks.contains_key(&client.client_id()));
+    }
+
+    #[test]
+    fn spawn_replication() {
+        let mut app = App::new();
+        app.register_type::<GameEntity>()
+            .add_plugin(TestReplicationMessagingPlugin::new(
+                NetworkPreset::ServerAndClient { connected: true },
+            ));
+
+        let server_entity = app.world.spawn().insert(GameEntity).id();
+
+        wait_for_network_tick(&mut app);
+
+        // Remove server entity before client replicates it,
+        // since in test client and server in the same world.
         app.world.entity_mut(server_entity).despawn();
 
         wait_for_network_tick(&mut app);
@@ -451,91 +449,120 @@ mod tests {
             mapped_entity, client_entity,
             "mapped entity should correspond to the replicated entity on client"
         );
-        let client_entity = app.world.entity(client_entity);
-        assert!(client_entity.contains::<GameEntity>());
-        assert!(client_entity.contains::<SparseSetComponent>());
-        assert!(!client_entity.contains::<NonReflectedComponent>());
+    }
+
+    #[test]
+    fn change_replicaiton() {
+        let mut app = App::new();
+        app.register_type::<GameEntity>()
+            .register_type::<SparseSetComponent>()
+            .add_plugin(TestReplicationMessagingPlugin::new(
+                NetworkPreset::ServerAndClient { connected: true },
+            ));
+
+        app.world
+            .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
+                ignore_rules
+                    .serializable
+                    .insert(world.init_component::<SparseSetComponent>());
+            });
+
+        let replicated_entity = app
+            .world
+            .spawn()
+            .insert(GameEntity)
+            .insert(SparseSetComponent)
+            .insert(NonReflectedComponent)
+            .id();
+
+        // Mark as already spawned.
+        app.world
+            .resource_mut::<NetworkEntityMap>()
+            .insert(replicated_entity, replicated_entity);
 
         wait_for_network_tick(&mut app);
 
-        let client_acks = app.world.resource::<ClientAcks>();
-        let client = app.world.resource::<RenetClient>();
-        assert!(client_acks.contains_key(&client.client_id()));
+        // Remove components before client replicates it,
+        // since in test client and server in the same world.
+        let mut replicated_entity = app.world.entity_mut(replicated_entity);
+        replicated_entity.remove::<GameEntity>();
+        replicated_entity.remove::<SparseSetComponent>();
+        replicated_entity.remove::<NonReflectedComponent>();
+        let replicated_entity = replicated_entity.id();
+
+        wait_for_network_tick(&mut app);
+
+        let replicated_entity = app.world.entity(replicated_entity);
+        assert!(replicated_entity.contains::<GameEntity>());
+        assert!(replicated_entity.contains::<SparseSetComponent>());
+        assert!(!replicated_entity.contains::<NonReflectedComponent>());
     }
 
     #[test]
     fn removal_replication() {
         let mut app = App::new();
         app.register_type::<NonReflectedComponent>()
-            .register_type::<Transform>()
-            .init_resource::<IgnoreRules>()
-            .init_resource::<DespawnTracker>()
-            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }))
-            .add_plugin(ReplicationMessagingPlugin);
+            .register_type::<GameEntity>()
+            .add_plugin(TestReplicationMessagingPlugin::new(
+                NetworkPreset::ServerAndClient { connected: true },
+            ));
 
         // Mark transform component as removed
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
-        let transform_id = app.world.init_component::<Transform>();
+        let game_entity_id = app.world.init_component::<GameEntity>();
         let non_reflected_id = app.world.init_component::<NonReflectedComponent>();
         let removal_tracker = RemovalTracker(HashMap::from([
-            (transform_id, REMOVAL_TICK),
+            (game_entity_id, REMOVAL_TICK),
             (non_reflected_id, REMOVAL_TICK),
         ]));
         let replicated_entity = app
             .world
             .spawn()
             .insert(removal_tracker)
+            .insert(GameEntity)
             .insert(NonReflectedComponent)
-            .insert(Transform::default())
             .id();
 
-        let mut entity_map = app.world.resource_mut::<NetworkEntityMap>();
-        entity_map.insert(replicated_entity, replicated_entity); // Map an entity to itself so that the client thinks it has already been spawned
+        app.world
+            .resource_mut::<NetworkEntityMap>()
+            .insert(replicated_entity, replicated_entity);
 
         wait_for_network_tick(&mut app);
         wait_for_network_tick(&mut app);
 
         let replicated_entity = app.world.entity(replicated_entity);
+        assert!(!replicated_entity.contains::<GameEntity>());
         assert!(replicated_entity.contains::<NonReflectedComponent>());
-        assert!(!replicated_entity.contains::<Transform>());
     }
 
     #[test]
     fn despawn_replication() {
         let mut app = App::new();
-        app.init_resource::<IgnoreRules>()
-            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }))
-            .add_plugin(ReplicationMessagingPlugin);
+        app.add_plugin(TestReplicationMessagingPlugin::new(
+            NetworkPreset::ServerAndClient { connected: true },
+        ));
 
-        let client_entity = app.world.spawn().id();
+        let despawned_entity = app.world.spawn().id();
         let current_tick = app.world.read_change_tick();
-        let mut despawn_tracker = DespawnTracker::default();
-        despawn_tracker.despawns.push((client_entity, current_tick));
-        app.insert_resource(despawn_tracker);
+        let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
+        despawn_tracker
+            .despawns
+            .push((despawned_entity, current_tick));
 
-        let clinet_id = app.world.resource::<RenetClient>().client_id();
-        app.world
-            .resource_mut::<ClientAcks>()
-            .insert(clinet_id, current_tick - 1);
         app.world
             .resource_mut::<NetworkEntityMap>()
-            .insert(client_entity, client_entity);
+            .insert(despawned_entity, despawned_entity);
 
         wait_for_network_tick(&mut app);
         wait_for_network_tick(&mut app);
 
-        assert!(app.world.get_entity(client_entity).is_none());
+        assert!(app.world.get_entity(despawned_entity).is_none());
     }
 
     #[test]
     fn client_resets() {
         let mut app = App::new();
-        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Client))
-            .add_plugin(ReplicationMessagingPlugin);
+        app.add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Client));
 
         app.update();
 
@@ -555,8 +582,7 @@ mod tests {
     #[test]
     fn server_reset() {
         let mut app = App::new();
-        app.add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
-            .add_plugin(ReplicationMessagingPlugin);
+        app.add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Server));
 
         app.update();
 
@@ -576,6 +602,22 @@ mod tests {
             < ReplicationMessagingPlugin::TIMESTEP
         {
             app.update();
+        }
+    }
+
+    #[derive(Constructor)]
+    struct TestReplicationMessagingPlugin {
+        preset: NetworkPreset,
+    }
+
+    impl Plugin for TestReplicationMessagingPlugin {
+        fn build(&self, app: &mut App) {
+            if let NetworkPreset::ServerAndClient { .. } = self.preset {
+                app.init_resource::<IgnoreRules>()
+                    .init_resource::<DespawnTracker>();
+            }
+            app.add_plugin(TestNetworkPlugin::new(self.preset))
+                .add_plugin(ReplicationMessagingPlugin);
         }
     }
 
