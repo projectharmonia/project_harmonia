@@ -15,10 +15,7 @@ use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
-use super::{
-    asset_metadata::{self, AssetMetadata},
-    game_world::GameWorld,
-};
+use super::asset_metadata::{self, AssetMetadata};
 
 pub(crate) const PREVIEW_SIZE: u32 = 64;
 
@@ -30,7 +27,6 @@ impl Plugin for PreviewPlugin {
             .add_event::<PreviewRequested>()
             .init_resource::<Previews>()
             .add_startup_system(Self::spawn_camera_system)
-            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
             .add_system(Self::load_asset_system.run_in_state(PreviewState::Inactive))
             .add_system(Self::wait_for_loading_system.run_in_state(PreviewState::LoadingAsset))
@@ -41,12 +37,6 @@ impl Plugin for PreviewPlugin {
 impl PreviewPlugin {
     fn spawn_camera_system(mut commands: Commands) {
         commands.spawn_bundle(PreviewCameraBundle::default());
-    }
-
-    fn cleanup_system(mut commands: Commands, preview_cameras: Query<Entity, With<PreviewCamera>>) {
-        for entity in &preview_cameras {
-            commands.entity(entity).despawn_recursive();
-        }
     }
 
     fn load_asset_system(
@@ -281,31 +271,6 @@ mod tests {
     };
 
     const METADATA_PATH: &str = "base/objects/rocks/small_stone/small_stone.toml";
-
-    #[test]
-    fn cleanup() {
-        let mut app = App::new();
-        app.init_resource::<GameWorld>()
-            .add_plugin(TestPreviewPlugin);
-
-        app.update();
-
-        let preview_camera_entity = app
-            .world
-            .query_filtered::<Entity, With<PreviewCamera>>()
-            .single(&app.world);
-        let preview_target_entity = app.world.spawn().id();
-        app.world
-            .entity_mut(preview_camera_entity)
-            .push_children(&[preview_target_entity]);
-
-        app.world.remove_resource::<GameWorld>();
-
-        app.update();
-
-        assert!(app.world.get_entity(preview_target_entity).is_none());
-        assert!(app.world.get_entity(preview_camera_entity).is_none());
-    }
 
     #[test]
     fn preview_event() {

@@ -137,12 +137,10 @@ impl InGameMenuPlugin {
                         // See https://github.com/IyesGames/iyes_loopless/issues/31
                         save_events.update();
                         commands.remove_resource::<GameWorld>();
-                        commands.insert_resource(NextState(GameState::MainMenu));
                         ui.close_modal();
                     }
                     if ui.button("Exit to main menu").clicked() {
                         commands.remove_resource::<GameWorld>();
-                        commands.insert_resource(NextState(GameState::MainMenu));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {

@@ -13,7 +13,7 @@ use iyes_loopless::prelude::*;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{errors, game_paths::GamePaths};
+use super::{errors, game_paths::GamePaths, game_state::GameState};
 use ignore_rules::IgnoreRules;
 
 #[derive(SystemLabel)]
@@ -31,6 +31,7 @@ impl Plugin for GameWorldPlugin {
             .init_resource::<IgnoreRules>()
             .add_event::<GameSaved>()
             .add_event::<GameLoaded>()
+            .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
                     .chain(errors::log_err_system)
@@ -47,6 +48,10 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
+    fn main_menu_transition_system(mut commands: Commands) {
+        commands.insert_resource(NextState(GameState::MainMenu));
+    }
+
     /// Saves world to disk with the name from [`GameWorld`] resource.
     fn saving_system(
         world: &World,
@@ -71,6 +76,7 @@ impl GameWorldPlugin {
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
     fn loading_system(
+        mut commands: Commands,
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
         game_world: Res<GameWorld>,
@@ -91,6 +97,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("unable to deserialize {world_path:?}"))?;
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
+        commands.insert_resource(NextState(GameState::World));
 
         Ok(())
     }
@@ -181,6 +188,23 @@ mod tests {
     use crate::core::city::{City, CityBundle};
 
     #[test]
+    fn main_menu_transition() {
+        let mut app = App::new();
+        app.init_resource::<GameWorld>().add_plugin(GameWorldPlugin);
+
+        app.update();
+
+        app.world.remove_resource::<GameWorld>();
+
+        app.update();
+
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::MainMenu
+        );
+    }
+
+    #[test]
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
@@ -235,6 +259,10 @@ mod tests {
         app.update();
         app.update();
 
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::World
+        );
         assert_eq!(
             *app.world.query::<&Transform>().single(&app.world),
             TRANSFORM,
