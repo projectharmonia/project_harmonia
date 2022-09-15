@@ -1,4 +1,4 @@
-pub(super) mod client;
+pub(crate) mod client;
 pub(super) mod replication;
 pub(super) mod server;
 
