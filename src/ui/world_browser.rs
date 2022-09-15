@@ -3,10 +3,9 @@ use std::{fs, mem};
 use anyhow::{Context, Ok, Result};
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId},
+    egui::{epaint::WHITE_UV, Align, Button, DragValue, Grid, Image, Layout, TextureId},
     EguiContext,
 };
-use bevy_inspector_egui::egui::{Button, DragValue, Grid};
 use derive_more::Constructor;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -92,10 +91,11 @@ impl WorldBrowserPlugin {
                     if ui.button("➕ Create new").clicked() {
                         commands.init_resource::<CreateWorldDialog>();
                     }
-                    if ui.button("🖧 Join").clicked() {
-                        commands.init_resource::<JoinWorldDialog>();
-                    }
-                    ui.allocate_space(ui.available_size_before_wrap());
+                    ui.with_layout(Layout::right_to_left().with_cross_align(Align::Max), |ui| {
+                        if ui.button("🖧 Join").clicked() {
+                            commands.init_resource::<JoinWorldDialog>();
+                        }
+                    });
                 });
             });
 

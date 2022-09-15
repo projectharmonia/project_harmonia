@@ -8,8 +8,7 @@ use bevy::{
     },
     utils::HashMap,
 };
-use bevy_egui::EguiContext;
-use bevy_inspector_egui::egui::TextureId;
+use bevy_egui::{egui::TextureId, EguiContext};
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
 use derive_more::From;
 use iyes_loopless::prelude::*;

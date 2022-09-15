@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{
-        Align2, Area, Color32, Context, Id, InnerResponse, Pos2, Shape, Ui, WidgetText, Window,
+        Align2, Area, Color32, Context, Id, InnerResponse, LayerId, Pos2, Shape, Ui, WidgetText,
+        Window,
     },
     EguiContext,
 };
-use bevy_inspector_egui::egui::LayerId;
 use leafwing_input_manager::prelude::*;
 use smallvec::SmallVec;
 

@@ -71,14 +71,18 @@ impl SettingsMenuPlugin {
                         apply_events.send_default();
                         ui.close_modal();
                     }
+                    if ui.button("Cancel").clicked() {
+                        ui.close_modal();
+                    }
                     if ui.button("Apply").clicked() {
                         apply_events.send_default();
                     }
-                    if ui.button("Restore defaults").clicked() {
-                        *settings = Settings::default();
-                        apply_events.send_default();
-                    }
-                    ui.allocate_space(ui.available_size_before_wrap());
+                    ui.with_layout(Layout::right_to_left().with_cross_align(Align::Max), |ui| {
+                        if ui.button("Restore defaults").clicked() {
+                            *settings = Settings::default();
+                            apply_events.send_default();
+                        }
+                    });
                 });
             });
 
