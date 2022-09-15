@@ -1,6 +1,6 @@
 pub(crate) mod client;
 pub(super) mod replication;
-pub(super) mod server;
+pub(crate) mod server;
 
 use bevy::prelude::*;
 use bevy_renet::renet::{ChannelConfig, ReliableChannelConfig, UnreliableChannelConfig};
