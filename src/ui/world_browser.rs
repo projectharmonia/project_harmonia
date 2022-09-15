@@ -95,6 +95,7 @@ impl WorldBrowserPlugin {
                     if ui.button("🖧 Join").clicked() {
                         commands.init_resource::<JoinWorldDialog>();
                     }
+                    ui.allocate_space(ui.available_size_before_wrap());
                 });
             });
 

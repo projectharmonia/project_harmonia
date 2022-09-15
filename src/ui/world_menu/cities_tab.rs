@@ -43,10 +43,11 @@ impl CitiesTab<'_, '_, '_, '_, '_> {
                 });
             });
         }
-        ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
+        ui.with_layout(Layout::left_to_right().with_cross_align(Align::Max), |ui| {
             if ui.button("➕ Create new").clicked() {
                 self.commands.init_resource::<CreateCityDialog>();
             }
+            ui.allocate_space(ui.available_size_before_wrap());
         });
     }
 }

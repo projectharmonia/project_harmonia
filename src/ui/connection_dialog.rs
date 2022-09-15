@@ -11,12 +11,12 @@ pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::connection_dialog_system.run_if(client::is_connecting));
+        app.add_system(Self::connection_system.run_if(client::is_connecting));
     }
 }
 
 impl ConnectionDialogPlugin {
-    fn connection_dialog_system(
+    fn connection_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
