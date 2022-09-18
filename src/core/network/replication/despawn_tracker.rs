@@ -2,7 +2,7 @@ use bevy::{ecs::system::SystemChangeTick, prelude::*, utils::HashSet};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::replication_messaging::ClientAcks;
+use super::ClientAcks;
 use crate::core::game_world::GameEntity;
 
 /// Tracks entity despawns in [`DespawnTracker`] resource.
