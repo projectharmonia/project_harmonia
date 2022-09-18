@@ -155,7 +155,9 @@ fn save_to_scene(
     scene
 }
 
-/// All entities with this component will be removed after leaving [`InGame`] state.
+/// Marks entity as important for game.
+///
+/// Such entitites will be serialized / replicated.
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct GameEntity;
@@ -168,7 +170,7 @@ pub(crate) struct GameSaved;
 #[derive(Default)]
 pub(crate) struct GameLoaded;
 
-/// The name of the current world.
+/// Contains meta-information about the currently loaded world.
 #[derive(Default, Deref)]
 pub(crate) struct GameWorld {
     pub(crate) world_name: String,
