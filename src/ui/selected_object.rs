@@ -3,7 +3,9 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     asset_metadata,
+    city::City,
     game_state::GameState,
+    game_world::parent_sync::ParentSync,
     object::{MovingObject, ObjectBundle},
 };
 
@@ -32,6 +34,7 @@ impl SelectedObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         selected_object: Res<SelectedObject>,
+        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
     ) {
         let metadata_path = asset_server
             .get_handle_path(selected_object.0)
@@ -39,14 +42,13 @@ impl SelectedObjectPlugin {
 
         let scene_path = asset_metadata::scene_path(metadata_path.path());
 
-        // TODO: Spawn it as a child of the selected city
-        // once https://github.com/IyesGames/iyes_scene_tools/issues/5 will be fixed.
         commands
             .spawn_bundle(ObjectBundle {
                 path: scene_path.into(),
                 ..Default::default()
             })
-            .insert(MovingObject);
+            .insert(MovingObject)
+            .insert(ParentSync(visible_cities.single()));
     }
 
     fn remove_selection_system(
@@ -81,15 +83,24 @@ mod tests {
 
         app.update();
 
+        let city = app
+            .world
+            .spawn()
+            .insert(City)
+            .insert(Visibility::default())
+            .id();
+
         let asset_server = app.world.resource::<AssetServer>();
         let dummy_handle: Handle<AssetMetadata> = asset_server.load("dummy.toml");
         app.world.insert_resource(SelectedObject(dummy_handle.id));
 
         app.update();
 
-        app.world
-            .query_filtered::<(), (With<MovingObject>, With<ObjectPath>)>()
+        let parent_sync = app
+            .world
+            .query_filtered::<&ParentSync, (With<MovingObject>, With<ObjectPath>)>()
             .single(&app.world);
+        assert_eq!(parent_sync.0, city);
     }
 
     #[test]

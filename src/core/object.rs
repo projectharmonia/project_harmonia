@@ -78,7 +78,7 @@ impl ObjectPlugin {
 
     fn ray_system(
         ray_sources: Query<&RayCastSource<ObjectPath>>,
-        parents: Query<(Option<&Parent>, Option<&ObjectPath>)>,
+        parents: Query<(&Parent, Option<&ObjectPath>)>,
     ) -> Option<Entity> {
         for source in &ray_sources {
             if let Some((child_entity, _)) = source.intersect_top() {
@@ -178,17 +178,16 @@ impl ObjectPlugin {
 }
 
 /// Iterates up the hierarchy until it finds a parent with an [`ObjectPath`] component if exists.
-// TODO: Remove option from parent when object will be spawned as city children.
 fn find_parent_object(
     entity: Entity,
-    parents: &Query<(Option<&Parent>, Option<&ObjectPath>)>,
+    parents: &Query<(&Parent, Option<&ObjectPath>)>,
 ) -> Option<Entity> {
     let (parent, object_path) = parents.get(entity).unwrap();
     if object_path.is_some() {
         return Some(entity);
     }
 
-    find_parent_object(parent?.get(), parents)
+    find_parent_object(parent.get(), parents)
 }
 
 fn set_outline_recursive(
@@ -246,20 +245,21 @@ mod tests {
     fn parent_search() {
         let mut world = World::new();
         let child_entity = world.spawn().id();
-        let root_entity = world
+        let parent_entity = world
             .spawn()
             .insert(ObjectPath::default())
-            .with_children(|parent| {
-                parent.spawn().push_children(&[child_entity]);
-            })
+            .push_children(&[child_entity])
             .id();
 
-        let mut system_state: SystemState<Query<(Option<&Parent>, Option<&ObjectPath>)>> =
+        // Assign a parent, as an outline object is always expected to have a parent object.
+        world.spawn().push_children(&[parent_entity]);
+
+        let mut system_state: SystemState<Query<(&Parent, Option<&ObjectPath>)>> =
             SystemState::new(&mut world);
 
         let entity = find_parent_object(child_entity, &system_state.get(&world))
             .expect("object should have a parent");
-        assert_eq!(entity, root_entity);
+        assert_eq!(entity, parent_entity);
     }
 
     #[test]
@@ -354,6 +354,7 @@ mod tests {
             })
             .insert(ObjectPath::default())
             .id();
+        app.world.spawn().push_children(&[outline_entity]);
 
         let mut ray_source = RayCastSource::<ObjectPath>::default();
         ray_source.intersections_mut().push((
@@ -375,6 +376,7 @@ mod tests {
             })
             .insert(ObjectPath::default())
             .id();
+        app.world.spawn().push_children(&[next_outline_entity]);
         let mut ray_source = app
             .world
             .get_mut::<RayCastSource<ObjectPath>>(ray_entity)
@@ -437,6 +439,7 @@ mod tests {
             })
             .insert(ObjectPath::default())
             .id();
+        app.world.spawn().push_children(&[outline_entity]);
 
         let mut ray_source = RayCastSource::<ObjectPath>::default();
         ray_source.intersections_mut().push((
