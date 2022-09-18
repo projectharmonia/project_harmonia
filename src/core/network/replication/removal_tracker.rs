@@ -2,7 +2,7 @@ use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::ClientAcks;
+use super::AckedTicks;
 use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};
 
 /// Stores component removals in [`RemovalTracker`] component
@@ -31,7 +31,7 @@ impl RemovalTrackerPlugin {
     }
 
     fn cleanup_system(
-        client_acks: Res<ClientAcks>,
+        client_acks: Res<AckedTicks>,
         mut removal_trackers: Query<&mut RemovalTracker>,
     ) {
         for mut removal_tracker in &mut removal_trackers {
@@ -89,7 +89,7 @@ mod tests {
 
         const DUMMY_CLIENT_ID: u64 = 0;
         app.world
-            .resource_mut::<ClientAcks>()
+            .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
@@ -132,7 +132,7 @@ mod tests {
 
     impl Plugin for TestRemovalTrackerPlugin {
         fn build(&self, app: &mut App) {
-            app.init_resource::<ClientAcks>()
+            app.init_resource::<AckedTicks>()
                 .init_resource::<IgnoreRules>()
                 .add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
                 .add_plugin(RemovalTrackerPlugin);

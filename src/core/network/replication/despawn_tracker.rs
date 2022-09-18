@@ -2,7 +2,7 @@ use bevy::{ecs::system::SystemChangeTick, prelude::*, utils::HashSet};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::ClientAcks;
+use super::AckedTicks;
 use crate::core::game_world::GameEntity;
 
 /// Tracks entity despawns in [`DespawnTracker`] resource.
@@ -28,7 +28,7 @@ impl DespawnTrackerPlugin {
         }
     }
 
-    fn cleanup_system(mut despawn_tracker: ResMut<DespawnTracker>, client_acks: Res<ClientAcks>) {
+    fn cleanup_system(mut despawn_tracker: ResMut<DespawnTracker>, client_acks: Res<AckedTicks>) {
         despawn_tracker
             .despawns
             .retain(|(_, tick)| client_acks.values().any(|last_tick| last_tick < tick));
@@ -100,7 +100,7 @@ mod tests {
 
         const DUMMY_CLIENT_ID: u64 = 0;
         app.world
-            .resource_mut::<ClientAcks>()
+            .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
@@ -124,7 +124,7 @@ mod tests {
         const DUMMY_CLIENT_ID: u64 = 0;
         let current_tick = app.world.read_change_tick();
         app.world
-            .resource_mut::<ClientAcks>()
+            .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, current_tick);
 
         app.update();
@@ -162,7 +162,7 @@ mod tests {
 
     impl Plugin for TestDespawnTrackerPlugin {
         fn build(&self, app: &mut App) {
-            app.init_resource::<ClientAcks>()
+            app.init_resource::<AckedTicks>()
                 .add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
                 .add_plugin(DespawnTrackerPlugin);
         }
