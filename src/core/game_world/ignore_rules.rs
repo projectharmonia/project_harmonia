@@ -4,6 +4,7 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 
+use super::parent_sync::ParentSync;
 use crate::core::{
     city::City,
     family::{Budget, Family},
@@ -32,6 +33,7 @@ impl FromWorld for IgnoreRules {
             world.init_component::<Budget>(),
             world.init_component::<ObjectPath>(),
             world.init_component::<GameEntity>(),
+            world.init_component::<ParentSync>(),
         ]);
 
         let ignored_if_present = HashMap::from([(

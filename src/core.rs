@@ -25,7 +25,7 @@ use developer::DeveloperPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
-use game_world::GameWorldPlugin;
+use game_world::GameWorldPlugins;
 use ground::GroundPlugin;
 use network::NetworkPlugins;
 use object::ObjectPlugin;
@@ -49,10 +49,10 @@ impl PluginGroup for CorePlugins {
             .add(FamilyPlugin)
             .add(GamePathsPlugin)
             .add(PreviewPlugin)
-            .add(GameWorldPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin);
 
+        GameWorldPlugins.build(group);
         NetworkPlugins.build(group);
     }
 }

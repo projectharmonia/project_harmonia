@@ -1,9 +1,11 @@
 pub(super) mod ignore_rules;
+mod parent_sync;
 
 use std::{borrow::Cow, fs};
 
 use anyhow::{Context, Result};
 use bevy::{
+    app::PluginGroupBuilder,
     ecs::archetype::ArchetypeId,
     prelude::*,
     reflect::TypeRegistry,
@@ -15,6 +17,15 @@ use serde::de::DeserializeSeed;
 
 use super::{error, game_paths::GamePaths, game_state::GameState};
 use ignore_rules::IgnoreRules;
+use parent_sync::ParentSyncPlugin;
+
+pub(super) struct GameWorldPlugins;
+
+impl PluginGroup for GameWorldPlugins {
+    fn build(&mut self, group: &mut PluginGroupBuilder) {
+        group.add(ParentSyncPlugin).add(GameWorldPlugin);
+    }
+}
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
@@ -22,7 +33,7 @@ pub(crate) enum GameWorldSystem {
     Loading,
 }
 
-pub(super) struct GameWorldPlugin;
+struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
