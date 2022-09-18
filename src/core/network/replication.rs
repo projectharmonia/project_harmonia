@@ -34,7 +34,10 @@ pub(super) struct ReplicationPlugins;
 
 impl PluginGroup for ReplicationPlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group.add(RemovalTrackerPlugin).add(DespawnTrackerPlugin);
+        group
+            .add(RemovalTrackerPlugin)
+            .add(DespawnTrackerPlugin)
+            .add(ReplicationPlugin);
     }
 }
 
@@ -43,9 +46,9 @@ enum ReplicationStage {
     Tick,
 }
 
-pub(super) struct ReplicationMessagingPlugin;
+struct ReplicationPlugin;
 
-impl Plugin for ReplicationMessagingPlugin {
+impl Plugin for ReplicationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TickAck>()
             .init_resource::<ClientAcks>()
@@ -77,7 +80,7 @@ impl Plugin for ReplicationMessagingPlugin {
     }
 }
 
-impl ReplicationMessagingPlugin {
+impl ReplicationPlugin {
     const TIMESTEP: f64 = 0.1;
 
     fn client_acks_cleanup_system(
@@ -623,7 +626,7 @@ mod tests {
         let init_time = app.world.resource::<Time>().seconds_since_startup();
         app.update();
         while app.world.resource::<Time>().seconds_since_startup() - init_time
-            < ReplicationMessagingPlugin::TIMESTEP
+            < ReplicationPlugin::TIMESTEP
         {
             app.update();
         }
@@ -641,7 +644,7 @@ mod tests {
                     .init_resource::<DespawnTracker>();
             }
             app.add_plugin(TestNetworkPlugin::new(self.preset))
-                .add_plugin(ReplicationMessagingPlugin);
+                .add_plugin(ReplicationPlugin);
         }
     }
 
