@@ -4,22 +4,24 @@ mod world_diff;
 
 use std::time::Duration;
 
+use anyhow::{Context, Result};
 use bevy::{
     app::PluginGroupBuilder,
     ecs::{
         archetype::ArchetypeId,
         component::{ComponentTicks, StorageType},
         entity::EntityMap,
+        reflect::ReflectMapEntities,
     },
     prelude::*,
-    reflect::TypeRegistry,
+    reflect::{TypeRegistry, TypeRegistryInternal},
     utils::HashMap,
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
 use iyes_loopless::prelude::*;
 use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
-use tap::{TapFallible, TapOptional};
+use tap::TapFallible;
 
 use crate::core::{
     game_state::GameState,
@@ -170,7 +172,7 @@ impl ReplicationPlugin {
             tick_ack.0 = world_diff.tick;
 
             world.resource_scope(|world, mut entity_map: Mut<NetworkEntityMap>| {
-                apply_diffs(world, &mut entity_map, world_diff, &registry);
+                apply_diffs(world, &mut entity_map, &registry, world_diff);
             });
             if !world.contains_resource::<GameWorld>() {
                 world.insert_resource(GameWorld::default()); // TODO: Replicate this resource.
@@ -343,29 +345,18 @@ fn collect_despawns(client_diffs: &mut HashMap<u64, WorldDiff>, despawn_tracker:
 fn apply_diffs(
     world: &mut World,
     entity_map: &mut NetworkEntityMap,
-    world_diff: WorldDiff,
     registry: &TypeRegistry,
+    world_diff: WorldDiff,
 ) {
-    let read_registry = registry.read();
+    let registry = registry.read();
     for (&server_entity, components) in world_diff.entities.iter() {
         let local_entity = *entity_map
             .entry(server_entity)
             .or_insert_with(|| world.spawn().id());
 
         for component_diff in components.iter() {
-            let type_name = component_diff.type_name();
-            if let Some(reflect_component) = read_registry
-                .get_with_name(type_name)
-                .and_then(|registration| registration.data::<ReflectComponent>())
-                .tap_none(|| error!("unable to reflect {type_name}"))
-            {
-                match component_diff {
-                    ComponentDiff::Changed(reflect) => {
-                        reflect_component.apply_or_insert(world, local_entity, &**reflect);
-                    }
-                    ComponentDiff::Removed(_) => reflect_component.remove(world, local_entity),
-                }
-            }
+            apply_component_diff(world, entity_map, &registry, local_entity, component_diff)
+                .unwrap_or_else(|e| error!("{e}"));
         }
     }
     for server_entity in world_diff.despawns.iter().copied() {
@@ -376,6 +367,37 @@ fn apply_diffs(
             world.entity_mut(local_entity).despawn();
         }
     }
+}
+
+fn apply_component_diff(
+    world: &mut World,
+    entity_map: &NetworkEntityMap,
+    registry: &TypeRegistryInternal,
+    local_entity: Entity,
+    component_diff: &ComponentDiff,
+) -> Result<()> {
+    let type_name = component_diff.type_name();
+    let registration = registry
+        .get_with_name(type_name)
+        .with_context(|| format!("received change in unknown type name {type_name}"))?;
+
+    let reflect_component = registration
+        .data::<ReflectComponent>()
+        .with_context(|| format!("unable to reflect received {type_name}"))?;
+
+    match component_diff {
+        ComponentDiff::Changed(reflect) => {
+            reflect_component.apply_or_insert(world, local_entity, &**reflect);
+            if let Some(reflect_map_entities) = registration.data::<ReflectMapEntities>() {
+                reflect_map_entities
+                    .map_entities(world, &entity_map)
+                    .with_context(|| format!("unable to map entities for {type_name}"))?;
+            }
+        }
+        ComponentDiff::Removed(_) => reflect_component.remove(world, local_entity),
+    }
+
+    Ok(())
 }
 
 /// Last received tick from server.
@@ -402,7 +424,7 @@ mod tests {
 
     use super::*;
     use crate::core::{
-        game_world::GameEntity,
+        game_world::{parent_sync::ParentSync, GameEntity},
         network::tests::{NetworkPreset, TestNetworkPlugin},
     };
 
@@ -526,6 +548,35 @@ mod tests {
     }
 
     #[test]
+    fn entity_mapping() {
+        let mut app = App::new();
+        app.register_type::<GameEntity>()
+            .register_type::<ParentSync>()
+            .add_plugin(TestReplicationMessagingPlugin::new(
+                NetworkPreset::ServerAndClient { connected: true },
+            ));
+
+        let client_parent = app.world.spawn().id();
+        let server_parent = app.world.spawn().id();
+        let replicated_entity = app
+            .world
+            .spawn()
+            .insert(GameEntity)
+            .insert(ParentSync(server_parent))
+            .id();
+
+        let mut entity_map = app.world.resource_mut::<NetworkEntityMap>();
+        entity_map.insert(replicated_entity, replicated_entity);
+        entity_map.insert(server_parent, client_parent);
+
+        wait_for_network_tick(&mut app);
+        wait_for_network_tick(&mut app);
+
+        let parent_sync = app.world.get::<ParentSync>(replicated_entity).unwrap();
+        assert_eq!(parent_sync.0, client_parent);
+    }
+
+    #[test]
     fn removal_replication() {
         let mut app = App::new();
         app.register_type::<NonReflectedComponent>()
@@ -534,7 +585,7 @@ mod tests {
                 NetworkPreset::ServerAndClient { connected: true },
             ));
 
-        // Mark transform component as removed
+        // Mark components as removed.
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
         let game_entity_id = app.world.init_component::<GameEntity>();
         let non_reflected_id = app.world.init_component::<NonReflectedComponent>();

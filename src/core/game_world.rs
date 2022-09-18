@@ -1,5 +1,5 @@
 pub(super) mod ignore_rules;
-mod parent_sync;
+pub(crate) mod parent_sync;
 
 use std::{borrow::Cow, fs};
 
