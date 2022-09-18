@@ -2,6 +2,7 @@ use anyhow::{Error, Result};
 use bevy::prelude::*;
 
 /// A system to enable early return with error message reporting.
+#[cfg_attr(coverage, no_coverage)]
 pub(crate) fn err_message_system(
     In(result): In<Result<()>>,
     #[cfg(not(test))] mut commands: Commands,
