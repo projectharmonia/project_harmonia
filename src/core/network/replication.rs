@@ -23,6 +23,7 @@ use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
+use super::client;
 use crate::core::{
     game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
@@ -64,7 +65,7 @@ impl Plugin for ReplicationPlugin {
                     ),
                 ),
             )
-            .add_system(Self::tick_ack_sending_system.run_if_resource_exists::<RenetClient>())
+            .add_system(Self::tick_ack_sending_system.run_if(client::is_connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())
@@ -75,7 +76,7 @@ impl Plugin for ReplicationPlugin {
             use iyes_loopless::condition::IntoConditionalExclusiveSystem;
             app.add_system(
                 Self::world_diff_receiving_system
-                    .run_if_resource_exists::<RenetClient>()
+                    .run_if(client::is_connected)
                     .at_start(),
             );
         }

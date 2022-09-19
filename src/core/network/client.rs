@@ -22,6 +22,13 @@ pub(crate) fn is_connecting(client: Option<Res<RenetClient>>) -> bool {
     }
 }
 
+pub(crate) fn is_connected(client: Option<Res<RenetClient>>) -> bool {
+    match client {
+        Some(client) => client.is_connected(),
+        None => false,
+    }
+}
+
 #[derive(Args, Clone, Debug, PartialEq)]
 pub(crate) struct ConnectionSettings {
     /// Server IP address.
