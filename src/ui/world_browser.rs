@@ -87,11 +87,11 @@ impl WorldBrowserPlugin {
                         });
                     });
                 }
-                ui.with_layout(Layout::left_to_right().with_cross_align(Align::Max), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                     if ui.button("➕ Create new").clicked() {
                         commands.init_resource::<CreateWorldDialog>();
                     }
-                    ui.with_layout(Layout::right_to_left().with_cross_align(Align::Max), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
                         if ui.button("🖧 Join").clicked() {
                             commands.init_resource::<JoinWorldDialog>();
                         }

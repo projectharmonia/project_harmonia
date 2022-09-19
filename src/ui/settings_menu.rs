@@ -66,7 +66,7 @@ impl SettingsMenuPlugin {
                     }
                     SettingsTab::Developer => DeveloperTab::new(&mut settings.developer).show(ui),
                 };
-                ui.with_layout(Layout::left_to_right().with_cross_align(Align::Max), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                     if ui.button("Ok").clicked() {
                         apply_events.send_default();
                         ui.close_modal();
@@ -77,7 +77,7 @@ impl SettingsMenuPlugin {
                     if ui.button("Apply").clicked() {
                         apply_events.send_default();
                     }
-                    ui.with_layout(Layout::right_to_left().with_cross_align(Align::Max), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
                         if ui.button("Restore defaults").clicked() {
                             *settings = Settings::default();
                             apply_events.send_default();

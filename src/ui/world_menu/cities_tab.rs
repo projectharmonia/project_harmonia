@@ -43,7 +43,7 @@ impl CitiesTab<'_, '_, '_, '_, '_> {
                 });
             });
         }
-        ui.with_layout(Layout::left_to_right().with_cross_align(Align::Max), |ui| {
+        ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
             if ui.button("➕ Create new").clicked() {
                 self.commands.init_resource::<CreateCityDialog>();
             }
