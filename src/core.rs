@@ -89,7 +89,7 @@ mod tests {
             app.update();
             let asset_server = app.world.resource::<AssetServer>();
             match asset_server.get_load_state(handle) {
-                LoadState::Loading | LoadState::NotLoaded => continue,
+                LoadState::NotLoaded | LoadState::Loading => continue,
                 LoadState::Loaded => return,
                 LoadState::Failed => panic!("asset loading failed"),
                 LoadState::Unloaded => {

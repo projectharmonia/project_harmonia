@@ -92,12 +92,7 @@ impl PreviewPlugin {
         let mut camera = preview_camera.single_mut();
         let (metadata_id, scene_handle) = preview_target.single();
         match asset_server.get_load_state(scene_handle) {
-            LoadState::NotLoaded => unreachable!(
-                "asset {:?} should have started loading when entering {} state",
-                asset_server.get_handle_path(metadata_id.0),
-                PreviewState::LoadingAsset
-            ),
-            LoadState::Loading => (),
+            LoadState::NotLoaded | LoadState::Loading => (),
             LoadState::Loaded => {
                 // Ignore logging in tests to exclude it from coverage.
                 #[cfg(not(test))]
