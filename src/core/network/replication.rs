@@ -358,17 +358,14 @@ fn apply_diffs(
     world_diff: WorldDiff,
 ) {
     let registry = registry.read();
-    for (&server_entity, components) in world_diff.entities.iter() {
-        let local_entity = *entity_map
-            .entry(server_entity)
-            .or_insert_with(|| world.spawn().id());
-
+    // Map entities non-lazily in order to correctly map components that reference server entities.
+    for (entity, components) in map_entities(world, entity_map, world_diff.entities) {
         for component_diff in components.iter() {
-            apply_component_diff(world, entity_map, &registry, local_entity, component_diff)
+            apply_component_diff(world, entity_map, &registry, entity, component_diff)
                 .unwrap_or_else(|e| error!("{e}"));
         }
     }
-    for server_entity in world_diff.despawns.iter().copied() {
+    for server_entity in world_diff.despawns {
         if let Ok(local_entity) = entity_map
             .get(server_entity)
             .tap_err(|e| error!("received an invalid entity despawn: {e}"))
@@ -377,6 +374,22 @@ fn apply_diffs(
             entity_map.remove(server_entity);
         }
     }
+}
+
+/// Maps entities received from server into local entities.
+fn map_entities(
+    world: &mut World,
+    entity_map: &mut NetworkEntityMap,
+    entities: HashMap<Entity, Vec<ComponentDiff>>,
+) -> Vec<(Entity, Vec<ComponentDiff>)> {
+    let mut mapped_entities = Vec::with_capacity(entities.len());
+    for (mut entity, components) in entities {
+        entity = *entity_map
+            .entry(entity)
+            .or_insert_with(|| world.spawn().id());
+        mapped_entities.push((entity, components));
+    }
+    mapped_entities
 }
 
 fn apply_component_diff(
