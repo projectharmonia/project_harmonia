@@ -374,6 +374,7 @@ fn apply_diffs(
             .tap_err(|e| error!("received an invalid entity despawn: {e}"))
         {
             world.entity_mut(local_entity).despawn();
+            entity_map.remove(server_entity);
         }
     }
 }
@@ -644,6 +645,7 @@ mod tests {
         wait_for_network_tick(&mut app);
 
         assert!(app.world.get_entity(despawned_entity).is_none());
+        assert!(app.world.resource::<NetworkEntityMap>().is_empty());
     }
 
     #[test]
