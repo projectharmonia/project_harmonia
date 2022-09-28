@@ -3,6 +3,7 @@ name = "dollis"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
+rust-version = "1.60.0"
 
 [dependencies]
 bevy = { version = "0.8", default-features = false, features = [
@@ -30,7 +31,7 @@ derive_more = { version = "0.99", default-features = false, features = [
   "constructor",
 ] }
 standard_paths = "1.1"
-clap = { version = "3.2", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.5"
 rmp-serde = "1.1"
