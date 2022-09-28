@@ -20,7 +20,9 @@ use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoaded, GameWorld, GameWorldSystem},
-    network::{client::ConnectionSettings, server::ServerSettings},
+    network::{
+        client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
+    },
 };
 
 pub(super) struct WorldBrowserPlugin;
@@ -109,6 +111,7 @@ impl WorldBrowserPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
         mut connection_settings: ResMut<ConnectionSettings>,
+        event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
         let mut is_open = true;
         let mut is_confirmed = false;
@@ -136,7 +139,7 @@ impl WorldBrowserPlugin {
 
             if is_confirmed {
                 let client = connection_settings
-                    .create_client()
+                    .create_client(*event_counter)
                     .context("unable to create connection")?;
                 commands.insert_resource(client);
             }
@@ -153,6 +156,7 @@ impl WorldBrowserPlugin {
         mut world_browser: ResMut<WorldBrowser>,
         mut server_settings: ResMut<ServerSettings>,
         dialog: Res<HostWorldDialog>,
+        event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
         let mut is_open = true;
         let mut is_confirmed = false;
@@ -183,7 +187,7 @@ impl WorldBrowserPlugin {
                 commands.insert_resource(GameWorld::new(world_name));
                 load_events.send_default();
                 let server = server_settings
-                    .create_server()
+                    .create_server(*event_counter)
                     .context("unable to create server")?;
                 commands.insert_resource(server);
             }

@@ -1,11 +1,14 @@
+use std::{
+    net::{SocketAddr, UdpSocket},
+    time::SystemTime,
+};
+
 use anyhow::Result;
 use bevy::prelude::*;
 use bevy_renet::renet::{ClientAuthentication, RenetClient, RenetConnectionConfig};
 use clap::Args;
-use std::net::{SocketAddr, UdpSocket};
-use std::time::SystemTime;
 
-use super::{Channel, DEFAULT_PORT, PROTOCOL_ID};
+use super::{network_event::NetworkEventCounter, DEFAULT_PORT, PROTOCOL_ID};
 
 pub(super) struct ClientPlugin;
 
@@ -50,7 +53,7 @@ impl Default for ConnectionSettings {
 }
 
 impl ConnectionSettings {
-    pub(crate) fn create_client(&self) -> Result<RenetClient> {
+    pub(crate) fn create_client(&self, event_counter: NetworkEventCounter) -> Result<RenetClient> {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         let client_id = current_time.as_millis() as u64;
         let ip = self.ip.parse()?;
@@ -62,9 +65,12 @@ impl ConnectionSettings {
             server_addr,
             user_data: None,
         };
+
+        let receive_channels_config = super::channel_configs(event_counter.server);
+        let send_channels_config = super::channel_configs(event_counter.client);
         let connection_config = RenetConnectionConfig {
-            send_channels_config: Channel::config(),
-            receive_channels_config: Channel::config(),
+            send_channels_config,
+            receive_channels_config,
             ..Default::default()
         };
 

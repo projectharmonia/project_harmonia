@@ -1,4 +1,5 @@
 pub(crate) mod client;
+pub(crate) mod network_event;
 pub(super) mod replication;
 pub(crate) mod server;
 
@@ -22,24 +23,22 @@ impl PluginGroup for NetworkPlugins {
 const DEFAULT_PORT: u16 = 4761;
 const PROTOCOL_ID: u64 = 7;
 const MAX_CLIENTS: usize = 32;
+const SERVER_ID: u64 = 0;
+const REPLICATION_CHANNEL_ID: u8 = 0;
 
-enum Channel {
-    Reliable,
-    Replication,
-}
-
-impl Channel {
-    fn config() -> Vec<ChannelConfig> {
-        let reliable_channel = ChannelConfig::Reliable(ReliableChannelConfig {
-            channel_id: Channel::Reliable as u8,
+fn channel_configs(events_count: u8) -> Vec<ChannelConfig> {
+    let mut channel_configs = Vec::with_capacity((events_count + 1).into());
+    channel_configs.push(ChannelConfig::Unreliable(UnreliableChannelConfig {
+        channel_id: REPLICATION_CHANNEL_ID,
+        ..Default::default()
+    }));
+    for channel_id in 1..=events_count {
+        channel_configs.push(ChannelConfig::Reliable(ReliableChannelConfig {
+            channel_id: REPLICATION_CHANNEL_ID + channel_id,
             ..Default::default()
-        });
-        let replication_channel = ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: Channel::Replication as u8,
-            ..Default::default()
-        });
-        vec![reliable_channel, replication_channel]
+        }));
     }
+    channel_configs
 }
 
 #[cfg(test)]
@@ -49,7 +48,7 @@ mod tests {
         RenetClientPlugin, RenetServerPlugin,
     };
 
-    use super::*;
+    use super::{network_event::NetworkEventCounter, *};
     use crate::core::network::{client::ConnectionSettings, server::ServerSettings};
 
     /// Preset for quickly testing networking
@@ -71,6 +70,10 @@ mod tests {
         fn build(&self, app: &mut App) {
             app.add_plugins(MinimalPlugins);
 
+            let event_counter = *app
+                .world
+                .get_resource_or_insert_with(NetworkEventCounter::default);
+
             if self.server {
                 let server_settings = ServerSettings {
                     port: 0,
@@ -79,7 +82,7 @@ mod tests {
 
                 app.insert_resource(
                     server_settings
-                        .create_server()
+                        .create_server(event_counter)
                         .expect("server should be created"),
                 )
                 .add_plugin(RenetServerPlugin);
@@ -97,7 +100,7 @@ mod tests {
 
                 app.insert_resource(
                     connection_settings
-                        .create_client()
+                        .create_client(event_counter)
                         .expect("client should be created"),
                 )
                 .add_plugin(RenetClientPlugin);

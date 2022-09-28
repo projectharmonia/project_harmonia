@@ -70,12 +70,15 @@ mod tests {
     use bevy_rapier3d::prelude::*;
     use leafwing_input_manager::plugin::InputManagerPlugin;
 
-    use super::{cli::Cli, control_action::ControlAction, *};
+    use super::{
+        cli::Cli, control_action::ControlAction, network::network_event::NetworkEventCounter, *,
+    };
 
     #[test]
     fn update() {
         App::new()
             .init_resource::<Cli>()
+            .init_resource::<NetworkEventCounter>()
             .init_resource::<WorldInspectorParams>()
             .init_resource::<DebugRenderContext>()
             .add_plugin(HeadlessRenderPlugin)

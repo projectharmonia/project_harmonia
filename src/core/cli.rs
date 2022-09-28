@@ -8,7 +8,9 @@ use super::{
     error::{self, ErrorMessage},
     game_state::GameState,
     game_world::{GameLoaded, GameWorld},
-    network::{client::ConnectionSettings, server::ServerSettings},
+    network::{
+        client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
+    },
 };
 
 /// Logic for command line interface.
@@ -30,9 +32,10 @@ impl Plugin for CliPlugin {
 
 impl CliPlugin {
     fn subcommand_system(
-        mut load_events: ResMut<Events<GameLoaded>>,
         mut commands: Commands,
+        mut load_events: ResMut<Events<GameLoaded>>,
         cli: Res<Cli>,
+        event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
@@ -48,7 +51,7 @@ impl CliPlugin {
                     server_settings,
                 } => {
                     let server = server_settings
-                        .create_server()
+                        .create_server(*event_counter)
                         .context("unable to create server")?;
                     commands.insert_resource(server);
                     commands.insert_resource(server_settings.clone());
@@ -61,7 +64,7 @@ impl CliPlugin {
                 }
                 GameCommand::Join(connection_settings) => {
                     let client = connection_settings
-                        .create_client()
+                        .create_client(*event_counter)
                         .context("unable to create client")?;
                     commands.insert_resource(client);
                     commands.insert_resource(connection_settings.clone());
@@ -224,9 +227,8 @@ mod tests {
     #[test]
     fn world_loading() {
         let mut app = App::new();
-        app.add_event::<GameLoaded>()
-            .insert_resource(Cli::with_play(WORLD_NAME.to_string(), None))
-            .add_plugin(CliPlugin);
+        app.insert_resource(Cli::with_play(WORLD_NAME.to_string(), None))
+            .add_plugin(TestCliPlugin);
 
         app.update();
 
@@ -237,7 +239,7 @@ mod tests {
     #[test]
     fn city_loading() {
         let mut app = App::new();
-        app.add_event::<GameLoaded>().add_plugin(CliPlugin);
+        app.add_plugin(TestCliPlugin);
 
         let city_entity = app
             .world
@@ -260,8 +262,7 @@ mod tests {
     fn city_not_loading_on_error() {
         let mut app = App::new();
         app.insert_resource(ErrorMessage(Error::msg("")))
-            .add_event::<GameLoaded>()
-            .add_plugin(CliPlugin);
+            .add_plugin(TestCliPlugin);
 
         let city_entity = app
             .world
@@ -280,7 +281,7 @@ mod tests {
     #[test]
     fn hosting() {
         let mut app = App::new();
-        app.add_event::<GameLoaded>().add_plugin(CliPlugin);
+        app.add_plugin(TestCliPlugin);
         let server_settings = ServerSettings {
             port: 0,
             ..Default::default()
@@ -300,7 +301,7 @@ mod tests {
     #[test]
     fn joining() {
         let mut app = App::new();
-        app.add_event::<GameLoaded>().add_plugin(CliPlugin);
+        app.add_plugin(TestCliPlugin);
         let connection_settings = ConnectionSettings {
             port: 0,
             ..Default::default()
@@ -315,5 +316,15 @@ mod tests {
             connection_settings,
         );
         assert!(app.world.get_resource::<RenetClient>().is_some());
+    }
+
+    struct TestCliPlugin;
+
+    impl Plugin for TestCliPlugin {
+        fn build(&self, app: &mut App) {
+            app.add_event::<GameLoaded>()
+                .init_resource::<NetworkEventCounter>()
+                .add_plugin(CliPlugin);
+        }
     }
 }

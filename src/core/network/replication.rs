@@ -23,11 +23,10 @@ use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-use super::client;
+use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
-    network::Channel,
 };
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use removal_tracker::{RemovalTracker, RemovalTrackerPlugin};
@@ -109,7 +108,7 @@ impl ReplicationPlugin {
             let serializer = WorldDiffSerializer::new(&registry, &world_diff);
             let message = rmp_serde::to_vec(&serializer).expect("world diff should be serialized");
             set.p1()
-                .send_message(client_id, Channel::Replication as u8, message);
+                .send_message(client_id, REPLICATION_CHANNEL_ID, message);
         }
     }
 
@@ -137,7 +136,7 @@ impl ReplicationPlugin {
     fn tick_ack_sending_system(last_tick: Res<LastTick>, mut client: ResMut<RenetClient>) {
         let message = rmp_serde::to_vec(&*last_tick)
             .unwrap_or_else(|e| panic!("client ack should be serialized: {e}"));
-        client.send_message(Channel::Replication as u8, message);
+        client.send_message(REPLICATION_CHANNEL_ID, message);
     }
 
     fn tick_acks_receiving_system(
@@ -178,7 +177,7 @@ impl ReplicationPlugin {
 /// Reads all world diff from socket and returns the latest if it was received.
 fn receive_world_diff(client: &mut RenetClient, registry: &TypeRegistry) -> Option<WorldDiff> {
     let mut received_diffs = Vec::<WorldDiff>::new();
-    while let Some(message) = client.receive_message(Channel::Replication as u8) {
+    while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
         let mut deserializer = Deserializer::from_read_ref(&message);
         if let Ok(world_diff) = WorldDiffDeserializer::new(registry)
             .deserialize(&mut deserializer)
@@ -195,7 +194,7 @@ fn receive_world_diff(client: &mut RenetClient, registry: &TypeRegistry) -> Opti
 
 fn receive_tick_ack(server: &mut RenetServer, client_id: u64) -> Option<LastTick> {
     let mut received_ticks = Vec::<LastTick>::new();
-    while let Some(message) = server.receive_message(client_id, Channel::Replication as u8) {
+    while let Some(message) = server.receive_message(client_id, REPLICATION_CHANNEL_ID) {
         if let Ok(tick) = rmp_serde::from_slice(&message)
             .tap_err(|e| error!("unable to deserialize message from client: {e:#?}"))
         {

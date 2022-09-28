@@ -1,11 +1,12 @@
+use std::time::SystemTime;
+
 use anyhow::Result;
 use bevy::prelude::*;
 use bevy_renet::renet::{RenetConnectionConfig, RenetServer, ServerAuthentication, ServerConfig};
 use clap::Args;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
-use std::time::SystemTime;
 
-use super::{Channel, DEFAULT_PORT, MAX_CLIENTS, PROTOCOL_ID};
+use super::{network_event::NetworkEventCounter, DEFAULT_PORT, MAX_CLIENTS, PROTOCOL_ID};
 
 pub(super) struct ServerPlugin;
 
@@ -36,7 +37,7 @@ impl Default for ServerSettings {
 }
 
 impl ServerSettings {
-    pub(crate) fn create_server(&self) -> Result<RenetServer> {
+    pub(crate) fn create_server(&self, event_counter: NetworkEventCounter) -> Result<RenetServer> {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         let server_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), self.port);
         let socket = UdpSocket::bind(server_addr)?;
@@ -46,9 +47,12 @@ impl ServerSettings {
             socket.local_addr()?,
             ServerAuthentication::Unsecure,
         );
+
+        let receive_channels_config = super::channel_configs(event_counter.client);
+        let send_channels_config = super::channel_configs(event_counter.server);
         let connection_config = RenetConnectionConfig {
-            send_channels_config: Channel::config(),
-            receive_channels_config: Channel::config(),
+            send_channels_config,
+            receive_channels_config,
             ..Default::default()
         };
 
