@@ -29,7 +29,7 @@ enum ServerEventSystems<T> {
     Marker(T),
 }
 
-impl<T: Serialize + DeserializeOwned + Send + Sync + 'static> Plugin for ServerEventPlugin<T> {
+impl<T: Event + Serialize + DeserializeOwned> Plugin for ServerEventPlugin<T> {
     fn build(&self, app: &mut App) {
         let mut event_counter = app
             .world
