@@ -38,7 +38,7 @@ impl<T: Event + Serialize + DeserializeOwned> Plugin for ServerEventPlugin<T> {
         event_counter.server += 1;
 
         app.add_event::<T>()
-            .add_event::<EventSent<T>>()
+            .init_resource::<ServerSendBuffer<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
             .add_system(
                 Self::sending_system
@@ -57,11 +57,11 @@ impl<T: Event + Serialize + DeserializeOwned> Plugin for ServerEventPlugin<T> {
 
 impl<T: Event + Serialize + DeserializeOwned> ServerEventPlugin<T> {
     fn sending_system(
-        mut send_events: EventReader<EventSent<T>>,
         mut server: ResMut<RenetServer>,
+        server_buffer: Res<ServerSendBuffer<T>>,
         channel: Res<EventChannel<T>>,
     ) {
-        for EventSent { event, mode } in send_events.iter() {
+        for ServerEvent { event, mode } in server_buffer.iter() {
             let message = rmp_serde::to_vec(&event).expect("unable serialize event for client(s)");
 
             match *mode {
@@ -87,10 +87,10 @@ impl<T: Event + Serialize + DeserializeOwned> ServerEventPlugin<T> {
     /// Transforms [`EventSent<T>`] events into [`T`] events to "emulate"
     /// message sending for offline mode or when server is also a player
     fn local_resending_system(
-        mut send_events: ResMut<Events<EventSent<T>>>,
+        mut server_buffer: ResMut<ServerSendBuffer<T>>,
         mut server_events: EventWriter<T>,
     ) {
-        for EventSent { event, mode } in send_events.drain() {
+        for ServerEvent { event, mode } in server_buffer.drain(..) {
             match mode {
                 SendMode::Broadcast => {
                     server_events.send(event);
@@ -124,10 +124,20 @@ impl<T: Event + Serialize + DeserializeOwned> ServerEventPlugin<T> {
     }
 }
 
-/// An event indicating that a server message has been sent.
-/// This event should be used instead of sending messages directly.
-/// Emited only on server.
-struct EventSent<T> {
+/// A container for events that will be send to clients.
+///
+/// Emits [`T`] event on clients.
+#[derive(Deref, DerefMut)]
+struct ServerSendBuffer<T>(Vec<ServerEvent<T>>);
+
+impl<T> Default for ServerSendBuffer<T> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+/// An event that will be send to client(s).
+struct ServerEvent<T> {
     mode: SendMode,
     event: T,
 }
@@ -165,13 +175,19 @@ mod tests {
             (SendMode::BroadcastExcept(SERVER_ID), 1),
             (SendMode::BroadcastExcept(client_id), 0),
         ] {
-            let mut send_events = app.world.resource_mut::<Events<EventSent<DummyEvent>>>();
-            send_events.send(EventSent {
+            let mut server_buffer = app.world.resource_mut::<ServerSendBuffer<DummyEvent>>();
+            server_buffer.push(ServerEvent {
                 mode: send_mode,
                 event: DummyEvent,
             });
 
             app.update();
+
+            // Cleanup buffer manully when client and server are in the same world.
+            app.world
+                .resource_mut::<ServerSendBuffer<DummyEvent>>()
+                .clear();
+
             app.update();
 
             let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
@@ -197,13 +213,16 @@ mod tests {
             (SendMode::BroadcastExcept(SERVER_ID), 0),
             (SendMode::BroadcastExcept(DUMMY_CLIENT_ID), 1),
         ] {
-            let mut send_events = app.world.resource_mut::<Events<EventSent<DummyEvent>>>();
-            send_events.send(EventSent {
+            let mut server_buffer = app.world.resource_mut::<ServerSendBuffer<DummyEvent>>();
+            server_buffer.push(ServerEvent {
                 mode: send_mode,
                 event: DummyEvent,
             });
 
             app.update();
+
+            let server_buffer = app.world.resource::<ServerSendBuffer<DummyEvent>>();
+            assert!(server_buffer.is_empty());
 
             let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
             assert_eq!(

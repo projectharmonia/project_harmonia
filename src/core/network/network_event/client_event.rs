@@ -24,14 +24,6 @@ impl<T> Default for ClientEventPlugin<T> {
     }
 }
 
-#[derive(SystemLabel)]
-enum ClientEventSystems<T> {
-    SendingSystem,
-    #[allow(dead_code)]
-    #[system_label(ignore_fields)]
-    Marker(T),
-}
-
 impl<T: Event + Serialize + DeserializeOwned> Plugin for ClientEventPlugin<T> {
     fn build(&self, app: &mut App) {
         let mut event_counter = app
@@ -40,19 +32,14 @@ impl<T: Event + Serialize + DeserializeOwned> Plugin for ClientEventPlugin<T> {
         let current_channel_id = event_counter.client;
         event_counter.client += 1;
 
-        app.add_event::<T>()
-            .add_event::<EventReceived<T>>()
+        app.add_event::<ClientEvent<T>>()
+            .init_resource::<ClientSendBuffer<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(
-                Self::sending_system
-                    .run_if(client::is_connected)
-                    .label(ClientEventSystems::<T>::SendingSystem),
-            )
+            .add_system(Self::sending_system.run_if(client::is_connected))
             .add_system(
                 Self::local_resending_system
                     .run_unless_resource_exists::<RenetClient>()
-                    .run_if_resource_exists::<GameWorld>()
-                    .after(ClientEventSystems::<T>::SendingSystem),
+                    .run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::receiving_system.run_if_resource_exists::<RenetServer>());
     }
@@ -60,11 +47,11 @@ impl<T: Event + Serialize + DeserializeOwned> Plugin for ClientEventPlugin<T> {
 
 impl<T: Event + Serialize + DeserializeOwned> ClientEventPlugin<T> {
     fn sending_system(
-        mut client_events: EventReader<T>,
+        mut client_buffer: ResMut<ClientSendBuffer<T>>,
         mut client: ResMut<RenetClient>,
         channel: Res<EventChannel<T>>,
     ) {
-        for event in client_events.iter() {
+        for event in client_buffer.drain(..) {
             let message = rmp_serde::to_vec(&event).expect("unable to serialize client event");
             client.send_message(channel.id, message);
         }
@@ -73,11 +60,11 @@ impl<T: Event + Serialize + DeserializeOwned> ClientEventPlugin<T> {
     /// Transforms [`T`] events into [`EventReceived<T>`] events to "emulate"
     /// message sending for offline mode or when server is also a player
     fn local_resending_system(
-        mut client_events: ResMut<Events<T>>,
-        mut receive_events: EventWriter<EventReceived<T>>,
+        mut client_buffer: ResMut<ClientSendBuffer<T>>,
+        mut client_events: EventWriter<ClientEvent<T>>,
     ) {
-        for event in client_events.drain() {
-            receive_events.send(EventReceived {
+        for event in client_buffer.drain(..) {
+            client_events.send(ClientEvent {
                 client_id: SERVER_ID,
                 event,
             })
@@ -85,7 +72,7 @@ impl<T: Event + Serialize + DeserializeOwned> ClientEventPlugin<T> {
     }
 
     fn receiving_system(
-        mut receive_events: EventWriter<EventReceived<T>>,
+        mut client_events: EventWriter<ClientEvent<T>>,
         mut server: ResMut<RenetServer>,
         channel: Res<EventChannel<T>>,
     ) {
@@ -94,17 +81,29 @@ impl<T: Event + Serialize + DeserializeOwned> ClientEventPlugin<T> {
                 if let Ok(event) = rmp_serde::from_slice(&message)
                     .tap_err(|e| error!("unable to deserialize event from client {client_id}: {e}"))
                 {
-                    receive_events.send(EventReceived { client_id, event });
+                    client_events.send(ClientEvent { client_id, event });
                 }
             }
         }
     }
 }
 
-/// An event indicating that the message from client was received.
+/// A container for events that will be send to server.
+///
+/// Emits [`ClientEvent<T>`] on server.
+#[derive(Deref, DerefMut)]
+struct ClientSendBuffer<T>(Vec<T>);
+
+impl<T> Default for ClientSendBuffer<T> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+/// An event indicating that a message from client was received.
 /// Emited only on server.
 #[allow(dead_code)]
-struct EventReceived<T> {
+struct ClientEvent<T> {
     client_id: u64,
     event: T,
 }
@@ -125,16 +124,18 @@ mod tests {
                 connected: true,
             }));
 
-        let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
-        dummy_events.send(DummyEvent);
+        let mut dummy_buffer = app.world.resource_mut::<ClientSendBuffer<DummyEvent>>();
+        dummy_buffer.push(DummyEvent);
 
         app.update();
+
+        let dummy_buffer = app.world.resource::<ClientSendBuffer<DummyEvent>>();
+        assert!(dummy_buffer.is_empty());
+
         app.update();
 
-        let mut receive_events = app
-            .world
-            .resource_mut::<Events<EventReceived<DummyEvent>>>();
-        assert_eq!(receive_events.drain().count(), 1);
+        let mut client_events = app.world.resource_mut::<Events<ClientEvent<DummyEvent>>>();
+        assert_eq!(client_events.drain().count(), 1);
     }
 
     #[test]
@@ -143,15 +144,16 @@ mod tests {
         app.init_resource::<GameWorld>()
             .add_plugin(ClientEventPlugin::<DummyEvent>::default());
 
-        let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
-        dummy_events.send(DummyEvent);
+        let mut dummy_buffer = app.world.resource_mut::<ClientSendBuffer<DummyEvent>>();
+        dummy_buffer.push(DummyEvent);
 
         app.update();
 
-        let mut receive_events = app
-            .world
-            .resource_mut::<Events<EventReceived<DummyEvent>>>();
-        assert_eq!(receive_events.drain().count(), 1);
+        let dummy_buffer = app.world.resource::<ClientSendBuffer<DummyEvent>>();
+        assert!(dummy_buffer.is_empty());
+
+        let mut client_events = app.world.resource_mut::<Events<ClientEvent<DummyEvent>>>();
+        assert_eq!(client_events.drain().count(), 1);
     }
 
     #[derive(Deserialize, Serialize)]
