@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use bevy::{ecs::event::Event, prelude::*};
 use bevy_renet::renet::{RenetClient, RenetServer};
 use iyes_loopless::prelude::*;
@@ -9,18 +7,6 @@ use tap::TapFallible;
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{game_world::GameWorld, network::SERVER_ID};
 
-pub(crate) struct ServerEventPlugin<T> {
-    marker: PhantomData<T>,
-}
-
-impl<T> Default for ServerEventPlugin<T> {
-    fn default() -> Self {
-        Self {
-            marker: PhantomData,
-        }
-    }
-}
-
 #[derive(SystemLabel)]
 enum ServerEventSystems<T> {
     SendingSystem,
@@ -29,97 +15,103 @@ enum ServerEventSystems<T> {
     Marker(T),
 }
 
-impl<T: Event + Serialize + DeserializeOwned> Plugin for ServerEventPlugin<T> {
-    fn build(&self, app: &mut App) {
-        let mut event_counter = app
+/// An extension trait for [`App`] for creating server events.
+pub(crate) trait ServerEventAppExt {
+    /// Registers event `T` that will be emitted on client after adding to [`ServerSendBuffer<T>`] on server.
+    fn add_server_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self;
+}
+
+impl ServerEventAppExt for App {
+    fn add_server_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self {
+        let mut event_counter = self
             .world
             .get_resource_or_insert_with(NetworkEventCounter::default);
         let current_channel_id = event_counter.server;
         event_counter.server += 1;
 
-        app.add_event::<T>()
+        self.add_event::<T>()
             .init_resource::<ServerSendBuffer<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
             .add_system(
-                Self::sending_system
+                sending_system::<T>
                     .run_if_resource_exists::<RenetServer>()
                     .label(ServerEventSystems::<T>::SendingSystem),
             )
             .add_system(
-                Self::local_resending_system
+                local_resending_system::<T>
                     .run_unless_resource_exists::<RenetClient>()
                     .run_if_resource_exists::<GameWorld>()
                     .after(ServerEventSystems::<T>::SendingSystem),
             )
-            .add_system(Self::receiving_system.run_if_resource_exists::<RenetClient>());
+            .add_system(receiving_system::<T>.run_if_resource_exists::<RenetClient>());
+
+        self
     }
 }
 
-impl<T: Event + Serialize + DeserializeOwned> ServerEventPlugin<T> {
-    fn sending_system(
-        mut server: ResMut<RenetServer>,
-        server_buffer: Res<ServerSendBuffer<T>>,
-        channel: Res<EventChannel<T>>,
-    ) {
-        for ServerEvent { event, mode } in server_buffer.iter() {
-            let message = rmp_serde::to_vec(&event).expect("unable serialize event for client(s)");
+fn sending_system<T: Event + Serialize + DeserializeOwned>(
+    mut server: ResMut<RenetServer>,
+    server_buffer: Res<ServerSendBuffer<T>>,
+    channel: Res<EventChannel<T>>,
+) {
+    for ServerEvent { event, mode } in server_buffer.iter() {
+        let message = rmp_serde::to_vec(&event).expect("unable serialize event for client(s)");
 
-            match *mode {
-                SendMode::Broadcast => {
+        match *mode {
+            SendMode::Broadcast => {
+                server.broadcast_message(channel.id, message);
+            }
+            SendMode::BroadcastExcept(client_id) => {
+                if client_id == SERVER_ID {
                     server.broadcast_message(channel.id, message);
+                } else {
+                    server.broadcast_message_except(client_id, channel.id, message);
                 }
-                SendMode::BroadcastExcept(client_id) => {
-                    if client_id == SERVER_ID {
-                        server.broadcast_message(channel.id, message);
-                    } else {
-                        server.broadcast_message_except(client_id, channel.id, message);
-                    }
-                }
-                SendMode::Direct(client_id) => {
-                    if client_id != SERVER_ID {
-                        server.send_message(client_id, channel.id, message);
-                    }
+            }
+            SendMode::Direct(client_id) => {
+                if client_id != SERVER_ID {
+                    server.send_message(client_id, channel.id, message);
                 }
             }
         }
     }
+}
 
-    /// Transforms [`EventSent<T>`] events into [`T`] events to "emulate"
-    /// message sending for offline mode or when server is also a player
-    fn local_resending_system(
-        mut server_buffer: ResMut<ServerSendBuffer<T>>,
-        mut server_events: EventWriter<T>,
-    ) {
-        for ServerEvent { event, mode } in server_buffer.drain(..) {
-            match mode {
-                SendMode::Broadcast => {
-                    server_events.send(event);
-                }
-                SendMode::BroadcastExcept(client_id) => {
-                    if client_id != SERVER_ID {
-                        server_events.send(event);
-                    }
-                }
-                SendMode::Direct(client_id) => {
-                    if client_id == SERVER_ID {
-                        server_events.send(event);
-                    }
-                }
-            }
-        }
-    }
-
-    fn receiving_system(
-        mut server_events: EventWriter<T>,
-        mut client: ResMut<RenetClient>,
-        channel: Res<EventChannel<T>>,
-    ) {
-        while let Some(message) = client.receive_message(channel.id) {
-            if let Ok(event) = rmp_serde::from_slice(&message)
-                .tap_err(|e| error!("unable to deserialize event from server: {e}"))
-            {
+/// Transforms [`EventSent<T>`] events into [`T`] events to "emulate"
+/// message sending for offline mode or when server is also a player
+fn local_resending_system<T: Event + Serialize + DeserializeOwned>(
+    mut server_buffer: ResMut<ServerSendBuffer<T>>,
+    mut server_events: EventWriter<T>,
+) {
+    for ServerEvent { event, mode } in server_buffer.drain(..) {
+        match mode {
+            SendMode::Broadcast => {
                 server_events.send(event);
             }
+            SendMode::BroadcastExcept(client_id) => {
+                if client_id != SERVER_ID {
+                    server_events.send(event);
+                }
+            }
+            SendMode::Direct(client_id) => {
+                if client_id == SERVER_ID {
+                    server_events.send(event);
+                }
+            }
+        }
+    }
+}
+
+fn receiving_system<T: Event + Serialize + DeserializeOwned>(
+    mut server_events: EventWriter<T>,
+    mut client: ResMut<RenetClient>,
+    channel: Res<EventChannel<T>>,
+) {
+    while let Some(message) = client.receive_message(channel.id) {
+        if let Ok(event) = rmp_serde::from_slice(&message)
+            .tap_err(|e| error!("unable to deserialize event from server: {e}"))
+        {
+            server_events.send(event);
         }
     }
 }
@@ -128,7 +120,7 @@ impl<T: Event + Serialize + DeserializeOwned> ServerEventPlugin<T> {
 ///
 /// Emits [`T`] event on clients.
 #[derive(Deref, DerefMut)]
-struct ServerSendBuffer<T>(Vec<ServerEvent<T>>);
+pub(crate) struct ServerSendBuffer<T>(Vec<ServerEvent<T>>);
 
 impl<T> Default for ServerSendBuffer<T> {
     fn default() -> Self {
@@ -137,9 +129,9 @@ impl<T> Default for ServerSendBuffer<T> {
 }
 
 /// An event that will be send to client(s).
-struct ServerEvent<T> {
-    mode: SendMode,
-    event: T,
+pub(crate) struct ServerEvent<T> {
+    pub(crate) mode: SendMode,
+    pub(crate) event: T,
 }
 
 /// Type of server message sending.
@@ -162,7 +154,7 @@ mod tests {
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
-        app.add_plugin(ServerEventPlugin::<DummyEvent>::default())
+        app.add_server_event::<DummyEvent>()
             .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }));
@@ -203,7 +195,7 @@ mod tests {
     fn local_resending() {
         let mut app = App::new();
         app.init_resource::<GameWorld>()
-            .add_plugin(ServerEventPlugin::<DummyEvent>::default());
+            .add_server_event::<DummyEvent>();
 
         const DUMMY_CLIENT_ID: u64 = 1;
         for (send_mode, events_count) in [
