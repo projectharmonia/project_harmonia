@@ -124,13 +124,15 @@ pub(crate) struct ObjectMetadata {
 #[derive(Deserialize, Clone, Copy)]
 pub(crate) enum ObjectCategory {
     Rocks,
+    #[serde(rename = "Outdoor furniture")]
+    OutdoorFurniture,
 }
 
 impl ObjectCategory {
     #[cfg_attr(coverage, no_coverage)]
     pub(crate) fn is_placable_in_city(self) -> bool {
         match self {
-            ObjectCategory::Rocks => true,
+            ObjectCategory::Rocks | ObjectCategory::OutdoorFurniture => true,
         }
     }
 }
