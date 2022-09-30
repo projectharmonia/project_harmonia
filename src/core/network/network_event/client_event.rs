@@ -12,7 +12,7 @@ use tap::TapFallible;
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::GameWorld,
-    network::{client, replication::NetworkEntityMap, SERVER_ID},
+    network::{client, replication::NetworkEntityMap, REPLICATION_CHANNEL_ID, SERVER_ID},
 };
 
 #[derive(SystemLabel)]
@@ -38,8 +38,8 @@ impl ClientEventAppExt for App {
         let mut event_counter = self
             .world
             .get_resource_or_insert_with(NetworkEventCounter::default);
-        let current_channel_id = event_counter.client;
         event_counter.client += 1;
+        let current_channel_id = REPLICATION_CHANNEL_ID + event_counter.client;
 
         self.add_event::<ClientEvent<T>>()
             .init_resource::<ClientSendBuffer<T>>()

@@ -7,7 +7,10 @@ use serde::{de::DeserializeOwned, Serialize};
 use tap::TapFallible;
 
 use super::{EventChannel, NetworkEventCounter};
-use crate::core::{game_world::GameWorld, network::SERVER_ID};
+use crate::core::{
+    game_world::GameWorld,
+    network::{REPLICATION_CHANNEL_ID, SERVER_ID},
+};
 
 #[derive(SystemLabel)]
 enum ServerEventSystems<T> {
@@ -28,8 +31,8 @@ impl ServerEventAppExt for App {
         let mut event_counter = self
             .world
             .get_resource_or_insert_with(NetworkEventCounter::default);
-        let current_channel_id = event_counter.server;
         event_counter.server += 1;
+        let current_channel_id = REPLICATION_CHANNEL_ID + event_counter.server;
 
         self.add_event::<T>()
             .init_resource::<ServerSendBuffer<T>>()
