@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use bevy::{ecs::event::Event, prelude::*};
 use bevy_renet::renet::{RenetClient, RenetServer};
 use iyes_loopless::prelude::*;
@@ -18,11 +20,11 @@ enum ServerEventSystems<T> {
 /// An extension trait for [`App`] for creating server events.
 pub(crate) trait ServerEventAppExt {
     /// Registers event `T` that will be emitted on client after adding to [`ServerSendBuffer<T>`] on server.
-    fn add_server_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self;
+    fn add_server_event<T: Event + Serialize + DeserializeOwned + Debug>(&mut self) -> &mut Self;
 }
 
 impl ServerEventAppExt for App {
-    fn add_server_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self {
+    fn add_server_event<T: Event + Serialize + DeserializeOwned + Debug>(&mut self) -> &mut Self {
         let mut event_counter = self
             .world
             .get_resource_or_insert_with(NetworkEventCounter::default);
@@ -49,7 +51,7 @@ impl ServerEventAppExt for App {
     }
 }
 
-fn sending_system<T: Event + Serialize + DeserializeOwned>(
+fn sending_system<T: Event + Serialize + Debug>(
     mut server: ResMut<RenetServer>,
     server_buffer: Res<ServerSendBuffer<T>>,
     channel: Res<EventChannel<T>>,
@@ -60,6 +62,7 @@ fn sending_system<T: Event + Serialize + DeserializeOwned>(
         match *mode {
             SendMode::Broadcast => {
                 server.broadcast_message(channel.id, message);
+                debug!("broadcasted server event {event:?}");
             }
             SendMode::BroadcastExcept(client_id) => {
                 if client_id == SERVER_ID {
@@ -67,10 +70,12 @@ fn sending_system<T: Event + Serialize + DeserializeOwned>(
                 } else {
                     server.broadcast_message_except(client_id, channel.id, message);
                 }
+                debug!("broadcasted server event {event:?} except client {client_id}");
             }
             SendMode::Direct(client_id) => {
                 if client_id != SERVER_ID {
                     server.send_message(client_id, channel.id, message);
+                    debug!("sent direct server event {event:?} to client {client_id}");
                 }
             }
         }
@@ -79,22 +84,25 @@ fn sending_system<T: Event + Serialize + DeserializeOwned>(
 
 /// Transforms [`EventSent<T>`] events into [`T`] events to "emulate"
 /// message sending for offline mode or when server is also a player
-fn local_resending_system<T: Event + Serialize + DeserializeOwned>(
+fn local_resending_system<T: Event + Debug>(
     mut server_buffer: ResMut<ServerSendBuffer<T>>,
     mut server_events: EventWriter<T>,
 ) {
     for ServerEvent { event, mode } in server_buffer.drain(..) {
         match mode {
             SendMode::Broadcast => {
+                debug!("converted broadcasted server event {event:?} into a local");
                 server_events.send(event);
             }
             SendMode::BroadcastExcept(client_id) => {
                 if client_id != SERVER_ID {
+                    debug!("converted broadcasted server event {event:?} except client {client_id} into a local");
                     server_events.send(event);
                 }
             }
             SendMode::Direct(client_id) => {
                 if client_id == SERVER_ID {
+                    debug!("converted direct server event {event:?} into a local");
                     server_events.send(event);
                 }
             }
@@ -102,7 +110,7 @@ fn local_resending_system<T: Event + Serialize + DeserializeOwned>(
     }
 }
 
-fn receiving_system<T: Event + Serialize + DeserializeOwned>(
+fn receiving_system<T: Event + DeserializeOwned + Debug>(
     mut server_events: EventWriter<T>,
     mut client: ResMut<RenetClient>,
     channel: Res<EventChannel<T>>,
@@ -111,6 +119,7 @@ fn receiving_system<T: Event + Serialize + DeserializeOwned>(
         if let Ok(event) = rmp_serde::from_slice(&message)
             .tap_err(|e| error!("unable to deserialize event from server: {e}"))
         {
+            debug!("received event {event:?} from server");
             server_events.send(event);
         }
     }
@@ -129,6 +138,7 @@ impl<T> Default for ServerSendBuffer<T> {
 }
 
 /// An event that will be send to client(s).
+#[derive(Clone, Copy)]
 pub(crate) struct ServerEvent<T> {
     pub(crate) mode: SendMode,
     pub(crate) event: T,
@@ -225,6 +235,6 @@ mod tests {
         }
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Debug)]
     struct DummyEvent;
 }

@@ -1,4 +1,4 @@
-use std::any;
+use std::fmt::Debug;
 
 use bevy::{
     ecs::{entity::MapEntities, event::Event},
@@ -26,15 +26,15 @@ enum ClientEventSystems<T> {
 /// An extension trait for [`App`] for creating client events.
 pub(crate) trait ClientEventAppExt {
     /// Registers [`ClientEvent<T>`] event that will be emitted on server after adding to [`ClientSendBuffer<T>`] on client.
-    fn add_client_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self;
+    fn add_client_event<T: Event + Serialize + DeserializeOwned + Debug>(&mut self) -> &mut Self;
     /// Same as [`add_client_event`], but additionally maps client entities to server before sending.
-    fn add_mapped_client_event<T: Event + Serialize + DeserializeOwned + MapEntities>(
+    fn add_mapped_client_event<T: Event + Serialize + DeserializeOwned + Debug + MapEntities>(
         &mut self,
     ) -> &mut Self;
 }
 
 impl ClientEventAppExt for App {
-    fn add_client_event<T: Event + Serialize + DeserializeOwned>(&mut self) -> &mut Self {
+    fn add_client_event<T: Event + Serialize + DeserializeOwned + Debug>(&mut self) -> &mut Self {
         let mut event_counter = self
             .world
             .get_resource_or_insert_with(NetworkEventCounter::default);
@@ -59,7 +59,7 @@ impl ClientEventAppExt for App {
         self
     }
 
-    fn add_mapped_client_event<T: Event + Serialize + DeserializeOwned + MapEntities>(
+    fn add_mapped_client_event<T: Event + Serialize + DeserializeOwned + Debug + MapEntities>(
         &mut self,
     ) -> &mut Self {
         self.add_client_event::<T>();
@@ -72,19 +72,18 @@ impl ClientEventAppExt for App {
     }
 }
 
-fn mapping_system<T: Event + Serialize + DeserializeOwned + MapEntities>(
+fn mapping_system<T: Event + MapEntities + Debug>(
     mut client_buffer: ResMut<ClientSendBuffer<T>>,
     entity_map: Res<NetworkEntityMap>,
 ) {
     for event in client_buffer.iter_mut() {
-        let type_name = any::type_name::<T>();
         event
             .map_entities(&entity_map)
-            .unwrap_or_else(|e| panic!("unable to map entities for client event {type_name}: {e}"));
+            .unwrap_or_else(|e| panic!("unable to map entities for client event {event:?}: {e}"));
     }
 }
 
-fn sending_system<T: Event + Serialize + DeserializeOwned>(
+fn sending_system<T: Event + Serialize + Debug>(
     mut client_buffer: ResMut<ClientSendBuffer<T>>,
     mut client: ResMut<RenetClient>,
     channel: Res<EventChannel<T>>,
@@ -92,16 +91,18 @@ fn sending_system<T: Event + Serialize + DeserializeOwned>(
     for event in client_buffer.drain(..) {
         let message = rmp_serde::to_vec(&event).expect("unable to serialize client event");
         client.send_message(channel.id, message);
+        debug!("sent client event {event:?}");
     }
 }
 
 /// Transforms [`T`] events into [`EventReceived<T>`] events to "emulate"
 /// message sending for offline mode or when server is also a player
-fn local_resending_system<T: Event + Serialize + DeserializeOwned>(
+fn local_resending_system<T: Event + Debug>(
     mut client_buffer: ResMut<ClientSendBuffer<T>>,
     mut client_events: EventWriter<ClientEvent<T>>,
 ) {
     for event in client_buffer.drain(..) {
+        debug!("converted client event {event:?} into a local");
         client_events.send(ClientEvent {
             client_id: SERVER_ID,
             event,
@@ -109,16 +110,17 @@ fn local_resending_system<T: Event + Serialize + DeserializeOwned>(
     }
 }
 
-fn receiving_system<T: Event + Serialize + DeserializeOwned>(
+fn receiving_system<T: Event + Serialize + DeserializeOwned + Debug>(
     mut client_events: EventWriter<ClientEvent<T>>,
     mut server: ResMut<RenetServer>,
     channel: Res<EventChannel<T>>,
 ) {
-    for client_id in server.clients_id().iter().copied() {
+    for client_id in server.clients_id() {
         while let Some(message) = server.receive_message(client_id, channel.id) {
             if let Ok(event) = rmp_serde::from_slice(&message)
                 .tap_err(|e| error!("unable to deserialize event from client {client_id}: {e}"))
             {
+                debug!("received event {event:?} from client {client_id}");
                 client_events.send(ClientEvent { client_id, event });
             }
         }
@@ -140,6 +142,7 @@ impl<T> Default for ClientSendBuffer<T> {
 /// An event indicating that a message from client was received.
 /// Emited only on server.
 #[allow(dead_code)]
+#[derive(Clone, Copy)]
 pub(crate) struct ClientEvent<T> {
     pub(crate) client_id: u64,
     pub(crate) event: T,
@@ -206,7 +209,7 @@ mod tests {
         assert_eq!(client_events.drain().count(), 1);
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Debug)]
     struct DummyEvent(Entity);
 
     impl MapEntities for DummyEvent {
