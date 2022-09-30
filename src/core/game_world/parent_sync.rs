@@ -1,13 +1,11 @@
 use bevy::{
-    ecs::{
-        entity::{EntityMap, MapEntities, MapEntitiesError},
-        reflect::ReflectMapEntities,
-    },
+    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
 use iyes_loopless::prelude::*;
 
 use super::GameWorld;
+use crate::core::network::replication::map_entity::ReflectMapEntity;
 
 pub(super) struct ParentSyncPlugin;
 
@@ -33,7 +31,7 @@ impl ParentSyncPlugin {
 }
 
 #[derive(Component, Reflect, Clone, Copy)]
-#[reflect(Component, MapEntities)]
+#[reflect(Component, MapEntity)]
 pub(crate) struct ParentSync(pub(crate) Entity);
 
 // We need to impl either [`FromWorld`] or [`Default`] so [`SyncParent`] can be registered as [`Reflect`].

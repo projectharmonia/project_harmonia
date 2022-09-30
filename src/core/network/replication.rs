@@ -1,4 +1,5 @@
 mod despawn_tracker;
+pub(crate) mod map_entity;
 mod removal_tracker;
 mod world_diff;
 
@@ -11,7 +12,6 @@ use bevy::{
         archetype::ArchetypeId,
         component::{ComponentTicks, StorageType},
         entity::EntityMap,
-        reflect::ReflectMapEntities,
     },
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryInternal},
@@ -19,6 +19,7 @@ use bevy::{
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
 use iyes_loopless::prelude::*;
+use map_entity::ReflectMapEntity;
 use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
@@ -410,9 +411,9 @@ fn apply_component_diff(
     match component_diff {
         ComponentDiff::Changed(reflect) => {
             reflect_component.apply_or_insert(world, local_entity, &**reflect);
-            if let Some(reflect_map_entities) = registration.data::<ReflectMapEntities>() {
+            if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
-                    .map_entities(world, entity_map)
+                    .map_entities(world, entity_map, local_entity)
                     .with_context(|| format!("unable to map entities for {type_name}"))?;
             }
         }
