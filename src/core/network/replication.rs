@@ -11,7 +11,6 @@ use bevy::{
     ecs::{
         archetype::ArchetypeId,
         component::{ComponentTicks, StorageType},
-        entity::EntityMap,
     },
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryInternal},
@@ -19,7 +18,6 @@ use bevy::{
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
 use iyes_loopless::prelude::*;
-use map_entity::ReflectMapEntity;
 use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
@@ -30,6 +28,7 @@ use crate::core::{
     game_world::{ignore_rules::IgnoreRules, GameWorld},
 };
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
+use map_entity::{NetworkEntityMap, ReflectMapEntity};
 use removal_tracker::{RemovalTracker, RemovalTrackerPlugin};
 use world_diff::{ComponentDiff, WorldDiff, WorldDiffDeserializer, WorldDiffSerializer};
 
@@ -367,11 +366,10 @@ fn apply_diffs(
     }
     for server_entity in world_diff.despawns {
         if let Ok(local_entity) = entity_map
-            .get(server_entity)
+            .remove_by_server(server_entity)
             .tap_err(|e| error!("received an invalid entity despawn: {e}"))
         {
             world.entity_mut(local_entity).despawn();
-            entity_map.remove(server_entity);
         }
     }
 }
@@ -383,11 +381,9 @@ fn map_entities(
     entities: HashMap<Entity, Vec<ComponentDiff>>,
 ) -> Vec<(Entity, Vec<ComponentDiff>)> {
     let mut mapped_entities = Vec::with_capacity(entities.len());
-    for (mut entity, components) in entities {
-        entity = *entity_map
-            .entry(entity)
-            .or_insert_with(|| world.spawn().id());
-        mapped_entities.push((entity, components));
+    for (server_entity, components) in entities {
+        let client_entity = entity_map.get_by_server_or_spawn(world, server_entity);
+        mapped_entities.push((client_entity, components));
     }
     mapped_entities
 }
@@ -413,7 +409,7 @@ fn apply_component_diff(
             reflect_component.apply_or_insert(world, local_entity, &**reflect);
             if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
-                    .map_entities(world, entity_map, local_entity)
+                    .map_entities(world, entity_map.to_client(), local_entity)
                     .with_context(|| format!("unable to map entities for {type_name}"))?;
             }
         }
@@ -435,12 +431,6 @@ struct LastTick(u32);
 #[derive(Default, Deref, DerefMut)]
 pub(super) struct AckedTicks(HashMap<u64, u32>);
 
-/// Maps server entities to client entities.
-///
-/// Used only on client.
-#[derive(Default, Deref, DerefMut)]
-pub(super) struct NetworkEntityMap(EntityMap);
-
 #[cfg(test)]
 mod tests {
     use derive_more::Constructor;
@@ -448,7 +438,10 @@ mod tests {
     use super::*;
     use crate::core::{
         game_world::{parent_sync::ParentSync, GameEntity},
-        network::tests::{NetworkPreset, TestNetworkPlugin},
+        network::{
+            replication::map_entity::NetworkEntityMap,
+            tests::{NetworkPreset, TestNetworkPlugin},
+        },
     };
 
     #[test]
@@ -515,6 +508,7 @@ mod tests {
             .expect("server entity should be replicated to client");
         let entity_map = app.world.resource::<NetworkEntityMap>();
         let mapped_entity = entity_map
+            .to_client()
             .get(server_entity)
             .expect("server entity should be mapped on client");
         assert_eq!(
@@ -658,7 +652,11 @@ mod tests {
         wait_for_network_tick(&mut app);
 
         assert!(app.world.get_entity(despawned_entity).is_none());
-        assert!(app.world.resource::<NetworkEntityMap>().is_empty());
+        assert!(app
+            .world
+            .resource::<NetworkEntityMap>()
+            .to_client()
+            .is_empty());
     }
 
     #[test]
@@ -678,7 +676,11 @@ mod tests {
         app.update();
 
         assert_eq!(app.world.resource::<LastTick>().0, LastTick::default().0);
-        assert!(app.world.resource::<NetworkEntityMap>().is_empty());
+        assert!(app
+            .world
+            .resource::<NetworkEntityMap>()
+            .to_client()
+            .is_empty());
     }
 
     #[test]

@@ -12,7 +12,9 @@ use tap::TapFallible;
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::GameWorld,
-    network::{client, replication::NetworkEntityMap, REPLICATION_CHANNEL_ID, SERVER_ID},
+    network::{
+        client, replication::map_entity::NetworkEntityMap, REPLICATION_CHANNEL_ID, SERVER_ID,
+    },
 };
 
 #[derive(SystemLabel)]
@@ -78,7 +80,7 @@ fn mapping_system<T: Event + MapEntities + Debug>(
 ) {
     for event in client_buffer.iter_mut() {
         event
-            .map_entities(&entity_map)
+            .map_entities(entity_map.to_server())
             .unwrap_or_else(|e| panic!("unable to map entities for client event {event:?}: {e}"));
     }
 }
@@ -172,7 +174,7 @@ mod tests {
         let server_entity = Entity::from_raw(client_entity.id() + 1);
         app.world
             .resource_mut::<NetworkEntityMap>()
-            .insert(client_entity, server_entity);
+            .insert(server_entity, client_entity);
 
         let mut dummy_buffer = app.world.resource_mut::<ClientSendBuffer<DummyEvent>>();
         dummy_buffer.push(DummyEvent(client_entity));

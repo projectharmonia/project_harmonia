@@ -2,7 +2,59 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
     reflect::FromType,
+    utils::Entry,
 };
+
+/// Maps server entities to client entities and vice versa.
+///
+/// Used only on client.
+#[derive(Default)]
+pub(crate) struct NetworkEntityMap {
+    server_to_client: EntityMap,
+    client_to_server: EntityMap,
+}
+
+impl NetworkEntityMap {
+    #[cfg(test)]
+    pub(crate) fn insert(&mut self, server_entity: Entity, client_entity: Entity) {
+        self.server_to_client.insert(server_entity, client_entity);
+        self.client_to_server.insert(client_entity, server_entity);
+    }
+
+    pub(crate) fn get_by_server_or_spawn(
+        &mut self,
+        world: &mut World,
+        server_entity: Entity,
+    ) -> Entity {
+        match self.server_to_client.entry(server_entity) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let client_entity = *entry.insert(world.spawn().id());
+                self.client_to_server.insert(client_entity, server_entity);
+                client_entity
+            }
+        }
+    }
+
+    pub(crate) fn remove_by_server(
+        &mut self,
+        server_entity: Entity,
+    ) -> Result<Entity, MapEntitiesError> {
+        let client_entity = self.server_to_client.remove(server_entity);
+        if let Some(client_entity) = client_entity {
+            self.client_to_server.remove(client_entity);
+        }
+        client_entity.ok_or(MapEntitiesError::EntityNotFound(server_entity))
+    }
+
+    pub(crate) fn to_client(&self) -> &EntityMap {
+        &self.server_to_client
+    }
+
+    pub(crate) fn to_server(&self) -> &EntityMap {
+        &self.client_to_server
+    }
+}
 
 /// Like [`ReflectMapEntities`], but maps only a single entity instead of all entities from [`EntityMap`].
 #[derive(Clone)]
