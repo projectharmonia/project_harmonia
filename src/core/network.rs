@@ -1,4 +1,5 @@
 pub(crate) mod client;
+pub(super) mod entity_serde;
 pub(crate) mod network_event;
 pub(super) mod replication;
 pub(crate) mod server;

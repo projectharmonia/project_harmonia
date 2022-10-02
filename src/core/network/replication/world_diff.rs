@@ -16,6 +16,8 @@ use serde::{
 };
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
+use crate::core::network::entity_serde;
+
 /// Type of component or resource change.
 pub(super) enum ComponentDiff {
     /// Indicates that a component was added or changed, contains serialized [`Reflect`].
@@ -86,7 +88,10 @@ impl<'a> Serialize for WorldDiffSerializer<'a> {
             WorldDiffField::Entities.into(),
             &EntitiesSerializer::new(&self.registry.read(), &self.world_diff.entities),
         )?;
-        state.serialize_field(WorldDiffField::Despawned.into(), &self.world_diff.despawns)?;
+        state.serialize_field(
+            WorldDiffField::Despawned.into(),
+            &DespawnsSerializer::new(&self.world_diff.despawns),
+        )?;
         state.end()
     }
 }
@@ -100,9 +105,9 @@ struct EntitiesSerializer<'a> {
 impl<'a> Serialize for EntitiesSerializer<'a> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(self.entities.len()))?;
-        for (entity, components) in self.entities {
+        for (&entity, components) in self.entities {
             map.serialize_entry(
-                entity,
+                &EntitySerializer(entity),
                 &ComponentsSerializer::new(self.registry, components),
             )?;
         }
@@ -152,6 +157,29 @@ impl<'a> Serialize for ComponentDiffSerializer<'a> {
 }
 
 #[derive(Constructor)]
+struct DespawnsSerializer<'a> {
+    despawns: &'a Vec<Entity>,
+}
+
+impl<'a> Serialize for DespawnsSerializer<'a> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.despawns.len()))?;
+        for entity in self.despawns.iter().copied() {
+            seq.serialize_element(&EntitySerializer(entity))?;
+        }
+        seq.end()
+    }
+}
+
+pub(super) struct EntitySerializer(pub(super) Entity);
+
+impl Serialize for EntitySerializer {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        entity_serde::serialize(&self.0, serializer)
+    }
+}
+
+#[derive(Constructor)]
 pub(super) struct WorldDiffDeserializer<'a> {
     pub(super) registry: &'a TypeRegistry,
 }
@@ -184,7 +212,7 @@ impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
             .next_element_seed(EntitiesDeserializer::new(&self.registry.read()))?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Entities as usize, &self))?;
         let despawned = seq
-            .next_element()?
+            .next_element_seed(DespawnsDeserializer)?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Despawned as usize, &self))?;
         Ok(WorldDiff {
             tick,
@@ -217,7 +245,7 @@ impl<'a, 'de> Visitor<'de> for EntitiesDeserializer<'a> {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
         let mut entities = HashMap::with_capacity(map.size_hint().unwrap_or_default());
-        while let Some(key) = map.next_key()? {
+        while let Some(key) = map.next_key_seed(EntityDeserializer)? {
             let value = map.next_value_seed(ComponentsDeserializer::new(self.registry))?;
             entities.insert(key, value);
         }
@@ -300,13 +328,55 @@ impl<'a, 'de> Visitor<'de> for ComponentDiffDeserializer<'a> {
     }
 }
 
+#[derive(Constructor)]
+struct DespawnsDeserializer;
+
+impl<'de> DeserializeSeed<'de> for DespawnsDeserializer {
+    type Value = Vec<Entity>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
+    }
+}
+
+impl<'de> Visitor<'de> for DespawnsDeserializer {
+    type Value = Vec<Entity>;
+
+    #[cfg_attr(coverage, no_coverage)]
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str(any::type_name::<Self::Value>())
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        let mut despawns = Vec::new();
+        while let Some(entity) = seq.next_element_seed(EntityDeserializer)? {
+            despawns.push(entity);
+        }
+
+        Ok(despawns)
+    }
+}
+
+pub(super) struct EntityDeserializer;
+
+impl<'de> DeserializeSeed<'de> for EntityDeserializer {
+    type Value = Entity;
+
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        entity_serde::deserialize(deserializer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_test::Token;
 
     const COMPONENT_NAME: &str = "My component";
-    const ENTITY_ID: u32 = 0;
+    const ENTITY_ID: u64 = 0;
     const TICK: u32 = 0;
 
     #[test]
@@ -401,7 +471,7 @@ mod tests {
     fn entities_ser() {
         let registry = TypeRegistryInternal::new();
         let entities = HashMap::from([(
-            Entity::from_raw(ENTITY_ID),
+            Entity::from_bits(ENTITY_ID),
             Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
         )]);
         let serializer = EntitiesSerializer::new(&registry, &entities);
@@ -410,7 +480,7 @@ mod tests {
             &serializer,
             &[
                 Token::Map { len: Some(1) },
-                Token::U32(ENTITY_ID),
+                Token::U64(ENTITY_ID),
                 Token::Seq { len: Some(1) },
                 Token::NewtypeVariant {
                     name: any::type_name::<ComponentDiff>(),
@@ -455,10 +525,10 @@ mod tests {
         let world_diff = WorldDiff {
             tick: TICK,
             entities: HashMap::from([(
-                Entity::from_raw(ENTITY_ID),
+                Entity::from_bits(ENTITY_ID),
                 Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
             )]),
-            despawns: Vec::from([Entity::from_raw(ENTITY_ID)]),
+            despawns: Vec::from([Entity::from_bits(ENTITY_ID)]),
         };
         let serializer = WorldDiffSerializer::new(&registry, &world_diff);
 
@@ -473,7 +543,7 @@ mod tests {
                 Token::U32(TICK),
                 Token::Str(WorldDiffField::Entities.into()),
                 Token::Map { len: Some(1) },
-                Token::U32(ENTITY_ID),
+                Token::U64(ENTITY_ID),
                 Token::Seq { len: Some(1) },
                 Token::NewtypeVariant {
                     name: any::type_name::<ComponentDiff>(),
@@ -484,7 +554,7 @@ mod tests {
                 Token::MapEnd,
                 Token::Str(WorldDiffField::Despawned.into()),
                 Token::Seq { len: Some(1) },
-                Token::U32(ENTITY_ID),
+                Token::U64(ENTITY_ID),
                 Token::SeqEnd,
                 Token::StructEnd,
             ],
