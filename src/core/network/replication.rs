@@ -499,7 +499,7 @@ mod tests {
         // since in test client and server in the same world.
         app.world.entity_mut(server_entity).despawn();
 
-        wait_for_network_tick(&mut app);
+        app.update();
 
         let client_entity = app
             .world
@@ -556,7 +556,7 @@ mod tests {
         replicated_entity.remove::<NonReflectedComponent>();
         let replicated_entity = replicated_entity.id();
 
-        wait_for_network_tick(&mut app);
+        app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
         assert!(replicated_entity.contains::<GameEntity>());
@@ -587,7 +587,7 @@ mod tests {
         entity_map.insert(server_parent, client_parent);
 
         wait_for_network_tick(&mut app);
-        wait_for_network_tick(&mut app);
+        app.update();
 
         let parent_sync = app.world.get::<ParentSync>(replicated_entity).unwrap();
         assert_eq!(parent_sync.0, client_parent);
@@ -623,7 +623,7 @@ mod tests {
             .insert(replicated_entity, replicated_entity);
 
         wait_for_network_tick(&mut app);
-        wait_for_network_tick(&mut app);
+        app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
         assert!(!replicated_entity.contains::<GameEntity>());
@@ -649,7 +649,7 @@ mod tests {
             .insert(despawned_entity, despawned_entity);
 
         wait_for_network_tick(&mut app);
-        wait_for_network_tick(&mut app);
+        app.update();
 
         assert!(app.world.get_entity(despawned_entity).is_none());
         assert!(app
