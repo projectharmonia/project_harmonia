@@ -25,6 +25,7 @@ struct EntityVisitor;
 impl<'de> Visitor<'de> for EntityVisitor {
     type Value = Entity;
 
+    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str("Entity")
     }
