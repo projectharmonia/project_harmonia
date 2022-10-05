@@ -141,7 +141,7 @@ impl<T> Default for ServerSendBuffer<T> {
 }
 
 /// An event that will be send to client(s).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct ServerEvent<T> {
     pub(crate) mode: SendMode,
     pub(crate) event: T,

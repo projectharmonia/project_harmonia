@@ -1,51 +1,69 @@
-use std::f32::consts::FRAC_PI_4;
+pub(crate) mod cursor_object;
 
-use bevy::prelude::*;
+use std::path::PathBuf;
+
+use bevy::{
+    app::PluginGroupBuilder,
+    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    prelude::*,
+};
 use bevy_mod_outline::{Outline, OutlineBundle};
-use bevy_mod_raycast::Ray3d;
 use bevy_mod_raycast::{RayCastMesh, RayCastSource};
-use bevy_rapier3d::prelude::*;
+use bevy_renet::renet::RenetClient;
 use bevy_scene_hook::SceneHook;
 use derive_more::From;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
+use serde::{Deserialize, Serialize};
 
 use super::{
-    asset_metadata, control_action::ControlAction, game_state::GameState, game_world::GameEntity,
-    preview::PreviewCamera,
+    asset_metadata,
+    control_action::ControlAction,
+    game_state::GameState,
+    game_world::{parent_sync::ParentSync, GameEntity},
+    network::{
+        entity_serde,
+        network_event::client_event::{
+            ClientEvent, ClientEventAppExt, ClientEventSystems, ClientSendBuffer,
+        },
+        SERVER_ID,
+    },
 };
+use cursor_object::{CursorObject, CursorObjectPlugin};
 
-pub(super) struct ObjectPlugin;
+pub(super) struct ObjectPlugins;
 
-impl Plugin for ObjectPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<ObjectPath>()
-            .add_system(Self::spawn_scene_system.run_in_state(GameState::City))
-            .add_system(Self::movement_system.run_in_state(GameState::City))
-            .add_system(
-                Self::confirm_system
-                    .run_in_state(GameState::City)
-                    .run_if(is_placement_confirmed),
-            )
-            .add_system(
-                Self::cancel_system
-                    .run_in_state(GameState::City)
-                    .run_if(is_placement_canceled),
-            )
-            .add_system(
-                Self::ray_system
-                    .chain(Self::selection_system)
-                    .chain(Self::outline_system)
-                    .run_in_state(GameState::City)
-                    .run_if(is_moving_object),
-            );
+impl PluginGroup for ObjectPlugins {
+    fn build(&mut self, group: &mut PluginGroupBuilder) {
+        group.add(CursorObjectPlugin).add(ObjectPlugin);
     }
 }
 
-const ROTATION_STEP: f32 = -FRAC_PI_4;
+struct ObjectPlugin;
+
+impl Plugin for ObjectPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Picked>()
+            .register_type::<ObjectPath>()
+            .add_mapped_client_event::<ObjectPicked>()
+            .add_client_event::<PickCancelled>()
+            .add_system(Self::spawning_system.run_in_state(GameState::City))
+            .add_system(
+                Self::ray_system
+                    .chain(Self::picking_system)
+                    .chain(Self::outline_system)
+                    .run_in_state(GameState::City)
+                    .run_if_not(cursor_object::is_cursor_object_exists)
+                    .before(ClientEventSystems::<ObjectPicked>::MappingSystem),
+            )
+            .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::pick_cancellation_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::cursor_spawning_system.run_in_state(GameState::City));
+    }
+}
 
 impl ObjectPlugin {
-    fn spawn_scene_system(
+    fn spawning_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
@@ -73,6 +91,7 @@ impl ObjectPlugin {
                     }
                 }))
                 .insert_bundle(VisibilityBundle::default());
+            debug!("spawned object {scene_path:?}");
         }
     }
 
@@ -91,14 +110,14 @@ impl ObjectPlugin {
         None
     }
 
-    fn selection_system(
+    fn picking_system(
         In(entity): In<Option<Entity>>,
-        mut commands: Commands,
+        mut pick_buffer: ResMut<ClientSendBuffer<ObjectPicked>>,
         action_state: Res<ActionState<ControlAction>>,
     ) -> Option<Entity> {
         if let Some(entity) = entity {
             if action_state.just_pressed(ControlAction::Confirm) {
-                commands.entity(entity).insert(MovingObject);
+                pick_buffer.push(ObjectPicked(entity));
                 None
             } else {
                 Some(entity)
@@ -129,50 +148,44 @@ impl ObjectPlugin {
         *previous_entity = entity;
     }
 
-    fn movement_system(
-        windows: Res<Windows>,
-        rapier_ctx: Res<RapierContext>,
-        action_state: Res<ActionState<ControlAction>>,
-        camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-        mut moving_objects: Query<&mut Transform, With<MovingObject>>,
+    fn pick_confirmation_system(
+        mut commands: Commands,
+        mut pick_events: EventReader<ClientEvent<ObjectPicked>>,
+        unpicked_objects: Query<(), (With<ObjectPath>, Without<Picked>)>,
     ) {
-        if let Ok(mut transform) = moving_objects.get_single_mut() {
-            if let Some(cursor_pos) = windows
-                .get_primary()
-                .and_then(|window| window.cursor_position())
-            {
-                let (&camera_transform, camera) = camera.single();
-                let ray = Ray3d::from_screenspace(cursor_pos, camera, &camera_transform)
-                    .expect("ray should be created from screen coordinates");
+        for ClientEvent { client_id, event } in pick_events.iter().copied() {
+            if unpicked_objects.get(event.0).is_ok() {
+                commands.entity(event.0).insert(Picked(client_id));
+            }
+        }
+    }
 
-                let toi = rapier_ctx
-                    .cast_ray(
-                        ray.origin(),
-                        ray.direction(),
-                        f32::MAX,
-                        false,
-                        QueryFilter::new(),
-                    )
-                    .map(|(_, toi)| toi)
-                    .unwrap_or_default();
-
-                transform.translation = ray.origin() + ray.direction() * toi;
-                if action_state.just_pressed(ControlAction::RotateObject) {
-                    transform.rotate_y(ROTATION_STEP);
+    fn pick_cancellation_system(
+        mut commands: Commands,
+        mut cancel_events: EventReader<ClientEvent<PickCancelled>>,
+        picked_objects: Query<(Entity, &Picked)>,
+    ) {
+        for ClientEvent { client_id, .. } in cancel_events.iter().copied() {
+            for (entity, picked) in &picked_objects {
+                if picked.0 == client_id {
+                    commands.entity(entity).remove::<Picked>();
                 }
             }
         }
     }
 
-    fn cancel_system(mut commands: Commands, moving_objects: Query<Entity, With<MovingObject>>) {
-        if let Ok(entity) = moving_objects.get_single() {
-            commands.entity(entity).despawn();
-        }
-    }
-
-    fn confirm_system(mut commands: Commands, moving_objects: Query<Entity, With<MovingObject>>) {
-        if let Ok(entity) = moving_objects.get_single() {
-            commands.entity(entity).remove::<MovingObject>();
+    fn cursor_spawning_system(
+        mut commands: Commands,
+        client: Option<Res<RenetClient>>,
+        mut picked_objects: Query<(Entity, &Parent, &Picked), Added<Picked>>,
+    ) {
+        let client_id = client.map(|client| client.client_id()).unwrap_or(SERVER_ID);
+        for (entity, parent, picked) in &mut picked_objects {
+            if picked.0 == client_id {
+                commands.entity(parent.get()).with_children(|parent| {
+                    parent.spawn().insert(CursorObject::Moving(entity));
+                });
+            }
         }
     }
 }
@@ -207,37 +220,65 @@ fn set_outline_recursive(
     }
 }
 
-fn is_placement_canceled(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::Cancel)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct ObjectPicked(#[serde(with = "entity_serde")] pub(super) Entity);
+
+impl MapEntities for ObjectPicked {
+    #[cfg_attr(coverage, no_coverage)]
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
 }
 
-fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::Confirm)
-}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct PickCancelled;
 
-fn is_moving_object(moving_objects: Query<(), With<MovingObject>>) -> bool {
-    moving_objects.is_empty()
-}
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(super) struct Picked(u64);
 
-#[derive(Component)]
-pub(crate) struct MovingObject;
-
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct ObjectBundle {
-    pub(crate) path: ObjectPath,
-    pub(crate) transform: Transform,
-    pub(crate) game_entity: GameEntity,
+    object_path: ObjectPath,
+    transform: Transform,
+    parent_sync: ParentSync,
+    game_entity: GameEntity,
 }
 
-/// Contains path to a an object metadata file.
-#[derive(Component, Default, From, Reflect)]
+impl ObjectBundle {
+    fn new(metadata_path: PathBuf, translation: Vec3, rotation: Quat, parent: Entity) -> Self {
+        Self {
+            object_path: ObjectPath(
+                metadata_path
+                    .into_os_string()
+                    .into_string()
+                    .expect("Path should be a UTF-8 string"),
+            ),
+            transform: Transform::default()
+                .with_translation(translation)
+                .with_rotation(rotation),
+            parent_sync: ParentSync(parent),
+            game_entity: GameEntity,
+        }
+    }
+}
+
+/// Contains path to an object metadata file.
+// TODO Bevy 0.9: Use `PathBuf`: https://github.com/bevyengine/bevy/issues/6166
+#[derive(Clone, Component, Debug, Default, From, Reflect)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(String);
 
 #[cfg(test)]
 mod tests {
-    use bevy::{asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState};
+    use bevy::{
+        asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState, scene::ScenePlugin,
+    };
     use bevy_mod_raycast::IntersectionData;
+    use bevy_scene_hook::HookPlugin;
+    use itertools::Itertools;
+    use shape::Cube;
 
     use super::*;
 
@@ -298,60 +339,51 @@ mod tests {
     #[test]
     fn spawning() {
         let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin)
+            .add_asset::<Mesh>()
+            .add_plugin(ScenePlugin)
+            .add_plugin(HookPlugin);
 
-        let object_entity = app.world.spawn().insert(ObjectPath(String::default())).id();
+        let object_entity = app.world.spawn().insert(ObjectPath::default()).id();
 
         app.update();
 
-        let object_entity = app.world.entity(object_entity);
+        // Manually create a scene with a mesh to trigger hook
+        let mut world = World::new();
+        let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+        let mesh_handle = meshes.add(Cube::default().into());
+        world.spawn().insert(mesh_handle);
+        let mut scenes = app.world.resource_mut::<Assets<Scene>>();
+        let scene_handle = scenes.add(Scene::new(world));
+
+        let mut object_entity = app.world.entity_mut(object_entity);
+        object_entity.insert(scene_handle);
+
         assert!(object_entity.contains::<Handle<Scene>>());
         assert!(object_entity.contains::<GlobalTransform>());
         assert!(object_entity.contains::<Visibility>());
         assert!(object_entity.contains::<ComputedVisibility>());
-    }
 
-    #[test]
-    fn confirmation() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        let moving_entity = app.world.spawn().insert(MovingObject).id();
-        let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
-        action_state.press(ControlAction::Confirm);
+        let object_entity = object_entity.id();
 
         app.update();
 
-        assert!(!app.world.entity(moving_entity).contains::<MovingObject>());
-    }
-
-    #[test]
-    fn cancellation() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        let moving_entity = app.world.spawn().insert(MovingObject).id();
-        let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
-        action_state.press(ControlAction::Cancel);
-
-        app.update();
-
-        assert!(app.world.get_entity(moving_entity).is_none());
+        let parent = app
+            .world
+            .query_filtered::<&Parent, With<Outline>>()
+            .single(&app.world);
+        assert_eq!(parent.get(), object_entity);
     }
 
     #[test]
     fn hovering() {
         let mut app = App::new();
-        app.add_plugin(CorePlugin)
-            .add_plugin(TestMovingObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin);
 
         let outline_entity = app
             .world
             .spawn()
-            .insert(Outline {
-                visible: false,
-                ..Default::default()
-            })
+            .insert(Outline::default())
             .insert(ObjectPath::default())
             .id();
         app.world.spawn().push_children(&[outline_entity]);
@@ -370,10 +402,7 @@ mod tests {
         let next_outline_entity = app
             .world
             .spawn()
-            .insert(Outline {
-                visible: false,
-                ..Default::default()
-            })
+            .insert(Outline::default())
             .insert(ObjectPath::default())
             .id();
         app.world.spawn().push_children(&[next_outline_entity]);
@@ -401,16 +430,12 @@ mod tests {
     #[test]
     fn no_hovering() {
         let mut app = App::new();
-        app.add_plugin(CorePlugin)
-            .add_plugin(TestMovingObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin);
 
         let outline_entity = app
             .world
             .spawn()
-            .insert(Outline {
-                visible: false,
-                ..Default::default()
-            })
+            .insert(Outline::default())
             .insert(ObjectPath::default())
             .id();
 
@@ -425,20 +450,11 @@ mod tests {
     }
 
     #[test]
-    fn selection() {
+    fn picking() {
         let mut app = App::new();
-        app.add_plugin(CorePlugin)
-            .add_plugin(TestMovingObjectPlugin);
+        app.add_plugin(TestMovingObjectPlugin);
 
-        let outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline {
-                visible: false,
-                ..Default::default()
-            })
-            .insert(ObjectPath::default())
-            .id();
+        let outline_entity = app.world.spawn().insert(ObjectPath::default()).id();
         app.world.spawn().push_children(&[outline_entity]);
 
         let mut ray_source = RayCastSource::<ObjectPath>::default();
@@ -454,9 +470,68 @@ mod tests {
 
         app.update();
 
-        let outline_entity = app.world.entity(outline_entity);
-        assert!(!outline_entity.get::<Outline>().unwrap().visible);
-        assert!(outline_entity.contains::<MovingObject>());
+        let pick_buffer = app.world.resource::<ClientSendBuffer<ObjectPicked>>();
+        let pick_event = pick_buffer.iter().exactly_one().unwrap();
+        assert_eq!(pick_event.0, outline_entity);
+    }
+
+    #[test]
+    fn pick_confirmation() {
+        let mut app = App::new();
+        app.add_plugin(TestMovingObjectPlugin);
+
+        const CLIENT_ID: u64 = 1;
+        let object_entity = app.world.spawn().insert(ObjectPath::default()).id();
+        let mut pick_events = app
+            .world
+            .resource_mut::<Events<ClientEvent<ObjectPicked>>>();
+        pick_events.send(ClientEvent {
+            client_id: CLIENT_ID,
+            event: ObjectPicked(object_entity),
+        });
+
+        app.update();
+
+        assert_eq!(app.world.get::<Picked>(object_entity).unwrap().0, CLIENT_ID);
+    }
+
+    #[test]
+    fn pick_cancellation() {
+        let mut app = App::new();
+        app.add_plugin(TestMovingObjectPlugin);
+
+        const CLIENT_ID: u64 = 1;
+        let object_entity = app.world.spawn().insert(Picked(CLIENT_ID)).id();
+        let mut pick_events = app
+            .world
+            .resource_mut::<Events<ClientEvent<PickCancelled>>>();
+        pick_events.send(ClientEvent {
+            client_id: CLIENT_ID,
+            event: PickCancelled,
+        });
+
+        app.update();
+
+        assert!(app.world.get::<Picked>(object_entity).is_none());
+    }
+
+    #[test]
+    fn cursor_spawning() {
+        let mut app = App::new();
+        app.add_plugin(TestMovingObjectPlugin);
+
+        let object_entity = app.world.spawn().insert(Picked(SERVER_ID)).id();
+        let parent_entity = app.world.spawn().push_children(&[object_entity]).id();
+
+        app.update();
+
+        let (parent, cursor_object) = app
+            .world
+            .query::<(&Parent, &CursorObject)>()
+            .single(&app.world);
+
+        assert_eq!(parent.get(), parent_entity);
+        assert!(matches!(cursor_object, CursorObject::Moving(entity) if *entity == object_entity));
     }
 
     struct TestMovingObjectPlugin;
@@ -464,9 +539,8 @@ mod tests {
     impl Plugin for TestMovingObjectPlugin {
         fn build(&self, app: &mut App) {
             app.add_loopless_state(GameState::City)
-                .init_resource::<RapierContext>()
-                .init_resource::<Windows>()
                 .init_resource::<ActionState<ControlAction>>()
+                .add_plugin(CorePlugin)
                 .add_plugin(AssetPlugin)
                 .add_plugin(ObjectPlugin);
         }

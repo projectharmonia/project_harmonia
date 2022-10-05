@@ -28,7 +28,7 @@ use game_state::GameStatePlugin;
 use game_world::GameWorldPlugins;
 use ground::GroundPlugin;
 use network::NetworkPlugins;
-use object::ObjectPlugin;
+use object::ObjectPlugins;
 use orbit_camera::OrbitCameraPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
@@ -43,7 +43,6 @@ impl PluginGroup for CorePlugins {
             .add(CityPlugin)
             .add(CliPlugin)
             .add(GroundPlugin)
-            .add(ObjectPlugin)
             .add(ControlActionsPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)
@@ -53,6 +52,7 @@ impl PluginGroup for CorePlugins {
             .add(SettingsPlugin);
 
         GameWorldPlugins.build(group);
+        ObjectPlugins.build(group);
         NetworkPlugins.build(group);
     }
 }

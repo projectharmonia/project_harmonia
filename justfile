@@ -18,5 +18,5 @@ coverage *ARGS: clean raw-coverage && clean
     --ignore "src/core/network/client.rs" \
     --ignore "src/core/network/server.rs" \
     --ignore "src/core/cli.rs" \
-    --ignore "src/core/object.rs" \
+    --ignore "src/core/object/cursor_object.rs" \
     {{ ARGS }}

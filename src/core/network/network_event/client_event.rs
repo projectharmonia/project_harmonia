@@ -18,8 +18,9 @@ use crate::core::{
 };
 
 #[derive(SystemLabel)]
-enum ClientEventSystems<T> {
+pub(crate) enum ClientEventSystems<T> {
     SendingSystem,
+    MappingSystem,
     #[allow(dead_code)]
     #[system_label(ignore_fields)]
     Marker(T),
@@ -68,7 +69,8 @@ impl ClientEventAppExt for App {
         self.add_system(
             mapping_system::<T>
                 .run_if(client::is_connected)
-                .before(ClientEventSystems::<T>::SendingSystem),
+                .before(ClientEventSystems::<T>::SendingSystem)
+                .label(ClientEventSystems::<T>::MappingSystem),
         );
         self
     }
