@@ -260,11 +260,12 @@ mod tests {
 
     use super::*;
     use crate::core::{
-        asset_metadata::{self, AssetMetadata, AssetMetadataLoader},
+        asset_metadata::{
+            self, AssetMetadata, AssetMetadataLoader, GeneralMetadata, MetadataKind,
+            ObjectCategory, ObjectMetadata,
+        },
         tests::{self, HeadlessRenderPlugin},
     };
-
-    const METADATA_PATH: &str = "base/objects/rocks/small_stone/small_stone.toml";
 
     #[test]
     fn preview_event() {
@@ -272,9 +273,19 @@ mod tests {
         app.add_plugin(TestPreviewPlugin);
 
         let asset_server = app.world.resource::<AssetServer>();
-        let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
+        let mut metadata_handle: Handle<AssetMetadata> = asset_server.load("dummy"); // Set dummy path.
 
-        tests::wait_for_asset_loading(&mut app, &metadata_handle);
+        let asset_metadata = AssetMetadata {
+            general: GeneralMetadata {
+                name: String::new(),
+                preview_translation: Vec3::ZERO,
+            },
+            kind: MetadataKind::Object(ObjectMetadata {
+                category: ObjectCategory::Rocks,
+            }),
+        };
+        let mut assets_metadata = app.world.resource_mut::<Assets<AssetMetadata>>();
+        metadata_handle = assets_metadata.set(metadata_handle, asset_metadata); // Update handle with a valid metadata.
 
         let mut events = app.world.resource_mut::<Events<PreviewRequested>>();
         events.send(PreviewRequested(metadata_handle.id));
@@ -298,6 +309,7 @@ mod tests {
 
         app.update();
 
+        const METADATA_PATH: &str = "base/objects/rocks/small_stone/small_stone.toml";
         let asset_server = app.world.resource::<AssetServer>();
         let metadata_handle: Handle<AssetMetadata> = asset_server.load(METADATA_PATH);
         let preview_handle: Handle<Scene> =
