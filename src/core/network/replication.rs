@@ -369,7 +369,7 @@ fn apply_diffs(
             .remove_by_server(server_entity)
             .tap_err(|e| error!("received an invalid entity despawn: {e}"))
         {
-            world.entity_mut(local_entity).despawn();
+            world.entity_mut(local_entity).despawn_recursive();
         }
     }
 }
@@ -637,7 +637,8 @@ mod tests {
             NetworkPreset::ServerAndClient { connected: true },
         ));
 
-        let despawned_entity = app.world.spawn().id();
+        let children_entity = app.world.spawn().id();
+        let despawned_entity = app.world.spawn().push_children(&[children_entity]).id();
         let current_tick = app.world.read_change_tick();
         let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
         despawn_tracker
@@ -652,6 +653,7 @@ mod tests {
         app.update();
 
         assert!(app.world.get_entity(despawned_entity).is_none());
+        assert!(app.world.get_entity(children_entity).is_none());
         assert!(app
             .world
             .resource::<NetworkEntityMap>()
