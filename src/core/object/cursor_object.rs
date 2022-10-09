@@ -1,6 +1,6 @@
 use std::{f32::consts::FRAC_PI_4, path::PathBuf};
 
-use bevy::prelude::*;
+use bevy::{math::Vec3Swizzles, prelude::*};
 use bevy_mod_raycast::Ray3d;
 use bevy_rapier3d::prelude::*;
 use bevy_renet::renet::RenetClient;
@@ -62,10 +62,13 @@ impl CursorObjectPlugin {
             debug!("created cursor {cursor_object:?}");
             match cursor_object {
                 CursorObject::Spawning(metadata_path) => {
-                    commands.entity(cursor_entity).insert_bundle(SceneBundle {
-                        scene: asset_server.load(&asset_metadata::scene_path(&metadata_path)),
-                        ..Default::default()
-                    });
+                    commands
+                        .entity(cursor_entity)
+                        .insert_bundle(SceneBundle {
+                            scene: asset_server.load(&asset_metadata::scene_path(&metadata_path)),
+                            ..Default::default()
+                        })
+                        .insert(CursorOffset::default());
                 }
                 CursorObject::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
@@ -83,13 +86,17 @@ impl CursorObjectPlugin {
     }
 
     fn movement_system(
+        mut commands: Commands,
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
         action_state: Res<ActionState<ControlAction>>,
         camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-        mut cursor_objects: Query<&mut Transform, With<CursorObject>>,
+        mut cursor_objects: Query<
+            (Entity, &mut Transform, Option<&CursorOffset>),
+            With<CursorObject>,
+        >,
     ) {
-        if let Ok(mut transform) = cursor_objects.get_single_mut() {
+        if let Ok((entity, mut transform, cursor_offset)) = cursor_objects.get_single_mut() {
             if let Some(cursor_pos) = windows
                 .get_primary()
                 .and_then(|window| window.cursor_position())
@@ -109,7 +116,13 @@ impl CursorObjectPlugin {
                     .map(|(_, toi)| toi)
                     .unwrap_or_default();
 
-                transform.translation = ray.origin() + ray.direction() * toi;
+                let ray_translation = ray.origin() + ray.direction() * toi;
+                let offset = cursor_offset.copied().unwrap_or_else(|| {
+                    let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
+                    commands.entity(entity).insert(offset);
+                    offset
+                });
+                transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
                 if action_state.just_pressed(ControlAction::RotateObject) {
                     const ROTATION_STEP: f32 = -FRAC_PI_4;
                     transform.rotate_y(ROTATION_STEP);
@@ -259,6 +272,10 @@ pub(crate) enum CursorObject {
     Spawning(PathBuf),
     Moving(Entity),
 }
+
+/// Contains an offset between cursor position on first creation and object origin.
+#[derive(Clone, Component, Copy, Default, Deref)]
+struct CursorOffset(Vec2);
 
 #[cfg(test)]
 mod tests {
