@@ -1,6 +1,6 @@
-use std::{f32::consts::FRAC_PI_4, path::PathBuf};
+use std::{f32::consts::FRAC_PI_4, fmt::Debug, path::PathBuf};
 
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{ecs::event::Event, math::Vec3Swizzles, prelude::*};
 use bevy_mod_raycast::Ray3d;
 use bevy_rapier3d::prelude::*;
 use bevy_renet::renet::RenetClient;
@@ -21,7 +21,7 @@ use crate::core::{
     preview::PreviewCamera,
 };
 
-use super::{ObjectBundle, PickCancelled, Picked};
+use super::{ObjectBundle, PickCancelled, PickDeleted, Picked};
 
 pub(super) struct CursorObjectPlugin;
 
@@ -37,14 +37,19 @@ impl Plugin for CursorObjectPlugin {
             )
             .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
-                Self::apply_system
+                Self::application_system
                     .run_in_state(GameState::City)
-                    .run_if(is_placement_confirmed),
+                    .run_if(is_confirm_pressed),
             )
             .add_system(
-                Self::cancel_system
+                Self::cancel_spawning_or_send_system::<PickCancelled>
                     .run_in_state(GameState::City)
-                    .run_if(is_placement_canceled),
+                    .run_if(is_cancel_pressed),
+            )
+            .add_system(
+                Self::cancel_spawning_or_send_system::<PickDeleted>
+                    .run_in_state(GameState::City)
+                    .run_if(is_delete_pressed),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -136,7 +141,7 @@ impl CursorObjectPlugin {
         }
     }
 
-    fn apply_system(
+    fn application_system(
         mut move_buffers: ResMut<ClientSendBuffer<ObjectMoved>>,
         mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawned>>,
         cursor_objects: Query<(&Transform, &CursorObject)>,
@@ -157,17 +162,19 @@ impl CursorObjectPlugin {
         }
     }
 
-    fn cancel_system(
+    fn cancel_spawning_or_send_system<T: Event + Default + Debug>(
         mut commands: Commands,
-        mut cancel_buffer: ResMut<ClientSendBuffer<PickCancelled>>,
+        mut client_buffer: ResMut<ClientSendBuffer<T>>,
         moving_objects: Query<(Entity, &CursorObject)>,
     ) {
         if let Ok((entity, cursor_object)) = moving_objects.get_single() {
-            debug!("cancelled cursor {cursor_object:?}");
             if let CursorObject::Spawning(_) = cursor_object {
+                debug!("cancelled cursor {cursor_object:?}");
                 commands.entity(entity).despawn_recursive();
             } else {
-                cancel_buffer.push(PickCancelled);
+                let event = T::default();
+                debug!("sent event {event:?} for cursor {cursor_object:?}");
+                client_buffer.push(event);
             }
         }
     }
@@ -204,10 +211,10 @@ impl CursorObjectPlugin {
                 }
                 CursorObject::Moving(object_entity) => {
                     commands.entity(cursor_entity).despawn_recursive();
-                    let mut visibility = visibility
-                        .get_mut(object_entity)
-                        .expect("object should have visibility");
-                    visibility.is_visible = true;
+                    // Object could be invalid in case of removal.
+                    if let Ok(mut visibility) = visibility.get_mut(object_entity) {
+                        visibility.is_visible = true;
+                    }
                 }
             }
         }
@@ -252,12 +259,16 @@ impl CursorObjectPlugin {
     }
 }
 
-fn is_placement_canceled(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn is_cancel_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::Cancel)
 }
 
-fn is_placement_confirmed(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn is_confirm_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::Confirm)
+}
+
+fn is_delete_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
+    action_state.just_pressed(ControlAction::Delete)
 }
 
 pub(crate) fn is_cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {
@@ -411,29 +422,36 @@ mod tests {
     fn spawning_cursor_cancellation() {
         let mut app = App::new();
         app.init_resource::<ClientSendBuffer<PickCancelled>>()
+            .init_resource::<ClientSendBuffer<PickDeleted>>()
             .add_plugin(TestCursorObjectPlugin);
 
-        let cursor_entity = app
-            .world
-            .spawn()
-            .insert(CursorObject::Spawning(PathBuf::new()))
-            .id();
+        for action in [ControlAction::Cancel, ControlAction::Delete] {
+            let cursor_entity = app
+                .world
+                .spawn()
+                .insert(CursorObject::Spawning(PathBuf::new()))
+                .id();
 
-        // Wait for additional component insertion to avoid inserting and removing in the same frame.
-        app.update();
+            // Wait for additional component insertion to avoid inserting and removing in the same frame.
+            app.update();
 
-        let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
-        action_state.press(ControlAction::Cancel);
+            let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
+            action_state.press(action);
 
-        app.update();
+            app.update();
 
-        assert!(app.world.get_entity(cursor_entity).is_none());
+            assert!(
+                app.world.get_entity(cursor_entity).is_none(),
+                "cursor should be removed after pressing {action}"
+            );
+        }
     }
 
     #[test]
-    fn moving_cursor_cancellation() {
+    fn moving_cursor_sending() {
         let mut app = App::new();
         app.init_resource::<ClientSendBuffer<PickCancelled>>()
+            .init_resource::<ClientSendBuffer<PickDeleted>>()
             .add_plugin(TestCursorObjectPlugin);
 
         let object_entity = app
@@ -449,11 +467,15 @@ mod tests {
 
         let mut action_state = app.world.resource_mut::<ActionState<ControlAction>>();
         action_state.press(ControlAction::Cancel);
+        action_state.press(ControlAction::Delete);
 
         app.update();
 
         let cancel_buffer = app.world.resource::<ClientSendBuffer<PickCancelled>>();
         assert_eq!(cancel_buffer.len(), 1);
+
+        let delete_buffer = app.world.resource::<ClientSendBuffer<PickDeleted>>();
+        assert_eq!(delete_buffer.len(), 1);
     }
 
     #[test]

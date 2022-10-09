@@ -56,6 +56,7 @@ pub(crate) enum ControlAction {
     #[strum(serialize = "Rotate Object")]
     RotateObject,
     Confirm,
+    Delete,
     Cancel,
 }
 

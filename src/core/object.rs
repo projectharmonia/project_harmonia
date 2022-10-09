@@ -47,6 +47,7 @@ impl Plugin for ObjectPlugin {
             .register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectPicked>()
             .add_client_event::<PickCancelled>()
+            .add_client_event::<PickDeleted>()
             .add_system(Self::spawning_system.run_in_state(GameState::City))
             .add_system(
                 Self::ray_system
@@ -58,6 +59,7 @@ impl Plugin for ObjectPlugin {
             )
             .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::pick_cancellation_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::pick_deletion_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::cursor_spawning_system.run_in_state(GameState::City));
     }
 }
@@ -174,6 +176,20 @@ impl ObjectPlugin {
         }
     }
 
+    fn pick_deletion_system(
+        mut commands: Commands,
+        mut delete_events: EventReader<ClientEvent<PickDeleted>>,
+        picked_objects: Query<(Entity, &Picked)>,
+    ) {
+        for ClientEvent { client_id, .. } in delete_events.iter().copied() {
+            for (entity, picked) in &picked_objects {
+                if picked.0 == client_id {
+                    commands.entity(entity).despawn_recursive();
+                }
+            }
+        }
+    }
+
     fn cursor_spawning_system(
         mut commands: Commands,
         client: Option<Res<RenetClient>>,
@@ -231,8 +247,11 @@ impl MapEntities for ObjectPicked {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 struct PickCancelled;
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+struct PickDeleted;
 
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
