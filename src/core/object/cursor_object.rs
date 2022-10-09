@@ -7,7 +7,7 @@ use bevy_renet::renet::RenetClient;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
-use tap::TapOptional;
+use tap::{TapFallible, TapOptional};
 
 use crate::core::{
     asset_metadata,
@@ -29,11 +29,15 @@ impl Plugin for CursorObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_client_event::<ObjectMoved>()
             .add_client_event::<ObjectSpawned>()
-            .add_server_event::<SpawnConfirmed>()
-            .add_system(Self::spawning_system.run_in_state(GameState::City))
+            .add_server_event::<CursorConfirmed>()
+            // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                Self::spawning_system.run_in_state(GameState::City),
+            )
             .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
-                Self::confirm_system
+                Self::apply_system
                     .run_in_state(GameState::City)
                     .run_if(is_placement_confirmed),
             )
@@ -44,8 +48,9 @@ impl Plugin for CursorObjectPlugin {
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                Self::despawn_system.run_in_state(GameState::City),
+                Self::movement_confirmation_system.run_in_state(GameState::City),
             )
+            .add_system(Self::despawn_system.run_on_event::<CursorConfirmed>())
             .add_system(Self::apply_movement_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::spawn_object_system.run_unless_resource_exists::<RenetClient>());
     }
@@ -131,7 +136,7 @@ impl CursorObjectPlugin {
         }
     }
 
-    fn confirm_system(
+    fn apply_system(
         mut move_buffers: ResMut<ClientSendBuffer<ObjectMoved>>,
         mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawned>>,
         cursor_objects: Query<(&Transform, &CursorObject)>,
@@ -167,33 +172,42 @@ impl CursorObjectPlugin {
         }
     }
 
+    fn movement_confirmation_system(
+        pick_removals: RemovedComponents<Picked>,
+        mut confirmation_events: EventWriter<CursorConfirmed>,
+        cursor_objects: Query<&CursorObject>,
+    ) {
+        if let Ok(CursorObject::Moving(object_entity)) = cursor_objects.get_single() {
+            if pick_removals
+                .iter()
+                .any(|unpicked_entity| unpicked_entity == *object_entity)
+            {
+                debug!("movement was confirmed for {object_entity:?}");
+                confirmation_events.send_default();
+            }
+        }
+    }
+
     fn despawn_system(
         mut commands: Commands,
-        pick_removals: RemovedComponents<Picked>,
-        mut spawn_confirm_events: EventReader<SpawnConfirmed>,
         cursor_objects: Query<(Entity, &CursorObject)>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        if let Ok((cursor_entity, cursor_object)) = cursor_objects.get_single() {
+        if let Ok((cursor_entity, cursor_object)) = cursor_objects
+            .get_single()
+            .tap_err(|e| error!("unable to get cursor object for despawn: {e}"))
+        {
+            debug!("despawned cursor {cursor_object:?}");
             match *cursor_object {
                 CursorObject::Spawning(_) => {
-                    if spawn_confirm_events.iter().count() != 0 {
-                        debug!("despawned cursor {cursor_object:?}");
-                        commands.entity(cursor_entity).despawn_recursive();
-                    }
+                    commands.entity(cursor_entity).despawn_recursive();
                 }
-                CursorObject::Moving(moving_entity) => {
-                    if let Some(object_entity) = pick_removals
-                        .iter()
-                        .find(|&object_entity| object_entity == moving_entity)
-                    {
-                        debug!("despawned cursor {cursor_object:?}");
-                        commands.entity(cursor_entity).despawn_recursive();
-                        let mut visibility = visibility
-                            .get_mut(object_entity)
-                            .expect("object should have visibility");
-                        visibility.is_visible = true;
-                    }
+                CursorObject::Moving(object_entity) => {
+                    commands.entity(cursor_entity).despawn_recursive();
+                    let mut visibility = visibility
+                        .get_mut(object_entity)
+                        .expect("object should have visibility");
+                    visibility.is_visible = true;
                 }
             }
         }
@@ -202,7 +216,7 @@ impl CursorObjectPlugin {
     fn spawn_object_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawned>>,
-        mut spawn_confirm_buffer: ResMut<ServerSendBuffer<SpawnConfirmed>>,
+        mut confirmation_buffer: ResMut<ServerSendBuffer<CursorConfirmed>>,
         visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
@@ -212,9 +226,9 @@ impl CursorObjectPlugin {
                 event.rotation,
                 visible_cities.single(),
             ));
-            spawn_confirm_buffer.push(ServerEvent {
+            confirmation_buffer.push(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: SpawnConfirmed,
+                event: CursorConfirmed,
             });
         }
     }
@@ -263,8 +277,12 @@ struct ObjectSpawned {
     rotation: Quat,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-struct SpawnConfirmed;
+/// An event for cursor action confirmation.
+///
+/// Could be received as a network event from server for spawning cursor or
+/// emitted locally when the received server state contains pick removal for moving cursor.
+#[derive(Deserialize, Serialize, Debug, Default)]
+struct CursorConfirmed;
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug)]
@@ -333,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn spawning_cursor_confirmation() {
+    fn spawning_cursor_application() {
         let mut app = App::new();
         app.add_plugin(TestCursorObjectPlugin);
 
@@ -358,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    fn moving_cursor_confirmation() {
+    fn moving_cursor_application() {
         let mut app = App::new();
         app.add_plugin(TestCursorObjectPlugin);
 
@@ -451,8 +469,8 @@ mod tests {
             .id();
 
         app.world
-            .resource_mut::<Events<SpawnConfirmed>>()
-            .send(SpawnConfirmed);
+            .resource_mut::<Events<CursorConfirmed>>()
+            .send(CursorConfirmed);
 
         app.update();
 
@@ -483,6 +501,7 @@ mod tests {
             .insert(Picked::default())
             .remove::<Picked>();
 
+        app.update();
         app.update();
 
         let visibility = app.world.get::<Visibility>(object_entity).unwrap();
@@ -529,8 +548,8 @@ mod tests {
         assert_eq!(*transform, TRANSFORM);
         assert_eq!(&object_path.0, METADATA_PATH);
 
-        let spawn_confirm_buffer = app.world.resource::<ServerSendBuffer<SpawnConfirmed>>();
-        let confirm_event = spawn_confirm_buffer.iter().exactly_one().unwrap();
+        let confirmation_buffer = app.world.resource::<ServerSendBuffer<CursorConfirmed>>();
+        let confirm_event = confirmation_buffer.iter().exactly_one().unwrap();
         assert!(
             matches!(confirm_event.mode, SendMode::Direct(client_id) if client_id == CLIENT_ID)
         );
