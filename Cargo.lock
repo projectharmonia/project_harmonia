@@ -252,9 +252,9 @@ dependencies = [
 
 [[package]]
 name = "bevy-scene-hook"
-version = "4.0.0"
+version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ec966eb90849b6c72b2d028e0bc8b82948d156bcf4bf7b37a0c28b1ec3ab623"
+checksum = "e7cb18c6cd4227534ea1063606090a60e1dd4d8eb724a16e178635bfd2002502"
 dependencies = [
  "bevy",
 ]
