@@ -3,8 +3,6 @@ pub(crate) mod map_entity;
 mod removal_tracker;
 mod world_diff;
 
-use std::time::Duration;
-
 use anyhow::{Context, Result};
 use bevy::{
     app::PluginGroupBuilder,
@@ -22,7 +20,7 @@ use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-use super::{client, REPLICATION_CHANNEL_ID};
+use super::{client, REPLICATION_CHANNEL_ID, TICK};
 use crate::core::{
     game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
@@ -58,7 +56,8 @@ impl Plugin for ReplicationPlugin {
             .add_stage_before(
                 CoreStage::Update,
                 ReplicationStage::Tick,
-                FixedTimestepStage::new(Duration::from_secs_f64(Self::TIMESTEP)).with_stage(
+                FixedTimestepStage::from_stage(
+                    TICK,
                     SystemStage::single(
                         Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
                     ),
@@ -83,8 +82,6 @@ impl Plugin for ReplicationPlugin {
 }
 
 impl ReplicationPlugin {
-    const TIMESTEP: f64 = 0.1;
-
     fn world_diffs_sending_system(
         mut set: ParamSet<(&World, ResMut<RenetServer>)>,
         acked_ticks: Res<AckedTicks>,
@@ -702,11 +699,9 @@ mod tests {
     }
 
     fn wait_for_network_tick(app: &mut App) {
-        let init_time = app.world.resource::<Time>().seconds_since_startup();
+        let init_time = app.world.resource::<Time>().time_since_startup();
         app.update();
-        while app.world.resource::<Time>().seconds_since_startup() - init_time
-            < ReplicationPlugin::TIMESTEP
-        {
+        while app.world.resource::<Time>().time_since_startup() - init_time < TICK {
             app.update();
         }
     }

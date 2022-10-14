@@ -6,6 +6,8 @@ pub(crate) mod network_preset;
 pub(super) mod replication;
 pub(crate) mod server;
 
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_renet::renet::{ChannelConfig, ReliableChannelConfig, UnreliableChannelConfig};
 
@@ -26,6 +28,7 @@ impl PluginGroup for NetworkPlugins {
 const DEFAULT_PORT: u16 = 4761;
 const PROTOCOL_ID: u64 = 7;
 const MAX_CLIENTS: usize = 32;
+const TICK: Duration = Duration::from_millis(100);
 pub(super) const SERVER_ID: u64 = 0;
 const REPLICATION_CHANNEL_ID: u8 = 0;
 
