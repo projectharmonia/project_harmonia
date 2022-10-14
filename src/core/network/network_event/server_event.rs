@@ -162,13 +162,13 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::tests::{NetworkPreset, TestNetworkPlugin};
+    use crate::core::network::network_preset::{NetworkPreset, NetworkPresetPlugin};
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
         app.add_server_event::<DummyEvent>()
-            .add_plugin(TestNetworkPlugin::new(NetworkPreset::ServerAndClient {
+            .add_plugin(NetworkPresetPlugin::new(NetworkPreset::ServerAndClient {
                 connected: true,
             }));
 

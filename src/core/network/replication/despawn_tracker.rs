@@ -69,7 +69,7 @@ pub(super) struct DespawnTracker {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::network::tests::{NetworkPreset, TestNetworkPlugin};
+    use crate::core::network::network_preset::{NetworkPreset, NetworkPresetPlugin};
 
     use super::*;
 
@@ -163,7 +163,7 @@ mod tests {
     impl Plugin for TestDespawnTrackerPlugin {
         fn build(&self, app: &mut App) {
             app.init_resource::<AckedTicks>()
-                .add_plugin(TestNetworkPlugin::new(NetworkPreset::Server))
+                .add_plugin(NetworkPresetPlugin::new(NetworkPreset::Server))
                 .add_plugin(DespawnTrackerPlugin);
         }
     }

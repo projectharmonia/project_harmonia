@@ -439,8 +439,8 @@ mod tests {
     use crate::core::{
         game_world::{parent_sync::ParentSync, GameEntity},
         network::{
+            network_preset::{NetworkPreset, NetworkPresetPlugin},
             replication::map_entity::NetworkEntityMap,
-            tests::{NetworkPreset, TestNetworkPlugin},
         },
     };
 
@@ -722,7 +722,7 @@ mod tests {
                 app.init_resource::<IgnoreRules>()
                     .init_resource::<DespawnTracker>();
             }
-            app.add_plugin(TestNetworkPlugin::new(self.preset))
+            app.add_plugin(NetworkPresetPlugin::new(self.preset))
                 .add_plugin(ReplicationPlugin);
         }
     }
