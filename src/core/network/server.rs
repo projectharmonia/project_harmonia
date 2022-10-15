@@ -1,3 +1,5 @@
+#[cfg(not(test))]
+use std::time::Duration;
 use std::time::SystemTime;
 
 use anyhow::Result;
@@ -6,7 +8,11 @@ use bevy_renet::renet::{RenetConnectionConfig, RenetServer, ServerAuthentication
 use clap::Args;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 
-use super::{network_event::NetworkEventCounter, DEFAULT_PORT, MAX_CLIENTS, PROTOCOL_ID};
+use super::{network_event::NetworkEventCounter, DEFAULT_PORT, PROTOCOL_ID};
+
+#[cfg(not(test))]
+pub(super) const TICK: Duration = Duration::from_millis(100);
+pub(crate) const SERVER_ID: u64 = 0;
 
 pub(super) struct ServerPlugin;
 
@@ -38,6 +44,7 @@ impl Default for ServerSettings {
 
 impl ServerSettings {
     pub(crate) fn create_server(&self, event_counter: NetworkEventCounter) -> Result<RenetServer> {
+        const MAX_CLIENTS: usize = 32;
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         let server_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), self.port);
         let socket = UdpSocket::bind(server_addr)?;

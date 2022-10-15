@@ -26,7 +26,7 @@ use super::{
         network_event::client_event::{
             ClientEvent, ClientEventAppExt, ClientEventSystems, ClientSendBuffer,
         },
-        SERVER_ID,
+        server::SERVER_ID,
     },
 };
 use cursor_object::{CursorObject, CursorObjectPlugin};

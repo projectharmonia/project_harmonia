@@ -21,7 +21,7 @@ use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
 #[cfg(not(test))]
-use super::TICK;
+use super::server::TICK;
 use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,

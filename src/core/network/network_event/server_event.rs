@@ -9,7 +9,7 @@ use tap::TapFallible;
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::GameWorld,
-    network::{REPLICATION_CHANNEL_ID, SERVER_ID},
+    network::{server::SERVER_ID, REPLICATION_CHANNEL_ID},
 };
 
 #[derive(SystemLabel)]

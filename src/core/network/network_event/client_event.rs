@@ -13,7 +13,8 @@ use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::GameWorld,
     network::{
-        client, replication::map_entity::NetworkEntityMap, REPLICATION_CHANNEL_ID, SERVER_ID,
+        client, replication::map_entity::NetworkEntityMap, server::SERVER_ID,
+        REPLICATION_CHANNEL_ID,
     },
 };
 
