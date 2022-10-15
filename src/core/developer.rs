@@ -51,8 +51,8 @@ mod tests {
         let world_inspector = app.world.resource::<WorldInspectorParams>().enabled;
         let debug_collisions = app.world.resource::<DebugRenderContext>().enabled;
         let settings = app.world.resource::<Settings>();
-        assert_eq!(settings.developer.world_inspector, world_inspector,);
-        assert_eq!(settings.developer.debug_collisions, debug_collisions,);
+        assert_eq!(settings.developer.world_inspector, world_inspector);
+        assert_eq!(settings.developer.debug_collisions, debug_collisions);
     }
 
     #[test]
@@ -72,8 +72,8 @@ mod tests {
         let world_inspector = app.world.resource::<WorldInspectorParams>().enabled;
         let debug_collisions = app.world.resource::<DebugRenderContext>().enabled;
         let settings = app.world.resource::<Settings>();
-        assert_eq!(settings.developer.world_inspector, world_inspector,);
-        assert_eq!(settings.developer.debug_collisions, debug_collisions,);
+        assert_eq!(settings.developer.world_inspector, world_inspector);
+        assert_eq!(settings.developer.debug_collisions, debug_collisions);
     }
 
     struct TestDeveloperPlugin;
