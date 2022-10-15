@@ -20,7 +20,9 @@ use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-use super::{client, REPLICATION_CHANNEL_ID, TICK};
+#[cfg(not(test))]
+use super::TICK;
+use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
@@ -50,19 +52,16 @@ struct ReplicationPlugin;
 
 impl Plugin for ReplicationPlugin {
     fn build(&self, app: &mut App) {
+        let tick_stage = SystemStage::single(
+            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
+        );
+        #[cfg(not(test))]
+        let tick_stage = FixedTimestepStage::from_stage(TICK, tick_stage);
+
         app.init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
-            .add_stage_before(
-                CoreStage::Update,
-                ReplicationStage::Tick,
-                FixedTimestepStage::from_stage(
-                    TICK,
-                    SystemStage::single(
-                        Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
-                    ),
-                ),
-            )
+            .add_stage_before(CoreStage::Update, ReplicationStage::Tick, tick_stage)
             .add_system(Self::tick_ack_sending_system.run_if(client::is_connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
@@ -468,16 +467,12 @@ mod tests {
             NetworkPreset::ServerAndClient { connected: true },
         ));
 
-        wait_for_network_tick(&mut app);
-        wait_for_network_tick(&mut app);
+        app.update();
+        app.update();
 
         let acked_ticks = app.world.resource::<AckedTicks>();
         let client = app.world.resource::<RenetClient>();
-        assert!(matches!(acked_ticks.get(&client.client_id()), Some(&last_tick) if last_tick > 0));
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::World
-        );
+        assert!(matches!(acked_ticks.get(&client.client_id()), Some(&last_tick) if last_tick == 0));
     }
 
     #[test]
@@ -488,9 +483,13 @@ mod tests {
                 NetworkPreset::ServerAndClient { connected: true },
             ));
 
+        // Wait two ticks to send and receive acknowledge.
+        app.update();
+        app.update();
+
         let server_entity = app.world.spawn().insert(GameEntity).id();
 
-        wait_for_network_tick(&mut app);
+        app.update();
 
         // Remove server entity before client replicates it,
         // since in test client and server in the same world.
@@ -512,6 +511,10 @@ mod tests {
             mapped_entity, client_entity,
             "mapped entity should correspond to the replicated entity on client"
         );
+        assert_eq!(
+            app.world.resource::<NextState<GameState>>().0,
+            GameState::World
+        );
     }
 
     #[test]
@@ -522,6 +525,9 @@ mod tests {
             .add_plugin(TestReplicationMessagingPlugin::new(
                 NetworkPreset::ServerAndClient { connected: true },
             ));
+
+        app.update();
+        app.update();
 
         app.world
             .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
@@ -543,7 +549,7 @@ mod tests {
             .resource_mut::<NetworkEntityMap>()
             .insert(replicated_entity, replicated_entity);
 
-        wait_for_network_tick(&mut app);
+        app.update();
 
         // Remove components before client replicates it,
         // since in test client and server in the same world.
@@ -570,6 +576,9 @@ mod tests {
                 NetworkPreset::ServerAndClient { connected: true },
             ));
 
+        app.update();
+        app.update();
+
         let client_parent = app.world.spawn().id();
         let server_parent = app.world.spawn().id();
         let replicated_entity = app
@@ -583,7 +592,7 @@ mod tests {
         entity_map.insert(replicated_entity, replicated_entity);
         entity_map.insert(server_parent, client_parent);
 
-        wait_for_network_tick(&mut app);
+        app.update();
         app.update();
 
         let parent_sync = app.world.get::<ParentSync>(replicated_entity).unwrap();
@@ -598,6 +607,9 @@ mod tests {
             .add_plugin(TestReplicationMessagingPlugin::new(
                 NetworkPreset::ServerAndClient { connected: true },
             ));
+
+        app.update();
+        app.update();
 
         // Mark components as removed.
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
@@ -619,7 +631,7 @@ mod tests {
             .resource_mut::<NetworkEntityMap>()
             .insert(replicated_entity, replicated_entity);
 
-        wait_for_network_tick(&mut app);
+        app.update();
         app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
@@ -634,6 +646,9 @@ mod tests {
             NetworkPreset::ServerAndClient { connected: true },
         ));
 
+        app.update();
+        app.update();
+
         let children_entity = app.world.spawn().id();
         let despawned_entity = app.world.spawn().push_children(&[children_entity]).id();
         let current_tick = app.world.read_change_tick();
@@ -646,7 +661,7 @@ mod tests {
             .resource_mut::<NetworkEntityMap>()
             .insert(despawned_entity, despawned_entity);
 
-        wait_for_network_tick(&mut app);
+        app.update();
         app.update();
 
         assert!(app.world.get_entity(despawned_entity).is_none());
@@ -685,7 +700,9 @@ mod tests {
     #[test]
     fn server_reset() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Server));
+        app.init_resource::<IgnoreRules>()
+            .init_resource::<DespawnTracker>()
+            .add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Server));
 
         app.update();
 
@@ -696,14 +713,6 @@ mod tests {
         app.update();
 
         assert_eq!(app.world.resource::<AckedTicks>().len(), 0);
-    }
-
-    fn wait_for_network_tick(app: &mut App) {
-        let init_time = app.world.resource::<Time>().time_since_startup();
-        app.update();
-        while app.world.resource::<Time>().time_since_startup() - init_time < TICK {
-            app.update();
-        }
     }
 
     #[derive(Constructor)]
