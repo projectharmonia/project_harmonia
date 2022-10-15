@@ -161,16 +161,14 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::network_preset::{NetworkPreset, NetworkPresetPlugin};
+    use crate::core::network::network_preset::NetworkPresetPlugin;
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
         app.init_resource::<NetworkEntityMap>()
             .add_mapped_client_event::<DummyEvent>()
-            .add_plugin(NetworkPresetPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }));
+            .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let client_entity = Entity::from_raw(0);
         let server_entity = Entity::from_raw(client_entity.id() + 1);

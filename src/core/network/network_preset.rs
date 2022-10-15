@@ -6,19 +6,37 @@ use bevy_renet::{
 use super::{network_event::NetworkEventCounter, *};
 use crate::core::network::{client::ConnectionSettings, server::ServerSettings};
 
-/// Preset for quickly testing networking.
-#[derive(Clone, Copy)]
-pub(crate) enum NetworkPreset {
-    Server,
-    Client,
-    ServerAndClient { connected: bool },
+/// Automates server and / or client creation for unit tests.
+pub(super) struct NetworkPresetPlugin {
+    pub(super) client: bool,
+    pub(super) server: bool,
 }
 
-/// Automates server and / or client creation for unit tests.
-pub(crate) struct NetworkPresetPlugin {
-    server: bool,
-    client: bool,
-    connected: bool,
+impl NetworkPresetPlugin {
+    /// Creates only client.
+    #[allow(dead_code)]
+    pub(super) fn client() -> Self {
+        Self {
+            client: true,
+            server: false,
+        }
+    }
+
+    /// Creates only server.
+    pub(super) fn server() -> Self {
+        Self {
+            client: false,
+            server: true,
+        }
+    }
+
+    /// Creates client connected to server.
+    pub(super) fn client_and_server() -> Self {
+        Self {
+            client: true,
+            server: true,
+        }
+    }
 }
 
 impl Plugin for NetworkPresetPlugin {
@@ -61,33 +79,11 @@ impl Plugin for NetworkPresetPlugin {
             .add_plugin(RenetClientPlugin);
         }
 
-        if self.connected {
+        if self.client && self.server {
             app.update();
             app.update();
             app.update();
             assert!(app.world.resource::<RenetClient>().is_connected());
-        }
-    }
-}
-
-impl NetworkPresetPlugin {
-    pub(crate) fn new(preset: NetworkPreset) -> Self {
-        match preset {
-            NetworkPreset::Server => Self {
-                server: true,
-                client: false,
-                connected: false,
-            },
-            NetworkPreset::Client => Self {
-                server: false,
-                client: true,
-                connected: false,
-            },
-            NetworkPreset::ServerAndClient { connected } => Self {
-                server: true,
-                client: true,
-                connected,
-            },
         }
     }
 }

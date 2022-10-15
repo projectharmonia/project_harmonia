@@ -61,7 +61,7 @@ pub(super) struct RemovalTracker(pub(super) HashMap<ComponentId, u32>);
 
 #[cfg(test)]
 mod tests {
-    use crate::core::network::network_preset::{NetworkPreset, NetworkPresetPlugin};
+    use crate::core::network::network_preset::NetworkPresetPlugin;
 
     use super::*;
 
@@ -134,7 +134,7 @@ mod tests {
         fn build(&self, app: &mut App) {
             app.init_resource::<AckedTicks>()
                 .init_resource::<IgnoreRules>()
-                .add_plugin(NetworkPresetPlugin::new(NetworkPreset::Server))
+                .add_plugin(NetworkPresetPlugin::server())
                 .add_plugin(RemovalTrackerPlugin);
         }
     }

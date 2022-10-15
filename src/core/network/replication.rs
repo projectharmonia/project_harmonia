@@ -429,23 +429,16 @@ pub(super) struct AckedTicks(HashMap<u64, u32>);
 
 #[cfg(test)]
 mod tests {
-    use derive_more::Constructor;
-
     use super::*;
     use crate::core::{
         game_world::{parent_sync::ParentSync, GameEntity},
-        network::{
-            network_preset::{NetworkPreset, NetworkPresetPlugin},
-            replication::map_entity::NetworkEntityMap,
-        },
+        network::{network_preset::NetworkPresetPlugin, replication::map_entity::NetworkEntityMap},
     };
 
     #[test]
     fn acked_ticks_cleanup() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationMessagingPlugin::new(
-            NetworkPreset::ServerAndClient { connected: true },
-        ));
+        app.add_plugin(TestReplicationPlugin::client_and_server());
 
         let mut client = app.world.resource_mut::<RenetClient>();
         client.disconnect();
@@ -463,9 +456,7 @@ mod tests {
     #[test]
     fn tick_acks_receiving() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationMessagingPlugin::new(
-            NetworkPreset::ServerAndClient { connected: true },
-        ));
+        app.add_plugin(TestReplicationPlugin::client_and_server());
 
         app.update();
         app.update();
@@ -479,9 +470,7 @@ mod tests {
     fn spawn_replication() {
         let mut app = App::new();
         app.register_type::<GameEntity>()
-            .add_plugin(TestReplicationMessagingPlugin::new(
-                NetworkPreset::ServerAndClient { connected: true },
-            ));
+            .add_plugin(TestReplicationPlugin::client_and_server());
 
         // Wait two ticks to send and receive acknowledge.
         app.update();
@@ -522,9 +511,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<GameEntity>()
             .register_type::<SparseSetComponent>()
-            .add_plugin(TestReplicationMessagingPlugin::new(
-                NetworkPreset::ServerAndClient { connected: true },
-            ));
+            .add_plugin(TestReplicationPlugin::client_and_server());
 
         app.update();
         app.update();
@@ -572,9 +559,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<GameEntity>()
             .register_type::<ParentSync>()
-            .add_plugin(TestReplicationMessagingPlugin::new(
-                NetworkPreset::ServerAndClient { connected: true },
-            ));
+            .add_plugin(TestReplicationPlugin::client_and_server());
 
         app.update();
         app.update();
@@ -604,9 +589,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<NonReflectedComponent>()
             .register_type::<GameEntity>()
-            .add_plugin(TestReplicationMessagingPlugin::new(
-                NetworkPreset::ServerAndClient { connected: true },
-            ));
+            .add_plugin(TestReplicationPlugin::client_and_server());
 
         app.update();
         app.update();
@@ -642,9 +625,7 @@ mod tests {
     #[test]
     fn despawn_replication() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationMessagingPlugin::new(
-            NetworkPreset::ServerAndClient { connected: true },
-        ));
+        app.add_plugin(TestReplicationPlugin::client_and_server());
 
         app.update();
         app.update();
@@ -676,7 +657,7 @@ mod tests {
     #[test]
     fn client_reset() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Client));
+        app.add_plugin(TestReplicationPlugin::client());
 
         app.update();
 
@@ -702,7 +683,7 @@ mod tests {
         let mut app = App::new();
         app.init_resource::<IgnoreRules>()
             .init_resource::<DespawnTracker>()
-            .add_plugin(TestReplicationMessagingPlugin::new(NetworkPreset::Server));
+            .add_plugin(TestReplicationPlugin::server());
 
         app.update();
 
@@ -715,19 +696,45 @@ mod tests {
         assert_eq!(app.world.resource::<AckedTicks>().len(), 0);
     }
 
-    #[derive(Constructor)]
-    struct TestReplicationMessagingPlugin {
-        preset: NetworkPreset,
+    struct TestReplicationPlugin {
+        client: bool,
+        server: bool,
     }
 
-    impl Plugin for TestReplicationMessagingPlugin {
+    impl TestReplicationPlugin {
+        fn client() -> Self {
+            Self {
+                client: true,
+                server: false,
+            }
+        }
+
+        fn server() -> Self {
+            Self {
+                client: false,
+                server: true,
+            }
+        }
+
+        fn client_and_server() -> Self {
+            Self {
+                client: true,
+                server: true,
+            }
+        }
+    }
+
+    impl Plugin for TestReplicationPlugin {
         fn build(&self, app: &mut App) {
-            if let NetworkPreset::ServerAndClient { .. } = self.preset {
+            if self.client && self.server {
                 app.init_resource::<IgnoreRules>()
                     .init_resource::<DespawnTracker>();
             }
-            app.add_plugin(NetworkPresetPlugin::new(self.preset))
-                .add_plugin(ReplicationPlugin);
+            app.add_plugin(NetworkPresetPlugin {
+                client: self.client,
+                server: self.server,
+            })
+            .add_plugin(ReplicationPlugin);
         }
     }
 

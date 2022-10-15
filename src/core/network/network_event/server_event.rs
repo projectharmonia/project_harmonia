@@ -162,15 +162,13 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::network_preset::{NetworkPreset, NetworkPresetPlugin};
+    use crate::core::network::network_preset::NetworkPresetPlugin;
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
         app.add_server_event::<DummyEvent>()
-            .add_plugin(NetworkPresetPlugin::new(NetworkPreset::ServerAndClient {
-                connected: true,
-            }));
+            .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let client_id = app.world.resource::<RenetClient>().client_id();
         for (send_mode, events_count) in [
@@ -188,7 +186,7 @@ mod tests {
 
             app.update();
 
-            // Cleanup buffer manully when client and server are in the same world.
+            // Cleanup buffer manually when client and server are in the same world.
             app.world
                 .resource_mut::<ServerSendBuffer<DummyEvent>>()
                 .clear();
