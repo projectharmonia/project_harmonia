@@ -8,7 +8,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     game_state::GameState,
-    game_world::{GameSaved, GameWorld, GameWorldSystem},
+    game_world::{GameSaveRequest, GameWorld, GameWorldSystem},
 };
 
 use super::{
@@ -51,7 +51,7 @@ impl InGameMenuPlugin {
 
     fn ingame_menu_system(
         mut commands: Commands,
-        mut save_events: EventWriter<GameSaved>,
+        mut save_events: EventWriter<GameSaveRequest>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         client: Option<Res<RenetClient>>,
@@ -90,7 +90,7 @@ impl InGameMenuPlugin {
 
     fn save_as_system(
         mut commands: Commands,
-        mut save_events: EventWriter<GameSaved>,
+        mut save_events: EventWriter<GameSaveRequest>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut game_world: ResMut<GameWorld>,
@@ -120,7 +120,7 @@ impl InGameMenuPlugin {
 
     fn exit_to_main_menu_system(
         mut commands: Commands,
-        mut save_events: ResMut<Events<GameSaved>>,
+        mut save_events: ResMut<Events<GameSaveRequest>>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         client: Option<Res<RenetClient>>,
@@ -156,7 +156,7 @@ impl InGameMenuPlugin {
 
     fn exit_game_system(
         mut commands: Commands,
-        mut save_events: EventWriter<GameSaved>,
+        mut save_events: EventWriter<GameSaveRequest>,
         mut exit_events: EventWriter<AppExit>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,

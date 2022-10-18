@@ -7,7 +7,7 @@ use super::{
     city::City,
     error::{self, ErrorMessage},
     game_state::GameState,
-    game_world::{GameLoaded, GameWorld},
+    game_world::{GameLoadRequest, GameWorld},
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -33,7 +33,7 @@ impl Plugin for CliPlugin {
 impl CliPlugin {
     fn subcommand_system(
         mut commands: Commands,
-        mut load_events: ResMut<Events<GameLoaded>>,
+        mut load_events: ResMut<Events<GameLoadRequest>>,
         cli: Res<Cli>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
@@ -232,7 +232,7 @@ mod tests {
 
         app.update();
 
-        assert_eq!(app.world.resource::<Events<GameLoaded>>().len(), 1);
+        assert_eq!(app.world.resource::<Events<GameLoadRequest>>().len(), 1);
         assert_eq!(app.world.resource::<GameWorld>().world_name, WORLD_NAME);
     }
 
@@ -322,7 +322,7 @@ mod tests {
 
     impl Plugin for TestCliPlugin {
         fn build(&self, app: &mut App) {
-            app.add_event::<GameLoaded>()
+            app.add_event::<GameLoadRequest>()
                 .init_resource::<NetworkEventCounter>()
                 .add_plugin(CliPlugin);
         }

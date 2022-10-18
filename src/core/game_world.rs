@@ -40,19 +40,19 @@ impl Plugin for GameWorldPlugin {
         app.register_type::<GameEntity>()
             .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
             .init_resource::<IgnoreRules>()
-            .add_event::<GameSaved>()
-            .add_event::<GameLoaded>()
+            .add_event::<GameSaveRequest>()
+            .add_event::<GameLoadRequest>()
             .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
                     .chain(error::err_message_system)
-                    .run_on_event::<GameSaved>()
+                    .run_on_event::<GameSaveRequest>()
                     .label(GameWorldSystem::Saving),
             )
             .add_system(
                 Self::loading_system
                     .chain(error::err_message_system)
-                    .run_on_event::<GameLoaded>()
+                    .run_on_event::<GameLoadRequest>()
                     .label(GameWorldSystem::Loading),
             );
     }
@@ -175,11 +175,11 @@ pub(crate) struct GameEntity;
 
 /// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
 #[derive(Default)]
-pub(crate) struct GameSaved;
+pub(crate) struct GameSaveRequest;
 
 /// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
 #[derive(Default)]
-pub(crate) struct GameLoaded;
+pub(crate) struct GameLoadRequest;
 
 /// Contains meta-information about the currently loaded world.
 #[derive(Default, Deref)]
@@ -257,7 +257,7 @@ mod tests {
             .push_children(&[game_world_entity])
             .id();
 
-        let mut save_events = app.world.resource_mut::<Events<GameSaved>>();
+        let mut save_events = app.world.resource_mut::<Events<GameSaveRequest>>();
         save_events.send_default();
 
         app.update();
@@ -266,7 +266,7 @@ mod tests {
         app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
-        let mut save_events = app.world.resource_mut::<Events<GameLoaded>>();
+        let mut save_events = app.world.resource_mut::<Events<GameLoadRequest>>();
         save_events.send_default();
 
         app.update();
