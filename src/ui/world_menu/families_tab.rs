@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
+use iyes_loopless::prelude::*;
 
-use crate::core::family::{Family, FamilyBundle};
+use crate::core::{family::Family, game_state::GameState};
 
 pub(super) struct FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
@@ -38,7 +39,8 @@ impl FamiliesTab<'_, '_, '_, '_, '_> {
         }
         ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
             if ui.button("➕ Create new").clicked() {
-                self.commands.spawn_bundle(FamilyBundle::default());
+                self.commands
+                    .insert_resource(NextState(GameState::FamilyEditor));
             }
             ui.allocate_space(ui.available_size_before_wrap());
         });

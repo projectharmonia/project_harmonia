@@ -3,6 +3,7 @@ pub(super) mod city;
 pub(super) mod cli;
 pub(super) mod control_action;
 pub(super) mod developer;
+pub(super) mod doll;
 pub(super) mod error;
 pub(super) mod family;
 pub(super) mod game_paths;
@@ -22,6 +23,7 @@ use city::CityPlugin;
 use cli::CliPlugin;
 use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
+use doll::DollPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
@@ -42,6 +44,7 @@ impl PluginGroup for CorePlugins {
             .add(GameStatePlugin)
             .add(CityPlugin)
             .add(CliPlugin)
+            .add(DollPlugin)
             .add(GroundPlugin)
             .add(ControlActionsPlugin)
             .add(DeveloperPlugin)

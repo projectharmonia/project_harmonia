@@ -14,18 +14,33 @@ impl Plugin for GamePathsPlugin {
     }
 }
 
+const SCENE_EXTENSION: &str = "scn";
+
 /// Paths with game files, such as settings and savegames.
 pub(crate) struct GamePaths {
     pub(crate) settings: PathBuf,
     pub(crate) worlds: PathBuf,
+    pub(crate) families: PathBuf,
 }
 
 impl GamePaths {
-    const WORLD_EXTENSION: &'static str = "scn";
-
     pub(crate) fn world_path(&self, world_name: &str) -> PathBuf {
         let mut path = self.worlds.join(world_name);
-        path.set_extension(Self::WORLD_EXTENSION);
+        path.set_extension(SCENE_EXTENSION);
+        path
+    }
+
+    pub(crate) fn family_path(&self, family_name: &str) -> PathBuf {
+        let mut path = self.families.join(family_name);
+        path.set_extension(SCENE_EXTENSION);
+
+        let mut file_index = 0;
+        while path.exists() {
+            file_index += 1;
+            path.set_file_name(format!("{family_name} {file_index}"));
+            path.set_extension(SCENE_EXTENSION);
+        }
+
         path
     }
 
@@ -65,15 +80,22 @@ impl Default for GamePaths {
         settings.push(env!("CARGO_PKG_NAME"));
         settings.set_extension("toml");
 
-        let mut worlds = config_dir;
+        let mut worlds = config_dir.clone();
         worlds.push("worlds");
 
-        Self { settings, worlds }
+        let mut families = config_dir;
+        families.push("families");
+
+        Self {
+            settings,
+            worlds,
+            families,
+        }
     }
 }
 
-#[cfg(test)]
 /// Cleanup temporary directory used in tests.
+#[cfg(test)]
 impl Drop for GamePaths {
     fn drop(&mut self) {
         let config_dir = self
@@ -92,7 +114,7 @@ fn world_name(entry: &DirEntry) -> Option<String> {
 
     let path = entry.path();
     let extension = path.extension()?;
-    if extension != GamePaths::WORLD_EXTENSION {
+    if extension != SCENE_EXTENSION {
         return None;
     }
 
@@ -107,6 +129,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn family_path_duplication() -> Result<()> {
+        let game_paths = GamePaths::default();
+        const FAMILY_NAME: &str = "Test family";
+
+        fs::create_dir_all(&game_paths.families)?;
+        let family_path = game_paths.family_path(FAMILY_NAME);
+        File::create(&family_path)?;
+        let new_family_path = game_paths.family_path(FAMILY_NAME);
+
+        assert_ne!(family_path, new_family_path);
+
+        Ok(())
+    }
+
+    #[test]
     fn world_names_reading() -> Result<()> {
         let game_paths = GamePaths::default();
         const WORLD_NAME: &str = "Test world names";
@@ -114,11 +151,7 @@ mod tests {
         fs::create_dir_all(game_paths.worlds.join("Directory"))?;
         File::create(game_paths.worlds.join("Not a world"))?;
         File::create(game_paths.worlds.join("Not a world.txt"))?;
-        File::create(
-            game_paths
-                .worlds
-                .join(format!(".{}", GamePaths::WORLD_EXTENSION)),
-        )?;
+        File::create(game_paths.worlds.join(format!(".{}", SCENE_EXTENSION)))?;
         File::create(game_paths.world_path(WORLD_NAME))?;
 
         let world_names = game_paths.get_world_names()?;

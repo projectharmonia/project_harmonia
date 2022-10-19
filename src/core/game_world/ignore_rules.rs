@@ -7,6 +7,7 @@ use bevy::{
 use super::parent_sync::ParentSync;
 use crate::core::{
     city::City,
+    doll::{FirstName, LastName},
     family::{Budget, Family},
     game_world::GameEntity,
     object::{ObjectPath, Picked},
@@ -35,12 +36,20 @@ impl FromWorld for IgnoreRules {
             world.init_component::<GameEntity>(),
             world.init_component::<ParentSync>(),
             world.init_component::<Picked>(),
+            world.init_component::<FirstName>(),
+            world.init_component::<LastName>(),
         ]);
 
-        let ignored_if_present = HashMap::from([(
-            world.init_component::<Transform>(),
-            world.init_component::<City>(),
-        )]);
+        let ignored_if_present = HashMap::from([
+            (
+                world.init_component::<Transform>(),
+                world.init_component::<City>(),
+            ),
+            (
+                world.init_component::<Name>(),
+                world.init_component::<FirstName>(),
+            ),
+        ]);
 
         let game_entity_id = world.init_component::<GameEntity>();
 

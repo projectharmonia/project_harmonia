@@ -13,6 +13,7 @@ impl Plugin for GameStatePlugin {
 #[derive(Clone, Debug, Display, Eq, Hash, PartialEq)]
 pub(crate) enum GameState {
     MainMenu,
+    FamilyEditor,
     World,
     City,
 }
