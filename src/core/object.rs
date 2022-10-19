@@ -45,9 +45,9 @@ impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Picked>()
             .register_type::<ObjectPath>()
-            .add_mapped_client_event::<ObjectPicked>()
-            .add_client_event::<PickCancelled>()
-            .add_client_event::<PickDeleted>()
+            .add_mapped_client_event::<ObjectPick>()
+            .add_client_event::<PickCancel>()
+            .add_client_event::<PickDelete>()
             .add_system(Self::spawning_system.run_in_state(GameState::City))
             .add_system(
                 Self::ray_system
@@ -55,7 +55,7 @@ impl Plugin for ObjectPlugin {
                     .chain(Self::outline_system)
                     .run_in_state(GameState::City)
                     .run_if_not(cursor_object::is_cursor_object_exists)
-                    .before(ClientEventSystems::<ObjectPicked>::MappingSystem),
+                    .before(ClientEventSystems::<ObjectPick>::MappingSystem),
             )
             .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::pick_cancellation_system.run_unless_resource_exists::<RenetClient>())
@@ -114,12 +114,12 @@ impl ObjectPlugin {
 
     fn picking_system(
         In(entity): In<Option<Entity>>,
-        mut pick_buffer: ResMut<ClientSendBuffer<ObjectPicked>>,
+        mut pick_buffer: ResMut<ClientSendBuffer<ObjectPick>>,
         action_state: Res<ActionState<ControlAction>>,
     ) -> Option<Entity> {
         if let Some(entity) = entity {
             if action_state.just_pressed(ControlAction::Confirm) {
-                pick_buffer.push(ObjectPicked(entity));
+                pick_buffer.push(ObjectPick(entity));
                 None
             } else {
                 Some(entity)
@@ -152,7 +152,7 @@ impl ObjectPlugin {
 
     fn pick_confirmation_system(
         mut commands: Commands,
-        mut pick_events: EventReader<ClientEvent<ObjectPicked>>,
+        mut pick_events: EventReader<ClientEvent<ObjectPick>>,
         unpicked_objects: Query<(), (With<ObjectPath>, Without<Picked>)>,
     ) {
         for ClientEvent { client_id, event } in pick_events.iter().copied() {
@@ -164,7 +164,7 @@ impl ObjectPlugin {
 
     fn pick_cancellation_system(
         mut commands: Commands,
-        mut cancel_events: EventReader<ClientEvent<PickCancelled>>,
+        mut cancel_events: EventReader<ClientEvent<PickCancel>>,
         picked_objects: Query<(Entity, &Picked)>,
     ) {
         for ClientEvent { client_id, .. } in cancel_events.iter().copied() {
@@ -178,7 +178,7 @@ impl ObjectPlugin {
 
     fn pick_deletion_system(
         mut commands: Commands,
-        mut delete_events: EventReader<ClientEvent<PickDeleted>>,
+        mut delete_events: EventReader<ClientEvent<PickDelete>>,
         picked_objects: Query<(Entity, &Picked)>,
     ) {
         for ClientEvent { client_id, .. } in delete_events.iter().copied() {
@@ -237,9 +237,9 @@ fn set_outline_recursive(
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct ObjectPicked(#[serde(with = "entity_serde")] pub(super) Entity);
+struct ObjectPick(#[serde(with = "entity_serde")] pub(super) Entity);
 
-impl MapEntities for ObjectPicked {
+impl MapEntities for ObjectPick {
     #[cfg_attr(coverage, no_coverage)]
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.0 = entity_map.get(self.0)?;
@@ -248,10 +248,10 @@ impl MapEntities for ObjectPicked {
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-struct PickCancelled;
+struct PickCancel;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-struct PickDeleted;
+struct PickDelete;
 
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
@@ -489,7 +489,7 @@ mod tests {
 
         app.update();
 
-        let pick_buffer = app.world.resource::<ClientSendBuffer<ObjectPicked>>();
+        let pick_buffer = app.world.resource::<ClientSendBuffer<ObjectPick>>();
         let pick_event = pick_buffer.iter().exactly_one().unwrap();
         assert_eq!(pick_event.0, outline_entity);
     }
@@ -501,12 +501,10 @@ mod tests {
 
         const CLIENT_ID: u64 = 1;
         let object_entity = app.world.spawn().insert(ObjectPath::default()).id();
-        let mut pick_events = app
-            .world
-            .resource_mut::<Events<ClientEvent<ObjectPicked>>>();
+        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<ObjectPick>>>();
         pick_events.send(ClientEvent {
             client_id: CLIENT_ID,
-            event: ObjectPicked(object_entity),
+            event: ObjectPick(object_entity),
         });
 
         app.update();
@@ -521,12 +519,10 @@ mod tests {
 
         const CLIENT_ID: u64 = 1;
         let object_entity = app.world.spawn().insert(Picked(CLIENT_ID)).id();
-        let mut pick_events = app
-            .world
-            .resource_mut::<Events<ClientEvent<PickCancelled>>>();
+        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<PickCancel>>>();
         pick_events.send(ClientEvent {
             client_id: CLIENT_ID,
-            event: PickCancelled,
+            event: PickCancel,
         });
 
         app.update();

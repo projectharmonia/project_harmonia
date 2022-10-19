@@ -4,7 +4,7 @@ use bevy_egui::egui::{ImageButton, TextureId, Ui};
 use crate::{
     core::{
         asset_metadata::{AssetMetadata, MetadataKind},
-        preview::{PreviewRequested, Previews, PREVIEW_SIZE},
+        preview::{PreviewRequest, Previews, PREVIEW_SIZE},
     },
     ui::selected_object::SelectedObject,
 };
@@ -13,7 +13,7 @@ pub(super) struct ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
     commands: &'a mut Commands<'wc, 'sc>,
     metadata: &'a Assets<AssetMetadata>,
     previews: &'a Previews,
-    preview_events: &'a mut EventWriter<'w, 's, PreviewRequested>,
+    preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
     selected_id: Option<HandleId>,
 }
 
@@ -23,7 +23,7 @@ impl<'a, 'w, 's, 'wc, 'sc> ObjectsTab<'a, 'w, 's, 'wc, 'sc> {
         commands: &'a mut Commands<'wc, 'sc>,
         metadata: &'a Assets<AssetMetadata>,
         previews: &'a Previews,
-        preview_events: &'a mut EventWriter<'w, 's, PreviewRequested>,
+        preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
         selected_id: Option<HandleId>,
     ) -> Self {
         Self {
@@ -41,7 +41,7 @@ impl ObjectsTab<'_, '_, '_, '_, '_> {
         ui.group(|ui| {
             for (id, metadata) in self.metadata.iter().filter(|(_, metadata)| matches!(&metadata.kind, MetadataKind::Object(object) if object.category.is_placable_in_city())) {
                 let texture_id = self.previews.get(&id).unwrap_or_else(|| {
-                    self.preview_events.send(PreviewRequested(id));
+                    self.preview_events.send(PreviewRequest(id));
                     &TextureId::Managed(0)
                 });
 

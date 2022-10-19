@@ -23,7 +23,7 @@ pub(super) struct PreviewPlugin;
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
         app.add_loopless_state(PreviewState::Inactive)
-            .add_event::<PreviewRequested>()
+            .add_event::<PreviewRequest>()
             .init_resource::<Previews>()
             .add_startup_system(Self::spawn_camera_system)
             .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
@@ -40,7 +40,7 @@ impl PreviewPlugin {
 
     fn load_asset_system(
         mut commands: Commands,
-        mut preview_events: EventReader<PreviewRequested>,
+        mut preview_events: EventReader<PreviewRequest>,
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
         metadata: Res<Assets<AssetMetadata>>,
@@ -166,9 +166,9 @@ enum PreviewState {
     Rendering,
 }
 
-/// An event that indicates a request to preview an asset.
+/// An event that indicates a request for preview for an asset.
 /// Contains the metadata handle of this asset.
-pub(crate) struct PreviewRequested(pub(crate) HandleId);
+pub(crate) struct PreviewRequest(pub(crate) HandleId);
 
 /// Maps metadata handles to preview image handles.
 #[derive(Default, Deref, DerefMut)]
@@ -287,8 +287,8 @@ mod tests {
         let mut assets_metadata = app.world.resource_mut::<Assets<AssetMetadata>>();
         metadata_handle = assets_metadata.set(metadata_handle, asset_metadata); // Update handle with a valid metadata.
 
-        let mut events = app.world.resource_mut::<Events<PreviewRequested>>();
-        events.send(PreviewRequested(metadata_handle.id));
+        let mut preview_events = app.world.resource_mut::<Events<PreviewRequest>>();
+        preview_events.send(PreviewRequest(metadata_handle.id));
 
         app.update();
 

@@ -21,15 +21,15 @@ use crate::core::{
     preview::PreviewCamera,
 };
 
-use super::{ObjectBundle, PickCancelled, PickDeleted, Picked};
+use super::{ObjectBundle, PickCancel, PickDelete, Picked};
 
 pub(super) struct CursorObjectPlugin;
 
 impl Plugin for CursorObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_client_event::<ObjectMoved>()
-            .add_client_event::<ObjectSpawned>()
-            .add_server_event::<CursorConfirmed>()
+        app.add_client_event::<ObjectMove>()
+            .add_client_event::<ObjectSpawn>()
+            .add_server_event::<CursorConfirm>()
             // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -42,12 +42,12 @@ impl Plugin for CursorObjectPlugin {
                     .run_if(is_confirm_pressed),
             )
             .add_system(
-                Self::cancel_spawning_or_send_system::<PickCancelled>
+                Self::cancel_spawning_or_send_system::<PickCancel>
                     .run_in_state(GameState::City)
                     .run_if(is_cancel_pressed),
             )
             .add_system(
-                Self::cancel_spawning_or_send_system::<PickDeleted>
+                Self::cancel_spawning_or_send_system::<PickDelete>
                     .run_in_state(GameState::City)
                     .run_if(is_delete_pressed),
             )
@@ -55,7 +55,7 @@ impl Plugin for CursorObjectPlugin {
                 CoreStage::PostUpdate,
                 Self::movement_confirmation_system.run_in_state(GameState::City),
             )
-            .add_system(Self::despawn_system.run_on_event::<CursorConfirmed>())
+            .add_system(Self::despawn_system.run_on_event::<CursorConfirm>())
             .add_system(Self::apply_movement_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::spawn_object_system.run_unless_resource_exists::<RenetClient>());
     }
@@ -142,19 +142,19 @@ impl CursorObjectPlugin {
     }
 
     fn application_system(
-        mut move_buffers: ResMut<ClientSendBuffer<ObjectMoved>>,
-        mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawned>>,
+        mut move_buffers: ResMut<ClientSendBuffer<ObjectMove>>,
+        mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawn>>,
         cursor_objects: Query<(&Transform, &CursorObject)>,
     ) {
         if let Ok((transform, cursor_object)) = cursor_objects.get_single() {
             debug!("confirmed cursor {cursor_object:?}");
             match cursor_object {
-                CursorObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawned {
+                CursorObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
                     metadata_path: metadata_path.clone(),
                     translation: transform.translation,
                     rotation: transform.rotation,
                 }),
-                CursorObject::Moving(_) => move_buffers.push(ObjectMoved {
+                CursorObject::Moving(_) => move_buffers.push(ObjectMove {
                     translation: transform.translation,
                     rotation: transform.rotation,
                 }),
@@ -181,7 +181,7 @@ impl CursorObjectPlugin {
 
     fn movement_confirmation_system(
         pick_removals: RemovedComponents<Picked>,
-        mut confirmation_events: EventWriter<CursorConfirmed>,
+        mut confirm_events: EventWriter<CursorConfirm>,
         cursor_objects: Query<&CursorObject>,
     ) {
         if let Ok(CursorObject::Moving(object_entity)) = cursor_objects.get_single() {
@@ -190,7 +190,7 @@ impl CursorObjectPlugin {
                 .any(|unpicked_entity| unpicked_entity == *object_entity)
             {
                 debug!("movement was confirmed for {object_entity:?}");
-                confirmation_events.send_default();
+                confirm_events.send_default();
             }
         }
     }
@@ -222,8 +222,8 @@ impl CursorObjectPlugin {
 
     fn spawn_object_system(
         mut commands: Commands,
-        mut spawn_events: EventReader<ClientEvent<ObjectSpawned>>,
-        mut confirmation_buffer: ResMut<ServerSendBuffer<CursorConfirmed>>,
+        mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
+        mut confirm_buffer: ResMut<ServerSendBuffer<CursorConfirm>>,
         visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
@@ -233,16 +233,16 @@ impl CursorObjectPlugin {
                 event.rotation,
                 visible_cities.single(),
             ));
-            confirmation_buffer.push(ServerEvent {
+            confirm_buffer.push(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: CursorConfirmed,
+                event: CursorConfirm,
             });
         }
     }
 
     fn apply_movement_system(
         mut commands: Commands,
-        mut move_events: EventReader<ClientEvent<ObjectMoved>>,
+        mut move_events: EventReader<ClientEvent<ObjectMove>>,
         mut picked_objects: Query<(Entity, &mut Transform, &Picked)>,
     ) {
         for ClientEvent { client_id, event } in move_events.iter().copied() {
@@ -276,13 +276,13 @@ pub(crate) fn is_cursor_object_exists(cursor_objects: Query<(), With<CursorObjec
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-struct ObjectMoved {
+struct ObjectMove {
     translation: Vec3,
     rotation: Quat,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct ObjectSpawned {
+struct ObjectSpawn {
     metadata_path: PathBuf,
     translation: Vec3,
     rotation: Quat,
@@ -293,7 +293,7 @@ struct ObjectSpawned {
 /// Could be received as a network event from server for spawning cursor or
 /// emitted locally when the received server state contains pick removal for moving cursor.
 #[derive(Deserialize, Serialize, Debug, Default)]
-struct CursorConfirmed;
+struct CursorConfirm;
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug)]
@@ -379,7 +379,7 @@ mod tests {
 
         app.update();
 
-        let spawn_buffer = app.world.resource::<ClientSendBuffer<ObjectSpawned>>();
+        let spawn_buffer = app.world.resource::<ClientSendBuffer<ObjectSpawn>>();
         let spawn_event = spawn_buffer.iter().exactly_one().unwrap();
         assert_eq!(spawn_event.metadata_path, Path::new(METADATA_PATH));
         assert_eq!(spawn_event.translation, TRANSFORM.translation);
@@ -412,7 +412,7 @@ mod tests {
 
         app.update();
 
-        let move_buffer = app.world.resource::<ClientSendBuffer<ObjectMoved>>();
+        let move_buffer = app.world.resource::<ClientSendBuffer<ObjectMove>>();
         let move_event = move_buffer.iter().exactly_one().unwrap();
         assert_eq!(move_event.translation, TRANSFORM.translation);
         assert_eq!(move_event.rotation, TRANSFORM.rotation);
@@ -421,8 +421,8 @@ mod tests {
     #[test]
     fn spawning_cursor_cancellation() {
         let mut app = App::new();
-        app.init_resource::<ClientSendBuffer<PickCancelled>>()
-            .init_resource::<ClientSendBuffer<PickDeleted>>()
+        app.init_resource::<ClientSendBuffer<PickCancel>>()
+            .init_resource::<ClientSendBuffer<PickDelete>>()
             .add_plugin(TestCursorObjectPlugin);
 
         for action in [ControlAction::Cancel, ControlAction::Delete] {
@@ -450,8 +450,8 @@ mod tests {
     #[test]
     fn moving_cursor_sending() {
         let mut app = App::new();
-        app.init_resource::<ClientSendBuffer<PickCancelled>>()
-            .init_resource::<ClientSendBuffer<PickDeleted>>()
+        app.init_resource::<ClientSendBuffer<PickCancel>>()
+            .init_resource::<ClientSendBuffer<PickDelete>>()
             .add_plugin(TestCursorObjectPlugin);
 
         let object_entity = app
@@ -471,17 +471,17 @@ mod tests {
 
         app.update();
 
-        let cancel_buffer = app.world.resource::<ClientSendBuffer<PickCancelled>>();
+        let cancel_buffer = app.world.resource::<ClientSendBuffer<PickCancel>>();
         assert_eq!(cancel_buffer.len(), 1);
 
-        let delete_buffer = app.world.resource::<ClientSendBuffer<PickDeleted>>();
+        let delete_buffer = app.world.resource::<ClientSendBuffer<PickDelete>>();
         assert_eq!(delete_buffer.len(), 1);
     }
 
     #[test]
     fn spawning_cursor_despawn() {
         let mut app = App::new();
-        app.init_resource::<ClientSendBuffer<PickCancelled>>()
+        app.init_resource::<ClientSendBuffer<PickCancel>>()
             .add_plugin(TestCursorObjectPlugin);
 
         let cursor_entity = app
@@ -491,8 +491,8 @@ mod tests {
             .id();
 
         app.world
-            .resource_mut::<Events<CursorConfirmed>>()
-            .send(CursorConfirmed);
+            .resource_mut::<Events<CursorConfirm>>()
+            .send(CursorConfirm);
 
         app.update();
 
@@ -502,7 +502,7 @@ mod tests {
     #[test]
     fn moving_cursor_despawn() {
         let mut app = App::new();
-        app.init_resource::<ClientSendBuffer<PickCancelled>>()
+        app.init_resource::<ClientSendBuffer<PickCancel>>()
             .add_plugin(TestCursorObjectPlugin);
 
         let object_entity = app
@@ -549,10 +549,10 @@ mod tests {
         const CLIENT_ID: u64 = 1;
         const METADATA_PATH: &str = "dummy.toml";
         app.world
-            .resource_mut::<Events<ClientEvent<ObjectSpawned>>>()
+            .resource_mut::<Events<ClientEvent<ObjectSpawn>>>()
             .send(ClientEvent {
                 client_id: CLIENT_ID,
-                event: ObjectSpawned {
+                event: ObjectSpawn {
                     metadata_path: METADATA_PATH.into(),
                     translation: TRANSFORM.translation,
                     rotation: TRANSFORM.rotation,
@@ -570,8 +570,8 @@ mod tests {
         assert_eq!(*transform, TRANSFORM);
         assert_eq!(&object_path.0, METADATA_PATH);
 
-        let confirmation_buffer = app.world.resource::<ServerSendBuffer<CursorConfirmed>>();
-        let confirm_event = confirmation_buffer.iter().exactly_one().unwrap();
+        let confirm_buffer = app.world.resource::<ServerSendBuffer<CursorConfirm>>();
+        let confirm_event = confirm_buffer.iter().exactly_one().unwrap();
         assert!(
             matches!(confirm_event.mode, SendMode::Direct(client_id) if client_id == CLIENT_ID)
         );
@@ -598,10 +598,10 @@ mod tests {
         app.update();
 
         app.world
-            .resource_mut::<Events<ClientEvent<ObjectMoved>>>()
+            .resource_mut::<Events<ClientEvent<ObjectMove>>>()
             .send(ClientEvent {
                 client_id: CLIENT_ID,
-                event: ObjectMoved {
+                event: ObjectMove {
                     translation: TRANSFORM.translation,
                     rotation: TRANSFORM.rotation,
                 },

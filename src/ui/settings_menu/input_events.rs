@@ -69,8 +69,8 @@ mod tests {
         app.add_plugin(InputPlugin);
 
         const KEY: KeyCode = KeyCode::Space;
-        let mut keyboard_input = app.world.resource_mut::<Events<KeyboardInput>>();
-        keyboard_input.send(KeyboardInput {
+        let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+        keyboard_events.send(KeyboardInput {
             scan_code: 0,
             key_code: Some(KEY),
             state: ButtonState::Released,
@@ -90,8 +90,8 @@ mod tests {
         app.add_plugin(InputPlugin);
 
         const BUTTON: MouseButton = MouseButton::Right;
-        let mut mouse_button = app.world.resource_mut::<Events<MouseButtonInput>>();
-        mouse_button.send(MouseButtonInput {
+        let mut mouse_button_events = app.world.resource_mut::<Events<MouseButtonInput>>();
+        mouse_button_events.send(MouseButtonInput {
             button: BUTTON,
             state: ButtonState::Released,
         });

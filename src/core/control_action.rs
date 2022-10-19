@@ -6,7 +6,7 @@ use strum::Display;
 
 use super::{
     game_state::GameState,
-    settings::{Settings, SettingsApplied},
+    settings::{Settings, SettingsApply},
 };
 
 pub(super) struct ControlActionsPlugin;
@@ -21,7 +21,7 @@ impl Plugin for ControlActionsPlugin {
             .add_startup_system(Self::load_mappings_system)
             .add_enter_system(GameState::City, Self::enable_actions)
             .add_exit_system(GameState::City, Self::disable_actions)
-            .add_system(Self::load_mappings_system.run_on_event::<SettingsApplied>());
+            .add_system(Self::load_mappings_system.run_on_event::<SettingsApply>());
     }
 }
 
@@ -89,8 +89,8 @@ mod tests {
             .mappings
             .insert(KeyCode::Q, ControlAction::CameraForward);
 
-        let mut apply_events = app.world.resource_mut::<Events<SettingsApplied>>();
-        apply_events.send(SettingsApplied);
+        let mut apply_events = app.world.resource_mut::<Events<SettingsApply>>();
+        apply_events.send(SettingsApply);
 
         app.update();
 
@@ -122,7 +122,7 @@ mod tests {
     impl Plugin for TestControlActionsPlugin {
         fn build(&self, app: &mut App) {
             app.add_loopless_state(GameState::MainMenu)
-                .add_event::<SettingsApplied>()
+                .add_event::<SettingsApply>()
                 .init_resource::<Settings>()
                 .add_plugin(ControlActionsPlugin);
         }

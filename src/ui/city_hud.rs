@@ -12,7 +12,7 @@ use super::selected_object::SelectedObject;
 use crate::core::{
     asset_metadata::AssetMetadata,
     game_state::GameState,
-    preview::{PreviewRequested, Previews},
+    preview::{PreviewRequest, Previews},
 };
 use objects_tab::ObjectsTab;
 
@@ -28,7 +28,7 @@ impl CityHudPlugin {
     fn bottom_panel_system(
         mut current_tab: Local<CityTab>,
         mut commands: Commands,
-        mut preview_events: EventWriter<PreviewRequested>,
+        mut preview_events: EventWriter<PreviewRequest>,
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
         metadata: Res<Assets<AssetMetadata>>,

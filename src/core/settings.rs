@@ -15,11 +15,11 @@ impl Plugin for SettingsPlugin {
         let game_paths = app.world.resource::<GamePaths>();
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
-            .add_event::<SettingsApplied>()
+            .add_event::<SettingsApply>()
             .add_system(
                 Self::write_system
                     .chain(error::err_message_system)
-                    .run_on_event::<SettingsApplied>(),
+                    .run_on_event::<SettingsApply>(),
             );
     }
 }
@@ -32,7 +32,7 @@ impl SettingsPlugin {
 
 /// An event that applies the specified settings in the [`Settings`] resource.
 #[derive(Default)]
-pub(crate) struct SettingsApplied;
+pub(crate) struct SettingsApply;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
@@ -153,7 +153,7 @@ mod tests {
         let mut settings = app.world.resource_mut::<Settings>();
         settings.video.msaa += 1;
 
-        let mut apply_events = app.world.resource_mut::<Events<SettingsApplied>>();
+        let mut apply_events = app.world.resource_mut::<Events<SettingsApply>>();
         apply_events.send_default();
 
         app.update();

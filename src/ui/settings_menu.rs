@@ -18,7 +18,7 @@ use super::{
 };
 use crate::core::{
     control_action::ControlAction,
-    settings::{Settings, SettingsApplied},
+    settings::{Settings, SettingsApply},
 };
 use controls_tab::ControlsTab;
 use developer_tab::DeveloperTab;
@@ -44,7 +44,7 @@ impl Plugin for SettingsMenuPlugin {
 impl SettingsMenuPlugin {
     fn settings_menu_system(
         mut commands: Commands,
-        mut apply_events: EventWriter<SettingsApplied>,
+        mut apply_events: EventWriter<SettingsApply>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
