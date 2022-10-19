@@ -531,6 +531,24 @@ mod tests {
     }
 
     #[test]
+    fn pick_deletion() {
+        let mut app = App::new();
+        app.add_plugin(TestMovingObjectPlugin);
+
+        const CLIENT_ID: u64 = 1;
+        let object_entity = app.world.spawn().insert(Picked(CLIENT_ID)).id();
+        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<PickDelete>>>();
+        pick_events.send(ClientEvent {
+            client_id: CLIENT_ID,
+            event: PickDelete,
+        });
+
+        app.update();
+
+        assert!(app.world.get_entity(object_entity).is_none());
+    }
+
+    #[test]
     fn cursor_spawning() {
         let mut app = App::new();
         app.add_plugin(TestMovingObjectPlugin);
