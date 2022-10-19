@@ -458,12 +458,13 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestReplicationPlugin::client_and_server());
 
-        app.update();
-        app.update();
+        for _ in 0..5 {
+            app.update();
+        }
 
         let acked_ticks = app.world.resource::<AckedTicks>();
         let client = app.world.resource::<RenetClient>();
-        assert!(matches!(acked_ticks.get(&client.client_id()), Some(&last_tick) if last_tick == 0));
+        assert!(matches!(acked_ticks.get(&client.client_id()), Some(&last_tick) if last_tick > 0));
     }
 
     #[test]
