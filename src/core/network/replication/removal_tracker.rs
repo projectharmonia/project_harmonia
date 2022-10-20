@@ -45,7 +45,7 @@ impl RemovalTrackerPlugin {
         ignore_rules: Res<IgnoreRules>,
     ) {
         let current_tick = set.p0().read_change_tick();
-        for component_id in ignore_rules.serializable.iter().copied() {
+        for &component_id in &ignore_rules.serializable {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
                 if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {

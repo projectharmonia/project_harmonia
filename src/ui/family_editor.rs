@@ -78,7 +78,7 @@ impl FamilyEditorPlugin {
                 ui.horizontal(|ui| {
                     let mut family = editable_families.single_mut();
                     let current_entity = editable_dolls.get_single();
-                    for entity in family.iter().copied() {
+                    for &entity in family.iter() {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
@@ -121,7 +121,7 @@ impl FamilyEditorPlugin {
         if is_confirmed {
             let family = editable_families.single();
             ensure!(!family.is_empty(), "family cannot be empty");
-            for (index, member) in family.iter().copied().enumerate() {
+            for (index, &member) in family.iter().enumerate() {
                 let (first_name, last_name) = names
                     .get(member)
                     .expect("family member should have a first and a last name");
