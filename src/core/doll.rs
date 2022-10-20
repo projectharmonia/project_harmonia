@@ -16,13 +16,16 @@ impl Plugin for DollPlugin {
 
 impl DollPlugin {
     fn name_update_system(
+        mut commands: Commands,
         mut changed_names: Query<
-            (&mut Name, &FirstName, &LastName),
+            (Entity, &FirstName, &LastName),
             Or<(Changed<FirstName>, Changed<LastName>)>,
         >,
     ) {
-        for (mut name, first_name, last_name) in &mut changed_names {
-            name.set(format!("{first_name} {last_name}"));
+        for (entity, first_name, last_name) in &mut changed_names {
+            commands
+                .entity(entity)
+                .insert(Name::new(format!("{first_name} {last_name}")));
         }
     }
 }
@@ -37,7 +40,6 @@ pub(crate) struct LastName(pub(crate) String);
 
 #[derive(Bundle, Default)]
 pub(crate) struct DollBundle {
-    name: Name,
     first_name: FirstName,
     last_name: LastName,
 }
@@ -53,17 +55,16 @@ mod tests {
 
         const FIRST_NAME: &str = "First";
         const LAST_NAME: &str = "Last";
-        let doll_entity = app
+        let named_entity = app
             .world
             .spawn()
-            .insert(Name::default())
             .insert(FirstName(FIRST_NAME.to_string()))
             .insert(LastName(LAST_NAME.to_string()))
             .id();
 
         app.update();
 
-        let name = app.world.get::<Name>(doll_entity).unwrap();
+        let name = app.world.get::<Name>(named_entity).unwrap();
         assert_eq!(name.as_str(), format!("{FIRST_NAME} {LAST_NAME}"));
     }
 }
