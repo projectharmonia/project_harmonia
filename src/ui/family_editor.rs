@@ -26,6 +26,7 @@ pub(super) struct FamilyEditorPlugin;
 impl Plugin for FamilyEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::FamilyEditor, Self::spawn_system)
+            .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
             .add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
             .add_system(
@@ -38,7 +39,7 @@ impl Plugin for FamilyEditorPlugin {
                     .run_if_resource_exists::<SaveFamilyDialog>()
                     .before(FamilySystems::SaveSystem),
             )
-            .add_system(Self::exit_system.run_on_event::<FamilySaved>());
+            .add_system(Self::confirmation_system.run_on_event::<FamilySaved>());
     }
 }
 
@@ -47,6 +48,13 @@ impl FamilyEditorPlugin {
         commands
             .spawn_bundle(FamilyBundle::default())
             .insert(EditableFamily);
+    }
+
+    fn cleanup_system(
+        mut commands: Commands,
+        editable_families: Query<Entity, With<EditableFamily>>,
+    ) {
+        commands.despawn_family(editable_families.single());
     }
 
     fn personality_window_system(
@@ -104,7 +112,6 @@ impl FamilyEditorPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         editable_families: Query<&Family, With<EditableFamily>>,
-        editable_family_entities: Query<Entity, With<EditableFamily>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
         let mut is_confirmed = false;
@@ -112,7 +119,6 @@ impl FamilyEditorPlugin {
             .anchor(Align2::RIGHT_BOTTOM, (-UI_MARGIN, -UI_MARGIN))
             .show(egui.ctx_mut(), |ui| {
                 if ui.button("Cancel").clicked() {
-                    commands.despawn_family(editable_family_entities.single());
                     commands.insert_resource(NextState(GameState::World));
                 }
                 is_confirmed = ui.button("Confirm").clicked();
@@ -166,9 +172,7 @@ impl FamilyEditorPlugin {
         }
     }
 
-    fn exit_system(mut commands: Commands, editable_families: Query<Entity, With<EditableFamily>>) {
-        let family_entity = editable_families.single();
-        commands.despawn_family(family_entity);
+    fn confirmation_system(mut commands: Commands) {
         commands.insert_resource(NextState(GameState::World));
     }
 }
