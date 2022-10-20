@@ -27,7 +27,7 @@ impl GroundPlugin {
                     .spawn_bundle(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Plane { size: SIZE })),
                         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-                        ..default()
+                        ..Default::default()
                     })
                     .insert(RigidBody::Fixed)
                     .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0));
@@ -35,10 +35,11 @@ impl GroundPlugin {
                     point_light: PointLight {
                         intensity: 1500.0,
                         shadows_enabled: true,
-                        ..default()
+                        shadow_depth_bias: 0.25,
+                        ..Default::default()
                     },
                     transform: Transform::from_xyz(4.0, 8.0, 4.0),
-                    ..default()
+                    ..Default::default()
                 });
             });
     }

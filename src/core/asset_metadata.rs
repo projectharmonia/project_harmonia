@@ -133,7 +133,9 @@ impl ObjectCategory {
     #[cfg_attr(coverage, no_coverage)]
     pub(crate) fn is_placable_in_city(self) -> bool {
         match self {
-            ObjectCategory::Rocks | ObjectCategory::Foliage | ObjectCategory::OutdoorFurniture => true,
+            ObjectCategory::Rocks | ObjectCategory::Foliage | ObjectCategory::OutdoorFurniture => {
+                true
+            }
         }
     }
 }
