@@ -230,8 +230,8 @@ fn set_outline_recursive(
     }
 
     if let Ok(entity_children) = children.get(entity) {
-        for &child in entity_children {
-            set_outline_recursive(child, visible, outlines, children);
+        for &entity in entity_children {
+            set_outline_recursive(entity, visible, outlines, children);
         }
     }
 }

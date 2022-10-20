@@ -43,12 +43,12 @@ impl FamilyPlugin {
         registry: Res<TypeRegistry>,
         families: Query<(&Name, &Family)>,
     ) -> Result<()> {
-        for family_entity in save_events.iter().map(|event| event.0) {
+        for entity in save_events.iter().map(|event| event.0) {
             let (name, family) = families
-                .get(family_entity)
+                .get(entity)
                 .expect("family entity should contain family members");
 
-            let scene = save_to_scene(set.p0(), &registry, &ignore_rules, family_entity, family);
+            let scene = save_to_scene(set.p0(), &registry, &ignore_rules, entity, family);
             let ron = scene
                 .serialize_ron(&registry)
                 .expect("game world should be serialized");
@@ -125,8 +125,8 @@ impl Command for DespawnFamily {
             .remove::<Family>()
             .expect("despawn family command should contain an entity with family component");
         family_entity.despawn_recursive();
-        for member_entity in family.0 {
-            world.entity_mut(member_entity).despawn_recursive();
+        for entity in family.0 {
+            world.entity_mut(entity).despawn_recursive();
         }
     }
 }
