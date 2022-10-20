@@ -1,0 +1,285 @@
+{
+    "asset" : {
+        "copyright" : "Yara Gardaria",
+        "generator" : "Khronos glTF Blender I/O v3.3.32",
+        "version" : "2.0"
+    },
+    "extensionsUsed" : [
+        "KHR_materials_specular",
+        "KHR_materials_ior"
+    ],
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0,
+                1
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "Trunk",
+            "rotation" : [
+                0,
+                0.829266369342804,
+                0,
+                0.5588535666465759
+            ],
+            "translation" : [
+                -0.04674845561385155,
+                0,
+                0.042296215891838074
+            ]
+        },
+        {
+            "mesh" : 1,
+            "name" : "Branches",
+            "translation" : [
+                -0.052549149841070175,
+                0.1389322280883789,
+                -0.007228939328342676
+            ]
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "extensions" : {
+                "KHR_materials_specular" : {
+                    "specularColorFactor" : [
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                "KHR_materials_ior" : {
+                    "ior" : 1.4500000476837158
+                }
+            },
+            "name" : "Trunk",
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.06847818195819855,
+                    0.027320899069309235,
+                    0.004776954650878906,
+                    1
+                ],
+                "metallicFactor" : 0
+            }
+        },
+        {
+            "alphaCutoff" : 0.5,
+            "alphaMode" : "MASK",
+            "doubleSided" : true,
+            "extensions" : {
+                "KHR_materials_specular" : {
+                    "specularColorFactor" : [
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                "KHR_materials_ior" : {
+                    "ior" : 1.4500000476837158
+                }
+            },
+            "name" : "Branches",
+            "normalTexture" : {
+                "index" : 0
+            },
+            "pbrMetallicRoughness" : {
+                "baseColorTexture" : {
+                    "index" : 1
+                },
+                "metallicRoughnessTexture" : {
+                    "index" : 2
+                }
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Trunk",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1
+                    },
+                    "indices" : 2,
+                    "material" : 0
+                }
+            ]
+        },
+        {
+            "name" : "Branches",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 3,
+                        "NORMAL" : 4,
+                        "TEXCOORD_0" : 5
+                    },
+                    "indices" : 6,
+                    "material" : 1
+                }
+            ]
+        }
+    ],
+    "textures" : [
+        {
+            "sampler" : 0,
+            "source" : 0
+        },
+        {
+            "sampler" : 0,
+            "source" : 1
+        },
+        {
+            "sampler" : 0,
+            "source" : 2
+        }
+    ],
+    "images" : [
+        {
+            "mimeType" : "image/png",
+            "name" : "bush_normal",
+            "uri" : "bush_normal.png"
+        },
+        {
+            "mimeType" : "image/png",
+            "name" : "bush_base_color",
+            "uri" : "bush_base_color.png"
+        },
+        {
+            "mimeType" : "image/png",
+            "name" : "bush_metallic_roughness",
+            "uri" : "bush_metallic_roughness.png"
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 5148,
+            "max" : [
+                0.27052488923072815,
+                0.8586267232894897,
+                0.24716797471046448
+            ],
+            "min" : [
+                -0.21397346258163452,
+                0.00042905978625640273,
+                -0.2183714359998703
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 5148,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5123,
+            "count" : 30840,
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5126,
+            "count" : 2874,
+            "max" : [
+                0.7791275978088379,
+                1.0829949378967285,
+                0.7708987593650818
+            ],
+            "min" : [
+                -0.6874435544013977,
+                -0.10320037603378296,
+                -0.7266299724578857
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 4,
+            "componentType" : 5126,
+            "count" : 2874,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 5,
+            "componentType" : 5126,
+            "count" : 2874,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 6,
+            "componentType" : 5123,
+            "count" : 11376,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 61776,
+            "byteOffset" : 0,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 61776,
+            "byteOffset" : 61776,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 61680,
+            "byteOffset" : 123552,
+            "target" : 34963
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 34488,
+            "byteOffset" : 185232,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 34488,
+            "byteOffset" : 219720,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 22992,
+            "byteOffset" : 254208,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 22752,
+            "byteOffset" : 277200,
+            "target" : 34963
+        }
+    ],
+    "samplers" : [
+        {
+            "magFilter" : 9729,
+            "minFilter" : 9987,
+            "wrapS" : 33071,
+            "wrapT" : 33071
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 299952,
+            "uri" : "simple_bush.bin"
+        }
+    ]
+}

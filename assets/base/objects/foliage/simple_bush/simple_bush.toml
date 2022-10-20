@@ -1,0 +1,6 @@
+[general]
+name = "Simple bush"
+preview_translation = [0.0, -0.6, -1.9]
+
+[object]
+category = "Foliage"
