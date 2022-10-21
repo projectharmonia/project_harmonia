@@ -52,21 +52,13 @@ impl OrbitCameraPlugin {
 
     fn spawn_system(
         mut commands: Commands,
-        controlled_city: Query<(Entity, Option<&Children>), (With<Visibility>, With<City>)>,
-        camera: Query<Entity, With<OrbitOrigin>>,
+        controlled_city: Query<Entity, (With<Visibility>, With<City>)>,
     ) {
-        let (city_entity, children) = controlled_city.single();
-        let camera_entity = children
-            .and_then(|children| camera.iter_many(children).next())
-            .unwrap_or_else(|| {
-                commands
-                    .entity(city_entity)
-                    .add_children(|parent| parent.spawn_bundle(OrbitCameraBundle::default()).id())
-            });
-
         commands
-            .entity(camera_entity)
-            .insert_bundle(Camera3dBundle::default());
+            .entity(controlled_city.single())
+            .with_children(|parent| {
+                parent.spawn_bundle(OrbitCameraBundle::default());
+            });
     }
 
     fn rotation_system(
@@ -162,8 +154,11 @@ fn movement_direction(action_state: &ActionState<ControlAction>, rotation: Quat)
 pub(super) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
-    spring_arg: SpringArm,
+    spring_arm: SpringArm,
     ray_source: RayCastSource<ObjectPath>,
+
+    #[bundle]
+    camera_3d: Camera3dBundle,
 }
 
 /// The origin of a camera.
