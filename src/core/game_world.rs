@@ -76,7 +76,7 @@ impl GameWorldPlugin {
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
-        let scene = save_to_scene(world, &*registry, &*ignore_rules);
+        let scene = save_to_scene(world, &registry, &ignore_rules);
         let bytes = scene
             .serialize_ron(&registry)
             .expect("game world should be serialized");

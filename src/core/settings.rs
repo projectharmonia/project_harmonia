@@ -66,7 +66,7 @@ impl Settings {
             .parent()
             .expect("settings filename should have a parent dir");
 
-        fs::create_dir_all(&parent_folder)
+        fs::create_dir_all(parent_folder)
             .with_context(|| format!("unable to create {parent_folder:?}"))?;
 
         fs::write(file_name, content)

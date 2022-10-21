@@ -75,7 +75,7 @@ impl CursorObjectPlugin {
                     commands
                         .entity(cursor_entity)
                         .insert_bundle(SceneBundle {
-                            scene: asset_server.load(&asset_metadata::scene_path(&metadata_path)),
+                            scene: asset_server.load(&asset_metadata::scene_path(metadata_path)),
                             ..Default::default()
                         })
                         .insert(CursorOffset::default());
