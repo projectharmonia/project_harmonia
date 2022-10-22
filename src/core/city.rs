@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::game_world::{GameEntity, GameWorld};
+use super::{
+    game_state::GameState,
+    game_world::{GameEntity, GameWorld},
+    orbit_camera::OrbitCameraBundle,
+};
 
 pub(super) struct CityPlugin;
 
@@ -9,15 +13,27 @@ impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
+            .add_enter_system(GameState::City, Self::camera_spawn_system)
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::reset_placed_cities_system.run_if_resource_removed::<GameWorld>());
+            .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
     }
 }
 
 impl CityPlugin {
     /// Size of one size of a city.
     const CITY_SIZE: f32 = 100.0;
+
+    fn camera_spawn_system(
+        mut commands: Commands,
+        visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
+    ) {
+        commands
+            .entity(visible_cities.single())
+            .with_children(|parent| {
+                parent.spawn_bundle(OrbitCameraBundle::default());
+            });
+    }
 
     /// Removes all cities and their children.
     fn cleanup_system(mut commands: Commands, cities: Query<Entity, With<City>>) {
@@ -43,7 +59,7 @@ impl CityPlugin {
     }
 
     /// Resets [`PlacedCities`] counter to 0.
-    fn reset_placed_cities_system(mut placed_citites: ResMut<PlacedCities>) {
+    fn placed_cities_reset_system(mut placed_citites: ResMut<PlacedCities>) {
         placed_citites.0 = 0;
     }
 }
@@ -83,22 +99,31 @@ mod tests {
     #[test]
     fn cleanup() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+        app.add_loopless_state(GameState::City)
+            .init_resource::<GameWorld>()
+            .add_plugin(CityPlugin);
 
         let child_entity = app.world.spawn().id();
         let city_entity = app
             .world
             .spawn()
             .insert(City)
+            .insert(Visibility::default())
             .push_children(&[child_entity])
             .id();
 
         app.update();
 
+        let camera_entity = app
+            .world
+            .query_filtered::<Entity, With<Camera>>()
+            .single(&app.world);
+
         app.world.remove_resource::<GameWorld>();
 
         app.update();
 
+        assert!(app.world.get_entity(camera_entity).is_none());
         assert!(app.world.get_entity(city_entity).is_none());
         assert!(app.world.get_entity(child_entity).is_none());
     }
@@ -106,7 +131,9 @@ mod tests {
     #[test]
     fn placing() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+        app.add_loopless_state(GameState::World)
+            .init_resource::<GameWorld>()
+            .add_plugin(CityPlugin);
 
         app.update();
 
@@ -131,7 +158,9 @@ mod tests {
     #[test]
     fn placed_citites_reset() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(CityPlugin);
+        app.add_loopless_state(GameState::World)
+            .init_resource::<GameWorld>()
+            .add_plugin(CityPlugin);
 
         app.world.resource_mut::<PlacedCities>().0 += 1;
 
