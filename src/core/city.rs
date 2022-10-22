@@ -11,7 +11,7 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::reset_paced_cities_system.run_if_resource_removed::<GameWorld>());
+            .add_system(Self::reset_placed_cities_system.run_if_resource_removed::<GameWorld>());
     }
 }
 
@@ -43,7 +43,7 @@ impl CityPlugin {
     }
 
     /// Resets [`PlacedCities`] counter to 0.
-    fn reset_paced_cities_system(mut placed_citites: ResMut<PlacedCities>) {
+    fn reset_placed_cities_system(mut placed_citites: ResMut<PlacedCities>) {
         placed_citites.0 = 0;
     }
 }
