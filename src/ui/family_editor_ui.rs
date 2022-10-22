@@ -17,17 +17,16 @@ use super::{
 use crate::core::{
     doll::{DollBundle, FirstName, LastName},
     error,
-    family::{DespawnFamilyExt, Family, FamilyBundle, FamilySave, FamilySaved, FamilySystems},
+    family::{Family, FamilySave, FamilySaved, FamilySystems},
+    family_editor::{EditableDoll, EditableFamily, FamilyEditor},
     game_state::GameState,
 };
 
-pub(super) struct FamilyEditorPlugin;
+pub(super) struct FamilyEditorUiPlugin;
 
-impl Plugin for FamilyEditorPlugin {
+impl Plugin for FamilyEditorUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::FamilyEditor, Self::spawn_system)
-            .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
-            .add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
+        app.add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
             .add_system(
                 Self::confirm_cancel_system
@@ -43,20 +42,7 @@ impl Plugin for FamilyEditorPlugin {
     }
 }
 
-impl FamilyEditorPlugin {
-    fn spawn_system(mut commands: Commands) {
-        commands
-            .spawn_bundle(FamilyBundle::default())
-            .insert(EditableFamily);
-    }
-
-    fn cleanup_system(
-        mut commands: Commands,
-        editable_families: Query<Entity, With<EditableFamily>>,
-    ) {
-        commands.despawn_family(editable_families.single());
-    }
-
+impl FamilyEditorUiPlugin {
     fn personality_window_system(
         mut egui: ResMut<EguiContext>,
         mut editable_dolls: Query<(&mut FirstName, &mut LastName), With<EditableDoll>>,
@@ -77,6 +63,7 @@ impl FamilyEditorPlugin {
         mut egui: ResMut<EguiContext>,
         mut editable_families: Query<&mut Family, With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
+        family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
         Window::new("Dolls")
             .resizable(false)
@@ -101,7 +88,7 @@ impl FamilyEditorPlugin {
                         }
                     }
                     if ui.button("+").clicked() {
-                        let new_member = commands.spawn_bundle(DollBundle::default()).id();
+                        let new_member = commands.entity(family_editors.single()).add_children(|parent| parent.spawn_bundle(DollBundle::default()).id());
                         family.push(new_member);
                     }
                 });
@@ -176,12 +163,6 @@ impl FamilyEditorPlugin {
         commands.insert_resource(NextState(GameState::World));
     }
 }
-
-#[derive(Component)]
-struct EditableDoll;
-
-#[derive(Component)]
-struct EditableFamily;
 
 struct SaveFamilyDialog {
     family_name: String,

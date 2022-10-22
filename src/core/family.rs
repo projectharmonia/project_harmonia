@@ -1,7 +1,7 @@
 use std::{fs, iter};
 
 use anyhow::{Context, Result};
-use bevy::{ecs::system::Command, prelude::*, reflect::TypeRegistry, scene::DynamicEntity};
+use bevy::{prelude::*, reflect::TypeRegistry, scene::DynamicEntity};
 use iyes_loopless::prelude::*;
 
 use super::{
@@ -106,31 +106,6 @@ fn save_to_scene(
     scene
 }
 
-pub(crate) trait DespawnFamilyExt {
-    fn despawn_family(&mut self, family_entity: Entity);
-}
-
-impl DespawnFamilyExt for Commands<'_, '_> {
-    fn despawn_family(&mut self, family_entity: Entity) {
-        self.add(DespawnFamily(family_entity));
-    }
-}
-
-struct DespawnFamily(Entity);
-
-impl Command for DespawnFamily {
-    fn write(self, world: &mut World) {
-        let mut family_entity = world.entity_mut(self.0);
-        let family = family_entity
-            .remove::<Family>()
-            .expect("despawn family command should contain an entity with family component");
-        family_entity.despawn_recursive();
-        for entity in family.0 {
-            world.entity_mut(entity).despawn_recursive();
-        }
-    }
-}
-
 #[derive(Bundle)]
 pub(crate) struct FamilyBundle {
     name: Name,
@@ -165,21 +140,7 @@ pub(crate) struct FamilySaved;
 mod tests {
     use std::borrow::Cow;
 
-    use bevy::ecs::system::CommandQueue;
-
     use super::*;
-
-    #[test]
-    fn family_despawn() {
-        let mut world = World::new();
-        let member_entity = world.spawn().id();
-        let family_entity = world.spawn().insert(Family(vec![member_entity])).id();
-        let mut queue = CommandQueue::default();
-        let mut commands = Commands::new(&mut queue, &world);
-        commands.despawn_family(family_entity);
-        queue.apply(&mut world);
-        assert!(world.entities().is_empty());
-    }
 
     #[test]
     fn saving() {

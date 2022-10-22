@@ -6,6 +6,7 @@ pub(super) mod developer;
 pub(super) mod doll;
 pub(super) mod error;
 pub(super) mod family;
+pub(super) mod family_editor;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
@@ -25,6 +26,7 @@ use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
 use doll::DollPlugin;
 use family::FamilyPlugin;
+use family_editor::FamilyEditorPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugins;
@@ -49,6 +51,7 @@ impl PluginGroup for CorePlugins {
             .add(ControlActionsPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)
+            .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
