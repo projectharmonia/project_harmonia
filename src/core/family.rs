@@ -5,7 +5,7 @@ use bevy::{prelude::*, reflect::TypeRegistry, scene::DynamicEntity};
 use iyes_loopless::prelude::*;
 
 use super::{
-    error,
+    error_message,
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
@@ -26,7 +26,7 @@ impl Plugin for FamilyPlugin {
             .add_event::<FamilySaved>()
             .add_system(
                 Self::saving_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_if_resource_exists::<GameWorld>()
                     .label(FamilySystems::SaveSystem),
             );

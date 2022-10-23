@@ -7,7 +7,7 @@ use super::{
     modal_window::{ModalUiExt, ModalWindow},
     ui_action::UiAction,
 };
-use crate::core::error::ErrorMessage;
+use crate::core::error_message::ErrorMessage;
 
 pub(super) struct ErrorMessagePlugin;
 

@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 
 use super::{
     city::City,
-    error::{self, ErrorMessage},
+    error_message::{self, ErrorMessage},
     game_state::GameState,
     game_world::{GameLoadRequest, GameWorld},
     network::{
@@ -21,10 +21,10 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_startup_system(Self::subcommand_system.chain(error::err_message_system))
+        app.add_startup_system(Self::subcommand_system.chain(error_message::err_message_system))
             .add_system(
                 Self::city_loading_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_if(is_first_world_load),
             );
     }

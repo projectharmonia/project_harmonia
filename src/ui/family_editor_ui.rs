@@ -16,7 +16,7 @@ use super::{
 };
 use crate::core::{
     doll::{DollBundle, FirstName, LastName},
-    error,
+    error_message,
     family::{Family, FamilySave, FamilySaved, FamilySystems},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor},
     game_state::GameState,
@@ -30,7 +30,7 @@ impl Plugin for FamilyEditorUiPlugin {
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
             .add_system(
                 Self::confirm_cancel_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_in_state(GameState::FamilyEditor),
             )
             .add_system(

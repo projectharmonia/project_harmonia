@@ -15,7 +15,7 @@ use iyes_loopless::prelude::*;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{error, game_paths::GamePaths, game_state::GameState};
+use super::{error_message, game_paths::GamePaths, game_state::GameState};
 use ignore_rules::IgnoreRules;
 use parent_sync::ParentSyncPlugin;
 
@@ -45,13 +45,13 @@ impl Plugin for GameWorldPlugin {
             .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_on_event::<GameSave>()
                     .label(GameWorldSystem::Saving),
             )
             .add_system(
                 Self::loading_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_on_event::<GameLoadRequest>()
                     .label(GameWorldSystem::Loading),
             );

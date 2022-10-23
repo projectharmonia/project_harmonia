@@ -16,7 +16,7 @@ use super::{
     ui_action::UiAction,
 };
 use crate::core::{
-    error,
+    error_message,
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoadRequest, GameWorld, GameWorldSystem},
@@ -37,18 +37,18 @@ impl Plugin for WorldBrowserPlugin {
             )
             .add_system(
                 Self::join_world_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_if_resource_exists::<JoinWorldDialog>(),
             )
             .add_system(
                 Self::host_world_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_if_resource_exists::<HostWorldDialog>(),
             )
             .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
             .add_system(
                 Self::remove_world_system
-                    .chain(error::err_message_system)
+                    .chain(error_message::err_message_system)
                     .run_if_resource_exists::<RemoveWorldDialog>(),
             );
     }
