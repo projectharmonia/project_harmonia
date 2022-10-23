@@ -5,16 +5,16 @@ use bevy::{
 };
 use leafwing_input_manager::user_input::InputKind;
 
-/// Helper for collecting input
+/// Collects input to detect currently pressed [`InputKind`].
 #[derive(SystemParam)]
-pub(super) struct InputEvents<'w, 's> {
+pub(crate) struct InputEvents<'w, 's> {
     keys: EventReader<'w, 's, KeyboardInput>,
     mouse_buttons: EventReader<'w, 's, MouseButtonInput>,
     gamepad_events: EventReader<'w, 's, GamepadEvent>,
 }
 
 impl InputEvents<'_, '_> {
-    pub(super) fn input_kind(&mut self) -> Option<InputKind> {
+    pub(crate) fn input_kind(&mut self) -> Option<InputKind> {
         if let Some(input) = self
             .keys
             .iter()

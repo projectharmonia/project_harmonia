@@ -1,6 +1,5 @@
 mod controls_tab;
 mod developer_tab;
-mod input_events;
 mod video_tab;
 
 use bevy::prelude::*;
@@ -18,11 +17,11 @@ use super::{
 };
 use crate::core::{
     control_action::ControlAction,
+    input_events::InputEvents,
     settings::{Settings, SettingsApply},
 };
 use controls_tab::ControlsTab;
 use developer_tab::DeveloperTab;
-use input_events::InputEvents;
 use video_tab::VideoTab;
 
 pub(super) struct SettingsMenuPlugin;
