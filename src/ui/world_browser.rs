@@ -46,7 +46,11 @@ impl Plugin for WorldBrowserPlugin {
                     .run_if_resource_exists::<HostWorldDialog>(),
             )
             .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
-            .add_system(Self::remove_world_system.run_if_resource_exists::<RemoveWorldDialog>());
+            .add_system(
+                Self::remove_world_system
+                    .chain(error::err_message_system)
+                    .run_if_resource_exists::<RemoveWorldDialog>(),
+            );
     }
 }
 
@@ -234,8 +238,9 @@ impl WorldBrowserPlugin {
         mut world_browser: ResMut<WorldBrowser>,
         game_paths: Res<GamePaths>,
         dialog: Res<RemoveWorldDialog>,
-    ) {
+    ) -> Result<()> {
         let mut is_open = true;
+        let mut is_confirmed = false;
         ModalWindow::new("Remove world")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
@@ -245,11 +250,7 @@ impl WorldBrowserPlugin {
                 ));
                 ui.horizontal(|ui| {
                     if ui.button("Remove").clicked() {
-                        let world = world_browser.world_names.remove(dialog.world_index);
-                        let world_path = game_paths.world_path(&world);
-                        fs::remove_file(&world_path)
-                            .tap_err(|e| error!("unable to remove {world_path:?}: {e}"))
-                            .ok();
+                        is_confirmed = true;
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -258,9 +259,17 @@ impl WorldBrowserPlugin {
                 });
             });
 
+        if is_confirmed {
+            let world = world_browser.world_names.remove(dialog.world_index);
+            let world_path = game_paths.world_path(&world);
+            fs::remove_file(&world_path)
+                .with_context(|| format!("unable to remove {world_path:?}"))?;
+        }
         if !is_open {
             commands.remove_resource::<RemoveWorldDialog>();
         }
+
+        Ok(())
     }
 }
 
