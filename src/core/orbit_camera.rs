@@ -35,10 +35,20 @@ impl Plugin for OrbitCameraPlugin {
                 .label(OrbitCameraSystem::Arm),
         )
         .add_system(
+            Self::arm_system
+                .run_in_state(GameState::FamilyEditor)
+                .label(OrbitCameraSystem::Arm),
+        )
+        .add_system(
             Self::transform_system
                 .run_in_state(GameState::City)
                 .after(OrbitCameraSystem::Rotation)
                 .after(OrbitCameraSystem::Position)
+                .after(OrbitCameraSystem::Arm),
+        )
+        .add_system(
+            Self::transform_system
+                .run_in_state(GameState::FamilyEditor)
                 .after(OrbitCameraSystem::Arm),
         )
         .add_system(Self::update_raycast_source_system.run_in_state(GameState::City));
@@ -139,7 +149,7 @@ fn movement_direction(action_state: &ActionState<ControlAction>, rotation: Quat)
 }
 
 #[derive(Bundle, Default)]
-pub(super) struct OrbitCameraBundle {
+pub(crate) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,

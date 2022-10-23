@@ -1,14 +1,19 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::{family::FamilyBundle, game_state::GameState};
+use super::{family::FamilyBundle, game_state::GameState, orbit_camera::OrbitCameraBundle};
 
 pub(super) struct FamilyEditorPlugin;
 
 impl Plugin for FamilyEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::FamilyEditor, Self::spawn_system)
-            .add_exit_system(GameState::FamilyEditor, Self::cleanup_system);
+            .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
+            .add_system(Self::visibility_enable_system.run_in_state(GameState::FamilyEditor))
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                Self::visibility_disable_system.run_in_state(GameState::FamilyEditor),
+            );
     }
 }
 
@@ -17,10 +22,39 @@ impl FamilyEditorPlugin {
         commands
             .spawn_bundle(FamilyEditorBundle::default())
             .with_children(|parent| {
+                parent.spawn_bundle(PointLightBundle {
+                    point_light: PointLight {
+                        intensity: 1500.0,
+                        shadows_enabled: true,
+                        shadow_depth_bias: 0.25,
+                        ..Default::default()
+                    },
+                    transform: Transform::from_xyz(4.0, 8.0, 4.0),
+                    ..Default::default()
+                });
+                parent.spawn_bundle(OrbitCameraBundle::default());
                 parent
                     .spawn_bundle(FamilyBundle::default())
                     .insert(EditableFamily);
             });
+    }
+
+    fn visibility_enable_system(
+        mut new_editable_dolls: Query<&mut Visibility, Added<EditableDoll>>,
+    ) {
+        for mut visibility in &mut new_editable_dolls {
+            visibility.is_visible = true;
+        }
+    }
+
+    fn visibility_disable_system(
+        removed_editable_dolls: RemovedComponents<EditableDoll>,
+        mut visibility: Query<&mut Visibility>,
+    ) {
+        for entity in removed_editable_dolls.iter() {
+            let mut visibility = visibility.get_mut(entity).unwrap();
+            visibility.is_visible = false;
+        }
     }
 
     fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<FamilyEditor>>) {
@@ -81,5 +115,45 @@ mod tests {
         app.update();
 
         assert!(app.world.get_entity(family_editor_entity).is_none());
+    }
+
+    #[test]
+    fn visibility_enable() {
+        let mut app = App::new();
+        app.add_loopless_state(GameState::FamilyEditor)
+            .add_plugin(FamilyEditorPlugin);
+
+        let doll_entity = app
+            .world
+            .spawn()
+            .insert(EditableDoll)
+            .insert(Visibility { is_visible: false })
+            .id();
+
+        app.update();
+
+        let visibility = app.world.get::<Visibility>(doll_entity).unwrap();
+        assert!(visibility.is_visible);
+    }
+
+    #[test]
+    fn visibility_disable() {
+        let mut app = App::new();
+        app.add_loopless_state(GameState::FamilyEditor)
+            .add_plugin(FamilyEditorPlugin);
+
+        let doll_entity = app
+            .world
+            .spawn()
+            .insert(EditableDoll)
+            .insert(Visibility::visible())
+            .id();
+
+        app.world.entity_mut(doll_entity).remove::<EditableDoll>();
+
+        app.update();
+
+        let visibility = app.world.get::<Visibility>(doll_entity).unwrap();
+        assert!(!visibility.is_visible);
     }
 }

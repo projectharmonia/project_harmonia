@@ -21,6 +21,8 @@ impl Plugin for ControlActionsPlugin {
             .add_startup_system(Self::load_mappings_system)
             .add_enter_system(GameState::City, Self::enable_actions)
             .add_exit_system(GameState::City, Self::disable_actions)
+            .add_enter_system(GameState::FamilyEditor, Self::enable_actions)
+            .add_exit_system(GameState::FamilyEditor, Self::disable_actions)
             .add_system(Self::load_mappings_system.run_on_event::<SettingsApply>());
     }
 }
