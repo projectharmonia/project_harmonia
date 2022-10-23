@@ -118,8 +118,7 @@ fn world_name(entry: &DirEntry) -> Option<String> {
         return None;
     }
 
-    path.file_stem()
-        .map(|path| path.to_string_lossy().to_string())
+    path.file_stem()?.to_str().map(|stem| stem.to_string())
 }
 
 #[cfg(test)]
