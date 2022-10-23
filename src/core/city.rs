@@ -21,7 +21,6 @@ impl Plugin for CityPlugin {
 }
 
 impl CityPlugin {
-    /// Size of one size of a city.
     const CITY_SIZE: f32 = 100.0;
 
     fn camera_spawn_system(
@@ -91,84 +90,3 @@ pub(crate) struct City;
 /// when it is removed to assign a unique position to new each city.
 #[derive(Default)]
 struct PlacedCities(usize);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cleanup() {
-        let mut app = App::new();
-        app.add_loopless_state(GameState::City)
-            .init_resource::<GameWorld>()
-            .add_plugin(CityPlugin);
-
-        let child_entity = app.world.spawn().id();
-        let city_entity = app
-            .world
-            .spawn()
-            .insert(City)
-            .insert(Visibility::default())
-            .push_children(&[child_entity])
-            .id();
-
-        app.update();
-
-        let camera_entity = app
-            .world
-            .query_filtered::<Entity, With<Camera>>()
-            .single(&app.world);
-
-        app.world.remove_resource::<GameWorld>();
-
-        app.update();
-
-        assert!(app.world.get_entity(camera_entity).is_none());
-        assert!(app.world.get_entity(city_entity).is_none());
-        assert!(app.world.get_entity(child_entity).is_none());
-    }
-
-    #[test]
-    fn placing() {
-        let mut app = App::new();
-        app.add_loopless_state(GameState::World)
-            .init_resource::<GameWorld>()
-            .add_plugin(CityPlugin);
-
-        app.update();
-
-        for index in 0..2 {
-            let city_entity = app.world.spawn().insert_bundle(CityBundle::default()).id();
-
-            app.update();
-
-            let transform = *app
-                .world
-                .get::<Transform>(city_entity)
-                .unwrap_or_else(|| panic!("added city {index} should be placed"));
-
-            assert_eq!(
-                transform,
-                Transform::from_translation(Vec3::X * CityPlugin::CITY_SIZE * index as f32),
-                "city {index} should be placed with offset",
-            );
-        }
-    }
-
-    #[test]
-    fn placed_citites_reset() {
-        let mut app = App::new();
-        app.add_loopless_state(GameState::World)
-            .init_resource::<GameWorld>()
-            .add_plugin(CityPlugin);
-
-        app.world.resource_mut::<PlacedCities>().0 += 1;
-
-        app.update();
-
-        app.world.remove_resource::<GameWorld>();
-        app.update();
-
-        assert_eq!(app.world.resource::<PlacedCities>().0, 0);
-    }
-}

@@ -59,24 +59,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parent_sync() {
-        let mut app = App::new();
-        app.init_resource::<GameWorld>()
-            .add_plugin(ParentSyncPlugin);
-
-        let parent = app.world.spawn().id();
-        let child = app.world.spawn().insert(ParentSync(parent)).id();
-
-        app.update();
-
-        let child_parent = app.world.get::<Parent>(child).unwrap();
-        assert_eq!(parent, child_parent.get());
-
-        let children = app.world.get::<Children>(parent).unwrap();
-        assert!(children.contains(&child));
-    }
-
-    #[test]
     fn entity_mapping() {
         let mut app = App::new();
         app.init_resource::<GameWorld>()

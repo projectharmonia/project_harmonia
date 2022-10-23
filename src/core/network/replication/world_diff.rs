@@ -372,8 +372,9 @@ impl<'de> DeserializeSeed<'de> for EntityDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_test::Token;
+
+    use super::*;
 
     const COMPONENT_NAME: &str = "My component";
     const ENTITY_ID: u64 = 0;

@@ -425,7 +425,7 @@ struct LastTick(u32);
 ///
 /// Used only on server.
 #[derive(Default, Deref, DerefMut)]
-pub(super) struct AckedTicks(HashMap<u64, u32>);
+struct AckedTicks(HashMap<u64, u32>);
 
 #[cfg(test)]
 mod tests {
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn acked_ticks_cleanup() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin::client_and_server());
+        app.add_plugin(TestReplicationPlugin);
 
         let mut client = app.world.resource_mut::<RenetClient>();
         client.disconnect();
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn tick_acks_receiving() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin::client_and_server());
+        app.add_plugin(TestReplicationPlugin);
 
         for _ in 0..5 {
             app.update();
@@ -471,7 +471,7 @@ mod tests {
     fn spawn_replication() {
         let mut app = App::new();
         app.register_type::<GameEntity>()
-            .add_plugin(TestReplicationPlugin::client_and_server());
+            .add_plugin(TestReplicationPlugin);
 
         // Wait two ticks to send and receive acknowledge.
         app.update();
@@ -512,7 +512,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<GameEntity>()
             .register_type::<SparseSetComponent>()
-            .add_plugin(TestReplicationPlugin::client_and_server());
+            .add_plugin(TestReplicationPlugin);
 
         app.update();
         app.update();
@@ -560,7 +560,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<GameEntity>()
             .register_type::<ParentSync>()
-            .add_plugin(TestReplicationPlugin::client_and_server());
+            .add_plugin(TestReplicationPlugin);
 
         app.update();
         app.update();
@@ -590,7 +590,7 @@ mod tests {
         let mut app = App::new();
         app.register_type::<NonReflectedComponent>()
             .register_type::<GameEntity>()
-            .add_plugin(TestReplicationPlugin::client_and_server());
+            .add_plugin(TestReplicationPlugin);
 
         app.update();
         app.update();
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn despawn_replication() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin::client_and_server());
+        app.add_plugin(TestReplicationPlugin);
 
         app.update();
         app.update();
@@ -655,87 +655,14 @@ mod tests {
             .is_empty());
     }
 
-    #[test]
-    fn client_reset() {
-        let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin::client());
-
-        app.update();
-
-        // Modify resources to test reset
-        app.world.resource_mut::<LastTick>().0 += 1;
-        app.world
-            .resource_mut::<NetworkEntityMap>()
-            .insert(Entity::from_raw(0), Entity::from_raw(0));
-        app.world.remove_resource::<RenetClient>();
-
-        app.update();
-
-        assert_eq!(app.world.resource::<LastTick>().0, LastTick::default().0);
-        assert!(app
-            .world
-            .resource::<NetworkEntityMap>()
-            .to_client()
-            .is_empty());
-    }
-
-    #[test]
-    fn server_reset() {
-        let mut app = App::new();
-        app.init_resource::<IgnoreRules>()
-            .init_resource::<DespawnTracker>()
-            .add_plugin(TestReplicationPlugin::server());
-
-        app.update();
-
-        // Modify resources to test reset
-        app.world.resource_mut::<AckedTicks>().insert(0, 0);
-        app.world.remove_resource::<RenetServer>();
-
-        app.update();
-
-        assert_eq!(app.world.resource::<AckedTicks>().len(), 0);
-    }
-
-    struct TestReplicationPlugin {
-        client: bool,
-        server: bool,
-    }
-
-    impl TestReplicationPlugin {
-        fn client() -> Self {
-            Self {
-                client: true,
-                server: false,
-            }
-        }
-
-        fn server() -> Self {
-            Self {
-                client: false,
-                server: true,
-            }
-        }
-
-        fn client_and_server() -> Self {
-            Self {
-                client: true,
-                server: true,
-            }
-        }
-    }
+    struct TestReplicationPlugin;
 
     impl Plugin for TestReplicationPlugin {
         fn build(&self, app: &mut App) {
-            if self.client && self.server {
-                app.init_resource::<IgnoreRules>()
-                    .init_resource::<DespawnTracker>();
-            }
-            app.add_plugin(NetworkPresetPlugin {
-                client: self.client,
-                server: self.server,
-            })
-            .add_plugin(ReplicationPlugin);
+            app.init_resource::<IgnoreRules>()
+                .init_resource::<DespawnTracker>()
+                .add_plugin(NetworkPresetPlugin::client_and_server())
+                .add_plugin(ReplicationPlugin);
         }
     }
 

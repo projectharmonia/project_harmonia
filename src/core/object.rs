@@ -291,13 +291,8 @@ pub(crate) struct ObjectPath(String);
 
 #[cfg(test)]
 mod tests {
-    use bevy::{
-        asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState, scene::ScenePlugin,
-    };
+    use bevy::{asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState};
     use bevy_mod_raycast::IntersectionData;
-    use bevy_scene_hook::HookPlugin;
-    use itertools::Itertools;
-    use shape::Cube;
 
     use super::*;
 
@@ -356,48 +351,13 @@ mod tests {
     }
 
     #[test]
-    fn spawning() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin)
-            .add_asset::<Mesh>()
-            .add_plugin(ScenePlugin)
-            .add_plugin(HookPlugin);
-
-        let object_entity = app.world.spawn().insert(ObjectPath::default()).id();
-
-        app.update();
-
-        // Manually create a scene with a mesh to trigger hook
-        let mut world = World::new();
-        let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
-        let mesh_handle = meshes.add(Cube::default().into());
-        world.spawn().insert(mesh_handle);
-        let mut scenes = app.world.resource_mut::<Assets<Scene>>();
-        let scene_handle = scenes.add(Scene::new(world));
-
-        let mut object_entity = app.world.entity_mut(object_entity);
-        object_entity.insert(scene_handle);
-
-        assert!(object_entity.contains::<Handle<Scene>>());
-        assert!(object_entity.contains::<GlobalTransform>());
-        assert!(object_entity.contains::<Visibility>());
-        assert!(object_entity.contains::<ComputedVisibility>());
-
-        let object_entity = object_entity.id();
-
-        app.update();
-
-        let parent = app
-            .world
-            .query_filtered::<&Parent, With<Outline>>()
-            .single(&app.world);
-        assert_eq!(parent.get(), object_entity);
-    }
-
-    #[test]
     fn hovering() {
         let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
+        app.add_loopless_state(GameState::City)
+            .init_resource::<ActionState<ControlAction>>()
+            .add_plugin(CorePlugin)
+            .add_plugin(AssetPlugin)
+            .add_plugin(ObjectPlugin);
 
         let outline_entity = app
             .world
@@ -444,138 +404,5 @@ mod tests {
                 .unwrap()
                 .visible
         );
-    }
-
-    #[test]
-    fn no_hovering() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        let outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline::default())
-            .insert(ObjectPath::default())
-            .id();
-
-        app.world
-            .spawn()
-            .insert(RayCastSource::<ObjectPath>::default());
-
-        app.update();
-
-        let outline = app.world.get::<Outline>(outline_entity).unwrap();
-        assert!(!outline.visible);
-    }
-
-    #[test]
-    fn picking() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        let outline_entity = app.world.spawn().insert(ObjectPath::default()).id();
-        app.world.spawn().push_children(&[outline_entity]);
-
-        let mut ray_source = RayCastSource::<ObjectPath>::default();
-        ray_source.intersections_mut().push((
-            outline_entity,
-            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
-        ));
-        app.world.spawn().insert(ray_source);
-
-        app.world
-            .resource_mut::<ActionState<ControlAction>>()
-            .press(ControlAction::Confirm);
-
-        app.update();
-
-        let pick_buffer = app.world.resource::<ClientSendBuffer<ObjectPick>>();
-        let pick_event = pick_buffer.iter().exactly_one().unwrap();
-        assert_eq!(pick_event.0, outline_entity);
-    }
-
-    #[test]
-    fn pick_confirmation() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        const CLIENT_ID: u64 = 1;
-        let object_entity = app.world.spawn().insert(ObjectPath::default()).id();
-        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<ObjectPick>>>();
-        pick_events.send(ClientEvent {
-            client_id: CLIENT_ID,
-            event: ObjectPick(object_entity),
-        });
-
-        app.update();
-
-        assert_eq!(app.world.get::<Picked>(object_entity).unwrap().0, CLIENT_ID);
-    }
-
-    #[test]
-    fn pick_cancellation() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        const CLIENT_ID: u64 = 1;
-        let object_entity = app.world.spawn().insert(Picked(CLIENT_ID)).id();
-        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<PickCancel>>>();
-        pick_events.send(ClientEvent {
-            client_id: CLIENT_ID,
-            event: PickCancel,
-        });
-
-        app.update();
-
-        assert!(app.world.get::<Picked>(object_entity).is_none());
-    }
-
-    #[test]
-    fn pick_deletion() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        const CLIENT_ID: u64 = 1;
-        let object_entity = app.world.spawn().insert(Picked(CLIENT_ID)).id();
-        let mut pick_events = app.world.resource_mut::<Events<ClientEvent<PickDelete>>>();
-        pick_events.send(ClientEvent {
-            client_id: CLIENT_ID,
-            event: PickDelete,
-        });
-
-        app.update();
-
-        assert!(app.world.get_entity(object_entity).is_none());
-    }
-
-    #[test]
-    fn cursor_spawning() {
-        let mut app = App::new();
-        app.add_plugin(TestMovingObjectPlugin);
-
-        let object_entity = app.world.spawn().insert(Picked(SERVER_ID)).id();
-        let parent_entity = app.world.spawn().push_children(&[object_entity]).id();
-
-        app.update();
-
-        let (parent, cursor_object) = app
-            .world
-            .query::<(&Parent, &CursorObject)>()
-            .single(&app.world);
-
-        assert_eq!(parent.get(), parent_entity);
-        assert!(matches!(cursor_object, CursorObject::Moving(entity) if *entity == object_entity));
-    }
-
-    struct TestMovingObjectPlugin;
-
-    impl Plugin for TestMovingObjectPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_loopless_state(GameState::City)
-                .init_resource::<ActionState<ControlAction>>()
-                .add_plugin(CorePlugin)
-                .add_plugin(AssetPlugin)
-                .add_plugin(ObjectPlugin);
-        }
     }
 }

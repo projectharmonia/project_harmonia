@@ -201,23 +201,6 @@ mod tests {
     use crate::core::city::{City, CityBundle};
 
     #[test]
-    fn main_menu_transition() {
-        let mut app = App::new();
-        app.init_resource::<GameWorld>().add_plugin(GameWorldPlugin);
-
-        app.update();
-
-        app.world.remove_resource::<GameWorld>();
-
-        app.update();
-
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::MainMenu
-        );
-    }
-
-    #[test]
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();

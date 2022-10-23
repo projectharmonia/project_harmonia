@@ -139,25 +139,3 @@ impl ObjectCategory {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use bevy::{asset::AssetPlugin, core::CorePlugin};
-
-    use super::*;
-
-    #[test]
-    fn loading_metadata() {
-        let mut app = App::new();
-        app.add_plugin(CorePlugin)
-            .add_plugin(AssetPlugin)
-            .add_plugin(AssetMetadataPlugin);
-
-        app.update();
-
-        assert!(
-            !app.world.resource::<MetadataHandles>().is_empty(),
-            "handles should be populated with assets"
-        );
-    }
-}

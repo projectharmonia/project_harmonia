@@ -44,38 +44,3 @@ impl GroundPlugin {
             });
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::tests::HeadlessRenderPlugin;
-
-    #[test]
-    fn spawning() {
-        let mut app = App::new();
-        app.add_loopless_state(GameState::World)
-            .add_plugin(HeadlessRenderPlugin)
-            .add_plugin(GroundPlugin);
-
-        let controlled_entity = app
-            .world
-            .spawn()
-            .insert(City)
-            .insert(Visibility::default())
-            .id();
-
-        app.world.insert_resource(NextState(GameState::City));
-        app.update();
-
-        let ground_parent = app
-            .world
-            .query_filtered::<&Parent, With<Handle<Mesh>>>()
-            .single(&app.world);
-
-        assert_eq!(
-            ground_parent.get(),
-            controlled_entity,
-            "ground should be spawned as parent",
-        );
-    }
-}

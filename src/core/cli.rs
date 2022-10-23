@@ -132,43 +132,6 @@ pub(crate) struct Cli {
 }
 
 impl Cli {
-    /// Creates an instance with [`GameMode::Play`] variant.
-    #[cfg(test)]
-    fn with_play(world_name: String, city_name: Option<String>) -> Self {
-        Self {
-            subcommand: Some(GameCommand::Play(QuickLoad {
-                world_name,
-                city_name,
-            })),
-        }
-    }
-
-    /// Creates an instance with [`GameMode::Host`] variant.
-    #[cfg(test)]
-    fn with_host(
-        world_name: String,
-        city_name: Option<String>,
-        server_settings: ServerSettings,
-    ) -> Self {
-        Self {
-            subcommand: Some(GameCommand::Host {
-                quick_load: QuickLoad {
-                    world_name,
-                    city_name,
-                },
-                server_settings,
-            }),
-        }
-    }
-
-    /// Creates an instance with [`GameMode::Join`] variant.
-    #[cfg(test)]
-    fn with_join(connection_settings: ConnectionSettings) -> Self {
-        Self {
-            subcommand: Some(GameCommand::Join(connection_settings)),
-        }
-    }
-
     /// Returns arguments for quick load if was specified from any subcommand.
     pub(crate) fn get_quick_load(&self) -> Option<&QuickLoad> {
         match &self.subcommand {
@@ -181,10 +144,7 @@ impl Cli {
 
 impl Default for Cli {
     fn default() -> Self {
-        #[cfg(test)]
-        return Self { subcommand: None }; // Do not parse command line args in tests.
-        #[cfg(not(test))]
-        return Self::parse();
+        Self::parse()
     }
 }
 
@@ -211,120 +171,4 @@ pub(crate) struct QuickLoad {
     /// City name to load.
     #[arg(short, long)]
     city_name: Option<String>,
-}
-
-#[cfg(test)]
-mod tests {
-    use anyhow::Error;
-    use bevy_renet::renet::{RenetClient, RenetServer};
-
-    use super::*;
-    use crate::core::city::CityBundle;
-
-    const WORLD_NAME: &str = "World from CLI";
-    const CITY_NAME: &str = "City from CLI";
-
-    #[test]
-    fn world_loading() {
-        let mut app = App::new();
-        app.insert_resource(Cli::with_play(WORLD_NAME.to_string(), None))
-            .add_plugin(TestCliPlugin);
-
-        app.update();
-
-        assert_eq!(app.world.resource::<Events<GameLoadRequest>>().len(), 1);
-        assert_eq!(app.world.resource::<GameWorld>().world_name, WORLD_NAME);
-    }
-
-    #[test]
-    fn city_loading() {
-        let mut app = App::new();
-        app.add_plugin(TestCliPlugin);
-
-        let city_entity = app
-            .world
-            .spawn()
-            .insert_bundle(CityBundle::new(CITY_NAME.into()))
-            .id();
-
-        app.insert_resource(Cli::with_play(String::new(), Some(CITY_NAME.to_string())));
-
-        app.update();
-
-        assert!(app.world.entity(city_entity).contains::<Visibility>());
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::City,
-        );
-    }
-
-    #[test]
-    fn city_not_loading_on_error() {
-        let mut app = App::new();
-        app.insert_resource(ErrorMessage(Error::msg("")))
-            .add_plugin(TestCliPlugin);
-
-        let city_entity = app
-            .world
-            .spawn()
-            .insert_bundle(CityBundle::new(CITY_NAME.into()))
-            .id();
-
-        app.insert_resource(Cli::with_play(String::new(), Some(CITY_NAME.to_string())));
-
-        app.update();
-
-        assert!(!app.world.entity(city_entity).contains::<Visibility>());
-        assert!(!app.world.contains_resource::<NextState<GameState>>());
-    }
-
-    #[test]
-    fn hosting() {
-        let mut app = App::new();
-        app.add_plugin(TestCliPlugin);
-        let server_settings = ServerSettings {
-            port: 0,
-            ..Default::default()
-        };
-        app.world.insert_resource(Cli::with_host(
-            WORLD_NAME.to_string(),
-            None,
-            server_settings.clone(),
-        ));
-
-        app.update();
-
-        assert_eq!(*app.world.resource::<ServerSettings>(), server_settings);
-        assert!(app.world.get_resource::<RenetServer>().is_some());
-    }
-
-    #[test]
-    fn joining() {
-        let mut app = App::new();
-        app.add_plugin(TestCliPlugin);
-        let connection_settings = ConnectionSettings {
-            port: 0,
-            ..Default::default()
-        };
-        app.world
-            .insert_resource(Cli::with_join(connection_settings.clone()));
-
-        app.update();
-
-        assert_eq!(
-            *app.world.resource::<ConnectionSettings>(),
-            connection_settings,
-        );
-        assert!(app.world.get_resource::<RenetClient>().is_some());
-    }
-
-    struct TestCliPlugin;
-
-    impl Plugin for TestCliPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_event::<GameLoadRequest>()
-                .init_resource::<NetworkEventCounter>()
-                .add_plugin(CliPlugin);
-        }
-    }
 }
