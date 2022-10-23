@@ -88,7 +88,10 @@ impl FamilyEditorUiPlugin {
                         }
                     }
                     if ui.button("+").clicked() {
-                        let new_member = commands.entity(family_editors.single()).add_children(|parent| parent.spawn_bundle(DollBundle::default()).id());
+                        if let Ok(current_entity) = current_entity {
+                            commands.entity(current_entity).remove::<EditableDoll>();
+                        }
+                        let new_member = commands.entity(family_editors.single()).add_children(|parent| parent.spawn_bundle(DollBundle::default()).insert(EditableDoll).id());
                         family.push(new_member);
                     }
                 });
