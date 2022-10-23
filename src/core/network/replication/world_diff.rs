@@ -199,7 +199,6 @@ impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
     type Value = WorldDiff;
 
-    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
@@ -238,7 +237,6 @@ impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for EntitiesDeserializer<'a> {
     type Value = HashMap<Entity, Vec<ComponentDiff>>;
 
-    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
@@ -273,7 +271,6 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentsDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for ComponentsDeserializer<'a> {
     type Value = Vec<ComponentDiff>;
 
-    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
@@ -310,7 +307,6 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentDiffDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for ComponentDiffDeserializer<'a> {
     type Value = ComponentDiff;
 
-    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
@@ -345,7 +341,6 @@ impl<'de> DeserializeSeed<'de> for DespawnsDeserializer {
 impl<'de> Visitor<'de> for DespawnsDeserializer {
     type Value = Vec<Entity>;
 
-    #[cfg_attr(coverage, no_coverage)]
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }

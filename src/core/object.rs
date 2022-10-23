@@ -240,7 +240,6 @@ fn set_outline_recursive(
 struct ObjectPick(#[serde(with = "entity_serde")] pub(super) Entity);
 
 impl MapEntities for ObjectPick {
-    #[cfg_attr(coverage, no_coverage)]
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.0 = entity_map.get(self.0)?;
         Ok(())

@@ -15,7 +15,6 @@ pub(super) struct NetworkPresetPlugin {
 impl NetworkPresetPlugin {
     /// Creates only client.
     #[allow(dead_code)]
-    #[cfg_attr(coverage, no_coverage)]
     pub(super) fn client() -> Self {
         Self {
             client: true,

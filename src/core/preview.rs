@@ -78,7 +78,6 @@ impl PreviewPlugin {
         preview_events.clear();
     }
 
-    #[cfg_attr(coverage, no_coverage)]
     fn wait_for_loading_system(
         mut commands: Commands,
         mut asset_events: EventWriter<AssetEvent<Image>>,
