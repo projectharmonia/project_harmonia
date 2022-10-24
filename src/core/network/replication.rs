@@ -21,7 +21,7 @@ use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
 #[cfg(not(test))]
-use super::server::TICK;
+use super::server::ServerFixedTimestep;
 use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,
@@ -43,40 +43,36 @@ impl PluginGroup for ReplicationPlugins {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
-enum ReplicationStage {
-    Tick,
-}
-
 struct ReplicationPlugin;
 
 impl Plugin for ReplicationPlugin {
     fn build(&self, app: &mut App) {
-        let tick_stage = SystemStage::single(
-            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
-        );
-        #[cfg(not(test))]
-        let tick_stage = FixedTimestepStage::from_stage(TICK, tick_stage);
-
         app.init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
-            .add_stage_before(CoreStage::Update, ReplicationStage::Tick, tick_stage)
+            .add_system(
+                Self::world_diff_receiving_system
+                    .into_conditional_exclusive()
+                    .run_if(client::is_connected)
+                    .at_start(),
+            )
             .add_system(Self::tick_ack_sending_system.run_if(client::is_connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())
             .add_system(Self::client_reset_system.run_if_resource_removed::<RenetClient>());
 
-        {
-            // To avoid ambiguity: https://github.com/IyesGames/iyes_loopless/issues/15
-            use iyes_loopless::condition::IntoConditionalExclusiveSystem;
-            app.add_system(
-                Self::world_diff_receiving_system
-                    .run_if(client::is_connected)
-                    .at_start(),
-            );
-        }
+        #[cfg(test)]
+        app.add_system_to_stage(
+            CoreStage::Update,
+            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
+        );
+        #[cfg(not(test))]
+        app.add_fixed_timestep_system(
+            ServerFixedTimestep::Tick.into(),
+            0,
+            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
+        );
     }
 }
 

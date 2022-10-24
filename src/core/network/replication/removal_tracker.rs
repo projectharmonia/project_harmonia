@@ -1,6 +1,6 @@
 use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
-use iyes_loopless::prelude::IntoConditionalSystem;
+use iyes_loopless::prelude::*;
 
 use super::AckedTicks;
 use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};

@@ -120,7 +120,7 @@ impl InGameMenuPlugin {
 
     fn exit_to_main_menu_system(
         mut commands: Commands,
-        mut save_events: ResMut<Events<GameSave>>,
+        mut save_events: EventWriter<GameSave>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<UiAction>>,
         client: Option<Res<RenetClient>>,
@@ -133,9 +133,6 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if client.is_none() && ui.button("Save and exit").clicked() {
                         save_events.send_default();
-                        // Should be called to avoid the exclusive saving system react on the event twice.
-                        // See https://github.com/IyesGames/iyes_loopless/issues/31
-                        save_events.update();
                         commands.remove_resource::<GameWorld>();
                         ui.close_modal();
                     }
