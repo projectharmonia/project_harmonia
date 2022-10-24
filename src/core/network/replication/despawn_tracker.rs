@@ -1,6 +1,6 @@
 use bevy::{ecs::system::SystemChangeTick, prelude::*, utils::HashSet};
 use bevy_renet::renet::RenetServer;
-use iyes_loopless::prelude::IntoConditionalSystem;
+use iyes_loopless::prelude::*;
 
 use super::AckedTicks;
 use crate::core::game_world::GameEntity;

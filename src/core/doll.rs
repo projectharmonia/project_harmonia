@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use derive_more::Display;
-use iyes_loopless::prelude::IntoConditionalSystem;
+use iyes_loopless::prelude::*;
 
 use super::game_world::GameWorld;
 

@@ -33,7 +33,7 @@ impl Plugin for CliPlugin {
 impl CliPlugin {
     fn subcommand_system(
         mut commands: Commands,
-        mut load_events: ResMut<Events<GameLoadRequest>>,
+        mut load_events: EventWriter<GameLoadRequest>,
         cli: Res<Cli>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
@@ -42,9 +42,6 @@ impl CliPlugin {
                 GameCommand::Play(quick_load) => {
                     commands.insert_resource(GameWorld::new(quick_load.world_name.clone()));
                     load_events.send_default();
-                    // Should be called to avoid other systems reacting on the event twice
-                    // See https://github.com/IyesGames/iyes_loopless/issues/31
-                    load_events.update();
                 }
                 GameCommand::Host {
                     quick_load,
@@ -58,9 +55,6 @@ impl CliPlugin {
 
                     commands.insert_resource(GameWorld::new(quick_load.world_name.clone()));
                     load_events.send_default();
-                    // Should be called to avoid other systems reacting on the event twice
-                    // See https://github.com/IyesGames/iyes_loopless/issues/31
-                    load_events.update();
                 }
                 GameCommand::Join(connection_settings) => {
                     let client = connection_settings
