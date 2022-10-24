@@ -42,6 +42,9 @@ pub(super) struct CorePlugins;
 
 impl PluginGroup for CorePlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
+        // Should be built first to register server fixed timestep.
+        NetworkPlugins.build(group);
+
         group
             .add(AssetMetadataPlugin)
             .add(GameStatePlugin)
@@ -60,6 +63,5 @@ impl PluginGroup for CorePlugins {
 
         GameWorldPlugins.build(group);
         ObjectPlugins.build(group);
-        NetworkPlugins.build(group);
     }
 }

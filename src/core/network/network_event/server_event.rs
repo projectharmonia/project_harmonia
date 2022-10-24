@@ -9,7 +9,10 @@ use tap::TapFallible;
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::GameWorld,
-    network::{server::SERVER_ID, REPLICATION_CHANNEL_ID},
+    network::{
+        server::{ServerFixedTimestep, SERVER_ID},
+        REPLICATION_CHANNEL_ID,
+    },
 };
 
 #[derive(SystemLabel)]
@@ -37,18 +40,27 @@ impl ServerEventAppExt for App {
         self.add_event::<T>()
             .init_resource::<ServerSendBuffer<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(
-                sending_system::<T>
-                    .run_if_resource_exists::<RenetServer>()
-                    .label(ServerEventSystems::<T>::SendingSystem),
-            )
-            .add_system(
-                local_resending_system::<T>
-                    .run_unless_resource_exists::<RenetClient>()
-                    .run_if_resource_exists::<GameWorld>()
-                    .after(ServerEventSystems::<T>::SendingSystem),
-            )
             .add_system(receiving_system::<T>.run_if_resource_exists::<RenetClient>());
+
+        let sending_system = sending_system::<T>
+            .run_if_resource_exists::<RenetServer>()
+            .label(ServerEventSystems::<T>::SendingSystem);
+        let local_resending_system = local_resending_system::<T>
+            .run_unless_resource_exists::<RenetClient>()
+            .run_if_resource_exists::<GameWorld>()
+            .after(ServerEventSystems::<T>::SendingSystem);
+
+        if cfg!(test) {
+            self.add_system_to_stage(CoreStage::Update, sending_system);
+            self.add_system_to_stage(CoreStage::Update, local_resending_system);
+        } else {
+            self.add_fixed_timestep_system(ServerFixedTimestep::Tick.into(), 0, sending_system);
+            self.add_fixed_timestep_system(
+                ServerFixedTimestep::Tick.into(),
+                0,
+                local_resending_system,
+            );
+        }
 
         self
     }
