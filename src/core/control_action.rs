@@ -13,11 +13,8 @@ pub(super) struct ControlActionsPlugin;
 
 impl Plugin for ControlActionsPlugin {
     fn build(&self, app: &mut App) {
-        let mut toggle_actions = ToggleActions::<ControlAction>::default();
-        toggle_actions.enabled = false;
-
         app.init_resource::<ActionState<ControlAction>>()
-            .insert_resource(toggle_actions)
+            .insert_resource(ToggleActions::<ControlAction>::DISABLED)
             .add_startup_system(Self::load_mappings_system)
             .add_enter_system(GameState::City, Self::enable_actions)
             .add_exit_system(GameState::City, Self::disable_actions)
