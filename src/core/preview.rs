@@ -93,8 +93,6 @@ impl PreviewPlugin {
         match asset_server.get_load_state(scene_handle) {
             LoadState::NotLoaded | LoadState::Loading => (),
             LoadState::Loaded => {
-                // Ignore logging in tests to exclude it from coverage.
-                #[cfg(not(test))]
                 debug!(
                     "asset {:?} was sucessfully loaded to generate preview",
                     asset_server.get_handle_path(metadata_id.0)
@@ -122,8 +120,6 @@ impl PreviewPlugin {
                 commands.insert_resource(NextState(PreviewState::Rendering));
             }
             LoadState::Failed => {
-                // Ignore logging in tests to exclude it from coverage.
-                #[cfg(not(test))]
                 error!(
                     "unable to load preview for {:?}",
                     asset_server.get_handle_path(metadata_id.0)

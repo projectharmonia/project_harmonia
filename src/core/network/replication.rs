@@ -20,7 +20,6 @@ use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-#[cfg(not(test))]
 use super::server::ServerFixedTimestep;
 use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
@@ -62,17 +61,18 @@ impl Plugin for ReplicationPlugin {
             .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())
             .add_system(Self::client_reset_system.run_if_resource_removed::<RenetClient>());
 
-        #[cfg(test)]
-        app.add_system_to_stage(
-            CoreStage::Update,
-            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
-        );
-        #[cfg(not(test))]
-        app.add_fixed_timestep_system(
-            ServerFixedTimestep::Tick.into(),
-            0,
-            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
-        );
+        if cfg!(test) {
+            app.add_system_to_stage(
+                CoreStage::Update,
+                Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
+            );
+        } else {
+            app.add_fixed_timestep_system(
+                ServerFixedTimestep::Tick.into(),
+                0,
+                Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>(),
+            );
+        }
     }
 }
 
