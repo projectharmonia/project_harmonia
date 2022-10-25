@@ -7,7 +7,6 @@ use iyes_loopless::prelude::*;
 use super::{
     error_message,
     game_paths::GamePaths,
-    game_state::GameState,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
 };
 
@@ -35,7 +34,6 @@ impl Plugin for FamilyPlugin {
 
 impl FamilyPlugin {
     fn saving_system(
-        mut commands: Commands,
         mut save_events: EventReader<FamilySave>,
         mut set: ParamSet<(&World, EventWriter<FamilySaved>)>,
         ignore_rules: Res<IgnoreRules>,
@@ -61,7 +59,6 @@ impl FamilyPlugin {
                 .with_context(|| format!("unable to save game to {family_path:?}"))?;
 
             set.p1().send_default();
-            commands.insert_resource(NextState(GameState::World));
         }
 
         Ok(())
