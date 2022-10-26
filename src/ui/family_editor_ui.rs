@@ -1,11 +1,12 @@
-use std::mem;
-
 use anyhow::{ensure, Result};
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{epaint::WHITE_UV, Align2, Area, ImageButton, TextEdit, TextureId, Window},
+    egui::{
+        epaint::WHITE_UV, Align, Align2, Area, ImageButton, Layout, TextEdit, TextureId, Window,
+    },
     EguiContext,
 };
+use bevy_inspector_egui::egui::Button;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -17,7 +18,7 @@ use super::{
 use crate::core::{
     doll::{DollBundle, FirstName, LastName},
     error_message,
-    family::{Family, FamilySave, FamilySaved, FamilySystems},
+    family::{DespawnFamilyExt, Family, FamilyBundle, FamilySave, FamilySaved, FamilySystems},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor},
     game_state::GameState,
 };
@@ -29,7 +30,7 @@ impl Plugin for FamilyEditorUiPlugin {
         app.add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
             .add_system(
-                Self::confirm_cancel_system
+                Self::buttons_system
                     .chain(error_message::err_message_system)
                     .run_in_state(GameState::FamilyEditor),
             )
@@ -38,7 +39,7 @@ impl Plugin for FamilyEditorUiPlugin {
                     .run_if_resource_exists::<SaveFamilyDialog>()
                     .before(FamilySystems::SaveSystem),
             )
-            .add_system(Self::confirmation_system.run_on_event::<FamilySaved>());
+            .add_system(Self::reset_system.run_on_event::<FamilySaved>());
     }
 }
 
@@ -98,7 +99,7 @@ impl FamilyEditorUiPlugin {
             });
     }
 
-    fn confirm_cancel_system(
+    fn buttons_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         editable_families: Query<&Family, With<EditableFamily>>,
@@ -108,10 +109,12 @@ impl FamilyEditorUiPlugin {
         Area::new("Confrirm cancel")
             .anchor(Align2::RIGHT_BOTTOM, (-UI_MARGIN, -UI_MARGIN))
             .show(egui.ctx_mut(), |ui| {
-                if ui.button("Cancel").clicked() {
-                    commands.insert_resource(NextState(GameState::World));
-                }
-                is_confirmed = ui.button("Confirm").clicked();
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        commands.insert_resource(NextState(GameState::World));
+                    }
+                    is_confirmed = ui.button("Confirm").clicked();
+                });
             });
 
         if is_confirmed {
@@ -148,13 +151,29 @@ impl FamilyEditorUiPlugin {
         ModalWindow::new("Save family")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut save_dialog.family_name);
-                if ui.button("Ok").clicked() {
-                    let (family_entity, mut name) = editable_families.single_mut();
-                    name.set(mem::take(&mut save_dialog.family_name));
-                    save_events.send(FamilySave(family_entity));
-                    ui.close_modal();
-                }
+                ui.horizontal(|ui| {
+                    ui.label("Family name:");
+                    ui.text_edit_singleline(&mut save_dialog.family_name);
+                });
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    if ui.button("Cancel").clicked() {
+                        ui.close_modal();
+                    }
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                        if ui
+                            .add_enabled(
+                                !save_dialog.family_name.is_empty(),
+                                Button::new("Save to library"),
+                            )
+                            .clicked()
+                        {
+                            let (family_entity, mut name) = editable_families.single_mut();
+                            name.set(save_dialog.family_name.to_string());
+                            save_events.send(FamilySave(family_entity));
+                            ui.close_modal();
+                        }
+                    });
+                });
             });
 
         if !is_open {
@@ -162,8 +181,20 @@ impl FamilyEditorUiPlugin {
         }
     }
 
-    fn confirmation_system(mut commands: Commands) {
-        commands.insert_resource(NextState(GameState::World));
+    fn reset_system(
+        mut commands: Commands,
+        editable_families: Query<Entity, With<EditableFamily>>,
+        family_editors: Query<Entity, With<FamilyEditor>>,
+    ) {
+        commands.remove_resource::<SaveFamilyDialog>();
+        commands.entity(editable_families.single()).despawn_family();
+        commands
+            .entity(family_editors.single())
+            .with_children(|parent| {
+                parent
+                    .spawn_bundle(FamilyBundle::default())
+                    .insert(EditableFamily);
+            });
     }
 }
 

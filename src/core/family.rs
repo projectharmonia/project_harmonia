@@ -1,7 +1,12 @@
 use std::{fs, iter};
 
 use anyhow::{Context, Result};
-use bevy::{prelude::*, reflect::TypeRegistry, scene::DynamicEntity};
+use bevy::{
+    ecs::system::{Command, EntityCommands},
+    prelude::*,
+    reflect::TypeRegistry,
+    scene::DynamicEntity,
+};
 use iyes_loopless::prelude::*;
 
 use super::{
@@ -132,6 +137,32 @@ pub(crate) struct FamilySave(pub(crate) Entity);
 
 #[derive(Default)]
 pub(crate) struct FamilySaved;
+
+pub(crate) trait DespawnFamilyExt {
+    fn despawn_family(&mut self);
+}
+
+impl DespawnFamilyExt for EntityCommands<'_, '_, '_> {
+    fn despawn_family(&mut self) {
+        let family_entity = self.id();
+        self.commands().add(DespawnFamily(family_entity));
+    }
+}
+
+struct DespawnFamily(Entity);
+
+impl Command for DespawnFamily {
+    fn write(self, world: &mut World) {
+        let mut family_entity = world.entity_mut(self.0);
+        let family = family_entity
+            .remove::<Family>()
+            .expect("despawn family command refer to an entity with family component");
+        family_entity.despawn();
+        for entity in family.0 {
+            world.entity_mut(entity).despawn_recursive();
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

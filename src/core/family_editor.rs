@@ -52,8 +52,10 @@ impl FamilyEditorPlugin {
         mut visibility: Query<&mut Visibility>,
     ) {
         for entity in removed_editable_dolls.iter() {
-            let mut visibility = visibility.get_mut(entity).unwrap();
-            visibility.is_visible = false;
+            // Entity could be despawned before.
+            if let Ok(mut visibility) = visibility.get_mut(entity) {
+                visibility.is_visible = false;
+            }
         }
     }
 
