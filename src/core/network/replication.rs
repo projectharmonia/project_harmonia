@@ -97,7 +97,7 @@ impl ReplicationPlugin {
         let current_tick = set.p0().read_change_tick();
         for (client_id, mut world_diff) in client_diffs {
             world_diff.tick = current_tick; // Replace last acknowledged tick with the current.
-            let serializer = WorldDiffSerializer::new(&registry, &world_diff);
+            let serializer = WorldDiffSerializer::new(&world_diff, &registry);
             let message = rmp_serde::to_vec(&serializer).expect("world diff should be serialized");
             set.p1()
                 .send_message(client_id, REPLICATION_CHANNEL_ID, message);

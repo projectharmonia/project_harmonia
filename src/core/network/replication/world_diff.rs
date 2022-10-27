@@ -73,8 +73,8 @@ enum WorldDiffField {
 
 #[derive(Constructor)]
 pub(super) struct WorldDiffSerializer<'a> {
-    registry: &'a TypeRegistry,
     world_diff: &'a WorldDiff,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> Serialize for WorldDiffSerializer<'a> {
@@ -86,7 +86,7 @@ impl<'a> Serialize for WorldDiffSerializer<'a> {
         state.serialize_field(WorldDiffField::Tick.into(), &self.world_diff.tick)?;
         state.serialize_field(
             WorldDiffField::Entities.into(),
-            &EntitiesSerializer::new(&self.registry.read(), &self.world_diff.entities),
+            &EntitiesSerializer::new(&self.world_diff.entities, &self.registry.read()),
         )?;
         state.serialize_field(
             WorldDiffField::Despawned.into(),
@@ -98,8 +98,8 @@ impl<'a> Serialize for WorldDiffSerializer<'a> {
 
 #[derive(Constructor)]
 struct EntitiesSerializer<'a> {
-    registry: &'a TypeRegistryInternal,
     entities: &'a HashMap<Entity, Vec<ComponentDiff>>,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl<'a> Serialize for EntitiesSerializer<'a> {
@@ -108,7 +108,7 @@ impl<'a> Serialize for EntitiesSerializer<'a> {
         for (&entity, components) in self.entities {
             map.serialize_entry(
                 &EntitySerializer(entity),
-                &ComponentsSerializer::new(self.registry, components),
+                &ComponentsSerializer::new(components, self.registry),
             )?;
         }
         map.end()
@@ -117,15 +117,15 @@ impl<'a> Serialize for EntitiesSerializer<'a> {
 
 #[derive(Constructor)]
 struct ComponentsSerializer<'a> {
-    registry: &'a TypeRegistryInternal,
     components: &'a Vec<ComponentDiff>,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl<'a> Serialize for ComponentsSerializer<'a> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.components.len()))?;
         for component_diff in self.components {
-            seq.serialize_element(&ComponentDiffSerializer::new(self.registry, component_diff))?;
+            seq.serialize_element(&ComponentDiffSerializer::new(component_diff, self.registry))?;
         }
         seq.end()
     }
@@ -133,8 +133,8 @@ impl<'a> Serialize for ComponentsSerializer<'a> {
 
 #[derive(Constructor)]
 struct ComponentDiffSerializer<'a> {
-    registry: &'a TypeRegistryInternal,
     component_diff: &'a ComponentDiff,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl<'a> Serialize for ComponentDiffSerializer<'a> {
@@ -379,7 +379,7 @@ mod tests {
     fn component_diff_removed_ser() {
         let registry = TypeRegistryInternal::new();
         let component_diff = ComponentDiff::Removed(COMPONENT_NAME.to_string());
-        let serializer = ComponentDiffSerializer::new(&registry, &component_diff);
+        let serializer = ComponentDiffSerializer::new(&component_diff, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
@@ -398,7 +398,7 @@ mod tests {
         let mut registry = TypeRegistryInternal::new();
         registry.register::<Visibility>();
         let component_diff = ComponentDiff::Changed(Visibility::visible().clone_value());
-        let serializer = ComponentDiffSerializer::new(&registry, &component_diff);
+        let serializer = ComponentDiffSerializer::new(&component_diff, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
@@ -429,7 +429,7 @@ mod tests {
     fn components_ser_empty() {
         let registry = TypeRegistryInternal::new();
         let components = Vec::new();
-        let serializer = ComponentsSerializer::new(&registry, &components);
+        let serializer = ComponentsSerializer::new(&components, &registry);
 
         serde_test::assert_ser_tokens(&serializer, &[Token::Seq { len: Some(0) }, Token::SeqEnd]);
     }
@@ -438,7 +438,7 @@ mod tests {
     fn components_ser() {
         let registry = TypeRegistryInternal::new();
         let components = Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]);
-        let serializer = ComponentsSerializer::new(&registry, &components);
+        let serializer = ComponentsSerializer::new(&components, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
@@ -458,7 +458,7 @@ mod tests {
     fn entities_ser_empty() {
         let registry = TypeRegistryInternal::new();
         let entities = HashMap::new();
-        let serializer = EntitiesSerializer::new(&registry, &entities);
+        let serializer = EntitiesSerializer::new(&entities, &registry);
 
         serde_test::assert_ser_tokens(&serializer, &[Token::Map { len: Some(0) }, Token::MapEnd]);
     }
@@ -470,7 +470,7 @@ mod tests {
             Entity::from_bits(ENTITY_ID),
             Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
         )]);
-        let serializer = EntitiesSerializer::new(&registry, &entities);
+        let serializer = EntitiesSerializer::new(&entities, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
@@ -493,7 +493,7 @@ mod tests {
     fn world_diff_ser_empty() {
         let registry = TypeRegistry::default();
         let world_diff = WorldDiff::new(TICK);
-        let serializer = WorldDiffSerializer::new(&registry, &world_diff);
+        let serializer = WorldDiffSerializer::new(&world_diff, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
@@ -526,7 +526,7 @@ mod tests {
             )]),
             despawns: Vec::from([Entity::from_bits(ENTITY_ID)]),
         };
-        let serializer = WorldDiffSerializer::new(&registry, &world_diff);
+        let serializer = WorldDiffSerializer::new(&world_diff, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,
