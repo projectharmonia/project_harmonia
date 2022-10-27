@@ -1,7 +1,7 @@
 mod city_hud;
 mod connection_dialog;
 mod error_message;
-mod family_editor_ui;
+mod family_editor_menu;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
@@ -16,7 +16,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 use city_hud::CityHudPlugin;
 use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
-use family_editor_ui::FamilyEditorUiPlugin;
+use family_editor_menu::FamilyEditorMenuPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
@@ -36,7 +36,7 @@ impl PluginGroup for UiPlugins {
             .add(CityHudPlugin)
             .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
-            .add(FamilyEditorUiPlugin)
+            .add(FamilyEditorMenuPlugin)
             .add(InGameMenuPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)

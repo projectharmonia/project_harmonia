@@ -23,9 +23,9 @@ use crate::core::{
     game_state::GameState,
 };
 
-pub(super) struct FamilyEditorUiPlugin;
+pub(super) struct FamilyEditorMenuPlugin;
 
-impl Plugin for FamilyEditorUiPlugin {
+impl Plugin for FamilyEditorMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
@@ -43,7 +43,7 @@ impl Plugin for FamilyEditorUiPlugin {
     }
 }
 
-impl FamilyEditorUiPlugin {
+impl FamilyEditorMenuPlugin {
     fn personality_window_system(
         mut egui: ResMut<EguiContext>,
         mut editable_dolls: Query<(&mut FirstName, &mut LastName), With<EditableDoll>>,
