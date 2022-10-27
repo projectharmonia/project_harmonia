@@ -164,7 +164,7 @@ struct DespawnsSerializer<'a> {
 impl<'a> Serialize for DespawnsSerializer<'a> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.despawns.len()))?;
-        for &entity in self.despawns.iter() {
+        for &entity in self.despawns {
             seq.serialize_element(&EntitySerializer(entity))?;
         }
         seq.end()
