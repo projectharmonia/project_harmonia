@@ -372,8 +372,6 @@ mod tests {
     use super::*;
 
     const COMPONENT_NAME: &str = "My component";
-    const ENTITY_ID: u64 = 0;
-    const TICK: u32 = 0;
 
     #[test]
     fn component_diff_removed_ser() {
@@ -426,97 +424,9 @@ mod tests {
     }
 
     #[test]
-    fn components_ser_empty() {
-        let registry = TypeRegistryInternal::new();
-        let components = Vec::new();
-        let serializer = ComponentsSerializer::new(&components, &registry);
-
-        serde_test::assert_ser_tokens(&serializer, &[Token::Seq { len: Some(0) }, Token::SeqEnd]);
-    }
-
-    #[test]
-    fn components_ser() {
-        let registry = TypeRegistryInternal::new();
-        let components = Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]);
-        let serializer = ComponentsSerializer::new(&components, &registry);
-
-        serde_test::assert_ser_tokens(
-            &serializer,
-            &[
-                Token::Seq { len: Some(1) },
-                Token::NewtypeVariant {
-                    name: any::type_name::<ComponentDiff>(),
-                    variant: ComponentDiffField::Removed.into(),
-                },
-                Token::Str(COMPONENT_NAME),
-                Token::SeqEnd,
-            ],
-        );
-    }
-
-    #[test]
-    fn entities_ser_empty() {
-        let registry = TypeRegistryInternal::new();
-        let entities = HashMap::new();
-        let serializer = EntitiesSerializer::new(&entities, &registry);
-
-        serde_test::assert_ser_tokens(&serializer, &[Token::Map { len: Some(0) }, Token::MapEnd]);
-    }
-
-    #[test]
-    fn entities_ser() {
-        let registry = TypeRegistryInternal::new();
-        let entities = HashMap::from([(
-            Entity::from_bits(ENTITY_ID),
-            Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
-        )]);
-        let serializer = EntitiesSerializer::new(&entities, &registry);
-
-        serde_test::assert_ser_tokens(
-            &serializer,
-            &[
-                Token::Map { len: Some(1) },
-                Token::U64(ENTITY_ID),
-                Token::Seq { len: Some(1) },
-                Token::NewtypeVariant {
-                    name: any::type_name::<ComponentDiff>(),
-                    variant: ComponentDiffField::Removed.into(),
-                },
-                Token::Str(COMPONENT_NAME),
-                Token::SeqEnd,
-                Token::MapEnd,
-            ],
-        );
-    }
-
-    #[test]
-    fn world_diff_ser_empty() {
-        let registry = TypeRegistry::default();
-        let world_diff = WorldDiff::new(TICK);
-        let serializer = WorldDiffSerializer::new(&world_diff, &registry);
-
-        serde_test::assert_ser_tokens(
-            &serializer,
-            &[
-                Token::Struct {
-                    name: any::type_name::<WorldDiff>(),
-                    len: WorldDiffField::VARIANTS.len(),
-                },
-                Token::Str(WorldDiffField::Tick.into()),
-                Token::U32(TICK),
-                Token::Str(WorldDiffField::Entities.into()),
-                Token::Map { len: Some(0) },
-                Token::MapEnd,
-                Token::Str(WorldDiffField::Despawned.into()),
-                Token::Seq { len: Some(0) },
-                Token::SeqEnd,
-                Token::StructEnd,
-            ],
-        );
-    }
-
-    #[test]
     fn world_diff_ser() {
+        const ENTITY_ID: u64 = 0;
+        const TICK: u32 = 0;
         let registry = TypeRegistry::default();
         let world_diff = WorldDiff {
             tick: TICK,
