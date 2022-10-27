@@ -232,7 +232,7 @@ fn collect_changes(
                 .type_id()
                 .and_then(|type_id| registry.get(type_id))
                 .and_then(|registration| registration.data::<ReflectComponent>())
-                .expect("non-ignored components should be registered and have reflect(Component)");
+                .unwrap_or_else(|| panic!("non-ignored component {type_name} should be registered and have reflect(Component)"));
 
             match storage_type {
                 StorageType::Table => {
@@ -297,15 +297,15 @@ fn collect_if_changed(
 ) {
     for world_diff in client_diffs.values_mut() {
         if ticks.is_changed(world_diff.tick, world.read_change_tick()) {
-            let reflect = reflect_component
+            let component = reflect_component
                 .reflect(world, entity)
-                .unwrap_or_else(|| panic!("unable to reflect {type_name}"))
+                .unwrap_or_else(|| panic!("entity should have {type_name}"))
                 .clone_value();
             world_diff
                 .entities
                 .entry(entity)
                 .or_default()
-                .push(ComponentDiff::Changed(reflect));
+                .push(ComponentDiff::Changed(component));
         }
     }
 }
@@ -390,15 +390,15 @@ fn apply_component_diff(
     let type_name = component_diff.type_name();
     let registration = registry
         .get_with_name(type_name)
-        .with_context(|| format!("received change in unknown type name {type_name}"))?;
+        .with_context(|| format!("received a change in unknown type name {type_name}"))?;
 
     let reflect_component = registration
         .data::<ReflectComponent>()
         .with_context(|| format!("unable to reflect received {type_name}"))?;
 
     match component_diff {
-        ComponentDiff::Changed(reflect) => {
-            reflect_component.apply_or_insert(world, local_entity, &**reflect);
+        ComponentDiff::Changed(component) => {
+            reflect_component.apply_or_insert(world, local_entity, &**component);
             if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
                     .map_entities(world, entity_map.to_client(), local_entity)

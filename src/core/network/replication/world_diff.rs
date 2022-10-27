@@ -30,7 +30,7 @@ impl ComponentDiff {
     /// Returns changed component type name.
     pub(super) fn type_name(&self) -> &str {
         match self {
-            ComponentDiff::Changed(reflect) => reflect.type_name(),
+            ComponentDiff::Changed(component) => component.type_name(),
             ComponentDiff::Removed(type_name) => type_name,
         }
     }
@@ -140,11 +140,11 @@ struct ComponentDiffSerializer<'a> {
 impl<'a> Serialize for ComponentDiffSerializer<'a> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self.component_diff {
-            ComponentDiff::Changed(reflect) => serializer.serialize_newtype_variant(
+            ComponentDiff::Changed(component) => serializer.serialize_newtype_variant(
                 any::type_name::<ComponentDiff>(),
                 ComponentDiffField::Changed as u32,
                 ComponentDiffField::Changed.into(),
-                &ReflectSerializer::new(&**reflect, self.registry),
+                &ReflectSerializer::new(&**component, self.registry),
             ),
             ComponentDiff::Removed(type_name) => serializer.serialize_newtype_variant(
                 any::type_name::<ComponentDiff>(),

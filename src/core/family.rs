@@ -93,13 +93,13 @@ fn save_to_scene(
         }) {
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
             let type_name = component_info.name();
-            let reflect = component_info
+            let component = component_info
                 .type_id()
                 .and_then(|type_id| registry.get(type_id))
                 .and_then(|registration| registration.data::<ReflectComponent>())
                 .and_then(|reflect_component| reflect_component.reflect(world, entity.id()))
-                .unwrap_or_else(|| panic!("non-ignored component {type_name} should be reflected"));
-            dynamic_entity.components.push(reflect.clone_value());
+                .unwrap_or_else(|| panic!("non-ignored component {type_name} should be registered and have reflect(Component)"));
+            dynamic_entity.components.push(component.clone_value());
         }
 
         scene.entities.push(dynamic_entity);

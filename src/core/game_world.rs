@@ -149,16 +149,16 @@ fn save_to_scene(
                 .type_id()
                 .and_then(|type_id| registry.get(type_id))
                 .and_then(|registration| registration.data::<ReflectComponent>())
-                .expect("non-ignored component should have ReflectComponent");
+                .unwrap_or_else(|| panic!("non-ignored component {type_name} should be registered and have reflect(Component)"));
 
             for (index, entity) in archetype.entities().iter().enumerate() {
-                let reflect = reflect_component
+                let component = reflect_component
                     .reflect(world, *entity)
-                    .unwrap_or_else(|| panic!("object should reflect {type_name}"));
+                    .unwrap_or_else(|| panic!("object should have {type_name}"));
 
                 scene.entities[entities_offset + index]
                     .components
-                    .push(reflect.clone_value());
+                    .push(component.clone_value());
             }
         }
     }
