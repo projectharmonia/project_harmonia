@@ -73,8 +73,8 @@ enum WorldDiffField {
 
 #[derive(Constructor)]
 pub(super) struct WorldDiffSerializer<'a> {
-    pub(super) registry: &'a TypeRegistry,
-    pub(super) world_diff: &'a WorldDiff,
+    registry: &'a TypeRegistry,
+    world_diff: &'a WorldDiff,
 }
 
 impl<'a> Serialize for WorldDiffSerializer<'a> {
@@ -171,7 +171,7 @@ impl<'a> Serialize for DespawnsSerializer<'a> {
     }
 }
 
-pub(super) struct EntitySerializer(pub(super) Entity);
+struct EntitySerializer(Entity);
 
 impl Serialize for EntitySerializer {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -181,7 +181,7 @@ impl Serialize for EntitySerializer {
 
 #[derive(Constructor)]
 pub(super) struct WorldDiffDeserializer<'a> {
-    pub(super) registry: &'a TypeRegistry,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
@@ -355,7 +355,7 @@ impl<'de> Visitor<'de> for DespawnsDeserializer {
     }
 }
 
-pub(super) struct EntityDeserializer;
+struct EntityDeserializer;
 
 impl<'de> DeserializeSeed<'de> for EntityDeserializer {
     type Value = Entity;
