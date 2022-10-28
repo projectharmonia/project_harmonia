@@ -19,7 +19,7 @@ use serde::{
 };
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
-use crate::core::network::entity_serde;
+use crate::core::network::entity_serde::{EntityDeserializer, EntitySerializer};
 
 /// Type of component or resource change.
 pub(super) enum ComponentDiff {
@@ -171,14 +171,6 @@ impl<'a> Serialize for DespawnsSerializer<'a> {
             seq.serialize_element(&EntitySerializer(entity))?;
         }
         seq.end()
-    }
-}
-
-struct EntitySerializer(Entity);
-
-impl Serialize for EntitySerializer {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        entity_serde::serialize(&self.0, serializer)
     }
 }
 
@@ -355,16 +347,6 @@ impl<'de> Visitor<'de> for DespawnsDeserializer {
         }
 
         Ok(despawns)
-    }
-}
-
-struct EntityDeserializer;
-
-impl<'de> DeserializeSeed<'de> for EntityDeserializer {
-    type Value = Entity;
-
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        entity_serde::deserialize(deserializer)
     }
 }
 
