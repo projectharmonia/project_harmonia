@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectDeserializer, ReflectSerializer},
-        TypeRegistry, TypeRegistryInternal,
+        TypeRegistryInternal,
     },
     utils::HashMap,
 };
@@ -77,7 +77,7 @@ enum WorldDiffField {
 #[derive(Constructor)]
 pub(super) struct WorldDiffSerializer<'a> {
     world_diff: &'a WorldDiff,
-    registry: &'a TypeRegistry,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl<'a> Serialize for WorldDiffSerializer<'a> {
@@ -89,7 +89,7 @@ impl<'a> Serialize for WorldDiffSerializer<'a> {
         state.serialize_field(WorldDiffField::Tick.into(), &self.world_diff.tick)?;
         state.serialize_field(
             WorldDiffField::Entities.into(),
-            &EntitiesSerializer::new(&self.world_diff.entities, &self.registry.read()),
+            &EntitiesSerializer::new(&self.world_diff.entities, self.registry),
         )?;
         state.serialize_field(
             WorldDiffField::Despawned.into(),
@@ -176,7 +176,7 @@ impl<'a> Serialize for DespawnsSerializer<'a> {
 
 #[derive(Constructor)]
 pub(super) struct WorldDiffDeserializer<'a> {
-    registry: &'a TypeRegistry,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
@@ -203,7 +203,7 @@ impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Tick as usize, &self))?;
         let entities = seq
-            .next_element_seed(EntitiesDeserializer::new(&self.registry.read()))?
+            .next_element_seed(EntitiesDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Entities as usize, &self))?;
         let despawns = seq
             .next_element_seed(DespawnsDeserializer)?
@@ -412,7 +412,7 @@ mod tests {
     fn world_diff_ser() {
         const ENTITY_ID: u64 = 0;
         const TICK: u32 = 0;
-        let registry = TypeRegistry::default();
+        let registry = TypeRegistryInternal::default();
         let world_diff = WorldDiff {
             tick: TICK,
             entities: HashMap::from([(

@@ -95,6 +95,7 @@ impl ReplicationPlugin {
         collect_despawns(&mut client_diffs, &despawn_tracker);
 
         let current_tick = set.p0().read_change_tick();
+        let registry = registry.read();
         for (client_id, mut world_diff) in client_diffs {
             world_diff.tick = current_tick; // Replace last acknowledged tick with the current.
             let serializer = WorldDiffSerializer::new(&world_diff, &registry);
@@ -107,7 +108,7 @@ impl ReplicationPlugin {
     fn world_diff_receiving_system(world: &mut World) {
         world.resource_scope(|world, registry: Mut<TypeRegistry>| {
             if let Some(world_diff) =
-                receive_world_diff(&mut world.resource_mut::<RenetClient>(), &registry)
+                receive_world_diff(&mut world.resource_mut::<RenetClient>(), &registry.read())
             {
                 let mut last_tick = world.resource_mut::<LastTick>();
                 if last_tick.0 < world_diff.tick {
@@ -167,7 +168,10 @@ impl ReplicationPlugin {
 }
 
 /// Reads all world diff from socket and returns the latest if it was received.
-fn receive_world_diff(client: &mut RenetClient, registry: &TypeRegistry) -> Option<WorldDiff> {
+fn receive_world_diff(
+    client: &mut RenetClient,
+    registry: &TypeRegistryInternal,
+) -> Option<WorldDiff> {
     let mut received_diffs = Vec::<WorldDiff>::new();
     while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
         let mut deserializer = Deserializer::from_read_ref(&message);
