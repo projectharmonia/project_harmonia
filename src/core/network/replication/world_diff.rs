@@ -1,4 +1,7 @@
-use std::any;
+use std::{
+    any,
+    fmt::{self, Formatter},
+};
 
 use bevy::{
     prelude::*,
@@ -199,7 +202,7 @@ impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
     type Value = WorldDiff;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
@@ -210,13 +213,13 @@ impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
         let entities = seq
             .next_element_seed(EntitiesDeserializer::new(&self.registry.read()))?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Entities as usize, &self))?;
-        let despawned = seq
+        let despawns = seq
             .next_element_seed(DespawnsDeserializer)?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Despawned as usize, &self))?;
         Ok(WorldDiff {
             tick,
             entities,
-            despawns: despawned,
+            despawns,
         })
     }
 }
@@ -237,7 +240,7 @@ impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for EntitiesDeserializer<'a> {
     type Value = HashMap<Entity, Vec<ComponentDiff>>;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
@@ -271,7 +274,7 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentsDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for ComponentsDeserializer<'a> {
     type Value = Vec<ComponentDiff>;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
@@ -307,7 +310,7 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentDiffDeserializer<'a> {
 impl<'a, 'de> Visitor<'de> for ComponentDiffDeserializer<'a> {
     type Value = ComponentDiff;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
@@ -341,7 +344,7 @@ impl<'de> DeserializeSeed<'de> for DespawnsDeserializer {
 impl<'de> Visitor<'de> for DespawnsDeserializer {
     type Value = Vec<Entity>;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
