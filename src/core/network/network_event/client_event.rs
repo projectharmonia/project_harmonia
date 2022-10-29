@@ -1,9 +1,13 @@
 use std::fmt::Debug;
 
+use anyhow::{Context, Error};
 use bevy::{
     ecs::{entity::MapEntities, event::Event},
     prelude::*,
-    reflect::{TypeRegistry, TypeRegistryInternal},
+    reflect::{
+        serde::{ReflectDeserializer, ReflectSerializer},
+        FromReflect, TypeRegistry,
+    },
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
 use iyes_loopless::prelude::*;
@@ -43,12 +47,10 @@ pub(crate) trait ClientEventAppExt {
     ) -> &mut Self;
 
     /// Like [`add_client_event`], but uses reflection for serializaiton.
-    fn add_reflect_client_event<T: Event + Debug + for<'a> ReflectEvent<'a>>(
-        &mut self,
-    ) -> &mut Self;
+    fn add_reflect_client_event<T: Reflect + FromReflect + Event + Debug>(&mut self) -> &mut Self;
 
     /// Same as [`add_reflected_client_event`], but additionally calls [`add_client_event_mapping`].
-    fn add_mapped_reflect_client_event<T: Event + Debug + MapEntities + for<'a> ReflectEvent<'a>>(
+    fn add_mapped_reflect_client_event<T: Reflect + FromReflect + Event + Debug + MapEntities>(
         &mut self,
     ) -> &mut Self;
 
@@ -74,18 +76,14 @@ impl ClientEventAppExt for App {
         self.add_client_event::<T>().add_client_event_mapping::<T>()
     }
 
-    fn add_reflect_client_event<T: for<'a> ReflectEvent<'a> + Event + Debug>(
-        &mut self,
-    ) -> &mut Self {
+    fn add_reflect_client_event<T: Reflect + FromReflect + Event + Debug>(&mut self) -> &mut Self {
         self.add_client_event_with::<T, _, _>(
             reflect_sending_system::<T>,
             reflect_receiving_system::<T>,
         )
     }
 
-    fn add_mapped_reflect_client_event<
-        T: for<'a> ReflectEvent<'a> + Event + Debug + MapEntities,
-    >(
+    fn add_mapped_reflect_client_event<T: Reflect + FromReflect + Event + Debug + MapEntities>(
         &mut self,
     ) -> &mut Self {
         self.add_reflect_client_event::<T>()
@@ -146,13 +144,13 @@ fn sending_system<T: Event + Serialize + Debug>(
     channel: Res<EventChannel<T>>,
 ) {
     for event in client_buffer.drain(..) {
-        let message = rmp_serde::to_vec(&event).expect("unable to serialize client event");
+        let message = rmp_serde::to_vec(&event).expect("client event should be serialized");
         client.send_message(channel.id, message);
         debug!("sent client event {event:?}");
     }
 }
 
-fn reflect_sending_system<T: for<'a> ReflectEvent<'a> + Event + Debug>(
+fn reflect_sending_system<T: Reflect + Event + Debug>(
     mut client_buffer: ResMut<ClientSendBuffer<T>>,
     mut client: ResMut<RenetClient>,
     registry: Res<TypeRegistry>,
@@ -161,8 +159,8 @@ fn reflect_sending_system<T: for<'a> ReflectEvent<'a> + Event + Debug>(
     let registry = registry.read();
     for event in client_buffer.drain(..) {
         debug!("sent client event {event:?}");
-        let serializer = T::serializer(&event, &registry);
-        let message = rmp_serde::to_vec(&serializer).expect("event should be serialized");
+        let serializer = ReflectSerializer::new(&event, &registry);
+        let message = rmp_serde::to_vec(&serializer).expect("client event should be serialized");
         client.send_message(channel.id, message);
     }
 }
@@ -199,7 +197,7 @@ fn receiving_system<T: Event + Serialize + DeserializeOwned + Debug>(
     }
 }
 
-fn reflect_receiving_system<T: for<'a> ReflectEvent<'a> + Event + Debug>(
+fn reflect_receiving_system<T: Reflect + FromReflect + Event + Debug>(
     mut client_events: EventWriter<ClientEvent<T>>,
     mut server: ResMut<RenetServer>,
     registry: Res<TypeRegistry>,
@@ -209,8 +207,10 @@ fn reflect_receiving_system<T: for<'a> ReflectEvent<'a> + Event + Debug>(
     for client_id in server.clients_id() {
         while let Some(message) = server.receive_message(client_id, channel.id) {
             let mut deserializer = Deserializer::from_read_ref(&message);
-            if let Ok(event) = T::deserializer(&registry)
+            if let Ok(event) = ReflectDeserializer::new(&registry)
                 .deserialize(&mut deserializer)
+                .map_err(Error::from)
+                .and_then(|event| FromReflect::from_reflect(&*event).context("unable to reflect"))
                 .tap_ok(|event| debug!("received event {event:?} from client {client_id}"))
                 .tap_err(|e| error!("unable to deserialize event from client {client_id}: {e}"))
             {
@@ -241,14 +241,6 @@ pub(crate) struct ClientEvent<T> {
     pub(crate) event: T,
 }
 
-pub(crate) trait ReflectEvent<'a> {
-    type Serializer: Serialize;
-    type Deserializer: DeserializeSeed<'a, Value = Self>;
-
-    fn serializer(event: &'a Self, registry: &'a TypeRegistryInternal) -> Self::Serializer;
-    fn deserializer(registry: &'a TypeRegistryInternal) -> Self::Deserializer;
-}
-
 #[cfg(test)]
 mod tests {
     use bevy::ecs::{
@@ -258,10 +250,7 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::{
-        family::family_scene::{FamilyScene, FamilySpawn},
-        network::network_preset::NetworkPresetPlugin,
-    };
+    use crate::core::network::network_preset::NetworkPresetPlugin;
 
     #[test]
     fn sending_receiving() {
@@ -297,7 +286,7 @@ mod tests {
     fn reflect_sending_receiving() {
         let mut app = App::new();
         app.init_resource::<NetworkEntityMap>()
-            .add_mapped_reflect_client_event::<FamilySpawn>()
+            .add_mapped_reflect_client_event::<DummyEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let client_entity = Entity::from_raw(0);
@@ -306,22 +295,19 @@ mod tests {
             .resource_mut::<NetworkEntityMap>()
             .insert(server_entity, client_entity);
 
-        let mut spawn_buffer = app.world.resource_mut::<ClientSendBuffer<FamilySpawn>>();
-        spawn_buffer.push(FamilySpawn {
-            city_entity: client_entity,
-            scene: FamilyScene::default(),
-        });
+        let mut dummy_buffer = app.world.resource_mut::<ClientSendBuffer<DummyEvent>>();
+        dummy_buffer.push(DummyEvent(client_entity));
 
         app.update();
 
-        let spawn_buffer = app.world.resource::<ClientSendBuffer<FamilySpawn>>();
-        assert!(spawn_buffer.is_empty());
+        let dummy_buffer = app.world.resource::<ClientSendBuffer<DummyEvent>>();
+        assert!(dummy_buffer.is_empty());
 
         app.update();
 
-        let mut client_events = app.world.resource_mut::<Events<ClientEvent<FamilySpawn>>>();
+        let mut client_events = app.world.resource_mut::<Events<ClientEvent<DummyEvent>>>();
         itertools::assert_equal(
-            client_events.drain().map(|event| event.event.city_entity),
+            client_events.drain().map(|event| event.event.0),
             [server_entity],
         );
     }
@@ -344,7 +330,7 @@ mod tests {
         assert_eq!(client_events.drain().count(), 1);
     }
 
-    #[derive(Deserialize, Serialize, Debug)]
+    #[derive(Debug, Deserialize, FromReflect, Reflect, Serialize)]
     struct DummyEvent(Entity);
 
     impl MapEntities for DummyEvent {

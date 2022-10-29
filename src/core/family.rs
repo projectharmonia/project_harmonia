@@ -1,5 +1,3 @@
-pub(super) mod family_scene;
-
 use std::{fs, iter};
 
 use anyhow::{Context, Result};
