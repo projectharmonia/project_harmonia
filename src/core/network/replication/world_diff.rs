@@ -80,7 +80,7 @@ pub(super) struct WorldDiffSerializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a> Serialize for WorldDiffSerializer<'a> {
+impl Serialize for WorldDiffSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct(
             any::type_name::<WorldDiff>(),
@@ -105,7 +105,7 @@ struct EntitiesSerializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a> Serialize for EntitiesSerializer<'a> {
+impl Serialize for EntitiesSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(self.entities.len()))?;
         for (&entity, components) in self.entities {
@@ -124,7 +124,7 @@ struct ComponentsSerializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a> Serialize for ComponentsSerializer<'a> {
+impl Serialize for ComponentsSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.components.len()))?;
         for component_diff in self.components {
@@ -140,7 +140,7 @@ struct ComponentDiffSerializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a> Serialize for ComponentDiffSerializer<'a> {
+impl Serialize for ComponentDiffSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self.component_diff {
             ComponentDiff::Changed(component) => serializer.serialize_newtype_variant(
@@ -164,7 +164,7 @@ struct DespawnsSerializer<'a> {
     despawns: &'a Vec<Entity>,
 }
 
-impl<'a> Serialize for DespawnsSerializer<'a> {
+impl Serialize for DespawnsSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.despawns.len()))?;
         for &entity in self.despawns {
@@ -179,7 +179,7 @@ pub(super) struct WorldDiffDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for WorldDiffDeserializer<'_> {
     type Value = WorldDiff;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
@@ -191,7 +191,7 @@ impl<'a, 'de> DeserializeSeed<'de> for WorldDiffDeserializer<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for WorldDiffDeserializer<'a> {
+impl<'de> Visitor<'de> for WorldDiffDeserializer<'_> {
     type Value = WorldDiff;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -221,7 +221,7 @@ struct EntitiesDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for EntitiesDeserializer<'_> {
     type Value = HashMap<Entity, Vec<ComponentDiff>>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
@@ -229,7 +229,7 @@ impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for EntitiesDeserializer<'a> {
+impl<'de> Visitor<'de> for EntitiesDeserializer<'_> {
     type Value = HashMap<Entity, Vec<ComponentDiff>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -252,7 +252,7 @@ struct ComponentsDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for ComponentsDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
     type Value = Vec<ComponentDiff>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -263,7 +263,7 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentsDeserializer<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for ComponentsDeserializer<'a> {
+impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
     type Value = Vec<ComponentDiff>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -287,7 +287,7 @@ struct ComponentDiffDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for ComponentDiffDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for ComponentDiffDeserializer<'_> {
     type Value = ComponentDiff;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
@@ -299,7 +299,7 @@ impl<'a, 'de> DeserializeSeed<'de> for ComponentDiffDeserializer<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for ComponentDiffDeserializer<'a> {
+impl<'de> Visitor<'de> for ComponentDiffDeserializer<'_> {
     type Value = ComponentDiff;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
