@@ -132,9 +132,9 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
 ) {
     while let Some(message) = client.receive_message(channel.id) {
         if let Ok(event) = rmp_serde::from_slice(&message)
-            .tap_ok(|event| debug!("received event {event:?} from server"))
             .tap_err(|e| error!("unable to deserialize event from server: {e}"))
         {
+            debug!("received event {event:?} from server");
             server_events.send(event);
         }
     }
