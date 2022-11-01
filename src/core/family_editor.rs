@@ -1,14 +1,20 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use super::{family::FamilyBundle, game_state::GameState, orbit_camera::OrbitCameraBundle};
+use super::{
+    family::{DespawnFamilyExt, FamilyBundle},
+    game_state::GameState,
+    orbit_camera::OrbitCameraBundle,
+};
 
 pub(super) struct FamilyEditorPlugin;
 
 impl Plugin for FamilyEditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::FamilyEditor, Self::spawn_system)
+        app.add_event::<FamilyReset>()
+            .add_enter_system(GameState::FamilyEditor, Self::spawn_system)
             .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
+            .add_system(Self::reset_family_system.run_on_event::<FamilyReset>())
             .add_system(Self::visibility_enable_system.run_in_state(GameState::FamilyEditor))
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -59,6 +65,22 @@ impl FamilyEditorPlugin {
         }
     }
 
+    fn reset_family_system(
+        mut commands: Commands,
+        editable_families: Query<Entity, With<EditableFamily>>,
+        family_editors: Query<Entity, With<FamilyEditor>>,
+    ) {
+        let family_entity = editable_families.single();
+        commands.entity(family_entity).despawn_family();
+        commands
+            .entity(family_editors.single())
+            .with_children(|parent| {
+                parent
+                    .spawn_bundle(FamilyBundle::default())
+                    .insert(EditableFamily);
+            });
+    }
+
     fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<FamilyEditor>>) {
         commands.entity(family_editors.single()).despawn_recursive();
     }
@@ -94,3 +116,7 @@ pub(crate) struct EditableFamily;
 /// Currently editing doll.
 #[derive(Component)]
 pub(crate) struct EditableDoll;
+
+/// An event on which family will be reset.
+#[derive(Default)]
+pub(crate) struct FamilyReset;

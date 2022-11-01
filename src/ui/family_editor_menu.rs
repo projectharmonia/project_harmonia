@@ -2,7 +2,8 @@ use anyhow::{ensure, Result};
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{
-        epaint::WHITE_UV, Align, Align2, Area, ImageButton, Layout, TextEdit, TextureId, Window,
+        epaint::WHITE_UV, Align, Align2, Area, Image, ImageButton, Layout, TextEdit, TextureId,
+        Window,
     },
     EguiContext,
 };
@@ -16,10 +17,11 @@ use super::{
     UI_MARGIN,
 };
 use crate::core::{
+    city::City,
     doll::{DollBundle, FirstName, LastName},
     error_message,
-    family::{DespawnFamilyExt, Family, FamilyBundle, FamilySave, FamilySaved, FamilySystems},
-    family_editor::{EditableDoll, EditableFamily, FamilyEditor},
+    family::{Family, FamilySave, FamilySaved, FamilySystems},
+    family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
     game_state::GameState,
 };
 
@@ -39,7 +41,10 @@ impl Plugin for FamilyEditorMenuPlugin {
                     .run_if_resource_exists::<SaveFamilyDialog>()
                     .before(FamilySystems::SaveSystem),
             )
-            .add_system(Self::reset_system.run_on_event::<FamilySaved>());
+            .add_system(Self::open_place_family_dialog_system.run_on_event::<FamilySaved>())
+            .add_system(
+                Self::place_family_dialog_system.run_if_resource_exists::<PlaceFamilyDialog>(),
+            );
     }
 }
 
@@ -88,7 +93,7 @@ impl FamilyEditorMenuPlugin {
                             commands.entity(entity).insert(EditableDoll);
                         }
                     }
-                    if ui.button("+").clicked() {
+                    if ui.button("➕").clicked() {
                         if let Ok(current_entity) = current_entity {
                             commands.entity(current_entity).remove::<EditableDoll>();
                         }
@@ -151,28 +156,23 @@ impl FamilyEditorMenuPlugin {
         ModalWindow::new("Save family")
             .open(&mut is_open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
+                ui.text_edit_singleline(&mut save_dialog.family_name);
                 ui.horizontal(|ui| {
-                    ui.label("Family name:");
-                    ui.text_edit_singleline(&mut save_dialog.family_name);
-                });
-                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    if ui
+                        .add_enabled(
+                            !save_dialog.family_name.is_empty(),
+                            Button::new("Save to library"),
+                        )
+                        .clicked()
+                    {
+                        let (family_entity, mut name) = editable_families.single_mut();
+                        name.set(save_dialog.family_name.to_string());
+                        save_events.send(FamilySave(family_entity));
+                        ui.close_modal();
+                    }
                     if ui.button("Cancel").clicked() {
                         ui.close_modal();
                     }
-                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                        if ui
-                            .add_enabled(
-                                !save_dialog.family_name.is_empty(),
-                                Button::new("Save to library"),
-                            )
-                            .clicked()
-                        {
-                            let (family_entity, mut name) = editable_families.single_mut();
-                            name.set(save_dialog.family_name.to_string());
-                            save_events.send(FamilySave(family_entity));
-                            ui.close_modal();
-                        }
-                    });
                 });
             });
 
@@ -181,20 +181,71 @@ impl FamilyEditorMenuPlugin {
         }
     }
 
-    fn reset_system(
+    fn open_place_family_dialog_system(mut commands: Commands) {
+        commands.remove_resource::<SaveFamilyDialog>();
+        commands.init_resource::<PlaceFamilyDialog>();
+    }
+
+    fn place_family_dialog_system(
         mut commands: Commands,
-        editable_families: Query<Entity, With<EditableFamily>>,
+        mut egui: ResMut<EguiContext>,
+        mut reset_events: EventWriter<FamilyReset>,
+        mut action_state: ResMut<ActionState<UiAction>>,
+        editable_families: Query<(Entity, &Family), With<EditableFamily>>,
+        cities: Query<(Entity, &Name), With<City>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
-        commands.remove_resource::<SaveFamilyDialog>();
-        commands.entity(editable_families.single()).despawn_family();
-        commands
-            .entity(family_editors.single())
-            .with_children(|parent| {
-                parent
-                    .spawn_bundle(FamilyBundle::default())
-                    .insert(EditableFamily);
+        let mut is_open = true;
+        ModalWindow::new("Place family")
+            .open(&mut is_open, &mut action_state)
+            .show(egui.ctx_mut(), |ui| {
+                // TODO 0.9: Use network events.
+                for (entity, name) in &cities {
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                Image::new(TextureId::Managed(0), (64.0, 64.0))
+                                    .uv([WHITE_UV, WHITE_UV]),
+                            );
+                            ui.label(name.as_str());
+                            ui.with_layout(Layout::top_down(Align::Max), |ui| {
+                                let mut play_pressed = false;
+                                if ui.button("⏵ Place and play").clicked() {
+                                    commands.insert_resource(NextState(GameState::Family));
+                                    play_pressed = true;
+                                }
+                                if ui.button("⬇ Place").clicked() || play_pressed {
+                                    let (family_entity, family) = editable_families.single();
+                                    commands.entity(entity).push_children(family);
+                                    commands
+                                        .entity(family_editors.single())
+                                        .remove_children(&[family_entity]);
+                                    commands.entity(family_entity).remove::<EditableFamily>();
+                                    if !play_pressed {
+                                        reset_events.send_default();
+                                    }
+                                    ui.close_modal();
+                                }
+                            })
+                        });
+                    });
+                }
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    if ui.button("Cancel").clicked() {
+                        ui.close_modal();
+                    }
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                        if ui.button("➕ Create another").clicked() {
+                            reset_events.send_default();
+                            ui.close_modal();
+                        }
+                    });
+                });
             });
+
+        if !is_open {
+            commands.remove_resource::<PlaceFamilyDialog>();
+        }
     }
 }
 
@@ -217,3 +268,6 @@ impl FromWorld for SaveFamilyDialog {
         }
     }
 }
+
+#[derive(Default)]
+struct PlaceFamilyDialog;

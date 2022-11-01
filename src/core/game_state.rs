@@ -16,4 +16,5 @@ pub(crate) enum GameState {
     FamilyEditor,
     World,
     City,
+    Family,
 }
