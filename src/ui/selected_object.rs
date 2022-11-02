@@ -23,7 +23,7 @@ impl Plugin for SelectedObjectPlugin {
             Self::selection_removing_system
                 .run_in_state(GameState::City)
                 .run_if_resource_exists::<SelectedObject>()
-                .run_if_not(cursor_object::is_cursor_object_exists),
+                .run_if_not(cursor_object::cursor_object_exists),
         );
     }
 }

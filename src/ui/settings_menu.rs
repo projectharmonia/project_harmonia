@@ -49,9 +49,9 @@ impl SettingsMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Settings")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     for tab in SettingsTab::iter() {
@@ -85,7 +85,7 @@ impl SettingsMenuPlugin {
                 });
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<SettingsMenu>();
         }
     }

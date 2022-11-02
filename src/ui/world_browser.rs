@@ -66,9 +66,9 @@ impl WorldBrowserPlugin {
         mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("World browser")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 for (index, world_name) in world_browser.world_names.iter_mut().enumerate() {
                     ui.group(|ui| {
@@ -105,7 +105,7 @@ impl WorldBrowserPlugin {
                 });
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<WorldBrowser>();
         }
     }
@@ -117,10 +117,10 @@ impl WorldBrowserPlugin {
         mut connection_settings: ResMut<ConnectionSettings>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
-        let mut is_open = true;
-        let mut is_confirmed = false;
+        let mut open = true;
+        let mut confirmed = false;
         ModalWindow::new("Join world")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 Grid::new("Connection settings grid")
                     .num_columns(2)
@@ -133,15 +133,15 @@ impl WorldBrowserPlugin {
                         ui.end_row();
                     });
                 if ui.button("Join").clicked() {
-                    is_confirmed = true;
+                    confirmed = true;
                     ui.close_modal();
                 }
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<JoinWorldDialog>();
 
-            if is_confirmed {
+            if confirmed {
                 let client = connection_settings
                     .create_client(*event_counter)
                     .context("unable to create connection")?;
@@ -162,10 +162,10 @@ impl WorldBrowserPlugin {
         dialog: Res<HostWorldDialog>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
-        let mut is_open = true;
-        let mut is_confirmed = false;
+        let mut open = true;
+        let mut confirmed = false;
         ModalWindow::new("Host world")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 Grid::new("Server settings grid")
                     .num_columns(2)
@@ -178,15 +178,15 @@ impl WorldBrowserPlugin {
                         ui.end_row();
                     });
                 if ui.button("Host").clicked() {
-                    is_confirmed = true;
+                    confirmed = true;
                     ui.close_modal();
                 }
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<HostWorldDialog>();
 
-            if is_confirmed {
+            if confirmed {
                 let world_name = world_browser.world_names.remove(dialog.world_index);
                 commands.insert_resource(GameWorld::new(world_name));
                 load_events.send_default();
@@ -206,9 +206,9 @@ impl WorldBrowserPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
         mut dialog: ResMut<CreateWorldDialog>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Create world")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.text_edit_singleline(&mut dialog.world_name);
                 ui.horizontal(|ui| {
@@ -226,7 +226,7 @@ impl WorldBrowserPlugin {
                 });
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<CreateWorldDialog>();
         }
     }
@@ -239,10 +239,10 @@ impl WorldBrowserPlugin {
         game_paths: Res<GamePaths>,
         dialog: Res<RemoveWorldDialog>,
     ) -> Result<()> {
-        let mut is_open = true;
-        let mut is_confirmed = false;
+        let mut open = true;
+        let mut confirmed = false;
         ModalWindow::new("Remove world")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.label(format!(
                     "Are you sure you want to remove world {}?",
@@ -250,7 +250,7 @@ impl WorldBrowserPlugin {
                 ));
                 ui.horizontal(|ui| {
                     if ui.button("Remove").clicked() {
-                        is_confirmed = true;
+                        confirmed = true;
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -259,13 +259,13 @@ impl WorldBrowserPlugin {
                 });
             });
 
-        if is_confirmed {
+        if confirmed {
             let world = world_browser.world_names.remove(dialog.world_index);
             let world_path = game_paths.world_path(&world);
             fs::remove_file(&world_path)
                 .with_context(|| format!("unable to remove {world_path:?}"))?;
         }
-        if !is_open {
+        if !open {
             commands.remove_resource::<RemoveWorldDialog>();
         }
 

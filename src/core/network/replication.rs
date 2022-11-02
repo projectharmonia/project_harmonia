@@ -52,10 +52,10 @@ impl Plugin for ReplicationPlugin {
             .add_system(
                 Self::world_diff_receiving_system
                     .into_conditional_exclusive()
-                    .run_if(client::is_connected)
+                    .run_if(client::connected)
                     .at_start(),
             )
-            .add_system(Self::tick_ack_sending_system.run_if(client::is_connected))
+            .add_system(Self::tick_ack_sending_system.run_if(client::connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())

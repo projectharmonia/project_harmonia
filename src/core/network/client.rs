@@ -18,14 +18,14 @@ impl Plugin for ClientPlugin {
     }
 }
 
-pub(crate) fn is_connecting(client: Option<Res<RenetClient>>) -> bool {
+pub(crate) fn connecting(client: Option<Res<RenetClient>>) -> bool {
     match client {
         Some(client) => !client.is_connected(),
         None => false,
     }
 }
 
-pub(crate) fn is_connected(client: Option<Res<RenetClient>>) -> bool {
+pub(crate) fn connected(client: Option<Res<RenetClient>>) -> bool {
     match client {
         Some(client) => client.is_connected(),
         None => false,

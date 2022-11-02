@@ -110,7 +110,7 @@ impl FamilyEditorMenuPlugin {
         editable_families: Query<&Family, With<EditableFamily>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
-        let mut is_confirmed = false;
+        let mut confirmed = false;
         Area::new("Confrirm cancel")
             .anchor(Align2::RIGHT_BOTTOM, (-UI_MARGIN, -UI_MARGIN))
             .show(egui.ctx_mut(), |ui| {
@@ -118,11 +118,11 @@ impl FamilyEditorMenuPlugin {
                     if ui.button("Cancel").clicked() {
                         commands.insert_resource(NextState(GameState::World));
                     }
-                    is_confirmed = ui.button("Confirm").clicked();
+                    confirmed = ui.button("Confirm").clicked();
                 });
             });
 
-        if is_confirmed {
+        if confirmed {
             let family = editable_families.single();
             ensure!(!family.is_empty(), "family cannot be empty");
             for (index, &member) in family.iter().enumerate() {
@@ -152,9 +152,9 @@ impl FamilyEditorMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut editable_families: Query<(Entity, &mut Name), With<EditableFamily>>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Save family")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.text_edit_singleline(&mut save_dialog.family_name);
                 ui.horizontal(|ui| {
@@ -176,7 +176,7 @@ impl FamilyEditorMenuPlugin {
                 });
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<SaveFamilyDialog>();
         }
     }
@@ -195,9 +195,9 @@ impl FamilyEditorMenuPlugin {
         cities: Query<(Entity, &Name), With<City>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Place family")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 // TODO 0.9: Use network events.
                 for (entity, name) in &cities {
@@ -243,7 +243,7 @@ impl FamilyEditorMenuPlugin {
                 });
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<PlaceFamilyDialog>();
         }
     }

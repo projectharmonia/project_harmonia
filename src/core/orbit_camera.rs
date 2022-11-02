@@ -21,7 +21,7 @@ impl Plugin for OrbitCameraPlugin {
         app.add_system(
             Self::rotation_system
                 .run_in_state(GameState::City)
-                .run_if(is_rotating_camera)
+                .run_if(rotate_pressed)
                 .label(OrbitCameraSystem::Rotation),
         )
         .add_system(
@@ -123,7 +123,7 @@ impl OrbitCameraPlugin {
     }
 }
 
-fn is_rotating_camera(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn rotate_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.pressed(ControlAction::RotateCamera)
 }
 

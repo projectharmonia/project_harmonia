@@ -24,9 +24,9 @@ impl ErrorMessagePlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
         error_message: Res<ErrorMessage>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Error")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.label(format!("Error: {}", error_message.0));
                 if ui.button("Ok").clicked() {
@@ -34,7 +34,7 @@ impl ErrorMessagePlugin {
                 }
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<ErrorMessage>();
         }
     }

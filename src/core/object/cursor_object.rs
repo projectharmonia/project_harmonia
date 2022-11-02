@@ -39,17 +39,17 @@ impl Plugin for CursorObjectPlugin {
             .add_system(
                 Self::application_system
                     .run_in_state(GameState::City)
-                    .run_if(is_confirm_pressed),
+                    .run_if(confirm_pressed),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickCancel>
                     .run_in_state(GameState::City)
-                    .run_if(is_cancel_pressed),
+                    .run_if(cancel_pressed),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickDelete>
                     .run_in_state(GameState::City)
-                    .run_if(is_delete_pressed),
+                    .run_if(delete_pressed),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -259,19 +259,19 @@ impl CursorObjectPlugin {
     }
 }
 
-fn is_cancel_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn cancel_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::Cancel)
 }
 
-fn is_confirm_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn confirm_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::Confirm)
 }
 
-fn is_delete_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
+fn delete_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
     action_state.just_pressed(ControlAction::Delete)
 }
 
-pub(crate) fn is_cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {
+pub(crate) fn cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {
     !cursor_objects.is_empty()
 }
 

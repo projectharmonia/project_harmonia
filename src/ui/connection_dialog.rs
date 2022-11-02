@@ -11,7 +11,7 @@ pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::connection_system.run_if(client::is_connecting));
+        app.add_system(Self::connection_system.run_if(client::connecting));
     }
 }
 
@@ -22,9 +22,9 @@ impl ConnectionDialogPlugin {
         mut action_state: ResMut<ActionState<UiAction>>,
         connection_setting: Res<ConnectionSettings>,
     ) {
-        let mut is_open = true;
+        let mut open = true;
         ModalWindow::new("Connection")
-            .open(&mut is_open, &mut action_state)
+            .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 ui.label(format!(
                     "Connecting to {}:{}...",
@@ -35,7 +35,7 @@ impl ConnectionDialogPlugin {
                 }
             });
 
-        if !is_open {
+        if !open {
             commands.remove_resource::<RenetClient>();
         }
     }

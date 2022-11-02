@@ -25,7 +25,7 @@ impl Plugin for CliPlugin {
             .add_system(
                 Self::city_loading_system
                     .chain(error_message::err_message_system)
-                    .run_if(is_first_world_load),
+                    .run_if(first_world_load),
             );
     }
 }
@@ -94,7 +94,7 @@ impl CliPlugin {
     }
 }
 
-fn is_first_world_load(
+fn first_world_load(
     mut was_loaded: Local<bool>,
     error_message: Option<Res<ErrorMessage>>,
     added_scenes: Query<(), Added<City>>,

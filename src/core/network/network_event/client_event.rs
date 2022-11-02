@@ -50,7 +50,7 @@ impl ClientEventAppExt for App {
             .insert_resource(EventChannel::<T>::new(current_channel_id))
             .add_system(
                 sending_system::<T>
-                    .run_if(client::is_connected)
+                    .run_if(client::connected)
                     .label(ClientEventSystems::<T>::SendingSystem),
             )
             .add_system(
@@ -69,7 +69,7 @@ impl ClientEventAppExt for App {
         self.add_client_event::<T>();
         self.add_system(
             mapping_system::<T>
-                .run_if(client::is_connected)
+                .run_if(client::connected)
                 .before(ClientEventSystems::<T>::SendingSystem)
                 .label(ClientEventSystems::<T>::MappingSystem),
         );
