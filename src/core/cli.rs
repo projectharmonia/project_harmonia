@@ -7,7 +7,7 @@ use super::{
     city::City,
     error_message::{self, ErrorMessage},
     game_state::GameState,
-    game_world::{GameLoadRequest, GameWorld},
+    game_world::{GameLoad, GameWorld},
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -33,7 +33,7 @@ impl Plugin for CliPlugin {
 impl CliPlugin {
     fn subcommand_system(
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoadRequest>,
+        mut load_events: EventWriter<GameLoad>,
         cli: Res<Cli>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {

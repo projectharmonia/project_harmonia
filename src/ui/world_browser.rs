@@ -19,7 +19,7 @@ use crate::core::{
     error_message,
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoadRequest, GameWorld, GameWorldSystem},
+    game_world::{GameLoad, GameWorld, GameWorldSystem},
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -61,7 +61,7 @@ impl WorldBrowserPlugin {
 
     fn world_browser_system(
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoadRequest>,
+        mut load_events: EventWriter<GameLoad>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
@@ -154,7 +154,7 @@ impl WorldBrowserPlugin {
 
     fn host_world_system(
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoadRequest>,
+        mut load_events: EventWriter<GameLoad>,
         mut action_state: ResMut<ActionState<UiAction>>,
         mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,

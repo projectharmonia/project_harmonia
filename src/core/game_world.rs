@@ -41,7 +41,7 @@ impl Plugin for GameWorldPlugin {
             .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
             .init_resource::<IgnoreRules>()
             .add_event::<GameSave>()
-            .add_event::<GameLoadRequest>()
+            .add_event::<GameLoad>()
             .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
@@ -52,7 +52,7 @@ impl Plugin for GameWorldPlugin {
             .add_system(
                 Self::loading_system
                     .chain(error_message::err_message_system)
-                    .run_on_event::<GameLoadRequest>()
+                    .run_on_event::<GameLoad>()
                     .label(GameWorldSystem::Loading),
             );
     }
@@ -179,7 +179,7 @@ pub(crate) struct GameSave;
 
 /// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
 #[derive(Default)]
-pub(crate) struct GameLoadRequest;
+pub(crate) struct GameLoad;
 
 /// Contains meta-information about the currently loaded world.
 #[derive(Default, Deref)]
@@ -249,7 +249,7 @@ mod tests {
         app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
-        let mut save_events = app.world.resource_mut::<Events<GameLoadRequest>>();
+        let mut save_events = app.world.resource_mut::<Events<GameLoad>>();
         save_events.send_default();
 
         app.update();
