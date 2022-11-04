@@ -5,6 +5,7 @@ use super::{
     game_state::GameState,
     game_world::{GameEntity, GameWorld},
     orbit_camera::OrbitCameraBundle,
+    settings::Settings,
 };
 
 pub(super) struct CityPlugin;
@@ -25,12 +26,13 @@ impl CityPlugin {
 
     fn camera_spawn_system(
         mut commands: Commands,
+        settings: Res<Settings>,
         visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
     ) {
         commands
             .entity(visible_cities.single())
             .with_children(|parent| {
-                parent.spawn_bundle(OrbitCameraBundle::default());
+                parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
             });
     }
 

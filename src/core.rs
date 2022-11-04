@@ -17,6 +17,7 @@ pub(super) mod object;
 pub(super) mod orbit_camera;
 pub(super) mod preview;
 pub(super) mod settings;
+mod video;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
@@ -37,6 +38,7 @@ use object::ObjectPlugins;
 use orbit_camera::OrbitCameraPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
+use video::VideoPlugin;
 
 pub(super) struct CorePlugins;
 
@@ -59,7 +61,8 @@ impl PluginGroup for CorePlugins {
             .add(GamePathsPlugin)
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
-            .add(SettingsPlugin);
+            .add(SettingsPlugin)
+            .add(VideoPlugin);
 
         GameWorldPlugins.build(group);
         ObjectPlugins.build(group);
