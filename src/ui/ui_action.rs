@@ -6,10 +6,7 @@ pub(super) struct UiActionPlugin;
 impl Plugin for UiActionPlugin {
     fn build(&self, app: &mut App) {
         let mut input_map = InputMap::default();
-        input_map
-            .insert(KeyCode::Escape, UiAction::Back)
-            .insert(KeyCode::Tab, UiAction::Scoreboard)
-            .insert(KeyCode::Return, UiAction::Chat);
+        input_map.insert(KeyCode::Escape, UiAction::Back);
 
         app.init_resource::<ActionState<UiAction>>()
             .insert_resource(input_map);
@@ -19,6 +16,4 @@ impl Plugin for UiActionPlugin {
 #[derive(Actionlike, Clone, Copy)]
 pub(crate) enum UiAction {
     Back,
-    Scoreboard,
-    Chat,
 }
