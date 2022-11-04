@@ -16,10 +16,10 @@ impl Plugin for ToggleActionsPlugin {
 
 impl ToggleActionsPlugin {
     fn toggle_actions_system(
-        mut egui: ResMut<EguiContext>,
+        egui: Res<EguiContext>,
         mut toggle_actions: ResMut<ToggleActions<ControlAction>>,
     ) {
-        let ctx = egui.ctx_mut();
+        let ctx = egui.ctx();
         if ctx.wants_pointer_input() || ctx.wants_keyboard_input() {
             toggle_actions.enabled = false;
         } else {
