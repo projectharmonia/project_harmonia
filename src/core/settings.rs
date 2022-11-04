@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::prelude::*;
+use bevy::{core_pipeline::core_3d, prelude::*, render::camera::CameraRenderGraph};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -77,13 +77,26 @@ impl Settings {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct VideoSettings {
+    pub(crate) global_illumination: bool,
     pub(crate) msaa: u32,
     pub(crate) perf_stats: bool,
+}
+
+impl VideoSettings {
+    pub(super) fn camera_render_graph(&self) -> CameraRenderGraph {
+        let graph_name = if self.global_illumination {
+            bevy_hikari::graph::NAME
+        } else {
+            core_3d::graph::NAME
+        };
+        CameraRenderGraph::new(graph_name)
+    }
 }
 
 impl Default for VideoSettings {
     fn default() -> Self {
         Self {
+            global_illumination: false,
             msaa: 1,
             perf_stats: false,
         }

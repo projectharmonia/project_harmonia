@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{input::mouse::MouseMotion, prelude::*};
+use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::CameraRenderGraph};
 use bevy_mod_raycast::{RayCastMethod, RayCastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -148,7 +148,7 @@ fn movement_direction(action_state: &ActionState<ControlAction>, rotation: Quat)
     direction.normalize_or_zero()
 }
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
@@ -157,6 +157,21 @@ pub(crate) struct OrbitCameraBundle {
 
     #[bundle]
     camera_3d: Camera3dBundle,
+}
+
+impl OrbitCameraBundle {
+    pub(super) fn new(camera_render_graph: CameraRenderGraph) -> Self {
+        Self {
+            target_translation: Default::default(),
+            orbit_rotation: Default::default(),
+            spring_arm: Default::default(),
+            ray_source: Default::default(),
+            camera_3d: Camera3dBundle {
+                camera_render_graph,
+                ..Default::default()
+            },
+        }
+    }
 }
 
 /// The origin of a camera.

@@ -5,6 +5,7 @@ use super::{
     family::{DespawnFamilyExt, FamilyBundle},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
+    settings::Settings,
 };
 
 pub(super) struct FamilyEditorPlugin;
@@ -24,7 +25,7 @@ impl Plugin for FamilyEditorPlugin {
 }
 
 impl FamilyEditorPlugin {
-    fn spawn_system(mut commands: Commands) {
+    fn spawn_system(mut commands: Commands, settings: Res<Settings>) {
         commands
             .spawn_bundle(FamilyEditorBundle::default())
             .with_children(|parent| {
@@ -38,7 +39,7 @@ impl FamilyEditorPlugin {
                     transform: Transform::from_xyz(4.0, 8.0, 4.0),
                     ..Default::default()
                 });
-                parent.spawn_bundle(OrbitCameraBundle::default());
+                parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
                 parent
                     .spawn_bundle(FamilyBundle::default())
                     .insert(EditableFamily);

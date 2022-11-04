@@ -19,26 +19,28 @@ impl GroundPlugin {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
-        const SIZE: f32 = 5.0;
+        const SIZE: f32 = 50.0;
         commands
             .entity(visible_cities.single())
             .add_children(|parent| {
                 parent
                     .spawn_bundle(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Plane { size: SIZE })),
-                        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+                        material: materials.add(Color::rgb_u8(69, 108, 69).into()),
                         ..Default::default()
                     })
                     .insert(RigidBody::Fixed)
-                    .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0));
-                parent.spawn_bundle(PointLightBundle {
-                    point_light: PointLight {
-                        intensity: 1500.0,
+                    .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0))
+                    .insert(Name::new("Ground"));
+                parent.spawn_bundle(DirectionalLightBundle {
+                    directional_light: DirectionalLight {
+                        illuminance: 10000.0,
                         shadows_enabled: true,
                         shadow_depth_bias: 0.25,
                         ..Default::default()
                     },
-                    transform: Transform::from_xyz(4.0, 8.0, 4.0),
+                    transform: Transform::from_xyz(4.0, 8.0, 4.0)
+                        .with_rotation(Quat::from_rotation_x(-1.4)),
                     ..Default::default()
                 });
             });

@@ -7,6 +7,7 @@ mod ui;
 
 use bevy::{asset::AssetServerSettings, log::LogSettings, prelude::*};
 use bevy_egui::EguiPlugin;
+use bevy_hikari::HikariPlugin;
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
@@ -35,6 +36,7 @@ impl PluginGroup for DollisPlugins {
             .add(DefaultRaycastingPlugin::<ObjectPath>::default())
             .add(OutlinePlugin)
             .add(EguiPlugin)
+            .add(HikariPlugin)
             .add(WorldInspectorPlugin::new());
 
         CorePlugins.build(group);
