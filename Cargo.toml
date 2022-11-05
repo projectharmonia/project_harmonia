@@ -16,7 +16,7 @@ bevy_renet = "0.0.5"
 bevy_rapier3d = "0.18"
 bevy_mod_raycast = "0.6"
 bevy_mod_outline = { version = "0.2", default-features = false }
-bevy_egui = { version = "0.16", features = ["immutable_ctx"] }
+bevy_egui = "0.16"
 bevy-hikari = "0.2"
 bevy-inspector-egui = { version = "0.13", default-features = false, features = [
   "clipboard",

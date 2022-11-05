@@ -128,7 +128,7 @@ struct OpenState<'open> {
 /// There is no reliable way to say if a window was closed (it could happen on a state change, for example),
 /// so we remember modal window IDs from the previous frame to detect removals.
 #[derive(Clone, Default)]
-struct ModalIds {
+pub struct ModalIds {
     /// IDs that was registered in the previous frame.
     ///
     /// Used to track removals. Order is undefined since [`Self::register_modal`] could be called from any system.
@@ -162,6 +162,11 @@ impl ModalIds {
         self.stack.retain(|id| self.registered_ids.contains(id));
         self.registered_ids.clear();
         self.stack.last().copied()
+    }
+
+    /// Returns `true` if there is not active modal IDs.
+    pub(super) fn is_empty(&self) -> bool {
+        self.stack.is_empty()
     }
 }
 
