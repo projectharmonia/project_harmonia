@@ -7,6 +7,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
+    action,
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
 };
@@ -24,7 +25,8 @@ impl Plugin for InGameMenuPlugin {
         app.add_system(
             Self::open_ingame_menu_system
                 .run_not_in_state(GameState::MainMenu)
-                .run_unless_resource_exists::<InGameMenu>(),
+                .run_unless_resource_exists::<InGameMenu>()
+                .run_if(action::pressed(UiAction::Back)),
         )
         .add_enter_system(GameState::MainMenu, Self::close_ingame_menu)
         .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())
@@ -39,10 +41,8 @@ impl Plugin for InGameMenuPlugin {
 }
 
 impl InGameMenuPlugin {
-    fn open_ingame_menu_system(mut commands: Commands, action_state: Res<ActionState<UiAction>>) {
-        if action_state.just_pressed(UiAction::Back) {
-            commands.init_resource::<InGameMenu>();
-        }
+    fn open_ingame_menu_system(mut commands: Commands) {
+        commands.init_resource::<InGameMenu>();
     }
 
     fn close_ingame_menu(mut commands: Commands) {

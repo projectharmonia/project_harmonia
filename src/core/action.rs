@@ -38,6 +38,16 @@ impl ActionPlugin {
     }
 }
 
+/// A condition for systems to check if an action was just pressed.
+pub(crate) const fn just_pressed<T: Actionlike + Copy>(action: T) -> impl Fn(Res<ActionState<T>>) -> bool {
+    move |action_state: Res<ActionState<T>>| -> bool { action_state.just_pressed(action) }
+}
+
+/// A condition for systems to check if an action was pressed.
+pub(crate) const fn pressed<T: Actionlike + Copy>(action: T) -> impl Fn(Res<ActionState<T>>) -> bool {
+    move |action_state: Res<ActionState<T>>| -> bool { action_state.pressed(action) }
+}
+
 #[derive(Actionlike, Clone, Copy, Debug, Deserialize, Display, Hash, PartialEq, Serialize)]
 pub(crate) enum Action {
     #[strum(serialize = "Camera Forward")]

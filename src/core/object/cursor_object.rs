@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tap::{TapFallible, TapOptional};
 
 use crate::core::{
-    action::Action,
+    action::{self, Action},
     asset_metadata,
     city::City,
     game_state::GameState,
@@ -39,17 +39,17 @@ impl Plugin for CursorObjectPlugin {
             .add_system(
                 Self::application_system
                     .run_in_state(GameState::City)
-                    .run_if(confirm_pressed),
+                    .run_if(action::just_pressed(Action::Confirm)),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickCancel>
                     .run_in_state(GameState::City)
-                    .run_if(cancel_pressed),
+                    .run_if(action::just_pressed(Action::Cancel)),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickDelete>
                     .run_in_state(GameState::City)
-                    .run_if(delete_pressed),
+                    .run_if(action::just_pressed(Action::Delete)),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -257,18 +257,6 @@ impl CursorObjectPlugin {
             }
         }
     }
-}
-
-fn cancel_pressed(action_state: Res<ActionState<Action>>) -> bool {
-    action_state.just_pressed(Action::Cancel)
-}
-
-fn confirm_pressed(action_state: Res<ActionState<Action>>) -> bool {
-    action_state.just_pressed(Action::Confirm)
-}
-
-fn delete_pressed(action_state: Res<ActionState<Action>>) -> bool {
-    action_state.just_pressed(Action::Delete)
 }
 
 pub(crate) fn cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {

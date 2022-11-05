@@ -5,7 +5,11 @@ use bevy_mod_raycast::{RayCastMethod, RayCastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{action::Action, game_state::GameState, object::ObjectPath};
+use super::{
+    action::{self, Action},
+    game_state::GameState,
+    object::ObjectPath,
+};
 
 #[derive(SystemLabel)]
 enum OrbitCameraSystem {
@@ -21,7 +25,7 @@ impl Plugin for OrbitCameraPlugin {
         app.add_system(
             Self::rotation_system
                 .run_in_state(GameState::City)
-                .run_if(rotate_pressed)
+                .run_if(action::pressed(Action::RotateCamera))
                 .label(OrbitCameraSystem::Rotation),
         )
         .add_system(
@@ -120,10 +124,6 @@ impl OrbitCameraPlugin {
             }
         }
     }
-}
-
-fn rotate_pressed(action_state: Res<ActionState<Action>>) -> bool {
-    action_state.pressed(Action::RotateCamera)
 }
 
 fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec3 {
