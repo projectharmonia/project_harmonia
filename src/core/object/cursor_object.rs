@@ -38,18 +38,18 @@ impl Plugin for CursorObjectPlugin {
             .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
                 Self::application_system
-                    .run_in_state(GameState::City)
-                    .run_if(action::just_pressed(Action::Confirm)),
+                    .run_if(action::just_pressed(Action::Confirm))
+                    .run_in_state(GameState::City),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickCancel>
-                    .run_in_state(GameState::City)
-                    .run_if(action::just_pressed(Action::Cancel)),
+                    .run_if(action::just_pressed(Action::Cancel))
+                    .run_in_state(GameState::City),
             )
             .add_system(
                 Self::cancel_spawning_or_send_system::<PickDelete>
-                    .run_in_state(GameState::City)
-                    .run_if(action::just_pressed(Action::Delete)),
+                    .run_if(action::just_pressed(Action::Delete))
+                    .run_in_state(GameState::City),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,

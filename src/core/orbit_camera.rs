@@ -24,8 +24,8 @@ impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::rotation_system
-                .run_in_state(GameState::City)
                 .run_if(action::pressed(Action::RotateCamera))
+                .run_in_state(GameState::City)
                 .label(OrbitCameraSystem::Rotation),
         )
         .add_system(

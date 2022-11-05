@@ -53,8 +53,8 @@ impl Plugin for ObjectPlugin {
                 Self::ray_system
                     .chain(Self::picking_system)
                     .chain(Self::outline_system)
-                    .run_in_state(GameState::City)
                     .run_if_not(cursor_object::cursor_object_exists)
+                    .run_in_state(GameState::City)
                     .before(ClientEventSystems::<ObjectPick>::MappingSystem),
             )
             .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())

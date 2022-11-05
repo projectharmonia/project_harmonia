@@ -24,9 +24,9 @@ impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::open_ingame_menu_system
-                .run_not_in_state(GameState::MainMenu)
+                .run_if(action::just_pressed(UiAction::Back))
                 .run_unless_resource_exists::<InGameMenu>()
-                .run_if(action::pressed(UiAction::Back)),
+                .run_not_in_state(GameState::MainMenu),
         )
         .add_enter_system(GameState::MainMenu, Self::close_ingame_menu)
         .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())

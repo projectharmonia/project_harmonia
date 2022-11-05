@@ -55,8 +55,8 @@ impl ClientEventAppExt for App {
             )
             .add_system(
                 local_resending_system::<T>
-                    .run_unless_resource_exists::<RenetClient>()
-                    .run_if_resource_exists::<GameWorld>(),
+                    .run_if_resource_exists::<GameWorld>()
+                    .run_unless_resource_exists::<RenetClient>(),
             )
             .add_system(receiving_system::<T>.run_if_resource_exists::<RenetServer>());
 
