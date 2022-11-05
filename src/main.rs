@@ -16,7 +16,7 @@ use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::{cli::Cli, control_action::ControlAction, object::ObjectPath, CorePlugins};
+use crate::core::{action::Action, cli::Cli, object::ObjectPath, CorePlugins};
 use ui::{ui_action::UiAction, UiPlugins};
 
 struct DollisPlugins;
@@ -28,7 +28,7 @@ impl PluginGroup for DollisPlugins {
         group
             .add(HookPlugin)
             .add(InputManagerPlugin::<UiAction>::default())
-            .add(InputManagerPlugin::<ControlAction>::default())
+            .add(InputManagerPlugin::<Action>::default())
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(RapierDebugRenderPlugin::default())
             .add(RenetServerPlugin)

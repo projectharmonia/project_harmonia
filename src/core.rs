@@ -1,7 +1,7 @@
+pub(super) mod action;
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
-pub(super) mod control_action;
 pub(super) mod developer;
 pub(super) mod doll;
 pub(super) mod error_message;
@@ -21,10 +21,10 @@ mod video;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use action::ActionPlugin;
 use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
 use cli::CliPlugin;
-use control_action::ControlActionsPlugin;
 use developer::DeveloperPlugin;
 use doll::DollPlugin;
 use family::FamilyPlugin;
@@ -54,7 +54,7 @@ impl PluginGroup for CorePlugins {
             .add(CliPlugin)
             .add(DollPlugin)
             .add(GroundPlugin)
-            .add(ControlActionsPlugin)
+            .add(ActionPlugin)
             .add(DeveloperPlugin)
             .add(FamilyPlugin)
             .add(FamilyEditorPlugin)

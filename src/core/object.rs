@@ -17,8 +17,8 @@ use leafwing_input_manager::prelude::ActionState;
 use serde::{Deserialize, Serialize};
 
 use super::{
+    action::Action,
     asset_metadata,
-    control_action::ControlAction,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity},
     network::{
@@ -115,10 +115,10 @@ impl ObjectPlugin {
     fn picking_system(
         In(entity): In<Option<Entity>>,
         mut pick_buffer: ResMut<ClientSendBuffer<ObjectPick>>,
-        action_state: Res<ActionState<ControlAction>>,
+        action_state: Res<ActionState<Action>>,
     ) -> Option<Entity> {
         if let Some(entity) = entity {
-            if action_state.just_pressed(ControlAction::Confirm) {
+            if action_state.just_pressed(Action::Confirm) {
                 pick_buffer.push(ObjectPick(entity));
                 None
             } else {
@@ -353,7 +353,7 @@ mod tests {
     fn hovering() {
         let mut app = App::new();
         app.add_loopless_state(GameState::City)
-            .init_resource::<ActionState<ControlAction>>()
+            .init_resource::<ActionState<Action>>()
             .add_plugin(CorePlugin)
             .add_plugin(AssetPlugin)
             .add_plugin(ObjectPlugin);

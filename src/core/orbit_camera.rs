@@ -5,7 +5,7 @@ use bevy_mod_raycast::{RayCastMethod, RayCastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{control_action::ControlAction, game_state::GameState, object::ObjectPath};
+use super::{action::Action, game_state::GameState, object::ObjectPath};
 
 #[derive(SystemLabel)]
 enum OrbitCameraSystem {
@@ -72,7 +72,7 @@ impl OrbitCameraPlugin {
 
     fn position_system(
         time: Res<Time>,
-        action_state: Res<ActionState<ControlAction>>,
+        action_state: Res<ActionState<Action>>,
         mut camera: Query<(&mut OrbitOrigin, &Transform), With<Camera>>,
     ) {
         let (mut orbit_origin, transform) = camera.single_mut();
@@ -90,12 +90,11 @@ impl OrbitCameraPlugin {
 
     fn arm_system(
         time: Res<Time>,
-        action_state: Res<ActionState<ControlAction>>,
+        action_state: Res<ActionState<Action>>,
         mut camera: Query<&mut SpringArm, With<Camera>>,
     ) {
         let mut spring_arm = camera.single_mut();
-        spring_arm.current =
-            (spring_arm.current - action_state.value(ControlAction::ZoomCamera)).max(0.0);
+        spring_arm.current = (spring_arm.current - action_state.value(Action::ZoomCamera)).max(0.0);
         spring_arm.interpolated = spring_arm.interpolated
             + time.delta_seconds()
                 * Self::INTERPOLATION_SPEED
@@ -123,22 +122,22 @@ impl OrbitCameraPlugin {
     }
 }
 
-fn rotate_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.pressed(ControlAction::RotateCamera)
+fn rotate_pressed(action_state: Res<ActionState<Action>>) -> bool {
+    action_state.pressed(Action::RotateCamera)
 }
 
-fn movement_direction(action_state: &ActionState<ControlAction>, rotation: Quat) -> Vec3 {
+fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec3 {
     let mut direction = Vec3::ZERO;
-    if action_state.pressed(ControlAction::CameraLeft) {
+    if action_state.pressed(Action::CameraLeft) {
         direction.x -= 1.0;
     }
-    if action_state.pressed(ControlAction::CameraRight) {
+    if action_state.pressed(Action::CameraRight) {
         direction.x += 1.0;
     }
-    if action_state.pressed(ControlAction::CameraForward) {
+    if action_state.pressed(Action::CameraForward) {
         direction.z -= 1.0;
     }
-    if action_state.pressed(ControlAction::CameraBackward) {
+    if action_state.pressed(Action::CameraBackward) {
         direction.z += 1.0;
     }
 

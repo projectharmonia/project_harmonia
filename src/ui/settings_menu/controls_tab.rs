@@ -3,7 +3,7 @@ use bevy_egui::egui::{Grid, Ui};
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
 
 use crate::{
-    core::{control_action::ControlAction, settings::ControlsSettings},
+    core::{action::Action, settings::ControlsSettings},
     ui::settings_menu::ActiveBinding,
 };
 
@@ -29,7 +29,7 @@ impl ControlsTab<'_> {
             .striped(true)
             .min_col_width(ui.available_width() / COLUMNS_COUNT as f32 - window_width_margin)
             .show(ui, |ui| {
-                for action in ControlAction::variants() {
+                for action in Action::variants() {
                     ui.label(action.to_string());
                     let inputs = self.controls_settings.mappings.get(action);
                     for index in 0..INPUT_VARIANTS {

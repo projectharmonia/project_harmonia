@@ -16,7 +16,7 @@ use super::{
     ui_action::UiAction,
 };
 use crate::core::{
-    control_action::ControlAction,
+    action::Action,
     input_events::InputEvents,
     settings::{Settings, SettingsApply},
 };
@@ -191,17 +191,17 @@ enum SettingsTab {
 }
 
 struct ActiveBinding {
-    action: ControlAction,
+    action: Action,
     index: usize,
 }
 
 impl ActiveBinding {
-    fn new(action: ControlAction, index: usize) -> Self {
+    fn new(action: Action, index: usize) -> Self {
         Self { action, index }
     }
 }
 
 struct BindingConflict {
-    action: ControlAction,
+    action: Action,
     input_kind: InputKind,
 }

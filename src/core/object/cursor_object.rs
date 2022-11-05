@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use tap::{TapFallible, TapOptional};
 
 use crate::core::{
+    action::Action,
     asset_metadata,
     city::City,
-    control_action::ControlAction,
     game_state::GameState,
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
@@ -99,7 +99,7 @@ impl CursorObjectPlugin {
         mut commands: Commands,
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
-        action_state: Res<ActionState<ControlAction>>,
+        action_state: Res<ActionState<Action>>,
         camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
         mut cursor_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
@@ -133,7 +133,7 @@ impl CursorObjectPlugin {
                     offset
                 });
                 transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
-                if action_state.just_pressed(ControlAction::RotateObject) {
+                if action_state.just_pressed(Action::RotateObject) {
                     const ROTATION_STEP: f32 = -FRAC_PI_4;
                     transform.rotate_y(ROTATION_STEP);
                 }
@@ -259,16 +259,16 @@ impl CursorObjectPlugin {
     }
 }
 
-fn cancel_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::Cancel)
+fn cancel_pressed(action_state: Res<ActionState<Action>>) -> bool {
+    action_state.just_pressed(Action::Cancel)
 }
 
-fn confirm_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::Confirm)
+fn confirm_pressed(action_state: Res<ActionState<Action>>) -> bool {
+    action_state.just_pressed(Action::Confirm)
 }
 
-fn delete_pressed(action_state: Res<ActionState<ControlAction>>) -> bool {
-    action_state.just_pressed(ControlAction::Delete)
+fn delete_pressed(action_state: Res<ActionState<Action>>) -> bool {
+    action_state.just_pressed(Action::Delete)
 }
 
 pub(crate) fn cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {

@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{control_action::ControlAction, error_message, game_paths::GamePaths};
+use super::{action::Action, error_message, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
@@ -106,27 +106,27 @@ impl Default for VideoSettings {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct ControlsSettings {
-    pub(crate) mappings: InputMap<ControlAction>,
+    pub(crate) mappings: InputMap<Action>,
 }
 
 impl Default for ControlsSettings {
     fn default() -> Self {
         let mut input = InputMap::default();
         input
-            .insert(KeyCode::W, ControlAction::CameraForward)
-            .insert(KeyCode::S, ControlAction::CameraBackward)
-            .insert(KeyCode::A, ControlAction::CameraLeft)
-            .insert(KeyCode::D, ControlAction::CameraRight)
-            .insert(KeyCode::Up, ControlAction::CameraForward)
-            .insert(KeyCode::Down, ControlAction::CameraBackward)
-            .insert(KeyCode::Left, ControlAction::CameraLeft)
-            .insert(KeyCode::Right, ControlAction::CameraRight)
-            .insert(MouseButton::Right, ControlAction::RotateCamera)
-            .insert(SingleAxis::mouse_wheel_y(), ControlAction::ZoomCamera)
-            .insert(MouseButton::Right, ControlAction::RotateObject)
-            .insert(MouseButton::Left, ControlAction::Confirm)
-            .insert(KeyCode::Delete, ControlAction::Delete)
-            .insert(KeyCode::Escape, ControlAction::Cancel);
+            .insert(KeyCode::W, Action::CameraForward)
+            .insert(KeyCode::S, Action::CameraBackward)
+            .insert(KeyCode::A, Action::CameraLeft)
+            .insert(KeyCode::D, Action::CameraRight)
+            .insert(KeyCode::Up, Action::CameraForward)
+            .insert(KeyCode::Down, Action::CameraBackward)
+            .insert(KeyCode::Left, Action::CameraLeft)
+            .insert(KeyCode::Right, Action::CameraRight)
+            .insert(MouseButton::Right, Action::RotateCamera)
+            .insert(SingleAxis::mouse_wheel_y(), Action::ZoomCamera)
+            .insert(MouseButton::Right, Action::RotateObject)
+            .insert(MouseButton::Left, Action::Confirm)
+            .insert(KeyCode::Delete, Action::Delete)
+            .insert(KeyCode::Escape, Action::Cancel);
 
         Self { mappings: input }
     }
