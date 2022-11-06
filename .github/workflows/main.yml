@@ -40,6 +40,9 @@ jobs:
       - name: Clone repo
         uses: actions/checkout@v3
 
+      - name: Instal latest stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -62,6 +65,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends libxcb-shape0-dev libxcb-xfixes0-dev libudev-dev
+
+      - name: Instal latest stable toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache crates
         uses: Swatinem/rust-cache@v1

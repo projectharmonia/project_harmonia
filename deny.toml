@@ -17,8 +17,8 @@ license-files = []
 
 [bans]
 multiple-versions = "allow"
-wildcards = "deny"
+wildcards = "allow"         # TODO 0.9: Set to "deny" after release
 
 [sources]
 unknown-registry = "deny"
-unknown-git = "deny"
+unknown-git = "allow"     # TODO 0.9: Set to "deny" after release

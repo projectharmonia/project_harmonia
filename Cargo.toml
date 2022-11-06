@@ -3,7 +3,7 @@ name = "dollis"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
-rust-version = "1.60.0"
+rust-version = "1.65"
 
 [dependencies]
 bevy = { version = "0.8", default-features = false, features = [
@@ -24,7 +24,9 @@ bevy-inspector-egui = { version = "0.13", default-features = false, features = [
 ] }
 bevy-scene-hook = "4.1"
 iyes_loopless = "0.8"
-leafwing-input-manager = { version = "0.6", default-features = false }
+leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager", default-features = false, features = [
+  "egui",
+] }
 serde = "1.0"
 strum = { version = "0.24", features = ["derive"] }
 derive_more = { version = "0.99", default-features = false, features = [
