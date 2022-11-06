@@ -7,7 +7,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
-    action,
+    action::{self, Action},
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
     object::cursor_object,
@@ -16,7 +16,6 @@ use crate::core::{
 use super::{
     modal_window::{ModalUiExt, ModalWindow},
     settings_menu::SettingsMenu,
-    ui_action::UiAction,
 };
 
 pub(super) struct InGameMenuPlugin;
@@ -25,7 +24,7 @@ impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::open_ingame_menu_system
-                .run_if(action::just_pressed(UiAction::Back))
+                .run_if(action::just_pressed(Action::Cancel))
                 .run_if_not(cursor_object::cursor_object_exists)
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
@@ -55,7 +54,7 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
@@ -94,7 +93,7 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut game_world: ResMut<GameWorld>,
         mut dialog: ResMut<SaveAsDialog>,
     ) {
@@ -124,7 +123,7 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
@@ -158,7 +157,7 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSave>,
         mut exit_events: EventWriter<AppExit>,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;

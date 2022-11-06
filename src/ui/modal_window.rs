@@ -9,7 +9,7 @@ use bevy_egui::{
 use leafwing_input_manager::prelude::*;
 use smallvec::SmallVec;
 
-use super::ui_action::UiAction;
+use crate::core::action::Action;
 
 pub(super) struct ModalWindowPlugin;
 
@@ -67,7 +67,7 @@ impl<'open> ModalWindow<'open> {
     pub(super) fn open(
         mut self,
         open: &'open mut bool,
-        action_state: &'open mut ActionState<UiAction>,
+        action_state: &'open mut ActionState<Action>,
     ) -> Self {
         self.open_state = Some(OpenState { open, action_state });
         self
@@ -77,7 +77,7 @@ impl<'open> ModalWindow<'open> {
 impl ModalWindow<'_> {
     /// Draws gray area and a [`Window`] on top of it.
     ///
-    /// `open` will be set to `false` if [`UiAction::Back`] has been pressed or the window has been closed.
+    /// `open` will be set to `false` if [`Action::Cancel`] has been pressed or the window has been closed.
     /// See [`Window::open`] for more details.
     pub fn show<R>(
         mut self,
@@ -102,8 +102,8 @@ impl ModalWindow<'_> {
                 .register_modal(inner_response.response.layer_id)
             {
                 if let Some(open_state) = self.open_state {
-                    if open_state.action_state.just_pressed(UiAction::Back) {
-                        open_state.action_state.consume(UiAction::Back);
+                    if open_state.action_state.just_pressed(Action::Cancel) {
+                        open_state.action_state.consume(Action::Cancel);
                         *open_state.open = false;
                     }
                     if data.get_temp::<ModalClosed>(Id::null()).is_some() {
@@ -120,7 +120,7 @@ impl ModalWindow<'_> {
 
 struct OpenState<'open> {
     open: &'open mut bool,
-    action_state: &'open mut ActionState<UiAction>,
+    action_state: &'open mut ActionState<Action>,
 }
 
 /// Stack of modal widget IDs where last ID is the top modal window.

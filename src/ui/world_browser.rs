@@ -11,11 +11,9 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use tap::TapFallible;
 
-use super::{
-    modal_window::{ModalUiExt, ModalWindow},
-    ui_action::UiAction,
-};
+use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
+    action::Action,
     error_message,
     game_paths::GamePaths,
     game_state::GameState,
@@ -62,7 +60,7 @@ impl WorldBrowserPlugin {
     fn world_browser_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
     ) {
@@ -112,7 +110,7 @@ impl WorldBrowserPlugin {
 
     fn join_world_system(
         mut commands: Commands,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
         mut connection_settings: ResMut<ConnectionSettings>,
         event_counter: Res<NetworkEventCounter>,
@@ -155,7 +153,7 @@ impl WorldBrowserPlugin {
     fn host_world_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
         mut server_settings: ResMut<ServerSettings>,
@@ -203,7 +201,7 @@ impl WorldBrowserPlugin {
     fn create_world_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut dialog: ResMut<CreateWorldDialog>,
     ) {
         let mut open = true;
@@ -234,7 +232,7 @@ impl WorldBrowserPlugin {
     fn remove_world_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut world_browser: ResMut<WorldBrowser>,
         game_paths: Res<GamePaths>,
         dialog: Res<RemoveWorldDialog>,

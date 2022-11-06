@@ -12,11 +12,9 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{
-    modal_window::{ModalUiExt, ModalWindow},
-    ui_action::UiAction,
-};
+use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
+    action::Action,
     city::{City, CityBundle},
     family::Family,
     game_state::GameState,
@@ -61,7 +59,7 @@ impl WorldMenuPlugin {
     fn create_city_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut dialog: ResMut<CreateCityDialog>,
     ) {
         let mut open = true;

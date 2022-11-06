@@ -11,10 +11,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::{prelude::ActionState, user_input::InputKind};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{
-    modal_window::{ModalUiExt, ModalWindow},
-    ui_action::UiAction,
-};
+use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
     action::Action,
     input_events::InputEvents,
@@ -44,7 +41,7 @@ impl SettingsMenuPlugin {
     fn settings_menu_system(
         mut commands: Commands,
         mut apply_events: EventWriter<SettingsApply>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut settings_menu: ResMut<SettingsMenu>,
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
@@ -95,7 +92,7 @@ impl SettingsMenuPlugin {
         mut input_events: InputEvents,
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         active_binding: Res<ActiveBinding>,
     ) {
         let mut open = true;
@@ -139,7 +136,7 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         active_binding: Res<ActiveBinding>,
         binding_conflict: Res<BindingConflict>,
     ) {

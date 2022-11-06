@@ -7,7 +7,6 @@ mod main_menu;
 mod modal_window;
 mod selected_object;
 mod settings_menu;
-pub(super) mod ui_action;
 mod world_browser;
 mod world_menu;
 
@@ -22,7 +21,6 @@ use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
 use selected_object::SelectedObjectPlugin;
 use settings_menu::SettingsMenuPlugin;
-use ui_action::UiActionPlugin;
 use world_browser::WorldBrowserPlugin;
 use world_menu::WorldMenuPlugin;
 
@@ -42,7 +40,6 @@ impl PluginGroup for UiPlugins {
             .add(ModalWindowPlugin)
             .add(SelectedObjectPlugin)
             .add(SettingsMenuPlugin)
-            .add(UiActionPlugin)
             .add(WorldBrowserPlugin)
             .add(WorldMenuPlugin);
     }

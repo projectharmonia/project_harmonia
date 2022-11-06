@@ -3,11 +3,8 @@ use bevy_egui::EguiContext;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use super::{
-    modal_window::{ModalUiExt, ModalWindow},
-    ui_action::UiAction,
-};
-use crate::core::error_message::ErrorMessage;
+use super::modal_window::{ModalUiExt, ModalWindow};
+use crate::core::{action::Action, error_message::ErrorMessage};
 
 pub(super) struct ErrorMessagePlugin;
 
@@ -21,7 +18,7 @@ impl ErrorMessagePlugin {
     fn error_message_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         error_message: Res<ErrorMessage>,
     ) {
         let mut open = true;

@@ -13,10 +13,10 @@ use leafwing_input_manager::prelude::ActionState;
 
 use super::{
     modal_window::{ModalUiExt, ModalWindow},
-    ui_action::UiAction,
     UI_MARGIN,
 };
 use crate::core::{
+    action::Action,
     city::City,
     doll::{DollBundle, FirstName, LastName},
     error_message,
@@ -148,7 +148,7 @@ impl FamilyEditorMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<FamilySave>,
         mut save_dialog: ResMut<SaveFamilyDialog>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
         mut editable_families: Query<(Entity, &mut Name), With<EditableFamily>>,
     ) {
@@ -190,7 +190,7 @@ impl FamilyEditorMenuPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut reset_events: EventWriter<FamilyReset>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         editable_families: Query<(Entity, &Family), With<EditableFamily>>,
         cities: Query<(Entity, &Name), With<City>>,
         family_editors: Query<Entity, With<FamilyEditor>>,

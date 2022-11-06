@@ -4,8 +4,11 @@ use bevy_renet::renet::RenetClient;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{modal_window::ModalWindow, ui_action::UiAction};
-use crate::core::network::client::{self, ConnectionSettings};
+use super::modal_window::ModalWindow;
+use crate::core::{
+    action::Action,
+    network::client::{self, ConnectionSettings},
+};
 
 pub(super) struct ConnectionDialogPlugin;
 
@@ -19,7 +22,7 @@ impl ConnectionDialogPlugin {
     fn connection_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<UiAction>>,
+        mut action_state: ResMut<ActionState<Action>>,
         connection_setting: Res<ConnectionSettings>,
     ) {
         let mut open = true;
