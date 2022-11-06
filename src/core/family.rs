@@ -33,7 +33,8 @@ impl Plugin for FamilyPlugin {
                     .chain(error_message::err_message_system)
                     .run_if_resource_exists::<GameWorld>()
                     .label(FamilySystems::SaveSystem),
-            );
+            )
+            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
 
@@ -67,6 +68,12 @@ impl FamilyPlugin {
         }
 
         Ok(())
+    }
+
+    fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {
+        for entity in &families {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
