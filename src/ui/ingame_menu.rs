@@ -56,6 +56,7 @@ impl InGameMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
         client: Option<Res<RenetClient>>,
+        state: Res<CurrentState<GameState>>,
     ) {
         let mut open = true;
         ModalWindow::new("Menu")
@@ -74,6 +75,10 @@ impl InGameMenuPlugin {
                     }
                     if ui.button("Settings").clicked() {
                         commands.init_resource::<SettingsMenu>();
+                    }
+                    if state.0 != GameState::World && ui.button("Manage world").clicked() {
+                        commands.insert_resource(NextState(GameState::World));
+                        ui.close_modal();
                     }
                     if ui.button("Exit to main menu").clicked() {
                         commands.init_resource::<ExitToMainMenuDialog>();

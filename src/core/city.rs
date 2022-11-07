@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 use super::{
     game_state::GameState,
     game_world::{GameEntity, GameWorld},
-    orbit_camera::OrbitCameraBundle,
+    orbit_camera::{OrbitCameraBundle, OrbitOrigin},
     settings::Settings,
 };
 
@@ -14,7 +14,8 @@ impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
-            .add_enter_system(GameState::City, Self::camera_spawn_system)
+            .add_enter_system(GameState::City, Self::enter_system)
+            .add_exit_system(GameState::City, Self::exit_system)
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
@@ -24,7 +25,7 @@ impl Plugin for CityPlugin {
 impl CityPlugin {
     const CITY_SIZE: f32 = 100.0;
 
-    fn camera_spawn_system(
+    fn enter_system(
         mut commands: Commands,
         settings: Res<Settings>,
         visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
@@ -34,6 +35,17 @@ impl CityPlugin {
             .with_children(|parent| {
                 parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
             });
+    }
+
+    fn exit_system(
+        mut commands: Commands,
+        visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
+        cameras: Query<Entity, With<OrbitOrigin>>,
+    ) {
+        commands
+            .entity(visible_cities.single())
+            .remove_bundle::<VisibilityBundle>();
+        commands.entity(cameras.single()).despawn();
     }
 
     /// Removes all cities and their children.

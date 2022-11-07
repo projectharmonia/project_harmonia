@@ -175,7 +175,7 @@ impl OrbitCameraBundle {
 
 /// The origin of a camera.
 #[derive(Component, Default)]
-struct OrbitOrigin {
+pub(super) struct OrbitOrigin {
     current: Vec3,
     interpolated: Vec3,
 }
