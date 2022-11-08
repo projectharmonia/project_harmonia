@@ -8,7 +8,7 @@ use bevy::{
     app::PluginGroupBuilder,
     ecs::{
         archetype::ArchetypeId,
-        component::{ComponentTicks, StorageType},
+        component::{ComponentId, ComponentTicks, StorageType},
     },
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryInternal},
@@ -25,6 +25,7 @@ use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,
     game_world::{save_rules::SaveRules, GameWorld},
+    object::Picked,
 };
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
@@ -42,6 +43,7 @@ impl PluginGroup for ReplicationPlugins {
     }
 }
 
+/// Replicates components using [`SaveRules`] and [`NetworkComponents`] list from server to client.
 struct ReplicationPlugin;
 
 impl Plugin for ReplicationPlugin {
@@ -49,6 +51,7 @@ impl Plugin for ReplicationPlugin {
         app.init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
+            .init_resource::<NetworkComponents>()
             .add_system(
                 Self::world_diff_receiving_system
                     .into_conditional_exclusive()
@@ -82,6 +85,7 @@ impl ReplicationPlugin {
         acked_ticks: Res<AckedTicks>,
         registry: Res<TypeRegistry>,
         save_rules: Res<SaveRules>,
+        network_components: Res<NetworkComponents>,
         despawn_tracker: Res<DespawnTracker>,
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
@@ -90,7 +94,13 @@ impl ReplicationPlugin {
             .iter()
             .map(|(&client_id, &last_tick)| (client_id, WorldDiff::new(last_tick)))
             .collect();
-        collect_changes(&mut client_diffs, set.p0(), &registry, &save_rules);
+        collect_changes(
+            &mut client_diffs,
+            set.p0(),
+            &registry,
+            &save_rules,
+            &network_components,
+        );
         collect_removals(&mut client_diffs, set.p0(), &removal_trackers);
         collect_despawns(&mut client_diffs, &despawn_tracker);
 
@@ -206,6 +216,7 @@ fn collect_changes(
     world: &World,
     registry: &TypeRegistry,
     save_rules: &SaveRules,
+    network_components: &NetworkComponents,
 ) {
     let registry = registry.read();
     for archetype in world
@@ -222,10 +233,10 @@ fn collect_changes(
             .get(archetype.table_id())
             .expect("archetype should have a table");
 
-        for component_id in archetype
-            .components()
-            .filter(|&component_id| save_rules.persistent_component(archetype, component_id))
-        {
+        for component_id in archetype.components().filter(|&component_id| {
+            save_rules.persistent_component(archetype, component_id)
+                || network_components.contains(&component_id)
+        }) {
             let storage_type = archetype
                 .get_storage_type(component_id)
                 .expect("archetype should have a storage type");
@@ -427,6 +438,19 @@ struct LastTick(u32);
 #[derive(Default, Deref, DerefMut)]
 struct AckedTicks(HashMap<u64, u32>);
 
+/// List of component IDs that should be replicated.
+///
+/// This list contains only components that are not in [`SaveRules`]
+/// (i.e. non-persistent components), but that should be networked.
+#[derive(Deref, DerefMut)]
+struct NetworkComponents(Vec<ComponentId>);
+
+impl FromWorld for NetworkComponents {
+    fn from_world(world: &mut World) -> Self {
+        Self(vec![world.init_component::<Picked>()])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,10 +542,8 @@ mod tests {
         app.update();
 
         app.world
-            .resource_scope(|world, mut save_rules: Mut<SaveRules>| {
-                save_rules
-                    .persistent
-                    .insert(world.init_component::<SparseSetComponent>());
+            .resource_scope(|world, mut save_rules: Mut<NetworkComponents>| {
+                save_rules.push(world.init_component::<SparseSetComponent>());
             });
 
         let replicated_entity = app

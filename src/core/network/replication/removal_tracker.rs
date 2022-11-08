@@ -2,7 +2,7 @@ use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::*;
 
-use super::AckedTicks;
+use super::{AckedTicks, NetworkComponents};
 use crate::core::game_world::{save_rules::SaveRules, GameEntity};
 
 /// Stores component removals in [`RemovalTracker`] component to make them persistent across ticks.
@@ -45,9 +45,14 @@ impl RemovalTrackerPlugin {
     fn detection_system(
         mut set: ParamSet<(&World, Query<&mut RemovalTracker>)>,
         save_rules: Res<SaveRules>,
+        network_components: Res<NetworkComponents>,
     ) {
         let current_tick = set.p0().read_change_tick();
-        for &component_id in &save_rules.persistent {
+        for &component_id in save_rules
+            .persistent
+            .iter()
+            .chain(network_components.iter())
+        {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
                 if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {

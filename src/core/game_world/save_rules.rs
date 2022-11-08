@@ -10,7 +10,7 @@ use crate::core::{
     doll::{FirstName, LastName},
     family::{Budget, Family},
     game_world::GameEntity,
-    object::{ObjectPath, Picked},
+    object::ObjectPath,
 };
 
 /// Contains [`ComponentId`]'s that used to decide
@@ -35,7 +35,6 @@ impl FromWorld for SaveRules {
             world.init_component::<ObjectPath>(),
             world.init_component::<GameEntity>(),
             world.init_component::<ParentSync>(),
-            world.init_component::<Picked>(),
             world.init_component::<FirstName>(),
             world.init_component::<LastName>(),
         ]);
