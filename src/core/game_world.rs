@@ -1,5 +1,5 @@
-pub(super) mod ignore_rules;
 pub(crate) mod parent_sync;
+pub(super) mod save_rules;
 
 use std::{borrow::Cow, fs};
 
@@ -16,8 +16,8 @@ use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
 use super::{error_message, game_paths::GamePaths, game_state::GameState};
-use ignore_rules::IgnoreRules;
 use parent_sync::ParentSyncPlugin;
+use save_rules::SaveRules;
 
 pub(super) struct GameWorldPlugins;
 
@@ -39,7 +39,7 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<GameEntity>()
             .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
-            .init_resource::<IgnoreRules>()
+            .init_resource::<SaveRules>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
@@ -69,14 +69,14 @@ impl GameWorldPlugin {
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
         registry: Res<TypeRegistry>,
-        ignore_rules: Res<IgnoreRules>,
+        save_rules: Res<SaveRules>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
-        let scene = save_to_scene(world, &registry, &ignore_rules);
+        let scene = save_to_scene(world, &registry, &save_rules);
         let bytes = scene
             .serialize_ron(&registry)
             .expect("game world should be serialized");
@@ -115,12 +115,8 @@ impl GameWorldPlugin {
 }
 
 /// Iterates over a world and serializes all components that implement [`Reflect`]
-/// and not filtered using [`IgnoreRules`]
-fn save_to_scene(
-    world: &World,
-    registry: &TypeRegistry,
-    ignore_rules: &IgnoreRules,
-) -> DynamicScene {
+/// and not filtered using [`SaveRules`]
+fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules) -> DynamicScene {
     let mut scene = DynamicScene::default();
     let registry = registry.read();
     for archetype in world
@@ -129,7 +125,7 @@ fn save_to_scene(
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
         .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
-        .filter(|archetype| !ignore_rules.ignored_archetype(archetype))
+        .filter(|archetype| save_rules.persistent_archetype(archetype))
     {
         let entities_offset = scene.entities.len();
         for entity in archetype.entities() {
@@ -141,7 +137,7 @@ fn save_to_scene(
 
         for component_id in archetype
             .components()
-            .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
+            .filter(|&component_id| save_rules.persistent_component(archetype, component_id))
         {
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
             let type_name = component_info.name();

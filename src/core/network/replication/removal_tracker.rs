@@ -3,7 +3,7 @@ use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::*;
 
 use super::AckedTicks;
-use crate::core::game_world::{ignore_rules::IgnoreRules, GameEntity};
+use crate::core::game_world::{save_rules::SaveRules, GameEntity};
 
 /// Stores component removals in [`RemovalTracker`] component to make them persistent across ticks.
 ///
@@ -44,10 +44,10 @@ impl RemovalTrackerPlugin {
 
     fn detection_system(
         mut set: ParamSet<(&World, Query<&mut RemovalTracker>)>,
-        ignore_rules: Res<IgnoreRules>,
+        save_rules: Res<SaveRules>,
     ) {
         let current_tick = set.p0().read_change_tick();
-        for &component_id in &ignore_rules.serializable {
+        for &component_id in &save_rules.persistent {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
                 if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {
@@ -71,7 +71,7 @@ mod tests {
     fn detection() {
         let mut app = App::new();
         app.init_resource::<AckedTicks>()
-            .init_resource::<IgnoreRules>()
+            .init_resource::<SaveRules>()
             .add_plugin(NetworkPresetPlugin::server())
             .add_plugin(RemovalTrackerPlugin);
 

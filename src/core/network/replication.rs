@@ -24,7 +24,7 @@ use super::server::ServerFixedTimestep;
 use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
     game_state::GameState,
-    game_world::{ignore_rules::IgnoreRules, GameWorld},
+    game_world::{save_rules::SaveRules, GameWorld},
 };
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
@@ -81,7 +81,7 @@ impl ReplicationPlugin {
         mut set: ParamSet<(&World, ResMut<RenetServer>)>,
         acked_ticks: Res<AckedTicks>,
         registry: Res<TypeRegistry>,
-        ignore_rules: Res<IgnoreRules>,
+        save_rules: Res<SaveRules>,
         despawn_tracker: Res<DespawnTracker>,
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
@@ -90,7 +90,7 @@ impl ReplicationPlugin {
             .iter()
             .map(|(&client_id, &last_tick)| (client_id, WorldDiff::new(last_tick)))
             .collect();
-        collect_changes(&mut client_diffs, set.p0(), &registry, &ignore_rules);
+        collect_changes(&mut client_diffs, set.p0(), &registry, &save_rules);
         collect_removals(&mut client_diffs, set.p0(), &removal_trackers);
         collect_despawns(&mut client_diffs, &despawn_tracker);
 
@@ -205,7 +205,7 @@ fn collect_changes(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
     registry: &TypeRegistry,
-    ignore_rules: &IgnoreRules,
+    save_rules: &SaveRules,
 ) {
     let registry = registry.read();
     for archetype in world
@@ -214,7 +214,7 @@ fn collect_changes(
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
         .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
-        .filter(|archetype| !ignore_rules.ignored_archetype(archetype))
+        .filter(|archetype| save_rules.persistent_archetype(archetype))
     {
         let table = world
             .storages()
@@ -224,7 +224,7 @@ fn collect_changes(
 
         for component_id in archetype
             .components()
-            .filter(|&component_id| !ignore_rules.ignored_component(archetype, component_id))
+            .filter(|&component_id| save_rules.persistent_component(archetype, component_id))
         {
             let storage_type = archetype
                 .get_storage_type(component_id)
@@ -518,9 +518,9 @@ mod tests {
         app.update();
 
         app.world
-            .resource_scope(|world, mut ignore_rules: Mut<IgnoreRules>| {
-                ignore_rules
-                    .serializable
+            .resource_scope(|world, mut save_rules: Mut<SaveRules>| {
+                save_rules
+                    .persistent
                     .insert(world.init_component::<SparseSetComponent>());
             });
 
@@ -659,7 +659,7 @@ mod tests {
 
     impl Plugin for TestReplicationPlugin {
         fn build(&self, app: &mut App) {
-            app.init_resource::<IgnoreRules>()
+            app.init_resource::<SaveRules>()
                 .init_resource::<DespawnTracker>()
                 .add_plugin(NetworkPresetPlugin::client_and_server())
                 .add_plugin(ReplicationPlugin);

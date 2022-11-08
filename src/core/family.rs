@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     error_message,
     game_paths::GamePaths,
-    game_world::{ignore_rules::IgnoreRules, GameWorld},
+    game_world::{save_rules::SaveRules, GameWorld},
     network::{
         entity_serde,
         network_event::client_event::{ClientEvent, ClientEventAppExt},
@@ -55,7 +55,7 @@ impl FamilyPlugin {
     fn saving_system(
         mut save_events: EventReader<FamilySave>,
         mut set: ParamSet<(&World, EventWriter<FamilySaved>)>,
-        ignore_rules: Res<IgnoreRules>,
+        save_rules: Res<SaveRules>,
         game_paths: Res<GamePaths>,
         registry: Res<TypeRegistry>,
         families: Query<(&Name, &Family)>,
@@ -65,7 +65,7 @@ impl FamilyPlugin {
                 .get(entity)
                 .expect("family entity should contain family members");
 
-            let scene = save_to_scene(set.p0(), &registry, &ignore_rules, entity, family);
+            let scene = save_to_scene(set.p0(), &registry, &save_rules, entity, family);
             let ron = scene
                 .serialize_ron(&registry)
                 .expect("game world should be serialized");
@@ -106,7 +106,7 @@ impl FamilyPlugin {
 fn save_to_scene(
     world: &World,
     registry: &TypeRegistry,
-    ignore_rules: &IgnoreRules,
+    save_rules: &SaveRules,
     family_entity: Entity,
     family: &Family,
 ) -> DynamicScene {
@@ -122,7 +122,7 @@ fn save_to_scene(
 
         let entity = world.entity(entity);
         for component_id in entity.archetype().components().filter(|&component_id| {
-            !ignore_rules.ignored_component(entity.archetype(), component_id)
+            save_rules.persistent_component(entity.archetype(), component_id)
         }) {
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
             let type_name = component_info.name();
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn saving() {
         let mut app = App::new();
-        app.init_resource::<IgnoreRules>()
+        app.init_resource::<SaveRules>()
             .init_resource::<GamePaths>()
             .init_resource::<GameWorld>()
             .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
