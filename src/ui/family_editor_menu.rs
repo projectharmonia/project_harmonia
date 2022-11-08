@@ -23,6 +23,7 @@ use crate::core::{
     family::{Family, FamilySave, FamilySaved, FamilySystems},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
     game_state::GameState,
+    game_world::{parent_sync::ParentSync, GameEntity},
 };
 
 pub(super) struct FamilyEditorMenuPlugin;
@@ -200,7 +201,7 @@ impl FamilyEditorMenuPlugin {
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
                 // TODO 0.9: Use network events.
-                for (entity, name) in &cities {
+                for (city_entity, name) in &cities {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.add(
@@ -216,11 +217,20 @@ impl FamilyEditorMenuPlugin {
                                 }
                                 if ui.button("⬇ Place").clicked() || play_pressed {
                                     let (family_entity, family) = editable_families.single();
-                                    commands.entity(entity).push_children(family);
+                                    for &entity in family.iter() {
+                                        commands
+                                            .entity(entity)
+                                            .insert(ParentSync(city_entity))
+                                            .insert(GameEntity);
+                                    }
+                                    commands
+                                        .entity(family_entity)
+                                        .insert(GameEntity)
+                                        .remove::<EditableFamily>();
                                     commands
                                         .entity(family_editors.single())
-                                        .remove_children(&[family_entity]);
-                                    commands.entity(family_entity).remove::<EditableFamily>();
+                                        .remove_children(&[family_entity])
+                                        .remove_children(family);
                                     if !play_pressed {
                                         reset_events.send_default();
                                     }
