@@ -2,10 +2,15 @@ use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 use iyes_loopless::prelude::*;
 
-use crate::core::{family::Family, game_state::GameState};
+use crate::core::{
+    family::{Family, FamilyDelete},
+    game_state::GameState,
+    network::network_event::client_event::ClientSendBuffer,
+};
 
 pub(super) struct FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
+    delete_buffer: &'a mut ClientSendBuffer<FamilyDelete>,
     families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Family>>,
 }
 
@@ -13,9 +18,14 @@ impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     #[must_use]
     pub(super) fn new(
         commands: &'a mut Commands<'w, 's>,
+        delete_buffer: &'a mut ClientSendBuffer<FamilyDelete>,
         families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Family>>,
     ) -> Self {
-        Self { families, commands }
+        Self {
+            families,
+            delete_buffer,
+            commands,
+        }
     }
 }
 
@@ -31,7 +41,7 @@ impl FamiliesTab<'_, '_, '_, '_, '_> {
                     ui.with_layout(Layout::top_down(Align::Max), |ui| {
                         if ui.button("⏵ Play").clicked() {}
                         if ui.button("🗑 Delete").clicked() {
-                            self.commands.entity(entity).despawn();
+                            self.delete_buffer.push(FamilyDelete(entity));
                         }
                     })
                 });

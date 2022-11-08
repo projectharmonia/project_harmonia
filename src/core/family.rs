@@ -2,17 +2,26 @@ use std::{fs, iter};
 
 use anyhow::{Context, Result};
 use bevy::{
-    ecs::system::{Command, EntityCommands},
+    ecs::{
+        entity::{EntityMap, MapEntities, MapEntitiesError},
+        system::{Command, EntityCommands},
+    },
     prelude::*,
     reflect::TypeRegistry,
     scene::DynamicEntity,
 };
+use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::{
     error_message,
     game_paths::GamePaths,
     game_world::{ignore_rules::IgnoreRules, GameWorld},
+    network::{
+        entity_serde,
+        network_event::client_event::{ClientEvent, ClientEventAppExt},
+    },
 };
 
 #[derive(SystemLabel)]
@@ -26,6 +35,7 @@ impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Family>()
             .register_type::<Budget>()
+            .add_mapped_client_event::<FamilyDelete>()
             .add_event::<FamilySave>()
             .add_event::<FamilySaved>()
             .add_system(
@@ -34,6 +44,7 @@ impl Plugin for FamilyPlugin {
                     .run_if_resource_exists::<GameWorld>()
                     .label(FamilySystems::SaveSystem),
             )
+            .add_system(Self::deletion_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
@@ -68,6 +79,19 @@ impl FamilyPlugin {
         }
 
         Ok(())
+    }
+
+    fn deletion_system(
+        mut commands: Commands,
+        mut delete_events: EventReader<ClientEvent<FamilyDelete>>,
+    ) {
+        for ClientEvent {
+            client_id: _,
+            event,
+        } in delete_events.iter().copied()
+        {
+            commands.entity(event.0).despawn_family();
+        }
     }
 
     fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {
@@ -144,6 +168,16 @@ pub(crate) struct FamilySave(pub(crate) Entity);
 
 #[derive(Default)]
 pub(crate) struct FamilySaved;
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub(crate) struct FamilyDelete(#[serde(with = "entity_serde")] pub(crate) Entity);
+
+impl MapEntities for FamilyDelete {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
 
 pub(crate) trait DespawnFamilyExt {
     fn despawn_family(&mut self);
