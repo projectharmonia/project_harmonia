@@ -228,9 +228,9 @@ dependencies = [
 
 [[package]]
 name = "bevy-hikari"
-version = "0.2.19"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44e0485190eb125d788b8e66e97d964e66ea2da8091f2050306559314a6d8541"
+checksum = "91fa650218229aa1c01e462e418c27a42b943143578e4ed05154cadb4d5317d8"
 dependencies = [
  "bevy",
  "bitflags",
