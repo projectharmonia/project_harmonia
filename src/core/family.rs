@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use bevy::{
     ecs::{
         entity::{EntityMap, MapEntities, MapEntitiesError},
+        reflect::ReflectMapEntities,
         system::{Command, EntityCommands},
     },
     prelude::*,
@@ -21,6 +22,7 @@ use super::{
     network::{
         entity_serde,
         network_event::client_event::{ClientEvent, ClientEventAppExt},
+        replication::map_entity::ReflectMapEntity,
     },
 };
 
@@ -157,8 +159,17 @@ impl Default for FamilyBundle {
 }
 
 #[derive(Component, Default, Deref, DerefMut, Reflect)]
-#[reflect(Component)]
+#[reflect(Component, MapEntities, MapEntity)]
 pub(crate) struct Family(Vec<Entity>);
+
+impl MapEntities for Family {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        for entity in &mut self.0 {
+            *entity = entity_map.get(*entity)?;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
