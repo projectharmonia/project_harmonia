@@ -15,7 +15,10 @@ impl Plugin for CityPlugin {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
             .add_enter_system(GameState::City, Self::enter_system)
-            .add_exit_system(GameState::City, Self::exit_system)
+            .add_exit_system(
+                GameState::City,
+                Self::exit_system.run_if_resource_exists::<GameWorld>(),
+            )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
