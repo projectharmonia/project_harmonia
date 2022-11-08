@@ -240,8 +240,7 @@ mod tests {
             .push_children(&[game_world_entity])
             .id();
 
-        let mut save_events = app.world.resource_mut::<Events<GameSave>>();
-        save_events.send_default();
+        app.world.send_event_default::<GameSave>();
 
         app.update();
 
@@ -249,8 +248,7 @@ mod tests {
         app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
-        let mut save_events = app.world.resource_mut::<Events<GameLoad>>();
-        save_events.send_default();
+        app.world.send_event_default::<GameLoad>();
 
         app.update();
         app.update();

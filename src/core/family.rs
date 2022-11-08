@@ -238,8 +238,7 @@ mod tests {
             .insert_bundle(FamilyBundle::default())
             .id();
 
-        let mut save_events = app.world.resource_mut::<Events<FamilySave>>();
-        save_events.send(FamilySave(family_entity));
+        app.world.send_event(FamilySave(family_entity));
 
         app.update();
 
