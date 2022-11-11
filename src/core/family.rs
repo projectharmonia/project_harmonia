@@ -35,7 +35,7 @@ pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Family>()
+        app.register_type::<Members>()
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilyDelete>()
             .add_event::<FamilySave>()
@@ -58,14 +58,14 @@ impl FamilyPlugin {
         save_rules: Res<SaveRules>,
         game_paths: Res<GamePaths>,
         registry: Res<TypeRegistry>,
-        families: Query<(&Name, &Family)>,
+        families: Query<(&Name, &Members)>,
     ) -> Result<()> {
         for entity in save_events.iter().map(|event| event.0) {
-            let (name, family) = families
+            let (name, members) = families
                 .get(entity)
                 .expect("family entity should contain family members");
 
-            let scene = save_to_scene(set.p0(), &registry, &save_rules, entity, family);
+            let scene = save_to_scene(set.p0(), &registry, &save_rules, entity, members);
             let ron = scene
                 .serialize_ron(&registry)
                 .expect("game world should be serialized");
@@ -96,8 +96,8 @@ impl FamilyPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {
-        for entity in &families {
+    fn cleanup_system(mut commands: Commands, members: Query<Entity, With<Members>>) {
+        for entity in &members {
             commands.entity(entity).despawn();
         }
     }
@@ -108,13 +108,13 @@ fn save_to_scene(
     registry: &TypeRegistry,
     save_rules: &SaveRules,
     family_entity: Entity,
-    family: &Family,
+    members: &Members,
 ) -> DynamicScene {
     let mut scene = DynamicScene::default();
-    scene.entities.reserve(family.len() + 1); // +1 because of `family_entity`.
+    scene.entities.reserve(members.len() + 1); // +1 because of `family_entity`.
 
     let registry = registry.read();
-    for entity in family.iter().copied().chain(iter::once(family_entity)) {
+    for entity in members.iter().copied().chain(iter::once(family_entity)) {
         let mut dynamic_entity = DynamicEntity {
             entity: entity.id(),
             components: Vec::new(),
@@ -144,7 +144,7 @@ fn save_to_scene(
 #[derive(Bundle)]
 pub(crate) struct FamilyBundle {
     name: Name,
-    family: Family,
+    family: Members,
     budget: Budget,
 }
 
@@ -160,9 +160,9 @@ impl Default for FamilyBundle {
 
 #[derive(Component, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component, MapEntities, MapEntity)]
-pub(crate) struct Family(Vec<Entity>);
+pub(crate) struct Members(Vec<Entity>);
 
-impl MapEntities for Family {
+impl MapEntities for Members {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         for entity in &mut self.0 {
             *entity = entity_map.get(*entity)?;
@@ -206,11 +206,11 @@ struct DespawnFamily(Entity);
 impl Command for DespawnFamily {
     fn write(self, world: &mut World) {
         let mut family_entity = world.entity_mut(self.0);
-        let family = family_entity
-            .remove::<Family>()
+        let members = family_entity
+            .remove::<Members>()
             .expect("despawn family command refer to an entity with family component");
         family_entity.despawn();
-        for entity in family.0 {
+        for entity in members.0 {
             world.entity_mut(entity).despawn_recursive();
         }
     }

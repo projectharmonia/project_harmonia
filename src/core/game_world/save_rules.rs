@@ -8,7 +8,7 @@ use super::parent_sync::ParentSync;
 use crate::core::{
     city::City,
     doll::{FirstName, LastName},
-    family::{Budget, Family},
+    family::{Budget, Members},
     game_world::GameEntity,
     object::ObjectPath,
 };
@@ -30,7 +30,7 @@ impl FromWorld for SaveRules {
             world.init_component::<Transform>(),
             world.init_component::<Name>(),
             world.init_component::<City>(),
-            world.init_component::<Family>(),
+            world.init_component::<Members>(),
             world.init_component::<Budget>(),
             world.init_component::<ObjectPath>(),
             world.init_component::<GameEntity>(),

@@ -20,7 +20,7 @@ use crate::core::{
     city::City,
     doll::{DollBundle, FirstName, LastName},
     error_message,
-    family::{Family, FamilySave, FamilySaved, FamilySystems},
+    family::{FamilySave, FamilySaved, FamilySystems, Members},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity},
@@ -68,7 +68,7 @@ impl FamilyEditorMenuPlugin {
     fn dolls_panel_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut editable_families: Query<&mut Family, With<EditableFamily>>,
+        mut editable_families: Query<&mut Members, With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
@@ -78,9 +78,9 @@ impl FamilyEditorMenuPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    let mut family = editable_families.single_mut();
+                    let mut members = editable_families.single_mut();
                     let current_entity = editable_dolls.get_single();
-                    for &entity in family.iter() {
+                    for &entity in members.iter() {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
@@ -99,7 +99,7 @@ impl FamilyEditorMenuPlugin {
                             commands.entity(current_entity).remove::<EditableDoll>();
                         }
                         let new_member = commands.entity(family_editors.single()).add_children(|parent| parent.spawn_bundle(DollBundle::default()).insert(EditableDoll).id());
-                        family.push(new_member);
+                        members.push(new_member);
                     }
                 });
             });
@@ -108,7 +108,7 @@ impl FamilyEditorMenuPlugin {
     fn buttons_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        editable_families: Query<&Family, With<EditableFamily>>,
+        editable_families: Query<&Members, With<EditableFamily>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
         let mut confirmed = false;
@@ -124,11 +124,11 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            let family = editable_families.single();
-            ensure!(!family.is_empty(), "family cannot be empty");
-            for (index, &member) in family.iter().enumerate() {
+            let members = editable_families.single();
+            ensure!(!members.is_empty(), "family cannot be empty");
+            for (index, &entity_member) in members.iter().enumerate() {
                 let (first_name, last_name) = names
-                    .get(member)
+                    .get(entity_member)
                     .expect("family member should have a first and a last name");
                 ensure!(
                     !first_name.is_empty(),
@@ -192,7 +192,7 @@ impl FamilyEditorMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut reset_events: EventWriter<FamilyReset>,
         mut action_state: ResMut<ActionState<Action>>,
-        editable_families: Query<(Entity, &Family), With<EditableFamily>>,
+        editable_families: Query<(Entity, &Members), With<EditableFamily>>,
         cities: Query<(Entity, &Name), With<City>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
@@ -216,10 +216,10 @@ impl FamilyEditorMenuPlugin {
                                     play_pressed = true;
                                 }
                                 if ui.button("⬇ Place").clicked() || play_pressed {
-                                    let (family_entity, family) = editable_families.single();
-                                    for &entity in family.iter() {
+                                    let (family_entity, members) = editable_families.single();
+                                    for &member_entity in members.iter() {
                                         commands
-                                            .entity(entity)
+                                            .entity(member_entity)
                                             .insert(ParentSync(city_entity))
                                             .insert(GameEntity);
                                     }
@@ -230,7 +230,7 @@ impl FamilyEditorMenuPlugin {
                                     commands
                                         .entity(family_editors.single())
                                         .remove_children(&[family_entity])
-                                        .remove_children(family);
+                                        .remove_children(members);
                                     if !play_pressed {
                                         reset_events.send_default();
                                     }
@@ -265,12 +265,12 @@ struct SaveFamilyDialog {
 
 impl FromWorld for SaveFamilyDialog {
     fn from_world(world: &mut World) -> Self {
-        let family = world
-            .query_filtered::<&Family, With<EditableFamily>>()
+        let members = world
+            .query_filtered::<&Members, With<EditableFamily>>()
             .single(world);
-        let first_member = *family.first().expect("family shouldn't be empty");
+        let member_entity = *members.first().expect("saving family shouldn't be empty");
         let last_name = world
-            .get::<LastName>(first_member)
+            .get::<LastName>(member_entity)
             .expect("family members should have last name");
 
         Self {

@@ -3,7 +3,7 @@ use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    family::{Family, FamilyDelete},
+    family::{FamilyDelete, Members},
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
 };
@@ -11,7 +11,7 @@ use crate::core::{
 pub(super) struct FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     delete_buffer: &'a mut ClientSendBuffer<FamilyDelete>,
-    families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Family>>,
+    families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Members>>,
 }
 
 impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
@@ -19,7 +19,7 @@ impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     pub(super) fn new(
         commands: &'a mut Commands<'w, 's>,
         delete_buffer: &'a mut ClientSendBuffer<FamilyDelete>,
-        families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Family>>,
+        families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Members>>,
     ) -> Self {
         Self {
             families,
