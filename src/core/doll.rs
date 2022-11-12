@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use derive_more::Display;
 use iyes_loopless::prelude::*;
 
-use super::game_world::GameWorld;
+use super::{game_world::GameWorld, family::FamilySync};
 
 pub(super) struct DollPlugin;
 
@@ -55,9 +55,21 @@ pub(crate) struct FirstName(pub(crate) String);
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct DollBundle {
     first_name: FirstName,
     last_name: LastName,
     transform: Transform,
+    family_sync: FamilySync,
+}
+
+impl DollBundle {
+    pub(crate) fn new(family_entity: Entity) -> Self {
+        Self {
+            first_name: Default::default(),
+            last_name: Default::default(),
+            transform: Default::default(),
+            family_sync: FamilySync(family_entity),
+        }
+    }
 }

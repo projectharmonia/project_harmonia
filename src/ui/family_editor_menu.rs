@@ -1,4 +1,4 @@
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{
@@ -68,7 +68,7 @@ impl FamilyEditorMenuPlugin {
     fn dolls_panel_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut editable_families: Query<&mut Members, With<EditableFamily>>,
+        mut editable_families: Query<(Entity, Option<&Members>), With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
@@ -78,9 +78,9 @@ impl FamilyEditorMenuPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    let mut members = editable_families.single_mut();
+                    let (family_entity, members) = editable_families.single_mut();
                     let current_entity = editable_dolls.get_single();
-                    for &entity in members.iter() {
+                    for &entity in members.iter().flat_map(|members| members.iter()) {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
@@ -98,8 +98,9 @@ impl FamilyEditorMenuPlugin {
                         if let Ok(current_entity) = current_entity {
                             commands.entity(current_entity).remove::<EditableDoll>();
                         }
-                        let new_member = commands.entity(family_editors.single()).add_children(|parent| parent.spawn_bundle(DollBundle::default()).insert(EditableDoll).id());
-                        members.push(new_member);
+                        commands.entity(family_editors.single()).with_children(|parent| {
+                            parent.spawn_bundle(DollBundle::new(family_entity)).insert(EditableDoll);
+                        });
                     }
                 });
             });
@@ -124,8 +125,9 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            let members = editable_families.single();
-            ensure!(!members.is_empty(), "family cannot be empty");
+            let members = editable_families
+                .get_single()
+                .context("family should contain at least one member")?;
             for (index, &entity_member) in members.iter().enumerate() {
                 let (first_name, last_name) = names
                     .get(entity_member)

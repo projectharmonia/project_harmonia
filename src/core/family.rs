@@ -35,11 +35,12 @@ pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Members>()
+        app.register_type::<FamilySync>()
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilyDelete>()
             .add_event::<FamilySave>()
             .add_event::<FamilySaved>()
+            .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(
                 Self::saving_system
                     .chain(error_message::err_message_system)
@@ -52,6 +53,32 @@ impl Plugin for FamilyPlugin {
 }
 
 impl FamilyPlugin {
+    fn family_sync_system(
+        mut commands: Commands,
+        dolls: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
+        mut families: Query<&mut Members>,
+    ) {
+        for (entity, family, family_sync) in &dolls {
+            // Remove previous.
+            if let Some(family) = family {
+                if let Ok(mut members) = families.get_mut(family.0) {
+                    let index = members
+                        .iter()
+                        .position(|&member_entity| member_entity == entity)
+                        .expect("members should contain referenced entity");
+                    members.swap_remove(index);
+                }
+            }
+
+            commands.entity(entity).insert(Family(family_sync.0));
+            if let Ok(mut members) = families.get_mut(family_sync.0) {
+                members.push(entity);
+            } else {
+                commands.entity(family_sync.0).insert(Members(vec![entity]));
+            }
+        }
+    }
+
     fn saving_system(
         mut save_events: EventReader<FamilySave>,
         mut set: ParamSet<(&World, EventWriter<FamilySaved>)>,
@@ -144,7 +171,6 @@ fn save_to_scene(
 #[derive(Bundle)]
 pub(crate) struct FamilyBundle {
     name: Name,
-    family: Members,
     budget: Budget,
 }
 
@@ -152,21 +178,32 @@ impl Default for FamilyBundle {
     fn default() -> Self {
         Self {
             name: Name::new("New family"),
-            family: Default::default(),
             budget: Default::default(),
         }
     }
 }
 
-#[derive(Component, Default, Deref, DerefMut, Reflect)]
-#[reflect(Component, MapEntities, MapEntity)]
+#[derive(Component)]
+pub(crate) struct Family(pub(crate) Entity);
+
+#[derive(Component, Default, Deref, DerefMut)]
 pub(crate) struct Members(Vec<Entity>);
 
-impl MapEntities for Members {
+#[derive(Component, Reflect)]
+#[reflect(Component, MapEntities, MapEntity)]
+pub(crate) struct FamilySync(pub(crate) Entity);
+
+// We need to impl either [`FromWorld`] or [`Default`] so [`FamilySync`] can be registered as [`Reflect`].
+// Same technicue is used in Bevy for [`Parent`]
+impl FromWorld for FamilySync {
+    fn from_world(_world: &mut World) -> Self {
+        Self(Entity::from_raw(u32::MAX))
+    }
+}
+
+impl MapEntities for FamilySync {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        for entity in &mut self.0 {
-            *entity = entity_map.get(*entity)?;
-        }
+        self.0 = entity_map.get(self.0)?;
         Ok(())
     }
 }
@@ -232,10 +269,12 @@ mod tests {
             .add_plugins(MinimalPlugins)
             .add_plugin(FamilyPlugin);
 
+        let member_entity = app.world.spawn().id();
         let family_entity = app
             .world
             .spawn()
             .insert_bundle(FamilyBundle::default())
+            .insert(Members(vec![member_entity]))
             .id();
 
         app.world.send_event(FamilySave(family_entity));
