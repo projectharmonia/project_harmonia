@@ -77,6 +77,7 @@ mod tests {
         let mut app = App::new();
         app.init_resource::<AckedTicks>()
             .init_resource::<SaveRules>()
+            .init_resource::<NetworkComponents>()
             .add_plugin(NetworkPresetPlugin::server())
             .add_plugin(RemovalTrackerPlugin);
 
