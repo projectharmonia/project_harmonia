@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use derive_more::Display;
 use iyes_loopless::prelude::*;
 
-use super::{game_world::GameWorld, family::FamilySync};
+use super::{family::FamilySync, game_world::GameWorld};
 
 pub(super) struct DollPlugin;
 

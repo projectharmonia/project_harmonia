@@ -4,7 +4,7 @@ use clap::{Args, Parser, Subcommand};
 use iyes_loopless::prelude::*;
 
 use super::{
-    city::City,
+    city::{ActiveCity, City},
     error_message::{self, ErrorMessage},
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
@@ -84,9 +84,7 @@ impl CliPlugin {
                 .map(|(city, _)| city)
                 .with_context(|| format!("unable to find city named {city_name}"))?;
 
-            commands
-                .entity(city_entity)
-                .insert_bundle(VisibilityBundle::default());
+            commands.entity(city_entity).insert(ActiveCity);
             commands.insert_resource(NextState(GameState::City));
         }
 

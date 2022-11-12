@@ -31,23 +31,23 @@ impl CityPlugin {
     fn enter_system(
         mut commands: Commands,
         settings: Res<Settings>,
-        visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
+        mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
     ) {
-        commands
-            .entity(visible_cities.single())
-            .with_children(|parent| {
-                parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
-            });
+        let (city_entity, mut visibility) = active_cities.single_mut();
+        visibility.is_visible = true;
+        commands.entity(city_entity).with_children(|parent| {
+            parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
+        });
     }
 
     fn exit_system(
         mut commands: Commands,
-        visible_cities: Query<Entity, (With<Visibility>, With<City>)>,
+        mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<OrbitOrigin>>,
     ) {
-        commands
-            .entity(visible_cities.single())
-            .remove_bundle::<VisibilityBundle>();
+        let (city_entity, mut visibility) = active_cities.single_mut();
+        visibility.is_visible = false;
+        commands.entity(city_entity).remove::<ActiveCity>();
         commands.entity(cameras.single()).despawn();
     }
 
@@ -69,7 +69,11 @@ impl CityPlugin {
                 Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_citites.0 as f32);
             commands
                 .entity(entity)
-                .insert_bundle(TransformBundle::from_transform(transform));
+                .insert_bundle(TransformBundle::from_transform(transform))
+                .insert_bundle(VisibilityBundle {
+                    visibility: Visibility { is_visible: false },
+                    ..Default::default()
+                });
             placed_citites.0 += 1;
         }
     }
@@ -100,6 +104,9 @@ impl CityBundle {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct City;
+
+#[derive(Component)]
+pub(crate) struct ActiveCity;
 
 /// Number of placed cities.
 ///

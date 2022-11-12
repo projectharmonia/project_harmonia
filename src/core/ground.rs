@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::{Collider, RigidBody};
 use iyes_loopless::prelude::*;
 
-use super::{city::City, game_state::GameState};
+use super::{city::ActiveCity, game_state::GameState};
 
 pub(super) struct GroundPlugin;
 
@@ -15,14 +15,14 @@ impl Plugin for GroundPlugin {
 
 impl GroundPlugin {
     fn spawn_system(
-        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
+        active_cities: Query<Entity, With<ActiveCity>>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
         const SIZE: f32 = 50.0;
         commands
-            .entity(visible_cities.single())
+            .entity(active_cities.single())
             .add_children(|parent| {
                 parent
                     .spawn_bundle(PbrBundle {

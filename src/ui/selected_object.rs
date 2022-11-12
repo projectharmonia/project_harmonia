@@ -2,7 +2,7 @@ use bevy::{asset::HandleId, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    city::City,
+    city::ActiveCity,
     game_state::GameState,
     object::cursor_object::{self, CursorObject},
 };
@@ -33,14 +33,14 @@ impl SelectedObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         selected_object: Res<SelectedObject>,
-        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
+        active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         let metadata_path = asset_server
             .get_handle_path(selected_object.0)
             .expect("selected object metadata should have a path");
 
         commands
-            .entity(visible_cities.single())
+            .entity(active_cities.single())
             .with_children(|parent| {
                 parent
                     .spawn()
