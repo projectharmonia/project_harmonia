@@ -23,6 +23,7 @@ use tap::TapFallible;
 use super::server::ServerFixedTimestep;
 use super::{client, REPLICATION_CHANNEL_ID};
 use crate::core::{
+    doll::DollPlayers,
     game_state::GameState,
     game_world::{save_rules::SaveRules, GameWorld},
     object::Picked,
@@ -447,7 +448,10 @@ struct NetworkComponents(Vec<ComponentId>);
 
 impl FromWorld for NetworkComponents {
     fn from_world(world: &mut World) -> Self {
-        Self(vec![world.init_component::<Picked>()])
+        Self(vec![
+            world.init_component::<Picked>(),
+            world.init_component::<DollPlayers>(),
+        ])
     }
 }
 

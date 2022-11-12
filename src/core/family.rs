@@ -16,12 +16,14 @@ use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
+    doll::{ActiveDoll, DollSelect},
     error_message,
     game_paths::GamePaths,
+    game_state::GameState,
     game_world::{save_rules::SaveRules, GameWorld},
     network::{
         entity_serde,
-        network_event::client_event::{ClientEvent, ClientEventAppExt},
+        network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
         replication::map_entity::ReflectMapEntity,
     },
 };
@@ -38,6 +40,7 @@ impl Plugin for FamilyPlugin {
         app.register_type::<FamilySync>()
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilyDelete>()
+            .add_event::<FamilySelect>()
             .add_event::<FamilySave>()
             .add_event::<FamilySaved>()
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
@@ -47,7 +50,11 @@ impl Plugin for FamilyPlugin {
                     .run_if_resource_exists::<GameWorld>()
                     .label(FamilySystems::SaveSystem),
             )
+            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::select_confirmation_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::deletion_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::state_enter_system.run_in_state(GameState::World))
+            .add_system(Self::state_enter_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
@@ -110,6 +117,36 @@ impl FamilyPlugin {
         Ok(())
     }
 
+    /// Transforms [`FamilySelect`] events into [`DollSelect`] events with the first family member.
+    fn selection_system(
+        mut doll_select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
+        mut family_select_events: EventReader<FamilySelect>,
+        families: Query<&Members>,
+    ) {
+        for event in family_select_events.iter() {
+            let family = families
+                .get(event.0)
+                .expect("event entity should be a family");
+            let member_entity = *family
+                .first()
+                .expect("spawned family should always contain at least one member");
+            doll_select_buffer.push(DollSelect(member_entity));
+        }
+    }
+
+    fn select_confirmation_system(
+        mut commands: Commands,
+        active_dolls: Query<&Family, Added<ActiveDoll>>,
+        active_families: Query<Entity, With<ActiveFamily>>,
+    ) {
+        for family in &active_dolls {
+            if let Ok(previous_entity) = active_families.get_single() {
+                commands.entity(previous_entity).remove::<ActiveFamily>();
+            }
+            commands.entity(family.0).insert(ActiveFamily);
+        }
+    }
+
     fn deletion_system(
         mut commands: Commands,
         mut delete_events: EventReader<ClientEvent<FamilyDelete>>,
@@ -120,6 +157,12 @@ impl FamilyPlugin {
         } in delete_events.iter().copied()
         {
             commands.entity(event.0).despawn_family();
+        }
+    }
+
+    fn state_enter_system(mut commands: Commands, active_families: Query<(), Added<ActiveFamily>>) {
+        if !active_families.is_empty() {
+            commands.insert_resource(NextState(GameState::Family));
         }
     }
 
@@ -208,6 +251,10 @@ impl MapEntities for FamilySync {
     }
 }
 
+/// Indicates locally controlled family.
+#[derive(Component)]
+pub(crate) struct ActiveFamily;
+
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
@@ -216,6 +263,12 @@ pub(crate) struct FamilySave(pub(crate) Entity);
 
 #[derive(Default)]
 pub(crate) struct FamilySaved;
+
+/// Selects a family entity to play using first its member.
+///
+/// Its a local event that translates into a [`DollSelect`]
+/// event with the first member from selected family.
+pub(crate) struct FamilySelect(pub(crate) Entity);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub(crate) struct FamilyDelete(#[serde(with = "entity_serde")] pub(crate) Entity);
@@ -266,6 +319,7 @@ mod tests {
             .init_resource::<GamePaths>()
             .init_resource::<GameWorld>()
             .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
+            .add_client_event::<DollSelect>()
             .add_plugins(MinimalPlugins)
             .add_plugin(FamilyPlugin);
 

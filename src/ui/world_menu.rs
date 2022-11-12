@@ -16,7 +16,7 @@ use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
     action::Action,
     city::{City, CityBundle},
-    family::{FamilyDelete, Members},
+    family::{FamilyDelete, FamilySelect, Members},
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
 };
@@ -38,6 +38,7 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut delete_buffer: ResMut<ClientSendBuffer<FamilyDelete>>,
+        mut select_buffer: EventWriter<FamilySelect>,
         families: Query<(Entity, &'static Name), With<Members>>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
@@ -52,9 +53,13 @@ impl WorldMenuPlugin {
                     }
                 });
                 match *current_tab {
-                    WorldMenuTab::Families => {
-                        FamiliesTab::new(&mut commands, &mut delete_buffer, &families).show(ui)
-                    }
+                    WorldMenuTab::Families => FamiliesTab::new(
+                        &mut commands,
+                        &mut delete_buffer,
+                        &mut select_buffer,
+                        &families,
+                    )
+                    .show(ui),
                     WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }
             });
