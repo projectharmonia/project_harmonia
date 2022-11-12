@@ -9,6 +9,7 @@ pub(super) struct GroundPlugin;
 impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::City, Self::spawn_system);
+        app.add_exit_system(GameState::City, Self::despawn_system);
     }
 }
 
@@ -31,6 +32,7 @@ impl GroundPlugin {
                     })
                     .insert(RigidBody::Fixed)
                     .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0))
+                    .insert(Ground)
                     .insert(Name::new("Ground"));
                 parent.spawn_bundle(DirectionalLightBundle {
                     directional_light: DirectionalLight {
@@ -45,4 +47,16 @@ impl GroundPlugin {
                 });
             });
     }
+
+    fn despawn_system(
+        direction_lights: Query<Entity, With<DirectionalLight>>,
+        grounds: Query<Entity, With<Ground>>,
+        mut commands: Commands,
+    ) {
+        commands.entity(direction_lights.single()).despawn();
+        commands.entity(grounds.single()).despawn();
+    }
 }
+
+#[derive(Component)]
+struct Ground;
