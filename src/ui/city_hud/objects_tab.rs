@@ -4,7 +4,7 @@ use bevy_egui::egui::{ImageButton, TextureId, Ui};
 use crate::{
     core::{
         asset_metadata::{AssetMetadata, MetadataKind},
-        preview::{PreviewRequest, Previews, PREVIEW_SIZE},
+        preview::{PreviewPlugin, PreviewRequest, Previews},
     },
     ui::selected_object::SelectedObject,
 };
@@ -47,7 +47,7 @@ impl ObjectsTab<'_, '_, '_, '_, '_> {
 
                 if ui
                     .add(
-                        ImageButton::new(*texture_id, (PREVIEW_SIZE as f32, PREVIEW_SIZE as f32))
+                        ImageButton::new(*texture_id, (PreviewPlugin::PREVIEW_SIZE as f32, PreviewPlugin::PREVIEW_SIZE as f32))
                             .selected(matches!(self.selected_id, Some(object) if object == id)),
                     )
                     .on_hover_text(&metadata.general.name)

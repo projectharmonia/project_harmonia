@@ -26,8 +26,6 @@ impl Plugin for CityPlugin {
 }
 
 impl CityPlugin {
-    const CITY_SIZE: f32 = 100.0;
-
     fn enter_system(
         mut commands: Commands,
         settings: Res<Settings>,
@@ -64,9 +62,10 @@ impl CityPlugin {
         mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, Added<City>>,
     ) {
+        const CITY_SIZE: f32 = 100.0;
         for entity in &added_cities {
             let transform =
-                Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_citites.0 as f32);
+                Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
             commands
                 .entity(entity)
                 .insert_bundle(TransformBundle::from_transform(transform))

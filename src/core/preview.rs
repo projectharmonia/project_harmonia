@@ -16,9 +16,7 @@ use strum::Display;
 
 use super::asset_metadata::{self, AssetMetadata};
 
-pub(crate) const PREVIEW_SIZE: u32 = 64;
-
-pub(super) struct PreviewPlugin;
+pub(crate) struct PreviewPlugin;
 
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
@@ -34,6 +32,8 @@ impl Plugin for PreviewPlugin {
 }
 
 impl PreviewPlugin {
+    pub(crate) const PREVIEW_SIZE: u32 = 64;
+
     fn spawn_camera_system(mut commands: Commands) {
         commands.spawn_bundle(PreviewCameraBundle::default());
     }
@@ -101,8 +101,8 @@ impl PreviewPlugin {
                 let mut image = Image::default();
                 image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
                 image.resize(Extent3d {
-                    width: PREVIEW_SIZE,
-                    height: PREVIEW_SIZE,
+                    width: Self::PREVIEW_SIZE,
+                    height: Self::PREVIEW_SIZE,
                     ..Default::default()
                 });
 

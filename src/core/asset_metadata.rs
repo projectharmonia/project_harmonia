@@ -13,7 +13,7 @@ use bevy::{
 use serde::Deserialize;
 use walkdir::WalkDir;
 
-const EXTENSION: &str = "toml";
+const METADATA_EXTENSION: &str = "toml";
 
 pub(super) struct AssetMetadataPlugin;
 
@@ -40,7 +40,7 @@ impl AssetMetadataPlugin {
             .filter_map(|entry| entry.ok())
         {
             if let Some(extension) = entry.path().extension() {
-                if extension == EXTENSION {
+                if extension == METADATA_EXTENSION {
                     let path = entry
                         .path()
                         .strip_prefix(&folder)
@@ -71,7 +71,7 @@ impl AssetLoader for AssetMetadataLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &[EXTENSION]
+        &[METADATA_EXTENSION]
     }
 }
 
