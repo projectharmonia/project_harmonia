@@ -151,11 +151,7 @@ impl FamilyPlugin {
         mut commands: Commands,
         mut delete_events: EventReader<ClientEvent<FamilyDelete>>,
     ) {
-        for ClientEvent {
-            client_id: _,
-            event,
-        } in delete_events.iter().copied()
-        {
+        for event in delete_events.iter().map(|event| event.event) {
             commands.entity(event.0).despawn_family();
         }
     }

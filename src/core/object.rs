@@ -167,7 +167,7 @@ impl ObjectPlugin {
         mut cancel_events: EventReader<ClientEvent<PickCancel>>,
         picked_objects: Query<(Entity, &Picked)>,
     ) {
-        for ClientEvent { client_id, .. } in cancel_events.iter().copied() {
+        for client_id in cancel_events.iter().map(|event| event.client_id) {
             for (entity, picked) in &picked_objects {
                 if picked.0 == client_id {
                     commands.entity(entity).remove::<Picked>();
@@ -181,7 +181,7 @@ impl ObjectPlugin {
         mut delete_events: EventReader<ClientEvent<PickDelete>>,
         picked_objects: Query<(Entity, &Picked)>,
     ) {
-        for ClientEvent { client_id, .. } in delete_events.iter().copied() {
+        for client_id in delete_events.iter().map(|event| event.client_id) {
             for (entity, picked) in &picked_objects {
                 if picked.0 == client_id {
                     commands.entity(entity).despawn_recursive();
