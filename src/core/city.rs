@@ -4,8 +4,6 @@ use iyes_loopless::prelude::*;
 use super::{
     game_state::GameState,
     game_world::{GameEntity, GameWorld},
-    orbit_camera::{OrbitCameraBundle, OrbitOrigin},
-    settings::Settings,
 };
 
 pub(super) struct CityPlugin;
@@ -14,10 +12,10 @@ impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
-            .add_enter_system(GameState::City, Self::enter_system)
+            .add_enter_system(GameState::City, Self::show_system)
             .add_exit_system(
                 GameState::City,
-                Self::exit_system.run_if_resource_exists::<GameWorld>(),
+                Self::hide_system.run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
@@ -26,27 +24,18 @@ impl Plugin for CityPlugin {
 }
 
 impl CityPlugin {
-    fn enter_system(
-        mut commands: Commands,
-        settings: Res<Settings>,
-        mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
-    ) {
-        let (city_entity, mut visibility) = active_cities.single_mut();
+    fn show_system(mut active_cities: Query<&mut Visibility, With<ActiveCity>>) {
+        let mut visibility = active_cities.single_mut();
         visibility.is_visible = true;
-        commands.entity(city_entity).with_children(|parent| {
-            parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
-        });
     }
 
-    fn exit_system(
+    fn hide_system(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
-        cameras: Query<Entity, With<OrbitOrigin>>,
     ) {
         let (city_entity, mut visibility) = active_cities.single_mut();
         visibility.is_visible = false;
         commands.entity(city_entity).remove::<ActiveCity>();
-        commands.entity(cameras.single()).despawn();
     }
 
     /// Removes all cities and their children.

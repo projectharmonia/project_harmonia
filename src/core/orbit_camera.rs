@@ -7,8 +7,10 @@ use leafwing_input_manager::prelude::ActionState;
 
 use super::{
     action::{self, Action},
+    city::ActiveCity,
     game_state::GameState,
     object::ObjectPath,
+    settings::Settings,
 };
 
 #[derive(SystemLabel)]
@@ -22,46 +24,64 @@ pub(super) struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::rotation_system
-                .run_if(action::pressed(Action::RotateCamera))
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Rotation),
-        )
-        .add_system(
-            Self::position_system
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Position),
-        )
-        .add_system(
-            Self::arm_system
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::arm_system
-                .run_in_state(GameState::FamilyEditor)
-                .label(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::transform_system
-                .run_in_state(GameState::City)
-                .after(OrbitCameraSystem::Rotation)
-                .after(OrbitCameraSystem::Position)
-                .after(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::transform_system
-                .run_in_state(GameState::FamilyEditor)
-                .after(OrbitCameraSystem::Arm),
-        )
-        .add_system(Self::update_raycast_source_system.run_in_state(GameState::City));
+        app.add_enter_system(GameState::City, Self::spawn_system)
+            .add_exit_system(GameState::City, Self::despawn_system)
+            .add_system(
+                Self::rotation_system
+                    .run_if(action::pressed(Action::RotateCamera))
+                    .run_in_state(GameState::City)
+                    .label(OrbitCameraSystem::Rotation),
+            )
+            .add_system(
+                Self::position_system
+                    .run_in_state(GameState::City)
+                    .label(OrbitCameraSystem::Position),
+            )
+            .add_system(
+                Self::arm_system
+                    .run_in_state(GameState::City)
+                    .label(OrbitCameraSystem::Arm),
+            )
+            .add_system(
+                Self::arm_system
+                    .run_in_state(GameState::FamilyEditor)
+                    .label(OrbitCameraSystem::Arm),
+            )
+            .add_system(
+                Self::transform_system
+                    .run_in_state(GameState::City)
+                    .after(OrbitCameraSystem::Rotation)
+                    .after(OrbitCameraSystem::Position)
+                    .after(OrbitCameraSystem::Arm),
+            )
+            .add_system(
+                Self::transform_system
+                    .run_in_state(GameState::FamilyEditor)
+                    .after(OrbitCameraSystem::Arm),
+            )
+            .add_system(Self::update_raycast_source_system.run_in_state(GameState::City));
     }
 }
 
 impl OrbitCameraPlugin {
     /// Interpolation multiplier for movement and camera zoom.
     const INTERPOLATION_SPEED: f32 = 5.0;
+
+    fn spawn_system(
+        mut commands: Commands,
+        settings: Res<Settings>,
+        active_cities: Query<Entity, With<ActiveCity>>,
+    ) {
+        commands
+            .entity(active_cities.single())
+            .with_children(|parent| {
+                parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
+            });
+    }
+
+    fn despawn_system(mut commands: Commands, cameras: Query<Entity, With<OrbitOrigin>>) {
+        commands.entity(cameras.single()).despawn();
+    }
 
     fn rotation_system(
         mut motion_events: EventReader<MouseMotion>,
