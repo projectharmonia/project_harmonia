@@ -16,6 +16,7 @@ use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
+    city::ActiveCity,
     doll::{ActiveDoll, DollSelect},
     error_message,
     game_paths::GamePaths,
@@ -156,8 +157,19 @@ impl FamilyPlugin {
         }
     }
 
-    fn state_enter_system(mut commands: Commands, active_families: Query<(), Added<ActiveFamily>>) {
-        if !active_families.is_empty() {
+    fn state_enter_system(
+        mut commands: Commands,
+        parents: Query<&Parent>,
+        active_families: Query<&Members, Added<ActiveFamily>>,
+    ) {
+        if let Ok(members) = active_families.get_single() {
+            let member_entity = *members
+                .first()
+                .expect("family should contain at least one member");
+            let parent = parents
+                .get(member_entity)
+                .expect("member should have a city as a parent");
+            commands.entity(parent.get()).insert(ActiveCity);
             commands.insert_resource(NextState(GameState::Family));
         }
     }

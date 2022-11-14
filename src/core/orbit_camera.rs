@@ -22,40 +22,42 @@ pub(super) struct OrbitCameraPlugin;
 
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::rotation_system
-                .run_if(action::pressed(Action::RotateCamera))
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Rotation),
-        )
-        .add_system(
-            Self::position_system
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Position),
-        )
-        .add_system(
-            Self::arm_system
-                .run_in_state(GameState::City)
-                .label(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::arm_system
-                .run_in_state(GameState::FamilyEditor)
-                .label(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::transform_system
-                .run_in_state(GameState::City)
-                .after(OrbitCameraSystem::Rotation)
-                .after(OrbitCameraSystem::Position)
-                .after(OrbitCameraSystem::Arm),
-        )
-        .add_system(
-            Self::transform_system
-                .run_in_state(GameState::FamilyEditor)
-                .after(OrbitCameraSystem::Arm),
-        )
-        .add_system(Self::update_raycast_source_system.run_in_state(GameState::City));
+        for state in [GameState::FamilyEditor, GameState::City, GameState::Family] {
+            app.add_system(Self::update_raycast_source_system.run_in_state(state))
+                .add_system(
+                    Self::rotation_system
+                        .run_if(action::pressed(Action::RotateCamera))
+                        .run_in_state(state)
+                        .label(OrbitCameraSystem::Rotation),
+                )
+                .add_system(
+                    Self::arm_system
+                        .run_in_state(state)
+                        .label(OrbitCameraSystem::Arm),
+                );
+
+            if state != GameState::FamilyEditor {
+                app.add_system(
+                    Self::position_system
+                        .run_in_state(state)
+                        .label(OrbitCameraSystem::Position),
+                )
+                .add_system(
+                    Self::transform_system
+                        .run_in_state(state)
+                        .after(OrbitCameraSystem::Rotation)
+                        .after(OrbitCameraSystem::Arm)
+                        .after(OrbitCameraSystem::Position),
+                );
+            } else {
+                app.add_system(
+                    Self::transform_system
+                        .run_in_state(state)
+                        .after(OrbitCameraSystem::Rotation)
+                        .after(OrbitCameraSystem::Arm),
+                );
+            }
+        }
     }
 }
 

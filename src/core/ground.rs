@@ -10,6 +10,8 @@ impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::City, Self::spawn_system);
         app.add_exit_system(GameState::City, Self::despawn_system);
+        app.add_enter_system(GameState::Family, Self::spawn_system);
+        app.add_exit_system(GameState::Family, Self::despawn_system);
     }
 }
 

@@ -19,6 +19,11 @@ impl Plugin for CityPlugin {
                 GameState::City,
                 Self::exit_system.run_if_resource_exists::<GameWorld>(),
             )
+            .add_enter_system(GameState::Family, Self::enter_system)
+            .add_exit_system(
+                GameState::Family,
+                Self::exit_system.run_if_resource_exists::<GameWorld>(),
+            )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
