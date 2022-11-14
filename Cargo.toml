@@ -22,7 +22,7 @@ bevy-inspector-egui = { version = "0.13", default-features = false, features = [
   "clipboard",
   "bevy_pbr",
 ] }
-bevy-scene-hook = "4.1"
+bevy-scene-hook = "5.1"
 iyes_loopless = "0.8"
 leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager", default-features = false, features = [
   "egui",
