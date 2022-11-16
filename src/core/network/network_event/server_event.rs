@@ -4,7 +4,6 @@ use bevy::{ecs::event::Event, prelude::*};
 use bevy_renet::renet::{RenetClient, RenetServer};
 use iyes_loopless::prelude::*;
 use serde::{de::DeserializeOwned, Serialize};
-use tap::TapFallible;
 
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
@@ -131,12 +130,9 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
     channel: Res<EventChannel<T>>,
 ) {
     while let Some(message) = client.receive_message(channel.id) {
-        if let Ok(event) = rmp_serde::from_slice(&message)
-            .tap_err(|e| error!("unable to deserialize event from server: {e}"))
-        {
-            debug!("received event {event:?} from server");
-            server_events.send(event);
-        }
+        let event = rmp_serde::from_slice(&message).expect("server should send valid events");
+        debug!("received event {event:?} from server");
+        server_events.send(event);
     }
 }
 

@@ -3,7 +3,6 @@ pub(crate) mod map_entity;
 mod removal_tracker;
 mod world_diff;
 
-use anyhow::{Context, Result};
 use bevy::{
     app::PluginGroupBuilder,
     ecs::{
@@ -186,12 +185,10 @@ fn receive_world_diff(
     let mut received_diffs = Vec::<WorldDiff>::new();
     while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
         let mut deserializer = Deserializer::from_read_ref(&message);
-        if let Ok(world_diff) = WorldDiffDeserializer::new(registry)
+        let world_diff = WorldDiffDeserializer::new(registry)
             .deserialize(&mut deserializer)
-            .tap_err(|e| error!("unable to deserialize server world diff: {e}"))
-        {
-            received_diffs.push(world_diff);
-        }
+            .expect("server should send valid world diffs");
+        received_diffs.push(world_diff);
     }
 
     received_diffs
@@ -203,7 +200,7 @@ fn receive_tick_ack(server: &mut RenetServer, client_id: u64) -> Option<LastTick
     let mut received_ticks = Vec::<LastTick>::new();
     while let Some(message) = server.receive_message(client_id, REPLICATION_CHANNEL_ID) {
         if let Ok(tick) = rmp_serde::from_slice(&message)
-            .tap_err(|e| error!("unable to deserialize message from client: {e:#?}"))
+            .tap_err(|e| error!("unable to deserialize a tick from client {client_id}: {e}"))
         {
             received_ticks.push(tick);
         }
@@ -367,18 +364,15 @@ fn apply_diffs(
     let registry = registry.read();
     // Map entities non-lazily in order to correctly map components that reference server entities.
     for (entity, components) in map_entities(world, entity_map, world_diff.entities) {
-        for component_diff in components.iter() {
-            apply_component_diff(world, entity_map, &registry, entity, component_diff)
-                .unwrap_or_else(|e| error!("{e}"));
+        for component_diff in components {
+            apply_component_diff(world, entity_map, &registry, entity, &component_diff);
         }
     }
     for server_entity in world_diff.despawns {
-        if let Ok(local_entity) = entity_map
+        let local_entity = entity_map
             .remove_by_server(server_entity)
-            .tap_err(|e| error!("received an invalid entity despawn: {e}"))
-        {
-            world.entity_mut(local_entity).despawn_recursive();
-        }
+            .expect("server should send valid entities to despawn");
+        world.entity_mut(local_entity).despawn_recursive();
     }
 }
 
@@ -402,15 +396,15 @@ fn apply_component_diff(
     registry: &TypeRegistryInternal,
     local_entity: Entity,
     component_diff: &ComponentDiff,
-) -> Result<()> {
+) {
     let type_name = component_diff.type_name();
     let registration = registry
         .get_with_name(type_name)
-        .with_context(|| format!("received a change in unknown type name {type_name}"))?;
+        .unwrap_or_else(|| panic!("{type_name} should be registered"));
 
     let reflect_component = registration
         .data::<ReflectComponent>()
-        .with_context(|| format!("unable to reflect received {type_name}"))?;
+        .unwrap_or_else(|| panic!("{type_name} should have reflect(Component)"));
 
     match component_diff {
         ComponentDiff::Changed(component) => {
@@ -418,13 +412,11 @@ fn apply_component_diff(
             if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
                     .map_entities(world, entity_map.to_client(), local_entity)
-                    .with_context(|| format!("unable to map entities for {type_name}"))?;
+                    .unwrap_or_else(|e| panic!("entities in {type_name} should be mappable: {e}"));
             }
         }
         ComponentDiff::Removed(_) => reflect_component.remove(world, local_entity),
     }
-
-    Ok(())
 }
 
 /// Last received tick from server.
@@ -624,11 +616,7 @@ mod tests {
         // Mark components as removed.
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
         let game_entity_id = app.world.init_component::<GameEntity>();
-        let non_reflected_id = app.world.init_component::<NonReflectedComponent>();
-        let removal_tracker = RemovalTracker(HashMap::from([
-            (game_entity_id, REMOVAL_TICK),
-            (non_reflected_id, REMOVAL_TICK),
-        ]));
+        let removal_tracker = RemovalTracker(HashMap::from([(game_entity_id, REMOVAL_TICK)]));
         let replicated_entity = app
             .world
             .spawn()

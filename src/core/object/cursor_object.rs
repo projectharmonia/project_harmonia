@@ -7,7 +7,7 @@ use bevy_renet::renet::RenetClient;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
-use tap::{TapFallible, TapOptional};
+use tap::TapOptional;
 
 use crate::core::{
     action::{self, Action},
@@ -200,21 +200,18 @@ impl CursorObjectPlugin {
         cursor_objects: Query<(Entity, &CursorObject)>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        if let Ok((cursor_entity, cursor_object)) = cursor_objects
-            .get_single()
-            .tap_err(|e| error!("unable to get cursor object for despawn: {e}"))
-        {
-            debug!("despawned cursor {cursor_object:?}");
-            match *cursor_object {
-                CursorObject::Spawning(_) => {
-                    commands.entity(cursor_entity).despawn_recursive();
-                }
-                CursorObject::Moving(object_entity) => {
-                    commands.entity(cursor_entity).despawn_recursive();
-                    // Object could be invalid in case of removal.
-                    if let Ok(mut visibility) = visibility.get_mut(object_entity) {
-                        visibility.is_visible = true;
-                    }
+        let (cursor_entity, cursor_object) = cursor_objects.single();
+        debug!("despawned cursor {cursor_object:?}");
+
+        match *cursor_object {
+            CursorObject::Spawning(_) => {
+                commands.entity(cursor_entity).despawn_recursive();
+            }
+            CursorObject::Moving(object_entity) => {
+                commands.entity(cursor_entity).despawn_recursive();
+                // Object could be invalid in case of removal.
+                if let Ok(mut visibility) = visibility.get_mut(object_entity) {
+                    visibility.is_visible = true;
                 }
             }
         }
@@ -249,7 +246,7 @@ impl CursorObjectPlugin {
             if let Some((entity, mut transform, ..)) = picked_objects
                 .iter_mut()
                 .find(|(.., picked)| picked.0 == client_id)
-                .tap_none(|| error!("unable to map received entity"))
+                .tap_none(|| error!("no such entity to apply movement from client {client_id}"))
             {
                 transform.translation = event.translation;
                 transform.rotation = event.rotation;
