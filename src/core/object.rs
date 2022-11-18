@@ -20,7 +20,7 @@ use super::{
     action::Action,
     asset_metadata,
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, GameEntity},
+    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::{
         entity_serde,
         network_event::client_event::{
@@ -48,7 +48,7 @@ impl Plugin for ObjectPlugin {
             .add_mapped_client_event::<ObjectPick>()
             .add_client_event::<PickCancel>()
             .add_client_event::<PickDelete>()
-            .add_system(Self::spawning_system.run_in_state(GameState::City))
+            .add_system(Self::spawning_system.run_if_resource_exists::<GameWorld>())
             .add_system(
                 Self::ray_system
                     .chain(Self::picking_system)
