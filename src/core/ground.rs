@@ -61,4 +61,4 @@ impl GroundPlugin {
 }
 
 #[derive(Component)]
-struct Ground;
+pub(super) struct Ground;
