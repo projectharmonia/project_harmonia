@@ -15,6 +15,7 @@ pub(super) mod input_events;
 pub(super) mod network;
 pub(super) mod object;
 mod orbit_camera;
+pub(super) mod picking;
 pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
@@ -37,6 +38,7 @@ use ground::GroundPlugin;
 use network::NetworkPlugins;
 use object::ObjectPlugins;
 use orbit_camera::OrbitCameraPlugin;
+use picking::PickingPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use task::TaskPlugins;
@@ -61,6 +63,7 @@ impl PluginGroup for CorePlugins {
             .add(FamilyPlugin)
             .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)
+            .add(PickingPlugin)
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin)

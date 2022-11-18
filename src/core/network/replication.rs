@@ -25,7 +25,6 @@ use crate::core::{
     doll::DollPlayers,
     game_state::GameState,
     game_world::{save_rules::SaveRules, GameWorld},
-    object::Picked,
 };
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
@@ -440,10 +439,7 @@ struct NetworkComponents(Vec<ComponentId>);
 
 impl FromWorld for NetworkComponents {
     fn from_world(world: &mut World) -> Self {
-        Self(vec![
-            world.init_component::<Picked>(),
-            world.init_component::<DollPlayers>(),
-        ])
+        Self(vec![world.init_component::<DollPlayers>()])
     }
 }
 

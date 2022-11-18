@@ -16,7 +16,7 @@ use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::{action::Action, cli::Cli, object::ObjectPath, CorePlugins};
+use crate::core::{action::Action, cli::Cli, picking::Pickable, CorePlugins};
 use ui::UiPlugins;
 
 struct DollisPlugins;
@@ -32,7 +32,7 @@ impl PluginGroup for DollisPlugins {
             .add(RapierDebugRenderPlugin::default())
             .add(RenetServerPlugin)
             .add(RenetClientPlugin)
-            .add(DefaultRaycastingPlugin::<ObjectPath>::default())
+            .add(DefaultRaycastingPlugin::<Pickable>::default())
             .add(OutlinePlugin)
             .add(EguiPlugin)
             .add(HikariPlugin)

@@ -8,7 +8,7 @@ use leafwing_input_manager::prelude::ActionState;
 use super::{
     action::{self, Action},
     game_state::GameState,
-    object::ObjectPath,
+    picking::Pickable,
 };
 
 #[derive(SystemLabel)]
@@ -118,7 +118,7 @@ impl OrbitCameraPlugin {
 
     fn update_raycast_source_system(
         mut cursor_events: EventReader<CursorMoved>,
-        mut ray_sources: Query<&mut RayCastSource<ObjectPath>>,
+        mut ray_sources: Query<&mut RayCastSource<Pickable>>,
     ) {
         if let Some(cursor_pos) = cursor_events.iter().last().map(|event| event.position) {
             for mut ray_source in &mut ray_sources {
@@ -154,7 +154,7 @@ pub(crate) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
-    ray_source: RayCastSource<ObjectPath>,
+    ray_source: RayCastSource<Pickable>,
 
     #[bundle]
     camera_3d: Camera3dBundle,

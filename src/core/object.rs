@@ -8,28 +8,28 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_outline::{Outline, OutlineBundle};
-use bevy_mod_raycast::{RayCastMesh, RayCastSource};
-use bevy_renet::renet::RenetClient;
+use bevy_mod_raycast::RayCastMesh;
+use bevy_renet::renet::RenetServer;
 use bevy_scene_hook::SceneHook;
 use derive_more::From;
 use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
 use serde::{Deserialize, Serialize};
+use tap::TapFallible;
 
 use super::{
-    action::Action,
     asset_metadata,
-    game_state::GameState,
+    city::City,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::{
         entity_serde,
-        network_event::client_event::{
-            ClientEvent, ClientEventAppExt, ClientEventSystems, ClientSendBuffer,
+        network_event::{
+            client_event::{ClientEvent, ClientEventAppExt},
+            server_event::{SendMode, ServerEvent, ServerEventAppExt, ServerSendBuffer},
         },
-        server::SERVER_ID,
     },
+    picking::Pickable,
 };
-use cursor_object::{CursorObject, CursorObjectPlugin};
+use cursor_object::CursorObjectPlugin;
 
 pub(super) struct ObjectPlugins;
 
@@ -43,29 +43,20 @@ struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Picked>()
-            .register_type::<ObjectPath>()
-            .add_mapped_client_event::<ObjectPick>()
-            .add_client_event::<PickCancel>()
-            .add_client_event::<PickDelete>()
-            .add_system(Self::spawning_system.run_if_resource_exists::<GameWorld>())
-            .add_system(
-                Self::ray_system
-                    .chain(Self::picking_system)
-                    .chain(Self::outline_system)
-                    .run_if_not(cursor_object::cursor_object_exists)
-                    .run_in_state(GameState::City)
-                    .before(ClientEventSystems::<ObjectPick>::MappingSystem),
-            )
-            .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::pick_cancellation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::pick_deletion_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::cursor_spawning_system.run_in_state(GameState::City));
+        app.register_type::<ObjectPath>()
+            .add_client_event::<ObjectSpawn>()
+            .add_mapped_client_event::<ObjectMove>()
+            .add_mapped_client_event::<ObjectDespawn>()
+            .add_server_event::<ObjectConfirmed>()
+            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::movement_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
 impl ObjectPlugin {
-    fn spawning_system(
+    fn init_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
@@ -77,6 +68,7 @@ impl ObjectPlugin {
             commands
                 .entity(entity)
                 .insert(scene_handle)
+                .insert(Pickable)
                 .insert(GlobalTransform::default())
                 .insert(SceneHook::new(|entity, commands| {
                     if entity.contains::<Handle<Mesh>>() {
@@ -89,7 +81,7 @@ impl ObjectPlugin {
                                 },
                                 ..Default::default()
                             })
-                            .insert(RayCastMesh::<ObjectPath>::default());
+                            .insert(RayCastMesh::<Pickable>::default());
                     }
                 }))
                 .insert_bundle(VisibilityBundle::default());
@@ -97,164 +89,60 @@ impl ObjectPlugin {
         }
     }
 
-    fn ray_system(
-        ray_sources: Query<&RayCastSource<ObjectPath>>,
-        parents: Query<(&Parent, Option<&ObjectPath>)>,
-    ) -> Option<Entity> {
-        for source in &ray_sources {
-            if let Some((child_entity, _)) = source.intersect_top() {
-                let entity = find_parent_object(child_entity, &parents)
-                    .expect("object entity should have a parent");
-                return Some(entity);
-            }
-        }
-
-        None
-    }
-
-    fn picking_system(
-        In(entity): In<Option<Entity>>,
-        mut pick_buffer: ResMut<ClientSendBuffer<ObjectPick>>,
-        action_state: Res<ActionState<Action>>,
-    ) -> Option<Entity> {
-        if let Some(entity) = entity {
-            if action_state.just_pressed(Action::Confirm) {
-                pick_buffer.push(ObjectPick(entity));
-                None
-            } else {
-                Some(entity)
-            }
-        } else {
-            None
-        }
-    }
-
-    fn outline_system(
-        In(entity): In<Option<Entity>>,
-        mut previous_entity: Local<Option<Entity>>,
-        mut outlines: Query<&mut Outline>,
-        children: Query<&Children>,
-    ) {
-        if *previous_entity == entity {
-            return;
-        }
-
-        if let Some(entity) = entity {
-            set_outline_recursive(entity, true, &mut outlines, &children);
-        }
-
-        if let Some(entity) = *previous_entity {
-            set_outline_recursive(entity, false, &mut outlines, &children);
-        }
-
-        *previous_entity = entity;
-    }
-
-    fn pick_confirmation_system(
+    fn spawn_system(
         mut commands: Commands,
-        mut pick_events: EventReader<ClientEvent<ObjectPick>>,
-        unpicked_objects: Query<(), (With<ObjectPath>, Without<Picked>)>,
+        mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
+        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
     ) {
-        for ClientEvent { client_id, event } in pick_events.iter().copied() {
-            if unpicked_objects.get(event.0).is_ok() {
-                commands.entity(event.0).insert(Picked(client_id));
-            }
+        for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
+            commands.spawn_bundle(ObjectBundle::new(
+                event.metadata_path,
+                event.translation,
+                event.rotation,
+                visible_cities.single(),
+            ));
+            confirm_buffer.push(ServerEvent {
+                mode: SendMode::Direct(client_id),
+                event: ObjectConfirmed,
+            });
         }
     }
 
-    fn pick_cancellation_system(
-        mut commands: Commands,
-        mut cancel_events: EventReader<ClientEvent<PickCancel>>,
-        picked_objects: Query<(Entity, &Picked)>,
+    fn movement_system(
+        mut move_events: EventReader<ClientEvent<ObjectMove>>,
+        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+        mut transforms: Query<&mut Transform>,
     ) {
-        for client_id in cancel_events.iter().map(|event| event.client_id) {
-            for (entity, picked) in &picked_objects {
-                if picked.0 == client_id {
-                    commands.entity(entity).remove::<Picked>();
-                }
-            }
-        }
-    }
-
-    fn pick_deletion_system(
-        mut commands: Commands,
-        mut delete_events: EventReader<ClientEvent<PickDelete>>,
-        picked_objects: Query<(Entity, &Picked)>,
-    ) {
-        for client_id in delete_events.iter().map(|event| event.client_id) {
-            for (entity, picked) in &picked_objects {
-                if picked.0 == client_id {
-                    commands.entity(entity).despawn_recursive();
-                }
-            }
-        }
-    }
-
-    fn cursor_spawning_system(
-        mut commands: Commands,
-        client: Option<Res<RenetClient>>,
-        mut picked_objects: Query<(Entity, &Parent, &Picked), Added<Picked>>,
-    ) {
-        let client_id = client.map(|client| client.client_id()).unwrap_or(SERVER_ID);
-        for (entity, parent, picked) in &mut picked_objects {
-            if picked.0 == client_id {
-                commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn().insert(CursorObject::Moving(entity));
+        for ClientEvent { client_id, event } in move_events.iter().copied() {
+            if let Ok(mut transform) = transforms
+                .get_mut(event.entity)
+                .tap_err(|e| error!("unable to apply movement from client {client_id}: {e}"))
+            {
+                transform.translation = event.translation;
+                transform.rotation = event.rotation;
+                confirm_buffer.push(ServerEvent {
+                    mode: SendMode::Direct(client_id),
+                    event: ObjectConfirmed,
                 });
             }
         }
     }
-}
 
-/// Iterates up the hierarchy until it finds a parent with an [`ObjectPath`] component if exists.
-fn find_parent_object(
-    entity: Entity,
-    parents: &Query<(&Parent, Option<&ObjectPath>)>,
-) -> Option<Entity> {
-    let (parent, object_path) = parents.get(entity).unwrap();
-    if object_path.is_some() {
-        return Some(entity);
-    }
-
-    find_parent_object(parent.get(), parents)
-}
-
-fn set_outline_recursive(
-    entity: Entity,
-    visible: bool,
-    outlines: &mut Query<&mut Outline>,
-    children: &Query<&Children>,
-) {
-    if let Ok(mut outline) = outlines.get_mut(entity) {
-        outline.visible = visible;
-    }
-
-    if let Ok(entity_children) = children.get(entity) {
-        for &entity in entity_children {
-            set_outline_recursive(entity, visible, outlines, children);
+    fn despawn_system(
+        mut commands: Commands,
+        mut despawn_events: EventReader<ClientEvent<ObjectDespawn>>,
+        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+    ) {
+        for ClientEvent { client_id, event } in despawn_events.iter().copied() {
+            commands.entity(event.0).despawn_recursive();
+            confirm_buffer.push(ServerEvent {
+                mode: SendMode::Direct(client_id),
+                event: ObjectConfirmed,
+            });
         }
     }
 }
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct ObjectPick(#[serde(with = "entity_serde")] pub(super) Entity);
-
-impl MapEntities for ObjectPick {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-struct PickCancel;
-
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-struct PickDelete;
-
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
-pub(super) struct Picked(u64);
 
 #[derive(Bundle)]
 pub(crate) struct ObjectBundle {
@@ -288,120 +176,37 @@ impl ObjectBundle {
 #[reflect(Component)]
 pub(crate) struct ObjectPath(String);
 
-#[cfg(test)]
-mod tests {
-    use bevy::{asset::AssetPlugin, core::CorePlugin, ecs::system::SystemState};
-    use bevy_mod_raycast::IntersectionData;
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct ObjectSpawn {
+    metadata_path: PathBuf,
+    translation: Vec3,
+    rotation: Quat,
+}
 
-    use super::*;
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+struct ObjectMove {
+    entity: Entity,
+    translation: Vec3,
+    rotation: Quat,
+}
 
-    #[test]
-    fn parent_search() {
-        let mut world = World::new();
-        let child_entity = world.spawn().id();
-        let parent_entity = world
-            .spawn()
-            .insert(ObjectPath::default())
-            .push_children(&[child_entity])
-            .id();
-
-        // Assign a parent, as an outline object is always expected to have a parent object.
-        world.spawn().push_children(&[parent_entity]);
-
-        let mut system_state: SystemState<Query<(&Parent, Option<&ObjectPath>)>> =
-            SystemState::new(&mut world);
-
-        let entity = find_parent_object(child_entity, &system_state.get(&world))
-            .expect("object should have a parent");
-        assert_eq!(entity, parent_entity);
-    }
-
-    #[test]
-    fn recursive_outline() {
-        let mut world = World::new();
-        let child_entity1 = world.spawn().insert(Outline::default()).id();
-        let child_entity2 = world
-            .spawn()
-            .insert(Outline::default())
-            .push_children(&[child_entity1])
-            .id();
-        let root_entity = world
-            .spawn()
-            .insert(Outline::default())
-            .push_children(&[child_entity2])
-            .id();
-
-        let mut system_state: SystemState<(Query<&mut Outline>, Query<&Children>)> =
-            SystemState::new(&mut world);
-
-        const VISIBLE: bool = false;
-        let (mut outlines, children) = system_state.get_mut(&mut world);
-        set_outline_recursive(root_entity, VISIBLE, &mut outlines, &children);
-
-        assert_eq!(
-            world.get::<Outline>(child_entity1).unwrap().visible,
-            VISIBLE
-        );
-        assert_eq!(
-            world.get::<Outline>(child_entity2).unwrap().visible,
-            VISIBLE
-        );
-        assert_eq!(world.get::<Outline>(root_entity).unwrap().visible, VISIBLE);
-    }
-
-    #[test]
-    fn hovering() {
-        let mut app = App::new();
-        app.add_loopless_state(GameState::City)
-            .init_resource::<ActionState<Action>>()
-            .add_plugin(CorePlugin)
-            .add_plugin(AssetPlugin)
-            .add_plugin(ObjectPlugin);
-
-        let outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline::default())
-            .insert(ObjectPath::default())
-            .id();
-        app.world.spawn().push_children(&[outline_entity]);
-
-        let mut ray_source = RayCastSource::<ObjectPath>::default();
-        ray_source.intersections_mut().push((
-            outline_entity,
-            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
-        ));
-        let ray_entity = app.world.spawn().insert(ray_source).id();
-
-        app.update();
-
-        assert!(app.world.get::<Outline>(outline_entity).unwrap().visible);
-
-        let next_outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline::default())
-            .insert(ObjectPath::default())
-            .id();
-        app.world.spawn().push_children(&[next_outline_entity]);
-        let mut ray_source = app
-            .world
-            .get_mut::<RayCastSource<ObjectPath>>(ray_entity)
-            .unwrap();
-        ray_source.intersections_mut().clear();
-        ray_source.intersections_mut().push((
-            next_outline_entity,
-            IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
-        ));
-
-        app.update();
-
-        assert!(!app.world.get::<Outline>(outline_entity).unwrap().visible);
-        assert!(
-            app.world
-                .get::<Outline>(next_outline_entity)
-                .unwrap()
-                .visible
-        );
+impl MapEntities for ObjectMove {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.entity = entity_map.get(self.entity)?;
+        Ok(())
     }
 }
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct ObjectDespawn(#[serde(with = "entity_serde")] pub(super) Entity);
+
+impl MapEntities for ObjectDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
+
+/// An event from server which indicates action confirmation.
+#[derive(Deserialize, Serialize, Debug, Default)]
+struct ObjectConfirmed;
