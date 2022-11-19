@@ -83,11 +83,17 @@ impl PickingPlugin {
 }
 
 /// Iterates up the hierarchy until it finds a parent with an [`Pickable`] component if exists.
+///
+/// # Panics
+///
+/// Panics if `entity` has no parent.
 fn find_parent_object(
     entity: Entity,
     parents: &Query<(&Parent, Option<&Pickable>)>,
 ) -> Option<Entity> {
-    let (parent, object_path) = parents.get(entity).unwrap();
+    let (parent, object_path) = parents
+        .get(entity)
+        .expect("entity should have at least one parent");
     if object_path.is_some() {
         return Some(entity);
     }
