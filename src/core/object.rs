@@ -157,7 +157,7 @@ impl ObjectBundle {
                 metadata_path
                     .into_os_string()
                     .into_string()
-                    .expect("Path should be a UTF-8 string"),
+                    .expect("path should be a UTF-8 string"),
             ),
             transform: Transform::default()
                 .with_translation(translation)
