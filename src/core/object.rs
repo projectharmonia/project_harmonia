@@ -18,7 +18,6 @@ use tap::TapFallible;
 
 use super::{
     asset_metadata,
-    city::City,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::{
         entity_serde,
@@ -44,7 +43,7 @@ struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<ObjectPath>()
-            .add_client_event::<ObjectSpawn>()
+            .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
             .add_server_event::<ObjectConfirmed>()
@@ -93,14 +92,13 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
         mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
-        visible_cities: Query<Entity, (With<City>, With<Visibility>)>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn_bundle(ObjectBundle::new(
                 event.metadata_path,
                 event.translation,
                 event.rotation,
-                visible_cities.single(),
+                event.city_entity,
             ));
             confirm_buffer.push(ServerEvent {
                 mode: SendMode::Direct(client_id),
@@ -181,6 +179,14 @@ struct ObjectSpawn {
     metadata_path: PathBuf,
     translation: Vec3,
     rotation: Quat,
+    city_entity: Entity,
+}
+
+impl MapEntities for ObjectSpawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.city_entity = entity_map.get(self.city_entity)?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]

@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::*;
 use crate::core::{
     action::{self, Action},
     asset_metadata,
+    city::ActiveCity,
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
     picking::ObjectPicked,
@@ -147,6 +148,7 @@ impl CursorObjectPlugin {
         mut move_buffers: ResMut<ClientSendBuffer<ObjectMove>>,
         mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawn>>,
         cursor_objects: Query<(&Transform, &CursorObject)>,
+        active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Ok((transform, cursor_object)) = cursor_objects.get_single() {
             debug!("confirmed cursor {cursor_object:?}");
@@ -155,6 +157,7 @@ impl CursorObjectPlugin {
                     metadata_path: metadata_path.clone(),
                     translation: transform.translation,
                     rotation: transform.rotation,
+                    city_entity: active_cities.single(),
                 }),
                 CursorObject::Moving(entity) => move_buffers.push(ObjectMove {
                     entity: *entity,
