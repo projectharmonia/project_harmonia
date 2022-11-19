@@ -187,14 +187,15 @@ impl CursorObjectPlugin {
         cursor_objects: Query<(Entity, &CursorObject)>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        let (cursor_entity, cursor_object) = cursor_objects.single();
-        debug!("despawned cursor {cursor_object:?}");
+        if let Ok((cursor_entity, cursor_object)) = cursor_objects.get_single() {
+            debug!("despawned cursor {cursor_object:?}");
+            commands.entity(cursor_entity).despawn_recursive();
 
-        commands.entity(cursor_entity).despawn_recursive();
-        if let CursorObject::Moving(object_entity) = *cursor_object {
-            // Object could be invalid in case of removal.
-            if let Ok(mut visibility) = visibility.get_mut(object_entity) {
-                visibility.is_visible = true;
+            if let CursorObject::Moving(object_entity) = *cursor_object {
+                // Object could be invalid in case of removal.
+                if let Ok(mut visibility) = visibility.get_mut(object_entity) {
+                    visibility.is_visible = true;
+                }
             }
         }
     }
