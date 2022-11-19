@@ -5,6 +5,7 @@ use bevy_renet::renet::RenetServer;
 use derive_more::From;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::{Deserialize, Serialize};
+use tap::TapOptional;
 
 use self::movement::MovementPlugin;
 
@@ -56,11 +57,13 @@ impl TaskPlugin {
         mut dolls: Query<(&mut QueuedTasks, &DollPlayers)>,
     ) {
         for ClientEvent { client_id, event } in task_events.iter().copied() {
-            for (mut tasks, players) in &mut dolls {
-                if players.contains(&client_id) {
-                    tasks.push(event);
-                    break;
-                }
+            if let Some(mut tasks) = dolls
+                .iter_mut()
+                .find(|(_, players)| players.contains(&client_id))
+                .map(|(task, _)| task)
+                .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
+            {
+                tasks.push(event);
             }
         }
     }
