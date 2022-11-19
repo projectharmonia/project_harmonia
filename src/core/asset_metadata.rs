@@ -21,12 +21,12 @@ impl Plugin for AssetMetadataPlugin {
     fn build(&self, app: &mut App) {
         app.add_asset::<AssetMetadata>()
             .init_asset_loader::<AssetMetadataLoader>()
-            .add_startup_system(Self::load_metadata);
+            .add_startup_system(Self::load_system);
     }
 }
 
 impl AssetMetadataPlugin {
-    fn load_metadata(
+    fn load_system(
         mut commands: Commands,
         asset_server: ResMut<AssetServer>,
         settings: Res<AssetServerSettings>,

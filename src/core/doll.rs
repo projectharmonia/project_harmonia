@@ -26,29 +26,15 @@ impl Plugin for DollPlugin {
             .register_type::<LastName>()
             .register_type::<DollPlayers>()
             .add_mapped_client_event::<DollSelect>()
+            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::mesh_add_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::selection_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::select_confirmation_system.run_if_resource_exists::<GameWorld>());
     }
 }
 
 impl DollPlugin {
-    fn name_update_system(
-        mut commands: Commands,
-        mut changed_names: Query<
-            (Entity, &FirstName, &LastName),
-            Or<(Changed<FirstName>, Changed<LastName>)>,
-        >,
-    ) {
-        for (entity, first_name, last_name) in &mut changed_names {
-            commands
-                .entity(entity)
-                .insert(Name::new(format!("{first_name} {last_name}")));
-        }
-    }
-
-    fn mesh_add_system(
+    fn init_system(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
@@ -61,6 +47,20 @@ impl DollPlugin {
                 .insert(GlobalTransform::default())
                 .insert(meshes.add(Mesh::from(shape::Capsule::default())))
                 .insert(materials.add(Color::rgb(0.3, 0.3, 0.3).into()));
+        }
+    }
+
+    fn name_update_system(
+        mut commands: Commands,
+        mut changed_names: Query<
+            (Entity, &FirstName, &LastName),
+            Or<(Changed<FirstName>, Changed<LastName>)>,
+        >,
+    ) {
+        for (entity, first_name, last_name) in &mut changed_names {
+            commands
+                .entity(entity)
+                .insert(Name::new(format!("{first_name} {last_name}")));
         }
     }
 
