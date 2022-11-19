@@ -40,7 +40,7 @@ impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<FamilySync>()
             .register_type::<Budget>()
-            .add_mapped_client_event::<FamilyDelete>()
+            .add_mapped_client_event::<FamilyDespawn>()
             .add_event::<FamilySelect>()
             .add_event::<FamilySave>()
             .add_event::<FamilySaved>()
@@ -150,9 +150,9 @@ impl FamilyPlugin {
 
     fn deletion_system(
         mut commands: Commands,
-        mut delete_events: EventReader<ClientEvent<FamilyDelete>>,
+        mut despawn_events: EventReader<ClientEvent<FamilyDespawn>>,
     ) {
-        for event in delete_events.iter().map(|event| event.event) {
+        for event in despawn_events.iter().map(|event| event.event) {
             commands.entity(event.0).despawn_family();
         }
     }
@@ -279,9 +279,9 @@ pub(crate) struct FamilySaved;
 pub(crate) struct FamilySelect(pub(crate) Entity);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct FamilyDelete(#[serde(with = "entity_serde")] pub(crate) Entity);
+pub(crate) struct FamilyDespawn(#[serde(with = "entity_serde")] pub(crate) Entity);
 
-impl MapEntities for FamilyDelete {
+impl MapEntities for FamilyDespawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.0 = entity_map.get(self.0)?;
         Ok(())
