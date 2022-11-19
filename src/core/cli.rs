@@ -6,6 +6,7 @@ use iyes_loopless::prelude::*;
 use super::{
     city::{ActiveCity, City},
     error_message::{self, ErrorMessage},
+    family::{Budget, FamilySelect},
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
     network::{
@@ -23,7 +24,7 @@ impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(Self::subcommand_system.chain(error_message::err_message_system))
             .add_system(
-                Self::city_loading_system
+                Self::quick_loading_system
                     .chain(error_message::err_message_system)
                     .run_if(first_world_load),
             );
@@ -39,12 +40,12 @@ impl CliPlugin {
     ) -> Result<()> {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
-                GameCommand::Play(quick_load) => {
-                    commands.insert_resource(GameWorld::new(quick_load.world_name.clone()));
+                GameCommand::Play(world_load) => {
+                    commands.insert_resource(GameWorld::new(world_load.world_name.clone()));
                     load_events.send_default();
                 }
                 GameCommand::Host {
-                    quick_load,
+                    world_load,
                     server_settings,
                 } => {
                     let server = server_settings
@@ -53,7 +54,7 @@ impl CliPlugin {
                     commands.insert_resource(server);
                     commands.insert_resource(server_settings.clone());
 
-                    commands.insert_resource(GameWorld::new(quick_load.world_name.clone()));
+                    commands.insert_resource(GameWorld::new(world_load.world_name.clone()));
                     load_events.send_default();
                 }
                 GameCommand::Join(connection_settings) => {
@@ -69,23 +70,35 @@ impl CliPlugin {
         Ok(())
     }
 
-    fn city_loading_system(
+    fn quick_loading_system(
         mut commands: Commands,
+        mut select_events: EventWriter<FamilySelect>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
+        families: Query<(Entity, &Name), With<Budget>>,
     ) -> Result<()> {
-        if let Some(city_name) = cli
-            .get_quick_load()
-            .and_then(|quick_load| quick_load.city_name.as_ref())
-        {
-            let city_entity = cities
-                .iter()
-                .find(|(_, name)| name.as_str() == city_name)
-                .map(|(city, _)| city)
-                .with_context(|| format!("unable to find city named {city_name}"))?;
+        if let Some(quick_load) = cli.get_quick_load() {
+            match quick_load {
+                QuickLoad::City { name } => {
+                    let city_entity = cities
+                        .iter()
+                        .find(|(_, city_name)| city_name.as_str() == name)
+                        .map(|(city, _)| city)
+                        .with_context(|| format!("unable to find city named {name}"))?;
 
-            commands.entity(city_entity).insert(ActiveCity);
-            commands.insert_resource(NextState(GameState::City));
+                    commands.entity(city_entity).insert(ActiveCity);
+                    commands.insert_resource(NextState(GameState::City));
+                }
+                QuickLoad::Family { name } => {
+                    let family_entity = families
+                        .iter()
+                        .find(|(_, family_name)| family_name.as_str() == name)
+                        .map(|(family, _)| family)
+                        .with_context(|| format!("unable to find family named {name}"))?;
+
+                    select_events.send(FamilySelect(family_entity));
+                }
+            }
         }
 
         Ok(())
@@ -125,10 +138,10 @@ pub(crate) struct Cli {
 
 impl Cli {
     /// Returns arguments for quick load if was specified from any subcommand.
-    pub(crate) fn get_quick_load(&self) -> Option<&QuickLoad> {
+    fn get_quick_load(&self) -> Option<&QuickLoad> {
         match &self.subcommand {
-            Some(GameCommand::Play(quick_load)) => Some(quick_load),
-            Some(GameCommand::Host { quick_load, .. }) => Some(quick_load),
+            Some(GameCommand::Play(world_load)) => world_load.quick_load.as_ref(),
+            Some(GameCommand::Host { world_load, .. }) => world_load.quick_load.as_ref(),
             _ => None,
         }
     }
@@ -141,11 +154,11 @@ impl Default for Cli {
 }
 
 #[derive(Subcommand, Clone)]
-pub(crate) enum GameCommand {
-    Play(QuickLoad),
+enum GameCommand {
+    Play(WorldLoad),
     Host {
         #[command(flatten)]
-        quick_load: QuickLoad,
+        world_load: WorldLoad,
 
         #[command(flatten)]
         server_settings: ServerSettings,
@@ -155,12 +168,18 @@ pub(crate) enum GameCommand {
 
 /// Arguments for quick load.
 #[derive(Args, Clone)]
-pub(crate) struct QuickLoad {
+struct WorldLoad {
     /// World name to load.
     #[arg(short, long)]
     world_name: String,
 
     /// City name to load.
-    #[arg(short, long)]
-    city_name: Option<String>,
+    #[command(subcommand)]
+    quick_load: Option<QuickLoad>,
+}
+
+#[derive(Subcommand, Clone)]
+enum QuickLoad {
+    City { name: String },
+    Family { name: String },
 }
