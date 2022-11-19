@@ -22,13 +22,12 @@ pub(super) struct CursorObjectPlugin;
 
 impl Plugin for CursorObjectPlugin {
     fn build(&self, app: &mut App) {
-        app
+        app.add_system(Self::picking_system.run_in_state(GameState::City))
             // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 Self::init_system.run_in_state(GameState::City),
             )
-            .add_system(Self::pick_system.run_in_state(GameState::City))
             .add_system(Self::movement_system.run_in_state(GameState::City))
             .add_system(
                 Self::application_system
@@ -50,6 +49,21 @@ impl Plugin for CursorObjectPlugin {
 }
 
 impl CursorObjectPlugin {
+    fn picking_system(
+        mut commands: Commands,
+        mut pick_events: EventReader<ObjectPicked>,
+        parents: Query<&Parent>,
+    ) {
+        for event in pick_events.iter() {
+            let parent = parents
+                .get(event.0)
+                .expect("picked object should always have a parent city");
+            commands.entity(parent.get()).with_children(|parent| {
+                parent.spawn().insert(CursorObject::Moving(event.0));
+            });
+        }
+    }
+
     fn init_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
@@ -80,21 +94,6 @@ impl CursorObjectPlugin {
                     visibility.is_visible = false;
                 }
             }
-        }
-    }
-
-    fn pick_system(
-        mut commands: Commands,
-        mut pick_events: EventReader<ObjectPicked>,
-        parents: Query<&Parent>,
-    ) {
-        for event in pick_events.iter() {
-            let parent = parents
-                .get(event.0)
-                .expect("picked object should always have a parent city");
-            commands.entity(parent.get()).with_children(|parent| {
-                parent.spawn().insert(CursorObject::Moving(event.0));
-            });
         }
     }
 
