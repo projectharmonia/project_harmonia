@@ -22,7 +22,7 @@ impl ControlsTab<'_> {
     pub(super) fn show(self, ui: &mut Ui, commands: &mut Commands) {
         const INPUT_VARIANTS: usize = 3;
         const COLUMNS_COUNT: usize = INPUT_VARIANTS + 1;
-        let window_width_margin = ui.style().spacing.window_margin.left * 2.0;
+        let window_width_margin = ui.spacing().window_margin.left * 2.0;
 
         Grid::new("Controls grid")
             .num_columns(COLUMNS_COUNT)
