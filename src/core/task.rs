@@ -5,6 +5,7 @@ use bevy_renet::renet::RenetServer;
 use derive_more::From;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::{Deserialize, Serialize};
+use strum::Display;
 use tap::TapOptional;
 
 use self::movement::MovementPlugin;
@@ -69,7 +70,7 @@ impl TaskPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, From)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, From, Display)]
 pub(crate) enum Task {
     Walk(Walk),
 }
