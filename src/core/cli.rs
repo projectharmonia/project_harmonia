@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use super::{
     city::{ActiveCity, City},
     error_message::{self, ErrorMessage},
-    family::{Budget, FamilySelect},
+    family::{FamilySelect, Members},
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
     network::{
@@ -23,7 +23,8 @@ pub(super) struct CliPlugin;
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(Self::subcommand_system.chain(error_message::err_message_system))
-            .add_system(
+            .add_system_to_stage(
+                CoreStage::PostUpdate, // To run after `Members` component insertion.
                 Self::quick_loading_system
                     .chain(error_message::err_message_system)
                     .run_if(first_world_load),
@@ -75,7 +76,7 @@ impl CliPlugin {
         mut select_events: EventWriter<FamilySelect>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(Entity, &Name), With<Budget>>,
+        families: Query<(Entity, &Name), With<Members>>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
