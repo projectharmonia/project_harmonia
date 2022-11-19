@@ -1,8 +1,9 @@
-use bevy::prelude::*;
+use bevy::prelude::{shape::Plane, *};
+use bevy_mod_raycast::RayCastMesh;
 use bevy_rapier3d::prelude::{Collider, RigidBody};
 use iyes_loopless::prelude::*;
 
-use super::{city::ActiveCity, game_state::GameState};
+use super::{city::ActiveCity, game_state::GameState, picking::Pickable};
 
 pub(super) struct GroundPlugin;
 
@@ -22,20 +23,19 @@ impl GroundPlugin {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
-        const SIZE: f32 = 50.0;
         commands
             .entity(active_cities.single())
             .add_children(|parent| {
-                parent
-                    .spawn_bundle(PbrBundle {
-                        mesh: meshes.add(Mesh::from(shape::Plane { size: SIZE })),
+                parent.spawn_bundle(GroundBundle {
+                    pbr_bundle: PbrBundle {
+                        mesh: meshes.add(Mesh::from(Plane {
+                            size: GroundBundle::SIZE,
+                        })),
                         material: materials.add(Color::rgb_u8(69, 108, 69).into()),
                         ..Default::default()
-                    })
-                    .insert(RigidBody::Fixed)
-                    .insert(Collider::cuboid(SIZE / 2.0, 0.0, SIZE / 2.0))
-                    .insert(Ground)
-                    .insert(Name::new("Ground"));
+                    },
+                    ..Default::default()
+                });
                 parent.spawn_bundle(DirectionalLightBundle {
                     directional_light: DirectionalLight {
                         illuminance: 10000.0,
@@ -57,6 +57,37 @@ impl GroundPlugin {
     ) {
         commands.entity(direction_lights.single()).despawn();
         commands.entity(grounds.single()).despawn();
+    }
+}
+
+#[derive(Bundle)]
+struct GroundBundle {
+    name: Name,
+    rigid_body: RigidBody,
+    collider: Collider,
+    ray_cast_mesh: RayCastMesh<Pickable>,
+    ground: Ground,
+    pickable: Pickable,
+
+    #[bundle]
+    pbr_bundle: PbrBundle,
+}
+
+impl GroundBundle {
+    const SIZE: f32 = 50.0;
+}
+
+impl Default for GroundBundle {
+    fn default() -> Self {
+        Self {
+            name: Name::new("Ground"),
+            rigid_body: RigidBody::Fixed,
+            collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
+            ray_cast_mesh: RayCastMesh::<Pickable>::default(),
+            ground: Ground,
+            pickable: Pickable,
+            pbr_bundle: Default::default(),
+        }
     }
 }
 

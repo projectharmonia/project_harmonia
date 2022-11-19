@@ -16,7 +16,7 @@ use crate::core::{
     preview::PreviewCamera,
 };
 
-use super::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectSpawn};
+use super::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn};
 
 pub(super) struct CursorObjectPlugin;
 
@@ -52,15 +52,14 @@ impl CursorObjectPlugin {
     fn picking_system(
         mut commands: Commands,
         mut pick_events: EventReader<ObjectPicked>,
-        parents: Query<&Parent>,
+        parents: Query<&Parent, With<ObjectPath>>,
     ) {
         for event in pick_events.iter() {
-            let parent = parents
-                .get(event.0)
-                .expect("picked object should always have a parent city");
-            commands.entity(parent.get()).with_children(|parent| {
-                parent.spawn().insert(CursorObject::Moving(event.0));
-            });
+            if let Ok(parent) = parents.get(event.0) {
+                commands.entity(parent.get()).with_children(|parent| {
+                    parent.spawn().insert(CursorObject::Moving(event.0));
+                });
+            }
         }
     }
 
