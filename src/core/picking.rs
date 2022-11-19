@@ -10,13 +10,20 @@ pub(super) struct PickingPlugin;
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ObjectPicked>().add_system(
-            Self::ray_system
-                .chain(Self::object_picking_system)
-                .chain(Self::outline_system)
-                .run_if_not(cursor_object::cursor_object_exists)
-                .run_in_state(GameState::City),
-        );
+        app.add_event::<ObjectPicked>()
+            .add_system(
+                Self::ray_system
+                    .chain(Self::object_picking_system)
+                    .chain(Self::outline_system)
+                    .run_if_not(cursor_object::cursor_object_exists)
+                    .run_in_state(GameState::City),
+            )
+            .add_system(
+                Self::ray_system
+                    .chain(Self::object_picking_system)
+                    .chain(Self::outline_system)
+                    .run_in_state(GameState::Family),
+            );
     }
 }
 
@@ -24,12 +31,12 @@ impl PickingPlugin {
     fn ray_system(
         ray_sources: Query<&RayCastSource<Pickable>>,
         parents: Query<(&Parent, Option<&Pickable>)>,
-    ) -> Option<Entity> {
+    ) -> Option<(Entity, Vec3)> {
         for source in &ray_sources {
-            if let Some((child_entity, _)) = source.intersect_top() {
-                let entity = find_parent_object(child_entity, &parents)
+            if let Some((child_entity, intersection)) = source.intersect_top() {
+                let picked_entity = find_parent_object(child_entity, &parents)
                     .expect("object entity should have a parent");
-                return Some(entity);
+                return Some((picked_entity, intersection.position()));
             }
         }
 
@@ -37,13 +44,13 @@ impl PickingPlugin {
     }
 
     fn object_picking_system(
-        In(entity): In<Option<Entity>>,
+        In(pick): In<Option<(Entity, Vec3)>>,
         mut pick_events: EventWriter<ObjectPicked>,
         action_state: Res<ActionState<Action>>,
     ) -> Option<Entity> {
-        if let Some(entity) = entity {
+        if let Some((entity, position)) = pick {
             if action_state.just_pressed(Action::Confirm) {
-                pick_events.send(ObjectPicked(entity));
+                pick_events.send(ObjectPicked { entity, position });
                 None
             } else {
                 Some(entity)
@@ -108,7 +115,10 @@ fn set_outline_recursive(
 #[derive(Component)]
 pub(crate) struct Pickable;
 
-pub(super) struct ObjectPicked(pub(super) Entity);
+pub(super) struct ObjectPicked {
+    pub(super) entity: Entity,
+    pub(super) position: Vec3,
+}
 
 #[cfg(test)]
 mod tests {

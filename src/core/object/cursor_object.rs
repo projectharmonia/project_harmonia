@@ -55,9 +55,9 @@ impl CursorObjectPlugin {
         parents: Query<&Parent, With<ObjectPath>>,
     ) {
         for event in pick_events.iter() {
-            if let Ok(parent) = parents.get(event.0) {
+            if let Ok(parent) = parents.get(event.entity) {
                 commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn().insert(CursorObject::Moving(event.0));
+                    parent.spawn().insert(CursorObject::Moving(event.entity));
                 });
             }
         }

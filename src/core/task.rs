@@ -10,7 +10,9 @@ use self::movement::MovementPlugin;
 
 use super::{
     doll::DollPlayers,
+    game_state::GameState,
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
+    picking::ObjectPicked,
 };
 use movement::Walk;
 
@@ -27,11 +29,28 @@ struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.add_client_event::<Task>()
+            .add_system(Self::picking_system.run_in_state(GameState::Family))
             .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
 impl TaskPlugin {
+    fn picking_system(
+        mut commands: Commands,
+        mut pick_events: EventReader<ObjectPicked>,
+        task_lists: Query<Entity, With<TaskList>>,
+    ) {
+        if let Some(event) = pick_events.iter().last() {
+            if let Ok(entity) = task_lists.get_single() {
+                commands.entity(entity).remove::<TaskList>();
+            }
+
+            commands
+                .entity(event.entity)
+                .insert(TaskList::new(event.position));
+        }
+    }
+
     fn queue_system(
         mut task_events: EventReader<ClientEvent<Task>>,
         mut dolls: Query<(&mut QueuedTasks, &DollPlayers)>,
@@ -56,6 +75,15 @@ pub(crate) enum Task {
 pub(crate) struct TaskList {
     pub(crate) position: Vec3,
     pub(crate) tasks: Vec<Task>,
+}
+
+impl TaskList {
+    fn new(position: Vec3) -> Self {
+        Self {
+            position,
+            tasks: Default::default(),
+        }
+    }
 }
 
 #[derive(Component, Deref, DerefMut)]
