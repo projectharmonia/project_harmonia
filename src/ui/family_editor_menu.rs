@@ -17,7 +17,7 @@ use super::{
 };
 use crate::core::{
     action::Action,
-    city::City,
+    city::{City, ActiveCity},
     doll::{DollBundle, FirstName, LastName},
     error_message,
     family::{FamilySave, FamilySaved, FamilySystems, Members},
@@ -215,6 +215,7 @@ impl FamilyEditorMenuPlugin {
                                 let mut play_pressed = false;
                                 if ui.button("⏵ Place and play").clicked() {
                                     commands.insert_resource(NextState(GameState::Family));
+                                    commands.entity(city_entity).insert(ActiveCity);
                                     play_pressed = true;
                                 }
                                 if ui.button("⬇ Place").clicked() || play_pressed {
