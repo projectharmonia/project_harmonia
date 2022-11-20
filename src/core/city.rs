@@ -25,12 +25,33 @@ impl Plugin for CityPlugin {
                 Self::exit_system.run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
-            .add_system(Self::placement_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
     }
 }
 
 impl CityPlugin {
+    /// Inserts [`TransformBundle`] and places cities next to each other.
+    fn init_system(
+        mut commands: Commands,
+        mut placed_citites: ResMut<PlacedCities>,
+        added_cities: Query<Entity, Added<City>>,
+    ) {
+        const CITY_SIZE: f32 = 100.0;
+        for entity in &added_cities {
+            let transform =
+                Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
+            commands
+                .entity(entity)
+                .insert_bundle(TransformBundle::from_transform(transform))
+                .insert_bundle(VisibilityBundle {
+                    visibility: Visibility { is_visible: false },
+                    ..Default::default()
+                });
+            placed_citites.0 += 1;
+        }
+    }
+
     fn enter_system(
         mut commands: Commands,
         settings: Res<Settings>,
@@ -58,27 +79,6 @@ impl CityPlugin {
     fn cleanup_system(mut commands: Commands, cities: Query<Entity, With<City>>) {
         for entity in &cities {
             commands.entity(entity).despawn_recursive();
-        }
-    }
-
-    /// Inserts [`TransformBundle`] and places cities next to each other.
-    fn placement_system(
-        mut commands: Commands,
-        mut placed_citites: ResMut<PlacedCities>,
-        added_cities: Query<Entity, Added<City>>,
-    ) {
-        const CITY_SIZE: f32 = 100.0;
-        for entity in &added_cities {
-            let transform =
-                Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
-            commands
-                .entity(entity)
-                .insert_bundle(TransformBundle::from_transform(transform))
-                .insert_bundle(VisibilityBundle {
-                    visibility: Visibility { is_visible: false },
-                    ..Default::default()
-                });
-            placed_citites.0 += 1;
         }
     }
 
