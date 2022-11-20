@@ -126,7 +126,7 @@ pub(crate) struct DollPlayers(SmallVec<[u64; 2]>);
 
 /// Indicates locally controlled doll.
 #[derive(Component)]
-pub(super) struct ActiveDoll;
+pub(crate) struct ActiveDoll;
 
 /// Selects a doll entity to play.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
