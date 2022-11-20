@@ -22,5 +22,5 @@ impl MovementPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Reflect, Serialize)]
 pub(crate) struct Walk(Vec3);

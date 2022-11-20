@@ -17,13 +17,14 @@ use super::{
 };
 use crate::core::{
     action::Action,
-    city::{City, ActiveCity},
+    city::{ActiveCity, City},
     doll::{DollBundle, FirstName, LastName},
     error_message,
     family::{FamilySave, FamilySaved, FamilySystems, Members},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity},
+    task::QueuedTasks,
 };
 
 pub(super) struct FamilyEditorMenuPlugin;
@@ -224,6 +225,7 @@ impl FamilyEditorMenuPlugin {
                                         commands
                                             .entity(member_entity)
                                             .insert(ParentSync(city_entity))
+                                            .insert(QueuedTasks::default())
                                             .insert(GameEntity);
                                     }
                                     commands

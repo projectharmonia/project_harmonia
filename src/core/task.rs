@@ -1,6 +1,6 @@
 mod movement;
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetServer;
 use derive_more::From;
 use iyes_loopless::prelude::IntoConditionalSystem;
@@ -30,7 +30,8 @@ struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_client_event::<Task>()
+        app.register_type::<QueuedTasks>()
+            .add_client_event::<Task>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))
             .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>());
     }
@@ -70,7 +71,7 @@ impl TaskPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, From, Display)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, From, FromReflect, Reflect, Serialize)]
 pub(crate) enum Task {
     Walk(Walk),
 }
@@ -90,5 +91,6 @@ impl TaskList {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
+#[reflect(Component)]
 pub(crate) struct QueuedTasks(Vec<Task>);

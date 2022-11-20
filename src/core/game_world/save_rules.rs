@@ -11,6 +11,7 @@ use crate::core::{
     family::{Budget, FamilySync},
     game_world::GameEntity,
     object::ObjectPath,
+    task::QueuedTasks,
 };
 
 /// Contains [`ComponentId`]'s that used to decide
@@ -37,6 +38,7 @@ impl FromWorld for SaveRules {
             world.init_component::<ParentSync>(),
             world.init_component::<FirstName>(),
             world.init_component::<LastName>(),
+            world.init_component::<QueuedTasks>(),
         ]);
 
         let ignored_if_present = HashMap::from([
