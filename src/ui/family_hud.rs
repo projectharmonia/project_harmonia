@@ -4,9 +4,14 @@ use bevy_egui::{
     EguiContext,
 };
 use bevy_inspector_egui::egui::Frame;
+use bevy_trait_query::All;
 use iyes_loopless::prelude::*;
 
-use crate::core::{doll::ActiveDoll, game_state::GameState, task::QueuedTasks};
+use crate::core::{
+    doll::ActiveDoll,
+    game_state::GameState,
+    task::{QueuedTasks, Task},
+};
 
 pub(super) struct FamilyHudPlugin;
 
@@ -19,12 +24,13 @@ impl Plugin for FamilyHudPlugin {
 impl FamilyHudPlugin {
     fn active_tasks_system(
         mut egui: ResMut<EguiContext>,
-        queued_tasks: Query<&QueuedTasks, With<ActiveDoll>>,
+        tasks: Query<(&QueuedTasks, Option<All<&dyn Task>>), With<ActiveDoll>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
         Area::new("Tasks")
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
+                let (queued_tasks, active_tasks) = tasks.single();
                 // Show frame with window spacing, but without visuals.
                 let queued_frame = Frame {
                     inner_margin: ui.spacing().window_margin,
@@ -32,24 +38,30 @@ impl FamilyHudPlugin {
                     ..Frame::none()
                 };
                 queued_frame.show(ui, |ui| {
-                    if let Ok(tasks) = queued_tasks.get_single() {
-                        for &task in tasks.iter() {
-                            ui.add(ImageButton::new(
-                                TextureId::Managed(0),
-                                (ICON_SIZE, ICON_SIZE),
-                            ))
-                            .on_hover_text(task.to_string());
-                        }
+                    for &task in queued_tasks.iter() {
+                        ui.add(ImageButton::new(
+                            TextureId::Managed(0),
+                            (ICON_SIZE, ICON_SIZE),
+                        ))
+                        .on_hover_text(task.to_string());
                     }
                 });
                 Frame::window(ui.style()).show(ui, |ui| {
-                    const ACTIVE_TASKS: u8 = 3;
-                    const ACTIVE_TASKS_HEIGHT: f32 = ICON_SIZE * ACTIVE_TASKS as f32;
+                    let mut task_count = 0;
+                    for task in active_tasks.into_iter().flatten() {
+                        ui.add(ImageButton::new(
+                            TextureId::Managed(0),
+                            (ICON_SIZE, ICON_SIZE),
+                        ))
+                        .on_hover_text(task.name());
+                        task_count += 1;
+                    }
+
+                    const MAX_ACTIVE_TASKS: u8 = 3;
+                    let tasks_left = MAX_ACTIVE_TASKS - task_count;
                     let mut size = ui.spacing().window_margin.left_top();
                     size.x += ICON_SIZE + 2.0;
-                    size.y += ACTIVE_TASKS_HEIGHT;
-
-                    // TODO: disaply queued tasks.
+                    size.y += (ICON_SIZE + ui.spacing().item_spacing.y * 4.0) * tasks_left as f32;
                     ui.allocate_space(size);
                 });
             });

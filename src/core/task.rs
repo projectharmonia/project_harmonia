@@ -2,6 +2,7 @@ mod movement;
 
 use bevy::{app::PluginGroupBuilder, prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetServer;
+use bevy_trait_query::impl_trait_query;
 use derive_more::From;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::{Deserialize, Serialize};
@@ -31,9 +32,10 @@ struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<QueuedTasks>()
-            .add_client_event::<Task>()
+            .add_client_event::<TaskKind>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))
-            .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>());
+            .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::activation_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
@@ -55,7 +57,7 @@ impl TaskPlugin {
     }
 
     fn queue_system(
-        mut task_events: EventReader<ClientEvent<Task>>,
+        mut task_events: EventReader<ClientEvent<TaskKind>>,
         mut dolls: Query<(&mut QueuedTasks, &DollPlayers)>,
     ) {
         for ClientEvent { client_id, event } in task_events.iter().copied() {
@@ -69,17 +71,27 @@ impl TaskPlugin {
             }
         }
     }
+
+    fn activation_system(mut commands: Commands, mut dolls: Query<(Entity, &mut QueuedTasks)>) {
+        for (entity, mut tasks) in &mut dolls {
+            if let Some(task) = tasks.pop() {
+                match task {
+                    TaskKind::Walk(walk) => commands.entity(entity).insert(walk),
+                };
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Display, From, FromReflect, Reflect, Serialize)]
-pub(crate) enum Task {
+pub(crate) enum TaskKind {
     Walk(Walk),
 }
 
 #[derive(Component)]
 pub(crate) struct TaskList {
     pub(crate) position: Vec3,
-    pub(crate) tasks: Vec<Task>,
+    pub(crate) tasks: Vec<TaskKind>,
 }
 
 impl TaskList {
@@ -91,6 +103,12 @@ impl TaskList {
     }
 }
 
+impl_trait_query!(Task);
+
+pub(crate) trait Task: Reflect {
+    fn name(&self) -> &'static str;
+}
+
 #[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
-pub(crate) struct QueuedTasks(Vec<Task>);
+pub(crate) struct QueuedTasks(Vec<TaskKind>);

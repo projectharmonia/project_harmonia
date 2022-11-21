@@ -9,7 +9,7 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
-    task::{Task, TaskList},
+    task::{TaskKind, TaskList},
 };
 
 pub(super) struct TaskMenuPlugin;
@@ -25,7 +25,7 @@ impl TaskMenuPlugin {
         mut position: Local<Pos2>,
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut task_buffer: ResMut<ClientSendBuffer<Task>>,
+        mut task_buffer: ResMut<ClientSendBuffer<TaskKind>>,
         windows: Res<Windows>,
         task_lists: Query<(Entity, &Name, &TaskList, ChangeTrackers<TaskList>)>,
     ) {
