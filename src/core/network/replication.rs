@@ -85,6 +85,7 @@ impl ReplicationPlugin {
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
         // Initialize [`WorldDiff`]s with latest acknowledged tick for each client.
+        let registry = registry.read();
         let mut client_diffs: HashMap<_, _> = acked_ticks
             .iter()
             .map(|(&client_id, &last_tick)| (client_id, WorldDiff::new(last_tick)))
@@ -100,7 +101,6 @@ impl ReplicationPlugin {
         collect_despawns(&mut client_diffs, &despawn_tracker);
 
         let current_tick = set.p0().read_change_tick();
-        let registry = registry.read();
         for (client_id, mut world_diff) in client_diffs {
             world_diff.tick = current_tick; // Replace last acknowledged tick with the current.
             let serializer = WorldDiffSerializer::new(&world_diff, &registry);
@@ -194,11 +194,10 @@ impl ReplicationPlugin {
 fn collect_changes(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
-    registry: &TypeRegistry,
+    registry: &TypeRegistryInternal,
     save_rules: &SaveRules,
     network_components: &NetworkComponents,
 ) {
-    let registry = registry.read();
     for archetype in world
         .archetypes()
         .iter()
