@@ -8,6 +8,7 @@ use bevy::{
     ecs::{
         archetype::ArchetypeId,
         component::{ComponentId, ComponentTicks, StorageType},
+        system::Command,
     },
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryInternal},
@@ -51,13 +52,8 @@ impl Plugin for ReplicationPlugin {
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
             .init_resource::<NetworkComponents>()
-            .add_system(
-                Self::world_diff_receiving_system
-                    .into_conditional_exclusive()
-                    .run_if(client::connected)
-                    .at_start(),
-            )
             .add_system(Self::tick_ack_sending_system.run_if(client::connected))
+            .add_system(Self::world_diff_receiving_system.run_if(client::connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())
@@ -114,25 +110,35 @@ impl ReplicationPlugin {
         }
     }
 
-    fn world_diff_receiving_system(world: &mut World) {
-        world.resource_scope(|world, registry: Mut<TypeRegistry>| {
-            if let Some(world_diff) =
-                receive_world_diff(&mut world.resource_mut::<RenetClient>(), &registry.read())
-            {
-                let mut last_tick = world.resource_mut::<LastTick>();
-                if last_tick.0 < world_diff.tick {
-                    last_tick.0 = world_diff.tick;
-                }
+    fn world_diff_receiving_system(
+        mut commands: Commands,
+        mut last_tick: ResMut<LastTick>,
+        mut client: ResMut<RenetClient>,
+        registry: Res<TypeRegistry>,
+        game_world: Option<Res<GameWorld>>,
+    ) {
+        let registry = registry.read();
+        let mut received_diffs = Vec::<WorldDiff>::new();
+        while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
+            let mut deserializer = Deserializer::from_read_ref(&message);
+            let world_diff = WorldDiffDeserializer::new(&registry)
+                .deserialize(&mut deserializer)
+                .expect("server should send valid world diffs");
+            received_diffs.push(world_diff);
+        }
 
-                world.resource_scope(|world, mut entity_map: Mut<NetworkEntityMap>| {
-                    apply_diffs(world, &mut entity_map, &registry, world_diff);
-                });
-                if !world.contains_resource::<GameWorld>() {
-                    world.insert_resource(GameWorld::default()); // TODO: Replicate this resource.
-                    world.insert_resource(NextState(GameState::World));
-                }
+        if let Some(world_diff) = received_diffs
+            .into_iter()
+            .max_by_key(|world_diff| world_diff.tick)
+            .filter(|world_diff| world_diff.tick > last_tick.0)
+        {
+            last_tick.0 = world_diff.tick;
+            commands.apply_world_diff(world_diff);
+            if game_world.is_none() {
+                commands.insert_resource(GameWorld::default()); // TODO: Replicate this resource.
+                commands.insert_resource(NextState(GameState::World));
             }
-        });
+        }
     }
 
     fn tick_ack_sending_system(last_tick: Res<LastTick>, mut client: ResMut<RenetClient>) {
@@ -146,7 +152,16 @@ impl ReplicationPlugin {
         mut server: ResMut<RenetServer>,
     ) {
         for client_id in server.clients_id() {
-            if let Some(tick) = receive_tick_ack(&mut server, client_id) {
+            let mut received_ticks = Vec::<LastTick>::new();
+            while let Some(message) = server.receive_message(client_id, REPLICATION_CHANNEL_ID) {
+                if let Ok(tick) = rmp_serde::from_slice(&message).tap_err(|e| {
+                    error!("unable to deserialize a tick from client {client_id}: {e}")
+                }) {
+                    received_ticks.push(tick);
+                }
+            }
+
+            if let Some(tick) = received_ticks.into_iter().max_by_key(|tick| tick.0) {
                 let last_tick = acked_ticks.entry(client_id).or_default();
                 if *last_tick < tick.0 {
                     *last_tick = tick.0;
@@ -174,38 +189,6 @@ impl ReplicationPlugin {
         commands.insert_resource(LastTick::default());
         commands.insert_resource(NetworkEntityMap::default());
     }
-}
-
-/// Reads all world diff from socket and returns the latest if it was received.
-fn receive_world_diff(
-    client: &mut RenetClient,
-    registry: &TypeRegistryInternal,
-) -> Option<WorldDiff> {
-    let mut received_diffs = Vec::<WorldDiff>::new();
-    while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
-        let mut deserializer = Deserializer::from_read_ref(&message);
-        let world_diff = WorldDiffDeserializer::new(registry)
-            .deserialize(&mut deserializer)
-            .expect("server should send valid world diffs");
-        received_diffs.push(world_diff);
-    }
-
-    received_diffs
-        .into_iter()
-        .max_by_key(|world_diff| world_diff.tick)
-}
-
-fn receive_tick_ack(server: &mut RenetServer, client_id: u64) -> Option<LastTick> {
-    let mut received_ticks = Vec::<LastTick>::new();
-    while let Some(message) = server.receive_message(client_id, REPLICATION_CHANNEL_ID) {
-        if let Ok(tick) = rmp_serde::from_slice(&message)
-            .tap_err(|e| error!("unable to deserialize a tick from client {client_id}: {e}"))
-        {
-            received_ticks.push(tick);
-        }
-    }
-
-    received_ticks.into_iter().max_by_key(|tick| tick.0)
 }
 
 fn collect_changes(
@@ -354,24 +337,37 @@ fn collect_despawns(client_diffs: &mut HashMap<u64, WorldDiff>, despawn_tracker:
     }
 }
 
-fn apply_diffs(
-    world: &mut World,
-    entity_map: &mut NetworkEntityMap,
-    registry: &TypeRegistry,
-    world_diff: WorldDiff,
-) {
-    let registry = registry.read();
-    // Map entities non-lazily in order to correctly map components that reference server entities.
-    for (entity, components) in map_entities(world, entity_map, world_diff.entities) {
-        for component_diff in components {
-            apply_component_diff(world, entity_map, &registry, entity, &component_diff);
-        }
+trait ApplyWorldDiffExt {
+    fn apply_world_diff(&mut self, world_diff: WorldDiff);
+}
+
+impl ApplyWorldDiffExt for Commands<'_, '_> {
+    fn apply_world_diff(&mut self, world_diff: WorldDiff) {
+        self.add(ApplyWorldDiff(world_diff));
     }
-    for server_entity in world_diff.despawns {
-        let local_entity = entity_map
-            .remove_by_server(server_entity)
-            .expect("server should send valid entities to despawn");
-        world.entity_mut(local_entity).despawn_recursive();
+}
+
+struct ApplyWorldDiff(WorldDiff);
+
+impl Command for ApplyWorldDiff {
+    fn write(self, world: &mut World) {
+        let registry = world.resource::<TypeRegistry>().clone();
+        let registry = registry.read();
+        world.resource_scope(|world, mut entity_map: Mut<NetworkEntityMap>| {
+            // Map entities non-lazily in order to correctly map components that reference server entities.
+            for (entity, components) in map_entities(world, &mut entity_map, self.0.entities) {
+                for component_diff in components {
+                    apply_component_diff(world, &entity_map, &registry, entity, &component_diff);
+                }
+            }
+
+            for server_entity in self.0.despawns {
+                let local_entity = entity_map
+                    .remove_by_server(server_entity)
+                    .expect("server should send valid entities to despawn");
+                world.entity_mut(local_entity).despawn_recursive();
+            }
+        });
     }
 }
 
