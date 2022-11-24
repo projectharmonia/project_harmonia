@@ -11,7 +11,6 @@ use bevy_mod_outline::{Outline, OutlineBundle};
 use bevy_mod_raycast::RayCastMesh;
 use bevy_renet::renet::RenetServer;
 use bevy_scene_hook::SceneHook;
-use derive_more::From;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
@@ -170,7 +169,7 @@ impl ObjectBundle {
 
 /// Contains path to an object metadata file.
 // TODO Bevy 0.9: Use `PathBuf`: https://github.com/bevyengine/bevy/issues/6166
-#[derive(Clone, Component, Debug, Default, From, Reflect)]
+#[derive(Clone, Component, Debug, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(String);
 

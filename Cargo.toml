@@ -31,7 +31,6 @@ leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-i
 serde = "1.0"
 strum = { version = "0.24", features = ["derive"] }
 derive_more = { version = "0.99", default-features = false, features = [
-  "from",
   "constructor",
 ] }
 standard_paths = "1.1"

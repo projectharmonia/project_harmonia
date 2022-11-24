@@ -10,7 +10,6 @@ use bevy::{
 };
 use bevy_egui::{egui::TextureId, EguiContext};
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
-use derive_more::From;
 use iyes_loopless::prelude::*;
 use strum::Display;
 
@@ -223,7 +222,7 @@ impl PreviewTargetBundle {
     fn new(translation: Vec3, preview_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
         Self {
             name: "Preview target".into(),
-            metadata_id: metadata_id.into(),
+            metadata_id: PreviewMetadataId(metadata_id),
             scene: HookedSceneBundle {
                 scene: SceneBundle {
                     scene: preview_handle,
@@ -242,5 +241,5 @@ impl PreviewTargetBundle {
 }
 
 /// Stores a handle ID to the preview asset's metadata.
-#[derive(Component, From)]
+#[derive(Component)]
 struct PreviewMetadataId(HandleId);
