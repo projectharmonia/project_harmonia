@@ -10,7 +10,7 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     doll::ActiveDoll,
     game_state::GameState,
-    task::{QueuedTasks, Task},
+    task::{QueuedTasks, Task, TaskRequestKind},
 };
 
 pub(super) struct FamilyHudPlugin;
@@ -38,7 +38,7 @@ impl FamilyHudPlugin {
                     ..Frame::none()
                 };
                 queued_frame.show(ui, |ui| {
-                    for &task in queued_tasks.iter() {
+                    for task in queued_tasks.iter().map(TaskRequestKind::from) {
                         ui.add(ImageButton::new(
                             TextureId::Managed(0),
                             (ICON_SIZE, ICON_SIZE),
@@ -53,7 +53,7 @@ impl FamilyHudPlugin {
                             TextureId::Managed(0),
                             (ICON_SIZE, ICON_SIZE),
                         ))
-                        .on_hover_text(task.name());
+                        .on_hover_text(task.kind().to_string());
                         task_count += 1;
                     }
 

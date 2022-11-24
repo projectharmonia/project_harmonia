@@ -3,13 +3,10 @@ mod movement;
 use bevy::{app::PluginGroupBuilder, prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetServer;
 use bevy_trait_query::impl_trait_query;
-use derive_more::From;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{Display, EnumDiscriminants};
 use tap::TapOptional;
-
-use self::movement::MovementPlugin;
 
 use super::{
     doll::DollPlayers,
@@ -17,7 +14,7 @@ use super::{
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
     picking::ObjectPicked,
 };
-use movement::Walk;
+use movement::{MovementPlugin, Walk};
 
 pub(super) struct TaskPlugins;
 
@@ -32,7 +29,7 @@ struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<QueuedTasks>()
-            .add_client_event::<TaskKind>()
+            .add_client_event::<TaskRequest>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))
             .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::activation_system.run_if_resource_exists::<RenetServer>());
@@ -57,7 +54,7 @@ impl TaskPlugin {
     }
 
     fn queue_system(
-        mut task_events: EventReader<ClientEvent<TaskKind>>,
+        mut task_events: EventReader<ClientEvent<TaskRequest>>,
         mut dolls: Query<(&mut QueuedTasks, &DollPlayers)>,
     ) {
         for ClientEvent { client_id, event } in task_events.iter().copied() {
@@ -76,22 +73,26 @@ impl TaskPlugin {
         for (entity, mut tasks) in &mut dolls {
             if let Some(task) = tasks.pop() {
                 match task {
-                    TaskKind::Walk(walk) => commands.entity(entity).insert(walk),
+                    TaskRequest::Walk(position) => commands.entity(entity).insert(Walk(position)),
                 };
             }
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Display, From, FromReflect, Reflect, Serialize)]
-pub(crate) enum TaskKind {
-    Walk(Walk),
+#[derive(Clone, Copy, Debug, Deserialize, EnumDiscriminants, FromReflect, Reflect, Serialize)]
+#[strum_discriminants(name(TaskRequestKind))]
+#[strum_discriminants(derive(Display))]
+pub(crate) enum TaskRequest {
+    Walk(Vec3),
 }
 
 #[derive(Component)]
 pub(crate) struct TaskList {
+    /// The position on the entity at which the list was requested.
     pub(crate) position: Vec3,
-    pub(crate) tasks: Vec<TaskKind>,
+    /// List of possible tasks for the assigned entity.
+    pub(crate) tasks: Vec<TaskRequestKind>,
 }
 
 impl TaskList {
@@ -101,14 +102,21 @@ impl TaskList {
             tasks: Default::default(),
         }
     }
+
+    #[must_use]
+    pub(crate) fn queue_task(&self, task: TaskRequestKind) -> TaskRequest {
+        match task {
+            TaskRequestKind::Walk => TaskRequest::Walk(self.position),
+        }
+    }
 }
 
 impl_trait_query!(Task);
 
 pub(crate) trait Task: Reflect {
-    fn name(&self) -> &'static str;
+    fn kind(&self) -> TaskRequestKind;
 }
 
 #[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
-pub(crate) struct QueuedTasks(Vec<TaskKind>);
+pub(crate) struct QueuedTasks(Vec<TaskRequest>);
