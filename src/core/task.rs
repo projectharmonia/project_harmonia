@@ -30,9 +30,11 @@ impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<QueuedTasks>()
             .add_client_event::<TaskRequest>()
+            .add_client_event::<TaskCancel>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))
             .add_system(Self::queue_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::activation_system.run_if_resource_exists::<RenetServer>());
+            .add_system(Self::activation_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::cancellation_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
@@ -78,11 +80,38 @@ impl TaskPlugin {
             }
         }
     }
+
+    fn cancellation_system(
+        mut commands: Commands,
+        mut cancel_events: EventReader<ClientEvent<TaskCancel>>,
+        mut dolls: Query<(Entity, &mut QueuedTasks, &DollPlayers)>,
+    ) {
+        for ClientEvent { client_id, event } in cancel_events.iter().copied() {
+            if let Some((entity, mut tasks)) = dolls
+                .iter_mut()
+                .find(|(.., players)| players.contains(&client_id))
+                .map(|(entity, task, _)| (entity, task))
+                .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
+            {
+                if let Some(index) = tasks
+                    .iter()
+                    .map(TaskRequestKind::from)
+                    .position(|task| task == event.0)
+                {
+                    tasks.swap_remove(index);
+                } else {
+                    match event.0 {
+                        TaskRequestKind::Walk => commands.entity(entity).remove::<Walk>(),
+                    };
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, EnumDiscriminants, FromReflect, Reflect, Serialize)]
 #[strum_discriminants(name(TaskRequestKind))]
-#[strum_discriminants(derive(Display))]
+#[strum_discriminants(derive(Display, Serialize, Deserialize))]
 pub(crate) enum TaskRequest {
     Walk(Vec3),
 }
@@ -120,3 +149,6 @@ pub(crate) trait Task: Reflect {
 #[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct QueuedTasks(Vec<TaskRequest>);
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub(crate) struct TaskCancel(pub(crate) TaskRequestKind);

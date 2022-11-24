@@ -10,7 +10,8 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     doll::ActiveDoll,
     game_state::GameState,
-    task::{QueuedTasks, Task, TaskRequestKind},
+    network::network_event::client_event::ClientSendBuffer,
+    task::{QueuedTasks, Task, TaskCancel, TaskRequestKind},
 };
 
 pub(super) struct FamilyHudPlugin;
@@ -24,6 +25,7 @@ impl Plugin for FamilyHudPlugin {
 impl FamilyHudPlugin {
     fn active_tasks_system(
         mut egui: ResMut<EguiContext>,
+        mut cancel_buffer: ResMut<ClientSendBuffer<TaskCancel>>,
         tasks: Query<(&QueuedTasks, Option<All<&dyn Task>>), With<ActiveDoll>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
@@ -39,21 +41,25 @@ impl FamilyHudPlugin {
                 };
                 queued_frame.show(ui, |ui| {
                     for task in queued_tasks.iter().map(TaskRequestKind::from) {
-                        ui.add(ImageButton::new(
-                            TextureId::Managed(0),
-                            (ICON_SIZE, ICON_SIZE),
-                        ))
-                        .on_hover_text(task.to_string());
+                        let button =
+                            ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
+                        if ui.add(button).on_hover_text(task.to_string()).clicked() {
+                            cancel_buffer.push(TaskCancel(task));
+                        }
                     }
                 });
                 Frame::window(ui.style()).show(ui, |ui| {
                     let mut task_count = 0;
                     for task in active_tasks.into_iter().flatten() {
-                        ui.add(ImageButton::new(
-                            TextureId::Managed(0),
-                            (ICON_SIZE, ICON_SIZE),
-                        ))
-                        .on_hover_text(task.kind().to_string());
+                        let button =
+                            ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
+                        if ui
+                            .add(button)
+                            .on_hover_text(task.kind().to_string())
+                            .clicked()
+                        {
+                            cancel_buffer.push(TaskCancel(task.kind()))
+                        }
                         task_count += 1;
                     }
 
