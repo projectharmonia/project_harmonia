@@ -2,7 +2,6 @@ pub(super) mod action;
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
-mod component_commands;
 mod developer;
 pub(super) mod doll;
 pub(super) mod error_message;
