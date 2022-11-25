@@ -142,12 +142,7 @@ pub(crate) struct ObjectBundle {
 impl ObjectBundle {
     fn new(metadata_path: PathBuf, translation: Vec3, rotation: Quat, parent: Entity) -> Self {
         Self {
-            object_path: ObjectPath(
-                metadata_path
-                    .into_os_string()
-                    .into_string()
-                    .expect("path should be a UTF-8 string"),
-            ),
+            object_path: ObjectPath(metadata_path),
             transform: Transform::default()
                 .with_translation(translation)
                 .with_rotation(rotation),
@@ -157,11 +152,9 @@ impl ObjectBundle {
     }
 }
 
-/// Contains path to an object metadata file.
-// TODO Bevy 0.9: Use `PathBuf`: https://github.com/bevyengine/bevy/issues/6166
 #[derive(Clone, Component, Debug, Default, Reflect)]
 #[reflect(Component)]
-pub(crate) struct ObjectPath(String);
+pub(crate) struct ObjectPath(PathBuf);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct ObjectSpawn {
