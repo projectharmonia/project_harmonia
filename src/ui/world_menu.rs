@@ -81,8 +81,7 @@ impl WorldMenuPlugin {
                         .add_enabled(!dialog.city_name.is_empty(), Button::new("Create"))
                         .clicked()
                     {
-                        commands
-                            .spawn_bundle(CityBundle::new(mem::take(&mut dialog.city_name).into()));
+                        commands.spawn(CityBundle::new(mem::take(&mut dialog.city_name).into()));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -104,7 +103,7 @@ enum WorldMenuTab {
     Cities,
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct CreateCityDialog {
     city_name: String,
 }

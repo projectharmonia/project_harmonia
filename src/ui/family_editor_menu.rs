@@ -35,7 +35,7 @@ impl Plugin for FamilyEditorMenuPlugin {
             .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
             .add_system(
                 Self::buttons_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_in_state(GameState::FamilyEditor),
             )
             .add_system(
@@ -100,7 +100,7 @@ impl FamilyEditorMenuPlugin {
                             commands.entity(current_entity).remove::<EditableDoll>();
                         }
                         commands.entity(family_editors.single()).with_children(|parent| {
-                            parent.spawn_bundle(DollBundle::new(family_entity)).insert(EditableDoll);
+                            parent.spawn((DollBundle::new(family_entity), EditableDoll));
                         });
                     }
                 });
@@ -222,11 +222,11 @@ impl FamilyEditorMenuPlugin {
                                 if ui.button("⬇ Place").clicked() || play_pressed {
                                     let (family_entity, members) = editable_families.single();
                                     for &member_entity in members.iter() {
-                                        commands
-                                            .entity(member_entity)
-                                            .insert(ParentSync(city_entity))
-                                            .insert(QueuedTasks::default())
-                                            .insert(GameEntity);
+                                        commands.entity(member_entity).insert((
+                                            ParentSync(city_entity),
+                                            QueuedTasks::default(),
+                                            GameEntity,
+                                        ));
                                     }
                                     commands
                                         .entity(family_entity)
@@ -264,6 +264,7 @@ impl FamilyEditorMenuPlugin {
     }
 }
 
+#[derive(Resource)]
 struct SaveFamilyDialog {
     family_name: String,
 }
@@ -284,5 +285,5 @@ impl FromWorld for SaveFamilyDialog {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct PlaceFamilyDialog;

@@ -59,7 +59,7 @@ impl DespawnTrackerPlugin {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub(super) struct DespawnTracker {
     tracked_entities: HashSet<Entity>,
     /// Entities and ticks when they were despawned.
@@ -87,7 +87,7 @@ mod tests {
             .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, 0);
 
-        let game_entity = app.world.spawn().insert(GameEntity).id();
+        let game_entity = app.world.spawn(GameEntity).id();
 
         app.update();
 

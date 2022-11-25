@@ -87,12 +87,7 @@ mod tests {
             .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, 0);
 
-        let game_entity = app
-            .world
-            .spawn()
-            .insert(Transform::default())
-            .insert(GameEntity)
-            .id();
+        let game_entity = app.world.spawn((Transform::default(), GameEntity)).id();
 
         app.world.entity_mut(game_entity).remove::<Transform>();
 

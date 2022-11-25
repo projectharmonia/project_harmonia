@@ -35,18 +35,18 @@ impl Plugin for WorldBrowserPlugin {
             )
             .add_system(
                 Self::join_world_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_if_resource_exists::<JoinWorldDialog>(),
             )
             .add_system(
                 Self::host_world_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_if_resource_exists::<HostWorldDialog>(),
             )
             .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
             .add_system(
                 Self::remove_world_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_if_resource_exists::<RemoveWorldDialog>(),
             );
     }
@@ -271,6 +271,7 @@ impl WorldBrowserPlugin {
     }
 }
 
+#[derive(Resource)]
 pub(super) struct WorldBrowser {
     world_names: Vec<String>,
 }
@@ -287,20 +288,20 @@ impl FromWorld for WorldBrowser {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct JoinWorldDialog;
 
-#[derive(Constructor)]
+#[derive(Constructor, Resource)]
 struct HostWorldDialog {
     world_index: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct CreateWorldDialog {
     world_name: String,
 }
 
-#[derive(Constructor)]
+#[derive(Constructor, Resource)]
 struct RemoveWorldDialog {
     world_index: usize,
 }

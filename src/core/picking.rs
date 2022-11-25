@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy_mod_outline::Outline;
-use bevy_mod_raycast::RayCastSource;
+use bevy_mod_outline::OutlineVolume;
+use bevy_mod_raycast::RaycastSource;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -13,15 +13,15 @@ impl Plugin for PickingPlugin {
         app.add_event::<ObjectPicked>()
             .add_system(
                 Self::ray_system
-                    .chain(Self::object_picking_system)
-                    .chain(Self::outline_system)
+                    .pipe(Self::object_picking_system)
+                    .pipe(Self::outline_system)
                     .run_if_not(cursor_object::cursor_object_exists)
                     .run_in_state(GameState::City),
             )
             .add_system(
                 Self::ray_system
-                    .chain(Self::object_picking_system)
-                    .chain(Self::outline_system)
+                    .pipe(Self::object_picking_system)
+                    .pipe(Self::outline_system)
                     .run_in_state(GameState::Family),
             );
     }
@@ -29,11 +29,11 @@ impl Plugin for PickingPlugin {
 
 impl PickingPlugin {
     fn ray_system(
-        ray_sources: Query<&RayCastSource<Pickable>>,
+        ray_sources: Query<&RaycastSource<Pickable>>,
         parents: Query<(&Parent, Option<&Pickable>)>,
     ) -> Option<(Entity, Vec3)> {
         for source in &ray_sources {
-            if let Some((child_entity, intersection)) = source.intersect_top() {
+            if let Some((child_entity, intersection)) = source.get_nearest_intersection() {
                 let picked_entity = find_parent_object(child_entity, &parents)
                     .expect("object entity should have a parent");
                 return Some((picked_entity, intersection.position()));
@@ -63,7 +63,7 @@ impl PickingPlugin {
     fn outline_system(
         In(entity): In<Option<Entity>>,
         mut previous_entity: Local<Option<Entity>>,
-        mut outlines: Query<&mut Outline>,
+        mut outlines: Query<&mut OutlineVolume>,
         children: Query<&Children>,
     ) {
         if *previous_entity == entity {
@@ -104,7 +104,7 @@ fn find_parent_object(
 fn set_outline_recursive(
     entity: Entity,
     visible: bool,
-    outlines: &mut Query<&mut Outline>,
+    outlines: &mut Query<&mut OutlineVolume>,
     children: &Query<&Children>,
 ) {
     if let Ok(mut outline) = outlines.get_mut(entity) {
@@ -136,15 +136,11 @@ mod tests {
     #[test]
     fn parent_search() {
         let mut world = World::new();
-        let child_entity = world.spawn().id();
-        let parent_entity = world
-            .spawn()
-            .insert(Pickable)
-            .push_children(&[child_entity])
-            .id();
+        let child_entity = world.spawn_empty().id();
+        let parent_entity = world.spawn(Pickable).push_children(&[child_entity]).id();
 
         // Assign a parent, as an outline object is always expected to have a parent object.
-        world.spawn().push_children(&[parent_entity]);
+        world.spawn_empty().push_children(&[parent_entity]);
 
         let mut system_state: SystemState<Query<(&Parent, Option<&Pickable>)>> =
             SystemState::new(&mut world);
@@ -157,19 +153,17 @@ mod tests {
     #[test]
     fn recursive_outline() {
         let mut world = World::new();
-        let child_entity1 = world.spawn().insert(Outline::default()).id();
+        let child_entity1 = world.spawn(OutlineVolume::default()).id();
         let child_entity2 = world
-            .spawn()
-            .insert(Outline::default())
+            .spawn(OutlineVolume::default())
             .push_children(&[child_entity1])
             .id();
         let root_entity = world
-            .spawn()
-            .insert(Outline::default())
+            .spawn(OutlineVolume::default())
             .push_children(&[child_entity2])
             .id();
 
-        let mut system_state: SystemState<(Query<&mut Outline>, Query<&Children>)> =
+        let mut system_state: SystemState<(Query<&mut OutlineVolume>, Query<&Children>)> =
             SystemState::new(&mut world);
 
         const VISIBLE: bool = false;
@@ -177,14 +171,17 @@ mod tests {
         set_outline_recursive(root_entity, VISIBLE, &mut outlines, &children);
 
         assert_eq!(
-            world.get::<Outline>(child_entity1).unwrap().visible,
+            world.get::<OutlineVolume>(child_entity1).unwrap().visible,
             VISIBLE
         );
         assert_eq!(
-            world.get::<Outline>(child_entity2).unwrap().visible,
+            world.get::<OutlineVolume>(child_entity2).unwrap().visible,
             VISIBLE
         );
-        assert_eq!(world.get::<Outline>(root_entity).unwrap().visible, VISIBLE);
+        assert_eq!(
+            world.get::<OutlineVolume>(root_entity).unwrap().visible,
+            VISIBLE
+        );
     }
 
     #[test]
@@ -192,39 +189,36 @@ mod tests {
         let mut app = App::new();
         app.add_loopless_state(GameState::City)
             .init_resource::<ActionState<Action>>()
-            .add_plugin(CorePlugin)
-            .add_plugin(AssetPlugin)
+            .add_plugin(CorePlugin::default())
+            .add_plugin(AssetPlugin::default())
             .add_plugin(PickingPlugin);
 
-        let outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline::default())
-            .insert(Pickable)
-            .id();
-        app.world.spawn().push_children(&[outline_entity]);
+        let outline_entity = app.world.spawn((OutlineVolume::default(), Pickable)).id();
+        app.world.spawn_empty().push_children(&[outline_entity]);
 
-        let mut ray_source = RayCastSource::<Pickable>::default();
+        let mut ray_source = RaycastSource::<Pickable>::default();
         ray_source.intersections_mut().push((
             outline_entity,
             IntersectionData::new(Vec3::default(), Vec3::default(), 0.0, None),
         ));
-        let ray_entity = app.world.spawn().insert(ray_source).id();
+        let ray_entity = app.world.spawn(ray_source).id();
 
         app.update();
 
-        assert!(app.world.get::<Outline>(outline_entity).unwrap().visible);
+        assert!(
+            app.world
+                .get::<OutlineVolume>(outline_entity)
+                .unwrap()
+                .visible
+        );
 
-        let next_outline_entity = app
-            .world
-            .spawn()
-            .insert(Outline::default())
-            .insert(Pickable)
-            .id();
-        app.world.spawn().push_children(&[next_outline_entity]);
+        let next_outline_entity = app.world.spawn((OutlineVolume::default(), Pickable)).id();
+        app.world
+            .spawn_empty()
+            .push_children(&[next_outline_entity]);
         let mut ray_source = app
             .world
-            .get_mut::<RayCastSource<Pickable>>(ray_entity)
+            .get_mut::<RaycastSource<Pickable>>(ray_entity)
             .unwrap();
         ray_source.intersections_mut().clear();
         ray_source.intersections_mut().push((
@@ -234,10 +228,15 @@ mod tests {
 
         app.update();
 
-        assert!(!app.world.get::<Outline>(outline_entity).unwrap().visible);
+        assert!(
+            !app.world
+                .get::<OutlineVolume>(outline_entity)
+                .unwrap()
+                .visible
+        );
         assert!(
             app.world
-                .get::<Outline>(next_outline_entity)
+                .get::<OutlineVolume>(next_outline_entity)
                 .unwrap()
                 .visible
         );

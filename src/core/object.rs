@@ -3,12 +3,11 @@ pub(crate) mod cursor_object;
 use std::path::PathBuf;
 
 use bevy::{
-    app::PluginGroupBuilder,
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_mod_outline::{Outline, OutlineBundle};
-use bevy_mod_raycast::RayCastMesh;
+use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_raycast::RaycastMesh;
 use bevy_renet::renet::RenetServer;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
@@ -18,30 +17,20 @@ use tap::TapFallible;
 use super::{
     asset_metadata,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
-    network::{
-        entity_serde,
-        network_event::{
-            client_event::{ClientEvent, ClientEventAppExt},
-            server_event::{SendMode, ServerEvent, ServerEventAppExt, ServerSendBuffer},
-        },
+    network::network_event::{
+        client_event::{ClientEvent, ClientEventAppExt},
+        server_event::{SendMode, ServerEvent, ServerEventAppExt, ServerSendBuffer},
     },
     picking::Pickable,
 };
 use cursor_object::CursorObjectPlugin;
 
-pub(super) struct ObjectPlugins;
-
-impl PluginGroup for ObjectPlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group.add(CursorObjectPlugin).add(ObjectPlugin);
-    }
-}
-
-struct ObjectPlugin;
+pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<ObjectPath>()
+        app.add_plugin(CursorObjectPlugin)
+            .register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
@@ -63,26 +52,27 @@ impl ObjectPlugin {
             let scene_path = asset_metadata::scene_path(&object_path.0);
             let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
 
-            commands
-                .entity(entity)
-                .insert(scene_handle)
-                .insert(Pickable)
-                .insert(GlobalTransform::default())
-                .insert(SceneHook::new(|entity, commands| {
+            commands.entity(entity).insert((
+                scene_handle,
+                Pickable,
+                GlobalTransform::default(),
+                VisibilityBundle::default(),
+                SceneHook::new(|entity, commands| {
                     if entity.contains::<Handle<Mesh>>() {
-                        commands
-                            .insert_bundle(OutlineBundle {
-                                outline: Outline {
+                        commands.insert((
+                            OutlineBundle {
+                                outline: OutlineVolume {
                                     visible: false,
                                     colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
                                     width: 2.0,
                                 },
                                 ..Default::default()
-                            })
-                            .insert(RayCastMesh::<Pickable>::default());
+                            },
+                            RaycastMesh::<Pickable>::default(),
+                        ));
                     }
-                }))
-                .insert_bundle(VisibilityBundle::default());
+                }),
+            ));
             debug!("spawned object {scene_path:?}");
         }
     }
@@ -93,7 +83,7 @@ impl ObjectPlugin {
         mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
-            commands.spawn_bundle(ObjectBundle::new(
+            commands.spawn(ObjectBundle::new(
                 event.metadata_path,
                 event.translation,
                 event.rotation,
@@ -203,7 +193,7 @@ impl MapEntities for ObjectMove {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct ObjectDespawn(#[serde(with = "entity_serde")] pub(super) Entity);
+struct ObjectDespawn(pub(super) Entity);
 
 impl MapEntities for ObjectDespawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {

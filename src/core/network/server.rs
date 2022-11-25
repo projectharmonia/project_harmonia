@@ -34,7 +34,7 @@ impl Plugin for ServerPlugin {
     }
 }
 
-#[derive(Args, Clone, Debug, PartialEq)]
+#[derive(Args, Clone, Debug, PartialEq, Resource)]
 pub(crate) struct ServerSettings {
     /// Server name that will be visible to other players.
     #[clap(short, long, default_value_t = ServerSettings::default().server_name)]

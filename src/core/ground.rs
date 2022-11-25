@@ -1,5 +1,5 @@
 use bevy::prelude::{shape::Plane, *};
-use bevy_mod_raycast::RayCastMesh;
+use bevy_mod_raycast::RaycastMesh;
 use bevy_rapier3d::prelude::{Collider, RigidBody};
 use iyes_loopless::prelude::*;
 
@@ -26,7 +26,7 @@ impl GroundPlugin {
         commands
             .entity(active_cities.single())
             .add_children(|parent| {
-                parent.spawn_bundle(GroundBundle {
+                parent.spawn(GroundBundle {
                     pbr_bundle: PbrBundle {
                         mesh: meshes.add(Mesh::from(Plane {
                             size: GroundBundle::SIZE,
@@ -36,7 +36,7 @@ impl GroundPlugin {
                     },
                     ..Default::default()
                 });
-                parent.spawn_bundle(DirectionalLightBundle {
+                parent.spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
                         illuminance: 10000.0,
                         shadows_enabled: true,
@@ -65,7 +65,7 @@ struct GroundBundle {
     name: Name,
     rigid_body: RigidBody,
     collider: Collider,
-    ray_cast_mesh: RayCastMesh<Pickable>,
+    ray_cast_mesh: RaycastMesh<Pickable>,
     ground: Ground,
     pickable: Pickable,
 
@@ -83,7 +83,7 @@ impl Default for GroundBundle {
             name: Name::new("Ground"),
             rigid_body: RigidBody::Fixed,
             collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
-            ray_cast_mesh: RayCastMesh::<Pickable>::default(),
+            ray_cast_mesh: RaycastMesh::<Pickable>::default(),
             ground: Ground,
             pickable: Pickable,
             pbr_bundle: Default::default(),

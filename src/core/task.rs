@@ -1,8 +1,8 @@
 mod movement;
 
-use bevy::{app::PluginGroupBuilder, prelude::*, reflect::FromReflect};
+use bevy::{prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetServer;
-use bevy_trait_query::impl_trait_query;
+use bevy_trait_query::queryable;
 use iyes_loopless::prelude::IntoConditionalSystem;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
@@ -16,19 +16,12 @@ use super::{
 };
 use movement::{MovementPlugin, Walk};
 
-pub(super) struct TaskPlugins;
-
-impl PluginGroup for TaskPlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group.add(TaskPlugin).add(MovementPlugin);
-    }
-}
-
-struct TaskPlugin;
+pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<QueuedTasks>()
+        app.add_plugin(MovementPlugin)
+            .register_type::<QueuedTasks>()
             .add_client_event::<TaskRequest>()
             .add_client_event::<TaskCancel>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))
@@ -140,8 +133,7 @@ impl TaskList {
     }
 }
 
-impl_trait_query!(Task);
-
+#[queryable]
 pub(crate) trait Task: Reflect {
     fn kind(&self) -> TaskRequestKind;
 }

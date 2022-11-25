@@ -1,11 +1,10 @@
 pub(crate) mod parent_sync;
 pub(super) mod save_rules;
 
-use std::{borrow::Cow, fs};
+use std::fs;
 
 use anyhow::{Context, Result};
 use bevy::{
-    app::PluginGroupBuilder,
     ecs::archetype::ArchetypeId,
     prelude::*,
     reflect::TypeRegistry,
@@ -19,39 +18,31 @@ use super::{error_message, game_paths::GamePaths, game_state::GameState};
 use parent_sync::ParentSyncPlugin;
 use save_rules::SaveRules;
 
-pub(super) struct GameWorldPlugins;
-
-impl PluginGroup for GameWorldPlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group.add(ParentSyncPlugin).add(GameWorldPlugin);
-    }
-}
-
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
     Saving,
     Loading,
 }
 
-struct GameWorldPlugin;
+pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<GameEntity>()
-            .register_type::<Cow<'static, str>>() // To serialize Name, https://github.com/bevyengine/bevy/issues/5597
+        app.add_plugin(ParentSyncPlugin)
+            .register_type::<GameEntity>()
             .init_resource::<SaveRules>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
             .add_system(
                 Self::saving_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_on_event::<GameSave>()
                     .label(GameWorldSystem::Saving),
             )
             .add_system(
                 Self::loading_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_on_event::<GameLoad>()
                     .label(GameWorldSystem::Loading),
             );
@@ -68,7 +59,7 @@ impl GameWorldPlugin {
         world: &World,
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
-        registry: Res<TypeRegistry>,
+        registry: Res<AppTypeRegistry>,
         save_rules: Res<SaveRules>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
@@ -92,7 +83,7 @@ impl GameWorldPlugin {
         mut scenes: ResMut<Assets<DynamicScene>>,
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
-        registry: Res<TypeRegistry>,
+        registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
 
@@ -123,14 +114,13 @@ fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules)
         .archetypes()
         .iter()
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
-        .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
         .filter(|archetype| save_rules.persistent_archetype(archetype))
     {
         let entities_offset = scene.entities.len();
-        for entity in archetype.entities() {
+        for archetype_entity in archetype.entities() {
             scene.entities.push(DynamicEntity {
-                entity: entity.id(),
+                entity: archetype_entity.entity().index(),
                 components: Vec::new(),
             });
         }
@@ -147,9 +137,9 @@ fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules)
                 .and_then(|registration| registration.data::<ReflectComponent>())
                 .unwrap_or_else(|| panic!("non-ignored component {type_name} should be registered and have reflect(Component)"));
 
-            for (index, entity) in archetype.entities().iter().enumerate() {
+            for (index, archetype_entity) in archetype.entities().iter().enumerate() {
                 let component = reflect_component
-                    .reflect(world, *entity)
+                    .reflect(world, archetype_entity.entity())
                     .unwrap_or_else(|| panic!("object should have {type_name}"));
 
                 scene.entities[entities_offset + index]
@@ -178,7 +168,7 @@ pub(crate) struct GameSave;
 pub(crate) struct GameLoad;
 
 /// Contains meta-information about the currently loaded world.
-#[derive(Default, Deref)]
+#[derive(Default, Deref, Resource)]
 pub(crate) struct GameWorld {
     pub(crate) world_name: String,
 }
@@ -204,35 +194,29 @@ mod tests {
             .register_type::<City>()
             .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
-            .add_plugin(CorePlugin)
-            .add_plugin(AssetPlugin)
+            .add_plugin(CorePlugin::default())
+            .add_plugin(AssetPlugin::default())
             .add_plugin(ScenePlugin)
             .add_plugin(TransformPlugin)
             .add_plugin(GameWorldPlugin);
 
-        const TRANSFORM: Transform = Transform::identity();
-        let non_game_entity = app.world.spawn().insert(Transform::identity()).id();
+        const TRANSFORM: Transform = Transform::IDENTITY;
+        let non_game_entity = app.world.spawn(TRANSFORM).id();
         let game_world_entity = app
             .world
-            .spawn()
-            .insert_bundle(SpatialBundle {
-                transform: TRANSFORM,
-                ..Default::default()
-            })
-            .insert(Camera::default())
-            .insert(GameEntity)
+            .spawn((
+                SpatialBundle {
+                    transform: TRANSFORM,
+                    ..Default::default()
+                },
+                Camera::default(),
+                GameEntity,
+            ))
             .id();
-        let non_game_city = app
-            .world
-            .spawn()
-            .insert_bundle(SpatialBundle::default())
-            .insert(City)
-            .id();
+        let non_game_city = app.world.spawn((SpatialBundle::default(), City)).id();
         let city = app
             .world
-            .spawn()
-            .insert_bundle(SpatialBundle::default())
-            .insert_bundle(CityBundle::default())
+            .spawn((SpatialBundle::default(), CityBundle::default()))
             .push_children(&[game_world_entity])
             .id();
 

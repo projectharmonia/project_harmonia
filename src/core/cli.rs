@@ -22,11 +22,11 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_startup_system(Self::subcommand_system.chain(error_message::err_message_system))
+        app.add_startup_system(Self::subcommand_system.pipe(error_message::err_message_system))
             .add_system_to_stage(
                 CoreStage::PostUpdate, // To run after `Members` component insertion.
                 Self::quick_loading_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_if(first_world_load),
             );
     }
@@ -129,7 +129,7 @@ fn first_world_load(
     }
 }
 
-#[derive(Parser, Clone)]
+#[derive(Parser, Clone, Resource)]
 #[command(author, version, about)]
 pub(crate) struct Cli {
     /// Game command to run.

@@ -174,7 +174,7 @@ impl SettingsMenuPlugin {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub(super) struct SettingsMenu {
     current_tab: SettingsTab,
 }
@@ -187,6 +187,7 @@ enum SettingsTab {
     Developer,
 }
 
+#[derive(Resource)]
 struct ActiveBinding {
     action: Action,
     index: usize,
@@ -198,6 +199,7 @@ impl ActiveBinding {
     }
 }
 
+#[derive(Resource)]
 struct BindingConflict {
     action: Action,
     input_kind: InputKind,

@@ -5,9 +5,9 @@
 mod core;
 mod ui;
 
-use bevy::{asset::AssetServerSettings, log::LogSettings, prelude::*};
+use bevy::{log::LogPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
-use bevy_hikari::HikariPlugin;
+use bevy_hikari::prelude::*;
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
@@ -19,41 +19,34 @@ use leafwing_input_manager::prelude::*;
 use crate::core::{action::Action, cli::Cli, picking::Pickable, CorePlugins};
 use ui::UiPlugins;
 
-struct DollisPlugins;
-
-impl PluginGroup for DollisPlugins {
-    fn build(&mut self, group: &mut bevy::app::PluginGroupBuilder) {
-        DefaultPlugins.build(group);
-
-        group
-            .add(HookPlugin)
-            .add(InputManagerPlugin::<Action>::default())
-            .add(RapierPhysicsPlugin::<NoUserData>::default())
-            .add(RapierDebugRenderPlugin::default())
-            .add(RenetServerPlugin)
-            .add(RenetClientPlugin)
-            .add(DefaultRaycastingPlugin::<Pickable>::default())
-            .add(OutlinePlugin)
-            .add(EguiPlugin)
-            .add(HikariPlugin)
-            .add(WorldInspectorPlugin::new());
-
-        CorePlugins.build(group);
-        UiPlugins.build(group);
-    }
-}
-
 fn main() {
     App::new()
         .init_resource::<Cli>()
-        .insert_resource(LogSettings {
-            filter: "info,wgpu_core=warn,wgpu_hal=warn,dollis=debug".into(),
-            level: bevy::log::Level::DEBUG,
-        })
-        .insert_resource(AssetServerSettings {
-            watch_for_changes: true,
-            ..Default::default()
-        })
-        .add_plugins(DollisPlugins)
+        .add_plugins(
+            DefaultPlugins
+                .set(LogPlugin {
+                    filter:
+                        "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,bevy_ecs=error,dollis=debug"
+                            .into(),
+                    level: bevy::log::Level::DEBUG,
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: true,
+                    ..Default::default()
+                }),
+        )
+        .add_plugin(HookPlugin)
+        .add_plugin(InputManagerPlugin::<Action>::default())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(RenetServerPlugin::default())
+        .add_plugin(RenetClientPlugin::default())
+        .add_plugin(DefaultRaycastingPlugin::<Pickable>::default())
+        .add_plugin(OutlinePlugin)
+        .add_plugin(EguiPlugin)
+        .add_plugin(HikariPlugin::default())
+        .add_plugin(WorldInspectorPlugin::new())
+        .add_plugins(CorePlugins)
+        .add_plugins(UiPlugins)
         .run();
 }

@@ -12,4 +12,5 @@ pub(crate) fn err_message_system(In(result): In<Result<()>>, mut commands: Comma
     }
 }
 
+#[derive(Resource)]
 pub(crate) struct ErrorMessage(pub(crate) Error);

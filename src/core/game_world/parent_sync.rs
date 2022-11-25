@@ -54,7 +54,7 @@ impl MapEntities for ParentSync {
 
 #[cfg(test)]
 mod tests {
-    use bevy::{asset::AssetPlugin, reflect::TypeRegistry, scene::ScenePlugin};
+    use bevy::{asset::AssetPlugin, scene::ScenePlugin};
 
     use super::*;
 
@@ -62,15 +62,15 @@ mod tests {
     fn entity_mapping() {
         let mut app = App::new();
         app.init_resource::<GameWorld>()
-            .add_plugin(AssetPlugin)
+            .add_plugin(AssetPlugin::default())
             .add_plugin(ScenePlugin)
             .add_plugin(ParentSyncPlugin);
 
         let mut other_world = World::new();
-        let parent = other_world.spawn().id();
-        other_world.spawn().insert(ParentSync(parent));
+        let parent = other_world.spawn_empty().id();
+        other_world.spawn(ParentSync(parent));
         let dynamic_scene =
-            DynamicScene::from_world(&other_world, app.world.resource::<TypeRegistry>());
+            DynamicScene::from_world(&other_world, app.world.resource::<AppTypeRegistry>());
 
         let mut scenes = app.world.resource_mut::<Assets<DynamicScene>>();
         let scene_handle = scenes.add(dynamic_scene);

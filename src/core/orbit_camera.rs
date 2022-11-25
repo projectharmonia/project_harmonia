@@ -1,7 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::CameraRenderGraph};
-use bevy_mod_raycast::{RayCastMethod, RayCastSource};
+use bevy::{input::mouse::MouseMotion, prelude::*};
+use bevy_mod_raycast::{RaycastMethod, RaycastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
@@ -118,11 +118,11 @@ impl OrbitCameraPlugin {
 
     fn update_raycast_source_system(
         mut cursor_events: EventReader<CursorMoved>,
-        mut ray_sources: Query<&mut RayCastSource<Pickable>>,
+        mut ray_sources: Query<&mut RaycastSource<Pickable>>,
     ) {
         if let Some(cursor_pos) = cursor_events.iter().last().map(|event| event.position) {
             for mut ray_source in &mut ray_sources {
-                ray_source.cast_method = RayCastMethod::Screenspace(cursor_pos);
+                ray_source.cast_method = RaycastMethod::Screenspace(cursor_pos);
             }
         }
     }
@@ -149,30 +149,15 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
     direction.normalize_or_zero()
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub(crate) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
-    ray_source: RayCastSource<Pickable>,
+    ray_source: RaycastSource<Pickable>,
 
     #[bundle]
     camera_3d: Camera3dBundle,
-}
-
-impl OrbitCameraBundle {
-    pub(super) fn new(camera_render_graph: CameraRenderGraph) -> Self {
-        Self {
-            target_translation: Default::default(),
-            orbit_rotation: Default::default(),
-            spring_arm: Default::default(),
-            ray_source: Default::default(),
-            camera_3d: Camera3dBundle {
-                camera_render_graph,
-                ..Default::default()
-            },
-        }
-    }
 }
 
 /// The origin of a camera.

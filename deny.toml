@@ -3,8 +3,9 @@ unmaintained = "deny"
 yanked = "deny"
 notice = "deny"
 ignore = [
-  "RUSTSEC-2021-0139", # Ignore ansi_term until there is a replacement
+  "RUSTSEC-2021-0145", # Ignore atty from clap.
 ]
+unsound = "deny"
 
 [licenses]
 copyleft = "allow"
@@ -17,8 +18,8 @@ license-files = []
 
 [bans]
 multiple-versions = "allow"
-wildcards = "allow"         # TODO 0.9: Set to "deny" after release
+wildcards = "allow"         # TODO 0.9.1: Set to "deny".
 
 [sources]
 unknown-registry = "deny"
-unknown-git = "allow"     # TODO 0.9: Set to "deny" after release
+unknown-git = "allow"     # TODO 0.9.1: Set to "deny".

@@ -33,25 +33,23 @@ use family::FamilyPlugin;
 use family_editor::FamilyEditorPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
-use game_world::GameWorldPlugins;
+use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
-use network::NetworkPlugins;
-use object::ObjectPlugins;
+use network::NetworkPlugin;
+use object::ObjectPlugin;
 use orbit_camera::OrbitCameraPlugin;
 use picking::PickingPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
-use task::TaskPlugins;
+use task::TaskPlugin;
 use video::VideoPlugin;
 
 pub(super) struct CorePlugins;
 
 impl PluginGroup for CorePlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        // Should be built first to register server fixed timestep.
-        NetworkPlugins.build(group);
-
-        group
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(NetworkPlugin) // Should be built first to register server fixed timestep.
             .add(AssetMetadataPlugin)
             .add(GameStatePlugin)
             .add(CityPlugin)
@@ -67,10 +65,9 @@ impl PluginGroup for CorePlugins {
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin)
-            .add(VideoPlugin);
-
-        TaskPlugins.build(group);
-        GameWorldPlugins.build(group);
-        ObjectPlugins.build(group);
+            .add(VideoPlugin)
+            .add(TaskPlugin)
+            .add(GameWorldPlugin)
+            .add(ObjectPlugin)
     }
 }

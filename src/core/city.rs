@@ -5,7 +5,6 @@ use super::{
     game_state::GameState,
     game_world::{GameEntity, GameWorld},
     orbit_camera::{OrbitCameraBundle, OrbitOrigin},
-    settings::Settings,
 };
 
 pub(super) struct CityPlugin;
@@ -41,26 +40,25 @@ impl CityPlugin {
         for entity in &added_cities {
             let transform =
                 Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
-            commands
-                .entity(entity)
-                .insert_bundle(TransformBundle::from_transform(transform))
-                .insert_bundle(VisibilityBundle {
+            commands.entity(entity).insert((
+                TransformBundle::from_transform(transform),
+                VisibilityBundle {
                     visibility: Visibility { is_visible: false },
                     ..Default::default()
-                });
+                },
+            ));
             placed_citites.0 += 1;
         }
     }
 
     fn enter_system(
         mut commands: Commands,
-        settings: Res<Settings>,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
     ) {
         let (city_entity, mut visibility) = active_cities.single_mut();
         visibility.is_visible = true;
         commands.entity(city_entity).with_children(|parent| {
-            parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
+            parent.spawn(OrbitCameraBundle::default());
         });
     }
 
@@ -116,5 +114,5 @@ pub(crate) struct ActiveCity;
 ///
 /// The number increases when a city is placed, but does not decrease
 /// when it is removed to assign a unique position to new each city.
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct PlacedCities(usize);

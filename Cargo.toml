@@ -6,26 +6,26 @@ license = "AGPL-3.0-or-later"
 rust-version = "1.65"
 
 [dependencies]
-bevy = { version = "0.8", default-features = false, features = [
+bevy = { version = "0.9", default-features = false, features = [
   "bevy_gltf",
   "filesystem_watcher",
   "png",
   "x11",
 ] }
-bevy_renet = "0.0.5"
-bevy_rapier3d = "0.18"
-bevy_mod_raycast = "0.6"
-bevy_mod_outline = { version = "0.2", default-features = false }
-bevy_egui = "0.16"
-bevy-hikari = "0.2"
-bevy-inspector-egui = { version = "0.13", default-features = false, features = [
+bevy_renet = "0.0.6"
+bevy_rapier3d = "0.19"
+bevy_mod_raycast = { version = "0.7", default-features = false }
+bevy_mod_outline = { version = "0.3", default-features = false }
+bevy_egui = "0.17"
+bevy-hikari = "0.3"
+bevy-inspector-egui = { version = "0.14", default-features = false, features = [
   "clipboard",
   "bevy_pbr",
 ] }
-bevy-scene-hook = "4.1"
-bevy-trait-query = "0.0.3"
-iyes_loopless = "0.8"
-leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager", default-features = false, features = [
+bevy-scene-hook = "5.1"
+iyes_loopless = "0.9"
+bevy-trait-query = "0.1"
+leafwing-input-manager = { version = "0.7", default-features = false, features = [
   "egui",
 ] }
 serde = "1.0"
@@ -38,7 +38,7 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.5"
 rmp-serde = "1.1"
-ron = "0.7"
+ron = "0.8"
 tap = "1.0"
 once_cell = "1.16"
 smallvec = "1.10"
@@ -48,3 +48,6 @@ walkdir = "2.3"
 fastrand = "1.8.0"
 serde_test = "1.0"
 itertools = "0.10"
+
+[patch.crates-io]
+bevy_reflect = { git = 'https://github.com/dollisgame/bevy', branch = 'reflect-binary-unit' } # TODO 0.9.1: Remove, needed to fix deserialization.

@@ -58,7 +58,7 @@ impl Plugin for NetworkPresetPlugin {
                     .create_server(event_counter)
                     .expect("server should be created"),
             )
-            .add_plugin(RenetServerPlugin);
+            .add_plugin(RenetServerPlugin::default());
         }
 
         if self.client {
@@ -76,7 +76,7 @@ impl Plugin for NetworkPresetPlugin {
                     .create_client(event_counter)
                     .expect("client should be created"),
             )
-            .add_plugin(RenetClientPlugin);
+            .add_plugin(RenetClientPlugin::default());
         }
 
         if self.client && self.server {

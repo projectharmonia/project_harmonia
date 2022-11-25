@@ -42,9 +42,7 @@ impl SelectedObjectPlugin {
         commands
             .entity(active_cities.single())
             .with_children(|parent| {
-                parent
-                    .spawn()
-                    .insert(CursorObject::Spawning(metadata_path.path().to_path_buf()));
+                parent.spawn(CursorObject::Spawning(metadata_path.path().to_path_buf()));
             });
     }
 
@@ -54,5 +52,5 @@ impl SelectedObjectPlugin {
 }
 
 /// Resource that represents object selection in an object placement menu.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub(super) struct SelectedObject(pub(crate) HandleId);

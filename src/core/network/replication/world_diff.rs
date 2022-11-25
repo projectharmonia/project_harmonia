@@ -6,7 +6,7 @@ use std::{
 use bevy::{
     prelude::*,
     reflect::{
-        serde::{ReflectDeserializer, ReflectSerializer},
+        serde::{ReflectSerializer, UntypedReflectDeserializer},
         TypeRegistryInternal,
     },
     utils::HashMap,
@@ -18,8 +18,6 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
-
-use crate::core::network::entity_serde::{EntityDeserializer, EntitySerializer};
 
 /// Type of component or resource change.
 pub(super) enum ComponentDiff {
@@ -91,10 +89,7 @@ impl Serialize for WorldDiffSerializer<'_> {
             WorldDiffField::Entities.into(),
             &EntitiesSerializer::new(&self.world_diff.entities, self.registry),
         )?;
-        state.serialize_field(
-            WorldDiffField::Despawned.into(),
-            &DespawnsSerializer::new(&self.world_diff.despawns),
-        )?;
+        state.serialize_field(WorldDiffField::Despawned.into(), &self.world_diff.despawns)?;
         state.end()
     }
 }
@@ -108,9 +103,9 @@ struct EntitiesSerializer<'a> {
 impl Serialize for EntitiesSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(self.entities.len()))?;
-        for (&entity, components) in self.entities {
+        for (entity, components) in self.entities {
             map.serialize_entry(
-                &EntitySerializer(entity),
+                entity,
                 &ComponentsSerializer::new(components, self.registry),
             )?;
         }
@@ -160,21 +155,6 @@ impl Serialize for ComponentDiffSerializer<'_> {
 }
 
 #[derive(Constructor)]
-struct DespawnsSerializer<'a> {
-    despawns: &'a Vec<Entity>,
-}
-
-impl Serialize for DespawnsSerializer<'_> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.despawns.len()))?;
-        for &entity in self.despawns {
-            seq.serialize_element(&EntitySerializer(entity))?;
-        }
-        seq.end()
-    }
-}
-
-#[derive(Constructor)]
 pub(super) struct WorldDiffDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
@@ -206,7 +186,7 @@ impl<'de> Visitor<'de> for WorldDiffDeserializer<'_> {
             .next_element_seed(EntitiesDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Entities as usize, &self))?;
         let despawns = seq
-            .next_element_seed(DespawnsDeserializer)?
+            .next_element()?
             .ok_or_else(|| de::Error::invalid_length(WorldDiffField::Despawned as usize, &self))?;
         Ok(WorldDiff {
             tick,
@@ -238,7 +218,7 @@ impl<'de> Visitor<'de> for EntitiesDeserializer<'_> {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
         let mut entities = HashMap::with_capacity(map.size_hint().unwrap_or_default());
-        while let Some(key) = map.next_key_seed(EntityDeserializer)? {
+        while let Some(key) = map.next_key()? {
             let value = map.next_value_seed(ComponentsDeserializer::new(self.registry))?;
             entities.insert(key, value);
         }
@@ -310,43 +290,12 @@ impl<'de> Visitor<'de> for ComponentDiffDeserializer<'_> {
         let (field, variant) = data.variant::<ComponentDiffField>()?;
         let component_diff = match field {
             ComponentDiffField::Changed => ComponentDiff::Changed(
-                variant.newtype_variant_seed(ReflectDeserializer::new(self.registry))?,
+                variant.newtype_variant_seed(UntypedReflectDeserializer::new(self.registry))?,
             ),
             ComponentDiffField::Removed => ComponentDiff::Removed(variant.newtype_variant()?),
         };
 
         Ok(component_diff)
-    }
-}
-
-#[derive(Constructor)]
-struct DespawnsDeserializer;
-
-impl<'de> DeserializeSeed<'de> for DespawnsDeserializer {
-    type Value = Vec<Entity>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(self)
-    }
-}
-
-impl<'de> Visitor<'de> for DespawnsDeserializer {
-    type Value = Vec<Entity>;
-
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-        formatter.write_str(any::type_name::<Self::Value>())
-    }
-
-    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let mut despawns = Vec::new();
-        while let Some(entity) = seq.next_element_seed(EntityDeserializer)? {
-            despawns.push(entity);
-        }
-
-        Ok(despawns)
     }
 }
 
@@ -380,7 +329,7 @@ mod tests {
     fn component_diff_changed_ser() {
         let mut registry = TypeRegistryInternal::new();
         registry.register::<Visibility>();
-        let component_diff = ComponentDiff::Changed(Visibility::visible().clone_value());
+        let component_diff = ComponentDiff::Changed(Visibility::VISIBLE.clone_value());
         let serializer = ComponentDiffSerializer::new(&component_diff, &registry);
 
         serde_test::assert_ser_tokens(
@@ -390,19 +339,15 @@ mod tests {
                     name: any::type_name::<ComponentDiff>(),
                     variant: ComponentDiffField::Changed.into(),
                 },
-                Token::Map { len: Some(2) },
-                Token::Str("type"),
-                Token::Str(any::type_name::<Visibility>()),
-                Token::Str("struct"),
                 Token::Map { len: Some(1) },
+                Token::Str(any::type_name::<Visibility>()),
+                Token::Struct {
+                    name: "Visibility",
+                    len: 1,
+                },
                 Token::Str("is_visible"),
-                Token::Map { len: Some(2) },
-                Token::Str("type"),
-                Token::Str(any::type_name::<bool>()),
-                Token::Str("value"),
                 Token::Bool(true),
-                Token::MapEnd,
-                Token::MapEnd,
+                Token::StructEnd,
                 Token::MapEnd,
             ],
         );
@@ -410,16 +355,16 @@ mod tests {
 
     #[test]
     fn world_diff_ser() {
-        const ENTITY_ID: u64 = 0;
+        const ENTITY_INDEX: u32 = 0;
         const TICK: u32 = 0;
         let registry = TypeRegistryInternal::default();
         let world_diff = WorldDiff {
             tick: TICK,
             entities: HashMap::from([(
-                Entity::from_bits(ENTITY_ID),
+                Entity::from_raw(ENTITY_INDEX),
                 Vec::from([ComponentDiff::Removed(COMPONENT_NAME.to_string())]),
             )]),
-            despawns: Vec::from([Entity::from_bits(ENTITY_ID)]),
+            despawns: Vec::from([Entity::from_raw(ENTITY_INDEX)]),
         };
         let serializer = WorldDiffSerializer::new(&world_diff, &registry);
 
@@ -434,7 +379,15 @@ mod tests {
                 Token::U32(TICK),
                 Token::Str(WorldDiffField::Entities.into()),
                 Token::Map { len: Some(1) },
-                Token::U64(ENTITY_ID),
+                Token::Struct {
+                    name: "Entity",
+                    len: 2,
+                },
+                Token::Str("generation"),
+                Token::U32(0),
+                Token::Str("index"),
+                Token::U32(ENTITY_INDEX),
+                Token::StructEnd,
                 Token::Seq { len: Some(1) },
                 Token::NewtypeVariant {
                     name: any::type_name::<ComponentDiff>(),
@@ -445,7 +398,15 @@ mod tests {
                 Token::MapEnd,
                 Token::Str(WorldDiffField::Despawned.into()),
                 Token::Seq { len: Some(1) },
-                Token::U64(ENTITY_ID),
+                Token::Struct {
+                    name: "Entity",
+                    len: 2,
+                },
+                Token::Str("generation"),
+                Token::U32(0),
+                Token::Str("index"),
+                Token::U32(ENTITY_INDEX),
+                Token::StructEnd,
                 Token::SeqEnd,
                 Token::StructEnd,
             ],

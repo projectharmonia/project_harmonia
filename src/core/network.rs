@@ -1,5 +1,4 @@
 pub(crate) mod client;
-pub(super) mod entity_serde;
 pub(crate) mod network_event;
 #[cfg(test)]
 pub(crate) mod network_preset;
@@ -10,16 +9,16 @@ use bevy::prelude::*;
 use bevy_renet::renet::{ChannelConfig, ReliableChannelConfig, UnreliableChannelConfig};
 
 use client::ClientPlugin;
-use replication::ReplicationPlugins;
+use replication::ReplicationPlugin;
 use server::ServerPlugin;
 
-pub(super) struct NetworkPlugins;
+pub(super) struct NetworkPlugin;
 
-impl PluginGroup for NetworkPlugins {
-    fn build(&mut self, group: &mut bevy::app::PluginGroupBuilder) {
-        group.add(ServerPlugin).add(ClientPlugin);
-
-        ReplicationPlugins.build(group)
+impl Plugin for NetworkPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugin(ServerPlugin)
+            .add_plugin(ClientPlugin)
+            .add_plugin(ReplicationPlugin);
     }
 }
 

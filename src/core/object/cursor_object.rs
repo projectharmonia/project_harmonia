@@ -57,7 +57,7 @@ impl CursorObjectPlugin {
         for event in pick_events.iter() {
             if let Ok(parent) = parents.get(event.entity) {
                 commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn().insert(CursorObject::Moving(event.entity));
+                    parent.spawn(CursorObject::Moving(event.entity));
                 });
             }
         }
@@ -73,19 +73,19 @@ impl CursorObjectPlugin {
             debug!("created cursor {cursor_object:?}");
             match cursor_object {
                 CursorObject::Spawning(metadata_path) => {
-                    commands
-                        .entity(cursor_entity)
-                        .insert_bundle(SceneBundle {
+                    commands.entity(cursor_entity).insert((
+                        SceneBundle {
                             scene: asset_server.load(&asset_metadata::scene_path(metadata_path)),
                             ..Default::default()
-                        })
-                        .insert(CursorOffset::default());
+                        },
+                        CursorOffset::default(),
+                    ));
                 }
                 CursorObject::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
                         .get_mut(*object_entity)
                         .expect("moving object should exist with these components");
-                    commands.entity(cursor_entity).insert_bundle(SceneBundle {
+                    commands.entity(cursor_entity).insert(SceneBundle {
                         scene: scene_handle.clone(),
                         transform: *transform,
                         ..Default::default()

@@ -190,9 +190,10 @@ impl InGameMenuPlugin {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct InGameMenu;
 
+#[derive(Resource)]
 struct SaveAsDialog {
     world_name: String,
 }
@@ -205,8 +206,8 @@ impl FromWorld for SaveAsDialog {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct ExitToMainMenuDialog;
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct ExitGameDialog;

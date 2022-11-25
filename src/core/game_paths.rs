@@ -17,6 +17,7 @@ impl Plugin for GamePathsPlugin {
 const SCENE_EXTENSION: &str = "scn";
 
 /// Paths with game files, such as settings and savegames.
+#[derive(Resource)]
 pub(crate) struct GamePaths {
     pub(crate) settings: PathBuf,
     pub(crate) worlds: PathBuf,

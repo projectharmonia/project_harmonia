@@ -5,7 +5,6 @@ use super::{
     family::{DespawnFamilyExt, FamilyBundle},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
-    settings::Settings,
 };
 
 pub(super) struct FamilyEditorPlugin;
@@ -25,11 +24,11 @@ impl Plugin for FamilyEditorPlugin {
 }
 
 impl FamilyEditorPlugin {
-    fn spawn_system(mut commands: Commands, settings: Res<Settings>) {
+    fn spawn_system(mut commands: Commands) {
         commands
-            .spawn_bundle(FamilyEditorBundle::default())
+            .spawn(FamilyEditorBundle::default())
             .with_children(|parent| {
-                parent.spawn_bundle(PointLightBundle {
+                parent.spawn(PointLightBundle {
                     point_light: PointLight {
                         intensity: 1500.0,
                         shadows_enabled: true,
@@ -39,10 +38,8 @@ impl FamilyEditorPlugin {
                     transform: Transform::from_xyz(4.0, 8.0, 4.0),
                     ..Default::default()
                 });
-                parent.spawn_bundle(OrbitCameraBundle::new(settings.video.camera_render_graph()));
-                parent
-                    .spawn_bundle(FamilyBundle::default())
-                    .insert(EditableFamily);
+                parent.spawn(OrbitCameraBundle::default());
+                parent.spawn((FamilyBundle::default(), EditableFamily));
             });
     }
 
@@ -76,9 +73,7 @@ impl FamilyEditorPlugin {
         commands
             .entity(family_editors.single())
             .with_children(|parent| {
-                parent
-                    .spawn_bundle(FamilyBundle::default())
-                    .insert(EditableFamily);
+                parent.spawn((FamilyBundle::default(), EditableFamily));
             });
     }
 

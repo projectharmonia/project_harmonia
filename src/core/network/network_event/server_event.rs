@@ -139,7 +139,7 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
 /// A container for events that will be send to clients.
 ///
 /// Emits [`T`] event on clients.
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Resource)]
 pub(crate) struct ServerSendBuffer<T>(Vec<ServerEvent<T>>);
 
 impl<T> Default for ServerSendBuffer<T> {

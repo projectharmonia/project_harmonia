@@ -32,7 +32,7 @@ pub(crate) fn connected(client: Option<Res<RenetClient>>) -> bool {
     }
 }
 
-#[derive(Args, Clone, Debug, PartialEq)]
+#[derive(Args, Clone, Debug, PartialEq, Resource)]
 pub(crate) struct ConnectionSettings {
     /// Server IP address.
     #[clap(short, long, default_value_t = ConnectionSettings::default().ip)]
@@ -74,13 +74,7 @@ impl ConnectionSettings {
             ..Default::default()
         };
 
-        RenetClient::new(
-            current_time,
-            socket,
-            client_id,
-            connection_config,
-            authentication,
-        )
-        .map_err(From::from)
+        RenetClient::new(current_time, socket, connection_config, authentication)
+            .map_err(From::from)
     }
 }

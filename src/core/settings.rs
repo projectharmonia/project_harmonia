@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::{core_pipeline::core_3d, prelude::*, render::camera::CameraRenderGraph};
+use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ impl Plugin for SettingsPlugin {
             .add_event::<SettingsApply>()
             .add_system(
                 Self::write_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_on_event::<SettingsApply>(),
             );
     }
@@ -34,7 +34,7 @@ impl SettingsPlugin {
 #[derive(Default)]
 pub(crate) struct SettingsApply;
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Resource, Serialize)]
 #[serde(default)]
 pub(crate) struct Settings {
     pub(crate) video: VideoSettings,
@@ -80,17 +80,6 @@ pub(crate) struct VideoSettings {
     pub(crate) global_illumination: bool,
     pub(crate) msaa: u32,
     pub(crate) perf_stats: bool,
-}
-
-impl VideoSettings {
-    pub(super) fn camera_render_graph(&self) -> CameraRenderGraph {
-        let graph_name = if self.global_illumination {
-            bevy_hikari::graph::NAME
-        } else {
-            core_3d::graph::NAME
-        };
-        CameraRenderGraph::new(graph_name)
-    }
 }
 
 impl Default for VideoSettings {

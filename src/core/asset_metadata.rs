@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 use bevy::{
-    asset::{AssetLoader, AssetServerSettings, LoadContext, LoadedAsset},
+    asset::{AssetLoader, AssetPlugin, LoadContext, LoadedAsset},
     prelude::*,
     reflect::TypeUuid,
     utils::BoxedFuture,
@@ -26,13 +26,9 @@ impl Plugin for AssetMetadataPlugin {
 }
 
 impl AssetMetadataPlugin {
-    fn load_system(
-        mut commands: Commands,
-        asset_server: ResMut<AssetServer>,
-        settings: Res<AssetServerSettings>,
-    ) {
+    fn load_system(mut commands: Commands, asset_server: ResMut<AssetServer>) {
         let mut folder: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap_or_default().into();
-        folder.push(&settings.asset_folder);
+        folder.push(AssetPlugin::default().asset_folder);
 
         let mut handles = Vec::new();
         for entry in WalkDir::new(&folder)
@@ -93,7 +89,7 @@ pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
     scene_path
 }
 
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Resource)]
 struct MetadataHandles(Vec<Handle<AssetMetadata>>);
 
 #[derive(Deserialize, TypeUuid)]

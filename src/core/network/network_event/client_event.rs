@@ -135,7 +135,7 @@ fn receiving_system<T: Event + Serialize + DeserializeOwned + Debug>(
 /// A container for events that will be send to server.
 ///
 /// Emits [`ClientEvent<T>`] on server.
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Resource)]
 pub(crate) struct ClientSendBuffer<T>(Vec<T>);
 
 impl<T> Default for ClientSendBuffer<T> {
@@ -172,7 +172,7 @@ mod tests {
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let client_entity = Entity::from_raw(0);
-        let server_entity = Entity::from_raw(client_entity.id() + 1);
+        let server_entity = Entity::from_raw(client_entity.index() + 1);
         app.world
             .resource_mut::<NetworkEntityMap>()
             .insert(server_entity, client_entity);

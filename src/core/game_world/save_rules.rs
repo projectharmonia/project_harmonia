@@ -16,6 +16,7 @@ use crate::core::{
 
 /// Contains [`ComponentId`]'s that used to decide
 /// if a component should be serialized.
+#[derive(Resource)]
 pub(crate) struct SaveRules {
     /// Components that should be serialized.
     pub(crate) persistent: HashSet<ComponentId>,

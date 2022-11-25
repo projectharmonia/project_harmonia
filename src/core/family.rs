@@ -23,7 +23,6 @@ use super::{
     game_state::GameState,
     game_world::{save_rules::SaveRules, GameWorld},
     network::{
-        entity_serde,
         network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
         replication::map_entity::ReflectMapEntity,
     },
@@ -47,7 +46,7 @@ impl Plugin for FamilyPlugin {
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(
                 Self::saving_system
-                    .chain(error_message::err_message_system)
+                    .pipe(error_message::err_message_system)
                     .run_if_resource_exists::<GameWorld>()
                     .label(FamilySystems::SaveSystem),
             )
@@ -92,7 +91,7 @@ impl FamilyPlugin {
         mut set: ParamSet<(&World, EventWriter<FamilySaved>)>,
         save_rules: Res<SaveRules>,
         game_paths: Res<GamePaths>,
-        registry: Res<TypeRegistry>,
+        registry: Res<AppTypeRegistry>,
         families: Query<(&Name, &Members)>,
     ) -> Result<()> {
         for entity in save_events.iter().map(|event| event.0) {
@@ -194,7 +193,7 @@ fn save_to_scene(
     let registry = registry.read();
     for entity in members.iter().copied().chain(iter::once(family_entity)) {
         let mut dynamic_entity = DynamicEntity {
-            entity: entity.id(),
+            entity: entity.index(),
             components: Vec::new(),
         };
 
@@ -279,7 +278,7 @@ pub(crate) struct FamilySaved;
 pub(crate) struct FamilySelect(pub(crate) Entity);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct FamilyDespawn(#[serde(with = "entity_serde")] pub(crate) Entity);
+pub(crate) struct FamilyDespawn(pub(crate) Entity);
 
 impl MapEntities for FamilyDespawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
@@ -331,12 +330,10 @@ mod tests {
             .add_plugins(MinimalPlugins)
             .add_plugin(FamilyPlugin);
 
-        let member_entity = app.world.spawn().id();
+        let member_entity = app.world.spawn_empty().id();
         let family_entity = app
             .world
-            .spawn()
-            .insert_bundle(FamilyBundle::default())
-            .insert(Members(vec![member_entity]))
+            .spawn((FamilyBundle::default(), Members(vec![member_entity])))
             .id();
 
         app.world.send_event(FamilySave(family_entity));

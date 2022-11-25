@@ -12,7 +12,6 @@ use super::{
     family::FamilySync,
     game_world::GameWorld,
     network::{
-        entity_serde,
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         server::SERVER_ID,
     },
@@ -41,12 +40,12 @@ impl DollPlugin {
         new_dolls: Query<Entity, Added<FirstName>>,
     ) {
         for entity in &new_dolls {
-            commands
-                .entity(entity)
-                .insert_bundle(VisibilityBundle::default())
-                .insert(GlobalTransform::default())
-                .insert(meshes.add(Mesh::from(shape::Capsule::default())))
-                .insert(materials.add(Color::rgb(0.3, 0.3, 0.3).into()));
+            commands.entity(entity).insert((
+                VisibilityBundle::default(),
+                GlobalTransform::default(),
+                meshes.add(Mesh::from(shape::Capsule::default())),
+                materials.add(Color::rgb(0.3, 0.3, 0.3).into()),
+            ));
         }
     }
 
@@ -130,7 +129,7 @@ pub(crate) struct ActiveDoll;
 
 /// Selects a doll entity to play.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct DollSelect(#[serde(with = "entity_serde")] pub(crate) Entity);
+pub(crate) struct DollSelect(pub(crate) Entity);
 
 impl MapEntities for DollSelect {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {

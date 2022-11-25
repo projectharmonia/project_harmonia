@@ -4,14 +4,13 @@ mod removal_tracker;
 mod world_diff;
 
 use bevy::{
-    app::PluginGroupBuilder,
     ecs::{
         archetype::ArchetypeId,
         component::{ComponentId, ComponentTicks, StorageType},
         system::Command,
     },
     prelude::*,
-    reflect::{TypeRegistry, TypeRegistryInternal},
+    reflect::TypeRegistryInternal,
     utils::HashMap,
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
@@ -32,23 +31,14 @@ use map_entity::{NetworkEntityMap, ReflectMapEntity};
 use removal_tracker::{RemovalTracker, RemovalTrackerPlugin};
 use world_diff::{ComponentDiff, WorldDiff, WorldDiffDeserializer, WorldDiffSerializer};
 
-pub(super) struct ReplicationPlugins;
-
-impl PluginGroup for ReplicationPlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group
-            .add(RemovalTrackerPlugin)
-            .add(DespawnTrackerPlugin)
-            .add(ReplicationPlugin);
-    }
-}
-
 /// Replicates components using [`SaveRules`] and [`NetworkComponents`] list from server to client.
-struct ReplicationPlugin;
+pub(super) struct ReplicationPlugin;
 
 impl Plugin for ReplicationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<LastTick>()
+        app.add_plugin(RemovalTrackerPlugin)
+            .add_plugin(DespawnTrackerPlugin)
+            .init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
             .init_resource::<NetworkComponents>()
@@ -78,7 +68,7 @@ impl ReplicationPlugin {
     fn world_diffs_sending_system(
         mut set: ParamSet<(&World, ResMut<RenetServer>)>,
         acked_ticks: Res<AckedTicks>,
-        registry: Res<TypeRegistry>,
+        registry: Res<AppTypeRegistry>,
         save_rules: Res<SaveRules>,
         network_components: Res<NetworkComponents>,
         despawn_tracker: Res<DespawnTracker>,
@@ -114,7 +104,7 @@ impl ReplicationPlugin {
         mut commands: Commands,
         mut last_tick: ResMut<LastTick>,
         mut client: ResMut<RenetClient>,
-        registry: Res<TypeRegistry>,
+        registry: Res<AppTypeRegistry>,
         game_world: Option<Res<GameWorld>>,
     ) {
         let registry = registry.read();
@@ -202,7 +192,6 @@ fn collect_changes(
         .archetypes()
         .iter()
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
-        .filter(|archetype| archetype.id() != ArchetypeId::RESOURCE)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
         .filter(|archetype| save_rules.persistent_archetype(archetype))
     {
@@ -234,17 +223,16 @@ fn collect_changes(
                         .get_column(component_id)
                         .unwrap_or_else(|| panic!("{type_name} should have a valid column"));
 
-                    for entity in archetype.entities() {
-                        let location = world
-                            .entities()
-                            .get(*entity)
-                            .expect("entity exist in archetype table");
-                        let table_row = archetype.entity_table_row(location.index);
+                    for archetype_entity in archetype.entities() {
                         // Safe: the table row is obtained safely from the world's state
-                        let ticks = unsafe { &*column.get_ticks_unchecked(table_row).get() };
+                        let ticks = unsafe {
+                            &*column
+                                .get_ticks_unchecked(archetype_entity.table_row())
+                                .get()
+                        };
                         collect_if_changed(
                             client_diffs,
-                            *entity,
+                            archetype_entity.entity(),
                             world,
                             ticks,
                             reflect_component,
@@ -259,16 +247,16 @@ fn collect_changes(
                         .get(component_id)
                         .unwrap_or_else(|| panic!("{type_name} should exists in a sparse set"));
 
-                    for entity in archetype.entities() {
+                    for archetype_entity in archetype.entities() {
                         let ticks = unsafe {
                             &*sparse_set
-                                .get_ticks(*entity)
+                                .get_ticks(archetype_entity.entity())
                                 .expect("{type_name} should have ticks")
                                 .get()
                         };
                         collect_if_changed(
                             client_diffs,
-                            *entity,
+                            archetype_entity.entity(),
                             world,
                             ticks,
                             reflect_component,
@@ -350,7 +338,7 @@ struct ApplyWorldDiff(WorldDiff);
 
 impl Command for ApplyWorldDiff {
     fn write(self, world: &mut World) {
-        let registry = world.resource::<TypeRegistry>().clone();
+        let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         world.resource_scope(|world, mut entity_map: Mut<NetworkEntityMap>| {
             // Map entities non-lazily in order to correctly map components that reference server entities.
@@ -416,20 +404,20 @@ fn apply_component_diff(
 /// Last received tick from server.
 ///
 /// Used only on clients.
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Resource, Default, Serialize, Deserialize)]
 struct LastTick(u32);
 
 /// Last acknowledged server ticks from all clients.
 ///
 /// Used only on server.
-#[derive(Default, Deref, DerefMut)]
+#[derive(Default, Deref, DerefMut, Resource)]
 struct AckedTicks(HashMap<u64, u32>);
 
 /// List of component IDs that should be replicated.
 ///
 /// This list contains only components that are not in [`SaveRules`]
 /// (i.e. non-persistent components), but that should be networked.
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Resource)]
 struct NetworkComponents(Vec<ComponentId>);
 
 impl FromWorld for NetworkComponents {
@@ -469,7 +457,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(TestReplicationPlugin);
 
-        for _ in 0..5 {
+        for _ in 0..10 {
             app.update();
         }
 
@@ -488,7 +476,7 @@ mod tests {
         app.update();
         app.update();
 
-        let server_entity = app.world.spawn().insert(GameEntity).id();
+        let server_entity = app.world.spawn(GameEntity).id();
 
         app.update();
 
@@ -535,10 +523,7 @@ mod tests {
 
         let replicated_entity = app
             .world
-            .spawn()
-            .insert(GameEntity)
-            .insert(SparseSetComponent)
-            .insert(NonReflectedComponent)
+            .spawn((GameEntity, SparseSetComponent, NonReflectedComponent))
             .id();
 
         // Mark as already spawned.
@@ -574,13 +559,11 @@ mod tests {
         app.update();
         app.update();
 
-        let client_parent = app.world.spawn().id();
-        let server_parent = app.world.spawn().id();
+        let client_parent = app.world.spawn_empty().id();
+        let server_parent = app.world.spawn_empty().id();
         let replicated_entity = app
             .world
-            .spawn()
-            .insert(GameEntity)
-            .insert(ParentSync(server_parent))
+            .spawn((GameEntity, ParentSync(server_parent)))
             .id();
 
         let mut entity_map = app.world.resource_mut::<NetworkEntityMap>();
@@ -610,10 +593,7 @@ mod tests {
         let removal_tracker = RemovalTracker(HashMap::from([(game_entity_id, REMOVAL_TICK)]));
         let replicated_entity = app
             .world
-            .spawn()
-            .insert(removal_tracker)
-            .insert(GameEntity)
-            .insert(NonReflectedComponent)
+            .spawn((removal_tracker, GameEntity, NonReflectedComponent))
             .id();
 
         app.world
@@ -636,8 +616,12 @@ mod tests {
         app.update();
         app.update();
 
-        let children_entity = app.world.spawn().id();
-        let despawned_entity = app.world.spawn().push_children(&[children_entity]).id();
+        let children_entity = app.world.spawn_empty().id();
+        let despawned_entity = app
+            .world
+            .spawn_empty()
+            .push_children(&[children_entity])
+            .id();
         let current_tick = app.world.read_change_tick();
         let mut despawn_tracker = app.world.resource_mut::<DespawnTracker>();
         despawn_tracker

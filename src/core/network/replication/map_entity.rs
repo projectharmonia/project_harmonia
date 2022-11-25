@@ -8,7 +8,7 @@ use bevy::{
 /// Maps server entities to client entities and vice versa.
 ///
 /// Used only on client.
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub(crate) struct NetworkEntityMap {
     server_to_client: EntityMap,
     client_to_server: EntityMap,
@@ -29,7 +29,7 @@ impl NetworkEntityMap {
         match self.server_to_client.entry(server_entity) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let client_entity = *entry.insert(world.spawn().id());
+                let client_entity = *entry.insert(world.spawn_empty().id());
                 self.client_to_server.insert(client_entity, server_entity);
                 client_entity
             }

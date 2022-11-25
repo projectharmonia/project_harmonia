@@ -34,7 +34,7 @@ impl PreviewPlugin {
     pub(crate) const PREVIEW_SIZE: u32 = 64;
 
     fn spawn_camera_system(mut commands: Commands) {
-        commands.spawn_bundle(PreviewCameraBundle::default());
+        commands.spawn(PreviewCameraBundle::default());
     }
 
     fn load_asset_system(
@@ -65,7 +65,7 @@ impl PreviewPlugin {
             commands
                 .entity(preview_cameras.single())
                 .with_children(|parent| {
-                    parent.spawn_bundle(PreviewTargetBundle::new(
+                    parent.spawn(PreviewTargetBundle::new(
                         metadata.general.preview_translation,
                         scene_handle,
                         preview_event.0,
@@ -165,7 +165,7 @@ enum PreviewState {
 pub(crate) struct PreviewRequest(pub(crate) HandleId);
 
 /// Maps metadata handles to preview image handles.
-#[derive(Default, Deref, DerefMut)]
+#[derive(Default, Deref, DerefMut, Resource)]
 pub(crate) struct Previews(HashMap<HandleId, TextureId>);
 
 const PREVIEW_RENDER_LAYER: RenderLayers = RenderLayers::layer(1);

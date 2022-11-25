@@ -33,8 +33,8 @@ const UI_MARGIN: f32 = 20.0;
 pub(super) struct UiPlugins;
 
 impl PluginGroup for UiPlugins {
-    fn build(&mut self, group: &mut PluginGroupBuilder) {
-        group
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
             .add(CityHudPlugin)
             .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
@@ -47,6 +47,6 @@ impl PluginGroup for UiPlugins {
             .add(SettingsMenuPlugin)
             .add(TaskMenuPlugin)
             .add(WorldBrowserPlugin)
-            .add(WorldMenuPlugin);
+            .add(WorldMenuPlugin)
     }
 }
