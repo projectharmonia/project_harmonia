@@ -1,7 +1,6 @@
 use std::{f32::consts::FRAC_PI_4, fmt::Debug, path::PathBuf};
 
 use bevy::{math::Vec3Swizzles, prelude::*};
-use bevy_mod_raycast::Ray3d;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -113,13 +112,14 @@ impl CursorObjectPlugin {
                 .and_then(|window| window.cursor_position())
             {
                 let (&camera_transform, camera) = camera.single();
-                let ray = Ray3d::from_screenspace(cursor_pos, camera, &camera_transform)
+                let ray = camera
+                    .viewport_to_world(&camera_transform, cursor_pos)
                     .expect("ray should be created from screen coordinates");
 
                 let toi = rapier_ctx
                     .cast_ray(
-                        ray.origin(),
-                        ray.direction(),
+                        ray.origin,
+                        ray.direction,
                         f32::MAX,
                         false,
                         QueryFilter::new(),
@@ -127,7 +127,7 @@ impl CursorObjectPlugin {
                     .map(|(_, toi)| toi)
                     .unwrap_or_default();
 
-                let ray_translation = ray.origin() + ray.direction() * toi;
+                let ray_translation = ray.origin + ray.direction * toi;
                 let offset = cursor_offset.copied().unwrap_or_else(|| {
                     let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
                     commands.entity(entity).insert(offset);
