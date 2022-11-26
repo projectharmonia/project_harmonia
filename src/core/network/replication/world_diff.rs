@@ -19,31 +19,6 @@ use serde::{
 };
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
-/// Type of component or resource change.
-pub(super) enum ComponentDiff {
-    /// Indicates that a component was added or changed, contains serialized [`Reflect`].
-    Changed(Box<dyn Reflect>),
-    /// Indicates that a component was removed, contains component name.
-    Removed(String),
-}
-
-impl ComponentDiff {
-    /// Returns changed component type name.
-    pub(super) fn type_name(&self) -> &str {
-        match self {
-            ComponentDiff::Changed(component) => component.type_name(),
-            ComponentDiff::Removed(type_name) => type_name,
-        }
-    }
-}
-
-#[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
-#[serde(field_identifier)]
-enum ComponentDiffField {
-    Changed,
-    Removed,
-}
-
 /// Changed world data and current tick from server.
 ///
 /// Sent from server to clients.
@@ -70,6 +45,31 @@ enum WorldDiffField {
     Tick,
     Entities,
     Despawned,
+}
+
+/// Type of component or resource change.
+pub(super) enum ComponentDiff {
+    /// Indicates that a component was added or changed, contains serialized [`Reflect`].
+    Changed(Box<dyn Reflect>),
+    /// Indicates that a component was removed, contains component name.
+    Removed(String),
+}
+
+impl ComponentDiff {
+    /// Returns changed component type name.
+    pub(super) fn type_name(&self) -> &str {
+        match self {
+            ComponentDiff::Changed(component) => component.type_name(),
+            ComponentDiff::Removed(type_name) => type_name,
+        }
+    }
+}
+
+#[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
+#[serde(field_identifier)]
+enum ComponentDiffField {
+    Changed,
+    Removed,
 }
 
 #[derive(Constructor)]
@@ -115,7 +115,7 @@ impl Serialize for EntitiesSerializer<'_> {
 
 #[derive(Constructor)]
 struct ComponentsSerializer<'a> {
-    components: &'a Vec<ComponentDiff>,
+    components: &'a [ComponentDiff],
     registry: &'a TypeRegistryInternal,
 }
 
@@ -251,7 +251,7 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
     }
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let mut components = Vec::new();
+        let mut components = Vec::with_capacity(seq.size_hint().unwrap_or_default());
         while let Some(component_diff) =
             seq.next_element_seed(ComponentDiffDeserializer::new(self.registry))?
         {
