@@ -63,25 +63,25 @@ impl FamilyPlugin {
     fn family_sync_system(
         mut commands: Commands,
         dolls: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
-        mut families: Query<&mut Members>,
+        mut families: Query<&mut Dolls>,
     ) {
         for (entity, family, family_sync) in &dolls {
             // Remove previous.
             if let Some(family) = family {
-                if let Ok(mut members) = families.get_mut(family.0) {
-                    let index = members
+                if let Ok(mut dolls) = families.get_mut(family.0) {
+                    let index = dolls
                         .iter()
-                        .position(|&member_entity| member_entity == entity)
-                        .expect("members should contain referenced entity");
-                    members.swap_remove(index);
+                        .position(|&doll_entity| doll_entity == entity)
+                        .expect("dolls should contain referenced entity");
+                    dolls.swap_remove(index);
                 }
             }
 
             commands.entity(entity).insert(Family(family_sync.0));
-            if let Ok(mut members) = families.get_mut(family_sync.0) {
-                members.push(entity);
+            if let Ok(mut dolls) = families.get_mut(family_sync.0) {
+                dolls.push(entity);
             } else {
-                commands.entity(family_sync.0).insert(Members(vec![entity]));
+                commands.entity(family_sync.0).insert(Dolls(vec![entity]));
             }
         }
     }
@@ -92,14 +92,14 @@ impl FamilyPlugin {
         save_rules: Res<SaveRules>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
-        families: Query<(&Name, &Members)>,
+        families: Query<(&Name, &Dolls)>,
     ) -> Result<()> {
         for entity in save_events.iter().map(|event| event.0) {
-            let (name, members) = families
+            let (name, dolls) = families
                 .get(entity)
-                .expect("family entity should contain family members");
+                .expect("family entity should contain dolls");
 
-            let scene = save_to_scene(set.p0(), &registry, &save_rules, entity, members);
+            let scene = save_to_scene(set.p0(), &registry, &save_rules, entity, dolls);
             let ron = scene
                 .serialize_ron(&registry)
                 .expect("game world should be serialized");
@@ -117,20 +117,20 @@ impl FamilyPlugin {
         Ok(())
     }
 
-    /// Transforms [`FamilySelect`] events into [`DollSelect`] events with the first family member.
+    /// Transforms [`FamilySelect`] events into [`DollSelect`] events with the first doll.
     fn selection_system(
         mut doll_select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
         mut family_select_events: EventReader<FamilySelect>,
-        families: Query<&Members>,
+        families: Query<&Dolls>,
     ) {
         for event in family_select_events.iter() {
             let family = families
                 .get(event.0)
                 .expect("event entity should be a family");
-            let member_entity = *family
+            let doll_entity = *family
                 .first()
-                .expect("spawned family should always contain at least one member");
-            doll_select_buffer.push(DollSelect(member_entity));
+                .expect("spawned family should always contain at least one doll");
+            doll_select_buffer.push(DollSelect(doll_entity));
         }
     }
 
@@ -159,22 +159,22 @@ impl FamilyPlugin {
     fn state_enter_system(
         mut commands: Commands,
         parents: Query<&Parent>,
-        active_families: Query<&Members, Added<ActiveFamily>>,
+        active_families: Query<&Dolls, Added<ActiveFamily>>,
     ) {
-        if let Ok(members) = active_families.get_single() {
-            let member_entity = *members
+        if let Ok(dolls) = active_families.get_single() {
+            let doll_entity = *dolls
                 .first()
-                .expect("family should contain at least one member");
+                .expect("family should contain at least one doll");
             let parent = parents
-                .get(member_entity)
-                .expect("member should have a city as a parent");
+                .get(doll_entity)
+                .expect("doll should have a city as a parent");
             commands.entity(parent.get()).insert(ActiveCity);
             commands.insert_resource(NextState(GameState::Family));
         }
     }
 
-    fn cleanup_system(mut commands: Commands, members: Query<Entity, With<Members>>) {
-        for entity in &members {
+    fn cleanup_system(mut commands: Commands, dolls: Query<Entity, With<Dolls>>) {
+        for entity in &dolls {
             commands.entity(entity).despawn();
         }
     }
@@ -185,13 +185,13 @@ fn save_to_scene(
     registry: &TypeRegistry,
     save_rules: &SaveRules,
     family_entity: Entity,
-    members: &Members,
+    dolls: &Dolls,
 ) -> DynamicScene {
     let mut scene = DynamicScene::default();
-    scene.entities.reserve(members.len() + 1); // +1 because of `family_entity`.
+    scene.entities.reserve(dolls.len() + 1); // +1 because of `family_entity`.
 
     let registry = registry.read();
-    for entity in members.iter().copied().chain(iter::once(family_entity)) {
+    for entity in dolls.iter().copied().chain(iter::once(family_entity)) {
         let mut dynamic_entity = DynamicEntity {
             entity: entity.index(),
             components: Vec::new(),
@@ -237,7 +237,7 @@ impl Default for FamilyBundle {
 pub(crate) struct Family(pub(crate) Entity);
 
 #[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct Members(Vec<Entity>);
+pub(crate) struct Dolls(Vec<Entity>);
 
 #[derive(Component, Reflect)]
 #[reflect(Component, MapEntities, MapEntity)]
@@ -271,10 +271,10 @@ pub(crate) struct FamilySave(pub(crate) Entity);
 #[derive(Default)]
 pub(crate) struct FamilySaved;
 
-/// Selects a family entity to play using first its member.
+/// Selects a family entity to play using its first doll.
 ///
 /// Its a local event that translates into a [`DollSelect`]
-/// event with the first member from selected family.
+/// event with the first doll from selected family.
 pub(crate) struct FamilySelect(pub(crate) Entity);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -303,11 +303,11 @@ struct DespawnFamily(Entity);
 impl Command for DespawnFamily {
     fn write(self, world: &mut World) {
         let mut family_entity = world.entity_mut(self.0);
-        let members = family_entity
-            .remove::<Members>()
-            .expect("despawn family command refer to an entity with family component");
+        let dolls = family_entity
+            .remove::<Dolls>()
+            .expect("despawn family command should refer to a family entity");
         family_entity.despawn();
-        for entity in members.0 {
+        for entity in dolls.0 {
             world.entity_mut(entity).despawn_recursive();
         }
     }
@@ -330,10 +330,10 @@ mod tests {
             .add_plugins(MinimalPlugins)
             .add_plugin(FamilyPlugin);
 
-        let member_entity = app.world.spawn_empty().id();
+        let doll_entity = app.world.spawn_empty().id();
         let family_entity = app
             .world
-            .spawn((FamilyBundle::default(), Members(vec![member_entity])))
+            .spawn((FamilyBundle::default(), Dolls(vec![doll_entity])))
             .id();
 
         app.world.send_event(FamilySave(family_entity));

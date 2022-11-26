@@ -20,7 +20,7 @@ use crate::core::{
     city::{ActiveCity, City},
     doll::{DollBundle, FirstName, LastName},
     error_message,
-    family::{FamilySave, FamilySaved, FamilySystems, Members},
+    family::{Dolls, FamilySave, FamilySaved, FamilySystems},
     family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity},
@@ -69,7 +69,7 @@ impl FamilyEditorMenuPlugin {
     fn dolls_panel_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut editable_families: Query<(Entity, Option<&Members>), With<EditableFamily>>,
+        mut editable_families: Query<(Entity, Option<&Dolls>), With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
@@ -79,13 +79,13 @@ impl FamilyEditorMenuPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    let (family_entity, members) = editable_families.single_mut();
+                    let (family_entity, dolls) = editable_families.single_mut();
                     let current_entity = editable_dolls.get_single();
-                    for &entity in members.iter().flat_map(|members| members.iter()) {
+                    for &entity in dolls.iter().flat_map(|dolls| dolls.iter()) {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(current_entity, Ok(current_member) if entity == current_member)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(current_entity, Ok(current_doll) if entity == current_doll)),
                             )
                             .clicked()
                         {
@@ -110,7 +110,7 @@ impl FamilyEditorMenuPlugin {
     fn buttons_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        editable_families: Query<&Members, With<EditableFamily>>,
+        editable_families: Query<&Dolls, With<EditableFamily>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
         let mut confirmed = false;
@@ -126,20 +126,20 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            let members = editable_families
+            let dolls = editable_families
                 .get_single()
-                .context("family should contain at least one member")?;
-            for (index, &entity_member) in members.iter().enumerate() {
+                .context("family should contain at least one doll")?;
+            for (index, &doll_entity) in dolls.iter().enumerate() {
                 let (first_name, last_name) = names
-                    .get(entity_member)
-                    .expect("family member should have a first and a last name");
+                    .get(doll_entity)
+                    .expect("doll should have a first and a last name");
                 ensure!(
                     !first_name.is_empty(),
-                    "family member {index} do not have a first name"
+                    "doll {index} do not have a first name"
                 );
                 ensure!(
                     !last_name.is_empty(),
-                    "family member {index} do not have a last name"
+                    "doll {index} do not have a last name"
                 );
             }
             commands.init_resource::<SaveFamilyDialog>();
@@ -195,7 +195,7 @@ impl FamilyEditorMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut reset_events: EventWriter<FamilyReset>,
         mut action_state: ResMut<ActionState<Action>>,
-        editable_families: Query<(Entity, &Members), With<EditableFamily>>,
+        editable_families: Query<(Entity, &Dolls), With<EditableFamily>>,
         cities: Query<(Entity, &Name), With<City>>,
         family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
@@ -220,9 +220,9 @@ impl FamilyEditorMenuPlugin {
                                     play_pressed = true;
                                 }
                                 if ui.button("⬇ Place").clicked() || play_pressed {
-                                    let (family_entity, members) = editable_families.single();
-                                    for &member_entity in members.iter() {
-                                        commands.entity(member_entity).insert((
+                                    let (family_entity, dolls) = editable_families.single();
+                                    for &doll_entity in dolls.iter() {
+                                        commands.entity(doll_entity).insert((
                                             ParentSync(city_entity),
                                             QueuedTasks::default(),
                                             GameEntity,
@@ -235,7 +235,7 @@ impl FamilyEditorMenuPlugin {
                                     commands
                                         .entity(family_editors.single())
                                         .remove_children(&[family_entity])
-                                        .remove_children(members);
+                                        .remove_children(dolls);
                                     if !play_pressed {
                                         reset_events.send_default();
                                     }
@@ -271,13 +271,13 @@ struct SaveFamilyDialog {
 
 impl FromWorld for SaveFamilyDialog {
     fn from_world(world: &mut World) -> Self {
-        let members = world
-            .query_filtered::<&Members, With<EditableFamily>>()
+        let dolls = world
+            .query_filtered::<&Dolls, With<EditableFamily>>()
             .single(world);
-        let member_entity = *members.first().expect("saving family shouldn't be empty");
+        let doll_entity = *dolls.first().expect("saving family shouldn't be empty");
         let last_name = world
-            .get::<LastName>(member_entity)
-            .expect("family members should have last name");
+            .get::<LastName>(doll_entity)
+            .expect("dolls should have last name");
 
         Self {
             family_name: last_name.to_string(),

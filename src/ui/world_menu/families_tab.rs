@@ -3,7 +3,7 @@ use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    family::{FamilyDespawn, FamilySelect, Members},
+    family::{Dolls, FamilyDespawn, FamilySelect},
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
 };
@@ -12,7 +12,7 @@ pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     select_buffer: &'a mut EventWriter<'we, 'se, FamilySelect>,
     despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
-    families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Members>>,
+    families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Dolls>>,
 }
 
 impl<'a, 'w, 's, 'we, 'se, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
@@ -21,7 +21,7 @@ impl<'a, 'w, 's, 'we, 'se, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq>
         commands: &'a mut Commands<'w, 's>,
         despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
         select_buffer: &'a mut EventWriter<'we, 'se, FamilySelect>,
-        families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Members>>,
+        families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Dolls>>,
     ) -> Self {
         Self {
             families,

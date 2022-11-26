@@ -16,7 +16,7 @@ use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
     action::Action,
     city::{City, CityBundle},
-    family::{FamilyDespawn, FamilySelect, Members},
+    family::{Dolls, FamilyDespawn, FamilySelect},
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
 };
@@ -39,7 +39,7 @@ impl WorldMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut despawn_buffer: ResMut<ClientSendBuffer<FamilyDespawn>>,
         mut select_buffer: EventWriter<FamilySelect>,
-        families: Query<(Entity, &'static Name), With<Members>>,
+        families: Query<(Entity, &'static Name), With<Dolls>>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
         Window::new("World menu")
