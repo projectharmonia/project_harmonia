@@ -4,7 +4,6 @@ use bevy_egui::{
     EguiContext,
 };
 use bevy_inspector_egui::egui::Frame;
-use bevy_trait_query::All;
 use iyes_loopless::prelude::*;
 
 use crate::core::{
@@ -26,7 +25,7 @@ impl FamilyHudPlugin {
     fn active_tasks_system(
         mut egui: ResMut<EguiContext>,
         mut cancel_buffer: ResMut<ClientSendBuffer<TaskCancel>>,
-        tasks: Query<(&QueuedTasks, Option<All<&dyn Task>>), With<ActiveDoll>>,
+        tasks: Query<(&QueuedTasks, Option<&dyn Task>), With<ActiveDoll>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
         Area::new("Tasks")

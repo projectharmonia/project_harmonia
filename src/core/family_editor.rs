@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    family::{DespawnFamilyExt, FamilyBundle},
+    doll::{ActiveDoll, DollBundle},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
 };
@@ -26,7 +26,7 @@ impl Plugin for FamilyEditorPlugin {
 impl FamilyEditorPlugin {
     fn spawn_system(mut commands: Commands) {
         commands
-            .spawn(FamilyEditorBundle::default())
+            .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
                 parent.spawn(PointLightBundle {
                     point_light: PointLight {
@@ -39,23 +39,20 @@ impl FamilyEditorPlugin {
                     ..Default::default()
                 });
                 parent.spawn(OrbitCameraBundle::default());
-                parent.spawn((FamilyBundle::default(), EditableFamily));
             });
     }
 
-    fn visibility_enable_system(
-        mut new_editable_dolls: Query<&mut Visibility, Added<EditableDoll>>,
-    ) {
-        for mut visibility in &mut new_editable_dolls {
+    fn visibility_enable_system(mut new_active_dolls: Query<&mut Visibility, Added<ActiveDoll>>) {
+        for mut visibility in &mut new_active_dolls {
             visibility.is_visible = true;
         }
     }
 
     fn visibility_disable_system(
-        removed_editable_dolls: RemovedComponents<EditableDoll>,
+        removed_active_dolls: RemovedComponents<ActiveDoll>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        for entity in removed_editable_dolls.iter() {
+        for entity in removed_active_dolls.iter() {
             // Entity could be despawned before.
             if let Ok(mut visibility) = visibility.get_mut(entity) {
                 visibility.is_visible = false;
@@ -65,37 +62,32 @@ impl FamilyEditorPlugin {
 
     fn reset_family_system(
         mut commands: Commands,
-        editable_families: Query<Entity, With<EditableFamily>>,
-        family_editors: Query<Entity, With<FamilyEditor>>,
+        editable_dolls: Query<Entity, With<EditableDoll>>,
     ) {
-        let family_entity = editable_families.single();
-        commands.entity(family_entity).despawn_family();
-        commands
-            .entity(family_editors.single())
-            .with_children(|parent| {
-                parent.spawn((FamilyBundle::default(), EditableFamily));
-            });
+        for entity in &editable_dolls {
+            commands.entity(entity).despawn_recursive();
+        }
     }
 
-    fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<FamilyEditor>>) {
+    fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<EditableFamily>>) {
         commands.entity(family_editors.single()).despawn_recursive();
     }
 }
 
 #[derive(Bundle)]
-struct FamilyEditorBundle {
+struct EditableFamilyBundle {
     name: Name,
-    family_editor: FamilyEditor,
+    family_editor: EditableFamily,
 
     #[bundle]
     spatial_bundle: SpatialBundle,
 }
 
-impl Default for FamilyEditorBundle {
+impl Default for EditableFamilyBundle {
     fn default() -> Self {
         Self {
-            name: Name::new("Family editor"),
-            family_editor: FamilyEditor,
+            name: Name::new("New family"),
+            family_editor: EditableFamily,
             spatial_bundle: Default::default(),
         }
     }
@@ -103,14 +95,18 @@ impl Default for FamilyEditorBundle {
 
 /// A root family editor component.
 #[derive(Component, Default)]
-pub(crate) struct FamilyEditor;
-
-/// Currently editing family.
-#[derive(Component)]
 pub(crate) struct EditableFamily;
 
+#[derive(Bundle, Default)]
+pub(crate) struct EditableDollBundle {
+    editable_doll: EditableDoll,
+
+    #[bundle]
+    doll_bundle: DollBundle,
+}
+
 /// Currently editing doll.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub(crate) struct EditableDoll;
 
 /// An event on which family will be reset.

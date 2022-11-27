@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
-    family::FamilySync,
     game_world::GameWorld,
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
@@ -110,11 +109,17 @@ impl DollPlugin {
     }
 }
 
-#[derive(Component, Default, Deref, DerefMut, Display, Reflect)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct DollScene {
+    pub(crate) first_name: FirstName,
+    pub(crate) last_name: LastName,
+}
+
+#[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct FirstName(pub(crate) String);
 
-#[derive(Component, Default, Deref, DerefMut, Display, Reflect)]
+#[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
 
@@ -138,21 +143,9 @@ impl MapEntities for DollSelect {
     }
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub(crate) struct DollBundle {
-    first_name: FirstName,
-    last_name: LastName,
-    transform: Transform,
-    family_sync: FamilySync,
-}
-
-impl DollBundle {
-    pub(crate) fn new(family_entity: Entity) -> Self {
-        Self {
-            first_name: Default::default(),
-            last_name: Default::default(),
-            transform: Default::default(),
-            family_sync: FamilySync(family_entity),
-        }
-    }
+    pub(crate) first_name: FirstName,
+    pub(crate) last_name: LastName,
+    pub(crate) transform: Transform,
 }

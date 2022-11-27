@@ -1,3 +1,5 @@
+use std::{fs, mem};
+
 use anyhow::{ensure, Context, Result};
 use bevy::prelude::*;
 use bevy_egui::{
@@ -17,14 +19,14 @@ use super::{
 };
 use crate::core::{
     action::Action,
-    city::{ActiveCity, City},
-    doll::{DollBundle, FirstName, LastName},
+    city::City,
+    doll::{ActiveDoll, DollScene, FirstName, LastName},
     error_message,
-    family::{Dolls, FamilySave, FamilySaved, FamilySystems},
-    family_editor::{EditableDoll, EditableFamily, FamilyEditor, FamilyReset},
+    family::{FamilyScene, FamilySpawn, FamilySystems},
+    family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset},
+    game_paths::GamePaths,
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, GameEntity},
-    task::QueuedTasks,
+    network::network_event::client_event::ClientSendBuffer,
 };
 
 pub(super) struct FamilyEditorMenuPlugin;
@@ -40,10 +42,10 @@ impl Plugin for FamilyEditorMenuPlugin {
             )
             .add_system(
                 Self::save_family_dialog_system
+                    .pipe(error_message::err_message_system)
                     .run_if_resource_exists::<SaveFamilyDialog>()
                     .before(FamilySystems::SaveSystem),
             )
-            .add_system(Self::open_place_family_dialog_system.run_on_event::<FamilySaved>())
             .add_system(
                 Self::place_family_dialog_system.run_if_resource_exists::<PlaceFamilyDialog>(),
             );
@@ -53,15 +55,31 @@ impl Plugin for FamilyEditorMenuPlugin {
 impl FamilyEditorMenuPlugin {
     fn personality_window_system(
         mut egui: ResMut<EguiContext>,
-        mut editable_dolls: Query<(&mut FirstName, &mut LastName), With<EditableDoll>>,
+        mut active_dolls: Query<(&mut FirstName, &mut LastName), With<ActiveDoll>>,
     ) {
-        if let Ok((mut first_name, mut last_name)) = editable_dolls.get_single_mut() {
+        if let Ok((mut first_name, mut last_name)) = active_dolls.get_single_mut() {
             Window::new("Personality")
                 .anchor(Align2::LEFT_TOP, (0.0, 0.0))
                 .resizable(false)
                 .show(egui.ctx_mut(), |ui| {
-                    ui.add(TextEdit::singleline(&mut first_name.0).hint_text("First name"));
-                    ui.add(TextEdit::singleline(&mut last_name.0).hint_text("Last name"));
+                    if ui
+                        .add(
+                            TextEdit::singleline(&mut first_name.bypass_change_detection().0)
+                                .hint_text("First name"),
+                        )
+                        .changed()
+                    {
+                        first_name.set_changed();
+                    }
+                    if ui
+                        .add(
+                            TextEdit::singleline(&mut last_name.bypass_change_detection().0)
+                                .hint_text("Last name"),
+                        )
+                        .changed()
+                    {
+                        last_name.set_changed();
+                    }
                 });
         }
     }
@@ -69,9 +87,9 @@ impl FamilyEditorMenuPlugin {
     fn dolls_panel_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut editable_families: Query<(Entity, Option<&Dolls>), With<EditableFamily>>,
+        editable_families: Query<Entity, With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
-        family_editors: Query<Entity, With<FamilyEditor>>,
+        active_dolls: Query<Entity, With<ActiveDoll>>,
     ) {
         Window::new("Dolls")
             .resizable(false)
@@ -79,28 +97,27 @@ impl FamilyEditorMenuPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    let (family_entity, dolls) = editable_families.single_mut();
-                    let current_entity = editable_dolls.get_single();
-                    for &entity in dolls.iter().flat_map(|dolls| dolls.iter()) {
+                    let active_entity = active_dolls.get_single();
+                    for entity in &editable_dolls {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(current_entity, Ok(current_doll) if entity == current_doll)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(current_doll) if entity == current_doll)),
                             )
                             .clicked()
                         {
-                            if let Ok(current_entity) = current_entity {
-                                commands.entity(current_entity).remove::<EditableDoll>();
+                            if let Ok(current_entity) = active_entity {
+                                commands.entity(current_entity).remove::<ActiveDoll>();
                             }
-                            commands.entity(entity).insert(EditableDoll);
+                            commands.entity(entity).insert(ActiveDoll);
                         }
                     }
                     if ui.button("➕").clicked() {
-                        if let Ok(current_entity) = current_entity {
-                            commands.entity(current_entity).remove::<EditableDoll>();
+                        if let Ok(current_entity) = active_entity {
+                            commands.entity(current_entity).remove::<ActiveDoll>();
                         }
-                        commands.entity(family_editors.single()).with_children(|parent| {
-                            parent.spawn((DollBundle::new(family_entity), EditableDoll));
+                        commands.entity(editable_families.single()).with_children(|parent| {
+                            parent.spawn((EditableDollBundle::default(), ActiveDoll));
                         });
                     }
                 });
@@ -110,7 +127,7 @@ impl FamilyEditorMenuPlugin {
     fn buttons_system(
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        editable_families: Query<&Dolls, With<EditableFamily>>,
+        editable_dolls: Query<Entity, With<EditableDoll>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
         let mut confirmed = false;
@@ -126,10 +143,7 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            let dolls = editable_families
-                .get_single()
-                .context("family should contain at least one doll")?;
-            for (index, &doll_entity) in dolls.iter().enumerate() {
+            for (index, doll_entity) in editable_dolls.iter().enumerate() {
                 let (first_name, last_name) = names
                     .get(doll_entity)
                     .expect("doll should have a first and a last name");
@@ -150,12 +164,13 @@ impl FamilyEditorMenuPlugin {
 
     fn save_family_dialog_system(
         mut commands: Commands,
-        mut save_events: EventWriter<FamilySave>,
         mut save_dialog: ResMut<SaveFamilyDialog>,
         mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
-        mut editable_families: Query<(Entity, &mut Name), With<EditableFamily>>,
-    ) {
+        game_paths: Res<GamePaths>,
+        editable_dolls: Query<(&FirstName, &LastName), With<EditableDoll>>,
+    ) -> Result<()> {
+        let mut confirmed = false;
         let mut open = true;
         ModalWindow::new("Save family")
             .open(&mut open, &mut action_state)
@@ -169,9 +184,7 @@ impl FamilyEditorMenuPlugin {
                         )
                         .clicked()
                     {
-                        let (family_entity, mut name) = editable_families.single_mut();
-                        name.set(save_dialog.family_name.to_string());
-                        save_events.send(FamilySave(family_entity));
+                        confirmed = true;
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -182,28 +195,45 @@ impl FamilyEditorMenuPlugin {
 
         if !open {
             commands.remove_resource::<SaveFamilyDialog>();
-        }
-    }
 
-    fn open_place_family_dialog_system(mut commands: Commands) {
-        commands.remove_resource::<SaveFamilyDialog>();
-        commands.init_resource::<PlaceFamilyDialog>();
+            if confirmed {
+                let mut dolls = Vec::new();
+                for (first_name, last_name) in &editable_dolls {
+                    dolls.push(DollScene {
+                        first_name: first_name.clone(),
+                        last_name: last_name.clone(),
+                    })
+                }
+                let family_scene = FamilyScene::new(mem::take(&mut save_dialog.family_name), dolls);
+
+                fs::create_dir_all(&game_paths.families)
+                    .with_context(|| format!("unable to create {:?}", game_paths.families))?;
+
+                let ron = ron::to_string(&family_scene).expect("unable to serialize family scene");
+                let family_path = game_paths.family_path(&family_scene.name);
+                fs::write(&family_path, ron)
+                    .with_context(|| format!("unable to save game to {family_path:?}"))?;
+
+                commands.insert_resource(PlaceFamilyDialog(family_scene));
+            }
+        }
+
+        Ok(())
     }
 
     fn place_family_dialog_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
         mut reset_events: EventWriter<FamilyReset>,
+        mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
-        editable_families: Query<(Entity, &Dolls), With<EditableFamily>>,
+        mut spawn_buffer: ResMut<ClientSendBuffer<FamilySpawn>>,
+        mut place_dialog: ResMut<PlaceFamilyDialog>,
         cities: Query<(Entity, &Name), With<City>>,
-        family_editors: Query<Entity, With<FamilyEditor>>,
     ) {
         let mut open = true;
         ModalWindow::new("Place family")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                // TODO 0.9: Use network events.
                 for (city_entity, name) in &cities {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
@@ -213,30 +243,17 @@ impl FamilyEditorMenuPlugin {
                             );
                             ui.label(name.as_str());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                                let mut play_pressed = false;
+                                let mut select = false;
                                 if ui.button("⏵ Place and play").clicked() {
-                                    commands.insert_resource(NextState(GameState::Family));
-                                    commands.entity(city_entity).insert(ActiveCity);
-                                    play_pressed = true;
+                                    select = true;
                                 }
-                                if ui.button("⬇ Place").clicked() || play_pressed {
-                                    let (family_entity, dolls) = editable_families.single();
-                                    for &doll_entity in dolls.iter() {
-                                        commands.entity(doll_entity).insert((
-                                            ParentSync(city_entity),
-                                            QueuedTasks::default(),
-                                            GameEntity,
-                                        ));
-                                    }
-                                    commands
-                                        .entity(family_entity)
-                                        .insert(GameEntity)
-                                        .remove::<EditableFamily>();
-                                    commands
-                                        .entity(family_editors.single())
-                                        .remove_children(&[family_entity])
-                                        .remove_children(dolls);
-                                    if !play_pressed {
+                                if ui.button("⬇ Place").clicked() || select {
+                                    spawn_buffer.push(FamilySpawn {
+                                        city_entity,
+                                        scene: mem::take(&mut place_dialog.0),
+                                        select,
+                                    });
+                                    if !select {
                                         reset_events.send_default();
                                     }
                                     ui.close_modal();
@@ -271,13 +288,9 @@ struct SaveFamilyDialog {
 
 impl FromWorld for SaveFamilyDialog {
     fn from_world(world: &mut World) -> Self {
-        let dolls = world
-            .query_filtered::<&Dolls, With<EditableFamily>>()
-            .single(world);
-        let doll_entity = *dolls.first().expect("saving family shouldn't be empty");
         let last_name = world
-            .get::<LastName>(doll_entity)
-            .expect("dolls should have last name");
+            .query_filtered::<&LastName, With<EditableDoll>>()
+            .single(world);
 
         Self {
             family_name: last_name.to_string(),
@@ -285,5 +298,5 @@ impl FromWorld for SaveFamilyDialog {
     }
 }
 
-#[derive(Default, Resource)]
-struct PlaceFamilyDialog;
+#[derive(Resource)]
+struct PlaceFamilyDialog(FamilyScene);
