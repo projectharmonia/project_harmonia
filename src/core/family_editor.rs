@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    doll::{ActiveDoll, DollBundle},
+    doll::{ActiveDoll, FirstName, LastName},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
 };
@@ -100,9 +100,9 @@ pub(crate) struct EditableFamily;
 #[derive(Bundle, Default)]
 pub(crate) struct EditableDollBundle {
     editable_doll: EditableDoll,
-
-    #[bundle]
-    doll_bundle: DollBundle,
+    first_name: FirstName,
+    last_name: LastName,
+    transform: Transform,
 }
 
 /// Currently editing doll.

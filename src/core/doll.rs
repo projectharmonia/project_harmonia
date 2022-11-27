@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
-    game_world::GameWorld,
+    family::FamilySync,
+    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         server::SERVER_ID,
     },
+    task::QueuedTasks,
 };
 
 pub(super) struct DollPlugin;
@@ -143,9 +145,32 @@ impl MapEntities for DollSelect {
     }
 }
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct DollBundle {
-    pub(crate) first_name: FirstName,
-    pub(crate) last_name: LastName,
-    pub(crate) transform: Transform,
+    first_name: FirstName,
+    last_name: LastName,
+    family_sync: FamilySync,
+    parent_sync: ParentSync,
+    transform: Transform,
+    queued_tasks: QueuedTasks,
+    game_entity: GameEntity,
+}
+
+impl DollBundle {
+    pub(crate) fn new(
+        first_name: FirstName,
+        last_name: LastName,
+        family_entity: Entity,
+        city_entity: Entity,
+    ) -> Self {
+        Self {
+            first_name,
+            last_name,
+            family_sync: FamilySync(family_entity),
+            parent_sync: ParentSync(city_entity),
+            transform: Default::default(),
+            queued_tasks: Default::default(),
+            game_entity: GameEntity,
+        }
+    }
 }

@@ -22,6 +22,8 @@ impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MovementPlugin)
             .register_type::<QueuedTasks>()
+            .register_type::<TaskRequest>()
+            .register_type::<Vec<TaskRequest>>()
             .add_client_event::<TaskRequest>()
             .add_client_event::<TaskCancel>()
             .add_system(Self::picking_system.run_in_state(GameState::Family))

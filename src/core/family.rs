@@ -15,12 +15,11 @@ use super::{
     city::ActiveCity,
     doll::{ActiveDoll, DollBundle, DollScene, DollSelect},
     game_state::GameState,
-    game_world::GameWorld,
+    game_world::{GameEntity, GameWorld},
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
         replication::map_entity::ReflectMapEntity,
     },
-    task::QueuedTasks,
 };
 
 #[derive(SystemLabel)]
@@ -81,18 +80,17 @@ impl FamilyPlugin {
         mut select_events: EventWriter<ClientEvent<DollSelect>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.drain() {
-            let family_entity = commands.spawn((event.scene.name, event.scene.budget)).id();
+            let family_entity = commands
+                .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
+                .id();
             commands.entity(event.city_entity).with_children(|parent| {
                 for (index, doll_scene) in event.scene.dolls.into_iter().enumerate() {
                     let doll_entity = parent
-                        .spawn((
-                            DollBundle {
-                                first_name: doll_scene.first_name,
-                                last_name: doll_scene.last_name,
-                                ..Default::default()
-                            },
-                            QueuedTasks::default(),
-                            FamilySync(family_entity),
+                        .spawn(DollBundle::new(
+                            doll_scene.first_name,
+                            doll_scene.last_name,
+                            family_entity,
+                            event.city_entity,
                         ))
                         .id();
                     if index == 0 && event.select {
@@ -191,6 +189,23 @@ impl FamilyScene {
             name: Name::new(name),
             budget: Budget::default(),
             dolls,
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct FamilyBundle {
+    name: Name,
+    budget: Budget,
+    game_entity: GameEntity,
+}
+
+impl FamilyBundle {
+    fn new(name: Name, budget: Budget) -> Self {
+        Self {
+            name,
+            budget,
+            game_entity: GameEntity,
         }
     }
 }
