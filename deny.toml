@@ -2,10 +2,10 @@
 unmaintained = "deny"
 yanked = "deny"
 notice = "deny"
+unsound = "deny"
 ignore = [
   "RUSTSEC-2021-0145", # Ignore atty from clap.
 ]
-unsound = "deny"
 
 [licenses]
 copyleft = "allow"
