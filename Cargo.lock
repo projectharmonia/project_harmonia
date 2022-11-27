@@ -2127,8 +2127,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "leafwing-input-manager"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e77d7738088cc9e27ab2065cae46149ede683b26179a1e1c938b901a4e3309d2"
+source = "git+https://github.com/dollisgame/leafwing-input-manager?branch=fix-egui-buttons#0523e4cc9929aa9010f653bef145a879877bc178"
 dependencies = [
  "bevy",
  "bevy_egui",
@@ -2142,8 +2141,7 @@ dependencies = [
 [[package]]
 name = "leafwing_input_manager_macros"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ec3d0a4b25f0e6a66547cc3a1eb98b8477814db58de8035063f3db42353a7de"
+source = "git+https://github.com/dollisgame/leafwing-input-manager?branch=fix-egui-buttons#0523e4cc9929aa9010f653bef145a879877bc178"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
