@@ -80,10 +80,12 @@ impl Plugin for NetworkPresetPlugin {
         }
 
         if self.client && self.server {
-            app.update();
-            app.update();
-            app.update();
-            assert!(app.world.resource::<RenetClient>().is_connected());
+            loop {
+                app.update();
+                if app.world.resource::<RenetClient>().is_connected() {
+                    break;
+                }
+            }
         }
     }
 }
