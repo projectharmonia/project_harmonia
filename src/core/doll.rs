@@ -2,19 +2,18 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_renet::renet::{RenetClient, RenetServer};
+use bevy_renet::renet::RenetServer;
 use derive_more::Display;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
+    city::ActiveCity,
     family::FamilySync,
+    game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
-    network::{
-        network_event::client_event::{ClientEvent, ClientEventAppExt},
-        server::SERVER_ID,
-    },
+    network::network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
     task::QueuedTasks,
 };
 
@@ -26,10 +25,13 @@ impl Plugin for DollPlugin {
             .register_type::<LastName>()
             .register_type::<DollPlayers>()
             .add_mapped_client_event::<DollSelect>()
+            .add_client_event::<DollDeselect>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::selection_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::select_confirmation_system.run_if_resource_exists::<GameWorld>());
+            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::select_confirmation_system.run_if_resource_exists::<RenetServer>())
+            .add_exit_system(GameState::Family, Self::deselection_system)
+            .add_system(Self::deselect_confirmation_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
@@ -66,6 +68,17 @@ impl DollPlugin {
 
     fn selection_system(
         mut commands: Commands,
+        mut select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
+        active_dolls: Query<(Entity, &Parent), Added<ActiveDoll>>,
+    ) {
+        if let Ok((entity, parent)) = active_dolls.get_single() {
+            select_buffer.push(DollSelect(entity));
+            commands.entity(parent.get()).insert(ActiveCity);
+        }
+    }
+
+    fn select_confirmation_system(
+        mut commands: Commands,
         mut select_events: EventReader<ClientEvent<DollSelect>>,
         mut doll_players: Query<&mut DollPlayers>,
     ) {
@@ -92,20 +105,32 @@ impl DollPlugin {
         }
     }
 
-    fn select_confirmation_system(
+    fn deselection_system(
         mut commands: Commands,
-        client: Option<ResMut<RenetClient>>,
-        doll_players: Query<(Entity, &DollPlayers), Changed<DollPlayers>>,
+        mut deselect_buffer: ResMut<ClientSendBuffer<DollDeselect>>,
         active_dolls: Query<Entity, With<ActiveDoll>>,
     ) {
-        let client_id = client.map(|client| client.client_id()).unwrap_or(SERVER_ID);
-        for (doll_entity, doll_players) in &doll_players {
-            if doll_players.contains(&client_id) {
-                if let Ok(previous_entity) = active_dolls.get_single() {
-                    commands.entity(previous_entity).remove::<ActiveDoll>();
+        commands
+            .entity(active_dolls.single())
+            .remove::<ActiveDoll>();
+        deselect_buffer.push(DollDeselect);
+    }
+
+    fn deselect_confirmation_system(
+        mut commands: Commands,
+        mut deselect_events: EventReader<ClientEvent<DollDeselect>>,
+        mut doll_players: Query<(Entity, &mut DollPlayers)>,
+    ) {
+        for client_id in deselect_events.iter().map(|event| event.client_id) {
+            for (entity, mut doll_players) in &mut doll_players {
+                if let Some(index) = doll_players.iter().position(|&id| id == client_id) {
+                    if doll_players.len() == 1 {
+                        commands.entity(entity).remove::<DollPlayers>();
+                    } else {
+                        doll_players.swap_remove(index);
+                    }
+                    break;
                 }
-                commands.entity(doll_entity).insert(ActiveDoll);
-                break;
             }
         }
     }
@@ -144,6 +169,9 @@ impl MapEntities for DollSelect {
         Ok(())
     }
 }
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub(crate) struct DollDeselect;
 
 #[derive(Bundle)]
 pub(crate) struct DollBundle {

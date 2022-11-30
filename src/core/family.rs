@@ -12,12 +12,11 @@ use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
 use super::{
-    city::ActiveCity,
     doll::{ActiveDoll, DollBundle, DollScene, DollSelect},
     game_state::GameState,
     game_world::{GameEntity, GameWorld},
     network::{
-        network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
+        network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::map_entity::ReflectMapEntity,
     },
 };
@@ -35,14 +34,11 @@ impl Plugin for FamilyPlugin {
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
-            .add_event::<FamilySelect>()
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::select_confirmation_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::state_enter_system.run_in_state(GameState::World))
-            .add_system(Self::state_enter_system.run_in_state(GameState::FamilyEditor))
+            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
+            .add_exit_system(GameState::Family, Self::deselection_system)
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
@@ -104,36 +100,6 @@ impl FamilyPlugin {
         }
     }
 
-    /// Transforms [`FamilySelect`] events into [`DollSelect`] events with the first doll.
-    fn selection_system(
-        mut doll_select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
-        mut family_select_events: EventReader<FamilySelect>,
-        families: Query<&Dolls>,
-    ) {
-        for event in family_select_events.iter() {
-            let family = families
-                .get(event.0)
-                .expect("event entity should be a family");
-            let doll_entity = *family
-                .first()
-                .expect("spawned family should always contain at least one doll");
-            doll_select_buffer.push(DollSelect(doll_entity));
-        }
-    }
-
-    fn select_confirmation_system(
-        mut commands: Commands,
-        active_dolls: Query<&Family, Added<ActiveDoll>>,
-        active_families: Query<Entity, With<ActiveFamily>>,
-    ) {
-        for family in &active_dolls {
-            if let Ok(previous_entity) = active_families.get_single() {
-                commands.entity(previous_entity).remove::<ActiveFamily>();
-            }
-            commands.entity(family.0).insert(ActiveFamily);
-        }
-    }
-
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<ClientEvent<FamilyDespawn>>,
@@ -152,21 +118,16 @@ impl FamilyPlugin {
         }
     }
 
-    fn state_enter_system(
-        mut commands: Commands,
-        parents: Query<&Parent>,
-        active_families: Query<&Dolls, Added<ActiveFamily>>,
-    ) {
-        if let Ok(dolls) = active_families.get_single() {
-            let doll_entity = *dolls
-                .first()
-                .expect("family should contain at least one doll");
-            let parent = parents
-                .get(doll_entity)
-                .expect("doll should have a city as a parent");
-            commands.entity(parent.get()).insert(ActiveCity);
+    fn selection_system(mut commands: Commands, active_dolls: Query<&Family, Added<ActiveDoll>>) {
+        if let Ok(family) = active_dolls.get_single() {
             commands.insert_resource(NextState(GameState::Family));
+            commands.entity(family.0).insert(ActiveFamily);
         }
+    }
+
+    fn deselection_system(mut commands: Commands, active_dolls: Query<&Family, With<ActiveDoll>>) {
+        let family = active_dolls.single();
+        commands.entity(family.0).remove::<ActiveFamily>();
     }
 
     fn cleanup_system(mut commands: Commands, dolls: Query<Entity, With<Dolls>>) {
@@ -236,6 +197,8 @@ impl MapEntities for FamilySync {
 }
 
 /// Indicates locally controlled family.
+///
+/// Inserted automatically on [`ActiveDoll`] insertion.
 #[derive(Component)]
 pub(crate) struct ActiveFamily;
 
@@ -256,12 +219,6 @@ impl MapEntities for FamilySpawn {
         Ok(())
     }
 }
-
-/// Selects a family entity to play using its first doll.
-///
-/// Its a local event that translates into a [`DollSelect`]
-/// event with the first doll from selected family.
-pub(crate) struct FamilySelect(pub(crate) Entity);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub(crate) struct FamilyDespawn(pub(crate) Entity);

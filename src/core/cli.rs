@@ -5,8 +5,9 @@ use iyes_loopless::prelude::*;
 
 use super::{
     city::{ActiveCity, City},
+    doll::ActiveDoll,
     error_message::{self, ErrorMessage},
-    family::{Dolls, FamilySelect},
+    family::Dolls,
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
     network::{
@@ -73,10 +74,9 @@ impl CliPlugin {
 
     fn quick_loading_system(
         mut commands: Commands,
-        mut select_events: EventWriter<FamilySelect>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(Entity, &Name), With<Dolls>>,
+        families: Query<(&Dolls, &Name)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
@@ -91,13 +91,16 @@ impl CliPlugin {
                     commands.insert_resource(NextState(GameState::City));
                 }
                 QuickLoad::Family { name } => {
-                    let family_entity = families
+                    let dolls = families
                         .iter()
-                        .find(|(_, family_name)| family_name.as_str() == name)
-                        .map(|(family, _)| family)
+                        .find(|(.., family_name)| family_name.as_str() == name)
+                        .map(|(dolls, _)| dolls)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
-                    select_events.send(FamilySelect(family_entity));
+                    let doll_entity = *dolls
+                        .first()
+                        .expect("family should contain at least one doll");
+                    commands.entity(doll_entity).insert(ActiveDoll);
                 }
             }
         }

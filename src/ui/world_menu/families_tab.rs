@@ -3,38 +3,36 @@ use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    family::{Dolls, FamilyDespawn, FamilySelect},
+    doll::ActiveDoll,
+    family::{Dolls, FamilyDespawn},
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
 };
 
-pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
+pub(super) struct FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
-    select_buffer: &'a mut EventWriter<'we, 'se, FamilySelect>,
     despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
-    families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Dolls>>,
+    families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
 }
 
-impl<'a, 'w, 's, 'we, 'se, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
+impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
     #[must_use]
     pub(super) fn new(
         commands: &'a mut Commands<'w, 's>,
         despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
-        select_buffer: &'a mut EventWriter<'we, 'se, FamilySelect>,
-        families: &'a Query<'wq, 'sq, (Entity, &'static Name), With<Dolls>>,
+        families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
     ) -> Self {
         Self {
             families,
-            select_buffer,
             despawn_buffer,
             commands,
         }
     }
 }
 
-impl FamiliesTab<'_, '_, '_, '_, '_, '_, '_> {
+impl FamiliesTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for (entity, name) in self.families {
+        for (entity, name, dolls) in self.families {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(
@@ -43,7 +41,10 @@ impl FamiliesTab<'_, '_, '_, '_, '_, '_, '_> {
                     ui.label(name.as_str());
                     ui.with_layout(Layout::top_down(Align::Max), |ui| {
                         if ui.button("⏵ Play").clicked() {
-                            self.select_buffer.send(FamilySelect(entity));
+                            let doll_entity = *dolls
+                                .first()
+                                .expect("family always have at least one member");
+                            self.commands.entity(doll_entity).insert(ActiveDoll);
                         }
                         if ui.button("🗑 Delete").clicked() {
                             self.despawn_buffer.push(FamilyDespawn(entity));
