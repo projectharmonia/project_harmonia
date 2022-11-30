@@ -118,7 +118,7 @@ fn first_world_load(
         return false;
     }
 
-    // Mark as loaded when an error was occured.
+    // Mark as loaded when an error was occurred.
     if error_message.is_some() {
         *was_loaded = true;
         return false;
