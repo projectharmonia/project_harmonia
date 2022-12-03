@@ -5,6 +5,7 @@ use super::{
     doll::{ActiveDoll, FirstName, LastName},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
+    settings::Settings,
 };
 
 pub(super) struct FamilyEditorPlugin;
@@ -24,7 +25,7 @@ impl Plugin for FamilyEditorPlugin {
 }
 
 impl FamilyEditorPlugin {
-    fn spawn_system(mut commands: Commands) {
+    fn spawn_system(mut commands: Commands, settings: Res<Settings>) {
         commands
             .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
@@ -38,7 +39,7 @@ impl FamilyEditorPlugin {
                     transform: Transform::from_xyz(4.0, 8.0, 4.0),
                     ..Default::default()
                 });
-                parent.spawn(OrbitCameraBundle::default());
+                parent.spawn(OrbitCameraBundle::new(settings.video.render_graph_name()));
             });
     }
 

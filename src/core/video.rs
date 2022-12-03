@@ -1,59 +1,23 @@
-use bevy::{core_pipeline::core_3d, prelude::*, render::camera::CameraRenderGraph};
-use bevy_hikari::prelude::*;
+use bevy::{prelude::*, render::camera::CameraRenderGraph};
 use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::{
-    game_world::GameWorld,
-    settings::{Settings, SettingsApply},
-};
+use super::settings::{Settings, SettingsApply};
 
 pub(super) struct VideoPlugin;
 
 impl Plugin for VideoPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::init_cameras.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::toggle_global_illumination_system.run_on_event::<SettingsApply>());
+        app.add_system(Self::toggle_path_tracing_system.run_on_event::<SettingsApply>());
     }
 }
 
 impl VideoPlugin {
-    fn toggle_global_illumination_system(
-        mut commands: Commands,
+    fn toggle_path_tracing_system(
         settings: Res<Settings>,
-        mut cameras: Query<Entity, With<Camera3d>>,
+        mut render_graphs: Query<&mut CameraRenderGraph>,
     ) {
-        for entity in &mut cameras {
-            if settings.video.path_tracing {
-                commands.entity(entity).insert((
-                    CameraRenderGraph::new(bevy_hikari::graph::NAME),
-                    HikariSettings::default(),
-                ));
-            } else {
-                commands
-                    .entity(entity)
-                    .insert(CameraRenderGraph::new(core_3d::graph::NAME));
-                commands.entity(entity).remove::<HikariSettings>();
-            }
-        }
-    }
-
-    fn init_cameras(
-        mut commands: Commands,
-        settings: Res<Settings>,
-        mut new_cameras: Query<Entity, Added<Camera3d>>,
-    ) {
-        for entity in &mut new_cameras {
-            if settings.video.path_tracing {
-                commands.entity(entity).insert((
-                    CameraRenderGraph::new(bevy_hikari::graph::NAME),
-                    HikariSettings::default(),
-                ));
-            } else {
-                commands
-                    .entity(entity)
-                    .insert(CameraRenderGraph::new(core_3d::graph::NAME));
-                commands.entity(entity).remove::<HikariSettings>();
-            }
+        for mut render_graph in &mut render_graphs {
+            render_graph.set(settings.video.render_graph_name());
         }
     }
 }
