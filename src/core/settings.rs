@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::prelude::*;
+use bevy::{core_pipeline::core_3d, prelude::*};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -80,6 +80,16 @@ pub(crate) struct VideoSettings {
     pub(crate) path_tracing: bool,
     pub(crate) msaa: u32,
     pub(crate) perf_stats: bool,
+}
+
+impl VideoSettings {
+    pub(super) fn render_graph_name(&self) -> &'static str {
+        if self.path_tracing {
+            bevy_hikari::graph::NAME
+        } else {
+            core_3d::graph::NAME
+        }
+    }
 }
 
 impl Default for VideoSettings {
