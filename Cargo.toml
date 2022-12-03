@@ -48,6 +48,3 @@ walkdir = "2.3"
 fastrand = "1.8.0"
 serde_test = "1.0"
 itertools = "0.10"
-
-[patch.crates-io]
-bevy_reflect = { git = 'https://github.com/dollisgame/bevy', branch = 'reflect-binary-unit' } # TODO 0.9.1: Remove, needed to fix deserialization.
