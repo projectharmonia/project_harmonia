@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{core_pipeline::core_3d, prelude::*, render::camera::CameraRenderGraph};
 use bevy_hikari::prelude::*;
 use iyes_loopless::prelude::IntoConditionalSystem;
 
@@ -24,8 +24,14 @@ impl VideoPlugin {
     ) {
         for entity in &mut cameras {
             if settings.video.global_illumination {
-                commands.entity(entity).insert(HikariSettings::default());
+                commands.entity(entity).insert((
+                    CameraRenderGraph::new(bevy_hikari::graph::NAME),
+                    HikariSettings::default(),
+                ));
             } else {
+                commands
+                    .entity(entity)
+                    .insert(CameraRenderGraph::new(core_3d::graph::NAME));
                 commands.entity(entity).remove::<HikariSettings>();
             }
         }
@@ -38,8 +44,14 @@ impl VideoPlugin {
     ) {
         for entity in &mut new_cameras {
             if settings.video.global_illumination {
-                commands.entity(entity).insert(HikariSettings::default());
+                commands.entity(entity).insert((
+                    CameraRenderGraph::new(bevy_hikari::graph::NAME),
+                    HikariSettings::default(),
+                ));
             } else {
+                commands
+                    .entity(entity)
+                    .insert(CameraRenderGraph::new(core_3d::graph::NAME));
                 commands.entity(entity).remove::<HikariSettings>();
             }
         }

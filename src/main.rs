@@ -44,7 +44,7 @@ fn main() {
         .add_plugin(DefaultRaycastingPlugin::<Pickable>::default())
         .add_plugin(OutlinePlugin)
         .add_plugin(EguiPlugin)
-        .add_plugin(HikariPlugin::default())
+        .add_plugin(HikariPlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .add_plugins(CorePlugins)
         .add_plugins(UiPlugins)
