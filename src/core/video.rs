@@ -23,7 +23,7 @@ impl VideoPlugin {
         mut cameras: Query<Entity, With<Camera3d>>,
     ) {
         for entity in &mut cameras {
-            if settings.video.global_illumination {
+            if settings.video.path_tracing {
                 commands.entity(entity).insert((
                     CameraRenderGraph::new(bevy_hikari::graph::NAME),
                     HikariSettings::default(),
@@ -43,7 +43,7 @@ impl VideoPlugin {
         mut new_cameras: Query<Entity, Added<Camera3d>>,
     ) {
         for entity in &mut new_cameras {
-            if settings.video.global_illumination {
+            if settings.video.path_tracing {
                 commands.entity(entity).insert((
                     CameraRenderGraph::new(bevy_hikari::graph::NAME),
                     HikariSettings::default(),

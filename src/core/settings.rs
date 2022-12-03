@@ -77,7 +77,7 @@ impl Settings {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct VideoSettings {
-    pub(crate) global_illumination: bool,
+    pub(crate) path_tracing: bool,
     pub(crate) msaa: u32,
     pub(crate) perf_stats: bool,
 }
@@ -85,7 +85,7 @@ pub(crate) struct VideoSettings {
 impl Default for VideoSettings {
     fn default() -> Self {
         Self {
-            global_illumination: false,
+            path_tracing: false,
             msaa: 1,
             perf_stats: false,
         }
