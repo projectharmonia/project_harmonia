@@ -28,9 +28,11 @@ impl Plugin for DollPlugin {
             .add_client_event::<DollDeselect>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::select_confirmation_system.run_if_resource_exists::<RenetServer>())
-            .add_exit_system(GameState::Family, Self::deselection_system)
+            .add_system(Self::activation_system.run_if_resource_exists::<GameWorld>())
+            .add_system(
+                Self::activation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+            )
+            .add_exit_system(GameState::Family, Self::deactivation_system)
             .add_system(Self::deselect_confirmation_system.run_if_resource_exists::<RenetServer>());
     }
 }
@@ -66,7 +68,7 @@ impl DollPlugin {
         }
     }
 
-    fn selection_system(
+    fn activation_system(
         mut commands: Commands,
         mut select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
         active_dolls: Query<(Entity, &Parent), Added<ActiveDoll>>,
@@ -77,7 +79,7 @@ impl DollPlugin {
         }
     }
 
-    fn select_confirmation_system(
+    fn activation_confirmation_system(
         mut commands: Commands,
         mut select_events: EventReader<ClientEvent<DollSelect>>,
         mut doll_players: Query<&mut DollPlayers>,
@@ -105,7 +107,7 @@ impl DollPlugin {
         }
     }
 
-    fn deselection_system(
+    fn deactivation_system(
         mut commands: Commands,
         mut deselect_buffer: ResMut<ClientSendBuffer<DollDeselect>>,
         active_dolls: Query<Entity, With<ActiveDoll>>,

@@ -12,7 +12,7 @@ pub(super) struct SelectedObjectPlugin;
 impl Plugin for SelectedObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_to_stage(
-            // Should run in state before `Self::removal_selection_system` to flush spawn command,
+            // Should run in state before `Self::selection_removing_system` to flush spawn command,
             // otherwise `MovingObject` will be missing and it will be detected as removal.
             CoreStage::PreUpdate,
             Self::cursor_spawning_system

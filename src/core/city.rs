@@ -14,15 +14,15 @@ impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlacedCities>()
             .register_type::<City>()
-            .add_enter_system(GameState::City, Self::enter_system)
+            .add_enter_system(GameState::City, Self::activation_system)
             .add_exit_system(
                 GameState::City,
-                Self::exit_system.run_if_resource_exists::<GameWorld>(),
+                Self::deactivation_system.run_if_resource_exists::<GameWorld>(),
             )
-            .add_enter_system(GameState::Family, Self::enter_system)
+            .add_enter_system(GameState::Family, Self::activation_system)
             .add_exit_system(
                 GameState::Family,
-                Self::exit_system.run_if_resource_exists::<GameWorld>(),
+                Self::deactivation_system.run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
@@ -52,7 +52,7 @@ impl CityPlugin {
         }
     }
 
-    fn enter_system(
+    fn activation_system(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         settings: Res<Settings>,
@@ -64,7 +64,7 @@ impl CityPlugin {
         });
     }
 
-    fn exit_system(
+    fn deactivation_system(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<OrbitOrigin>>,

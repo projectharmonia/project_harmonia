@@ -37,8 +37,8 @@ impl Plugin for FamilyPlugin {
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
-            .add_exit_system(GameState::Family, Self::deselection_system)
+            .add_system(Self::activation_system.run_if_resource_exists::<GameWorld>())
+            .add_exit_system(GameState::Family, Self::deactivation_system)
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
@@ -118,14 +118,14 @@ impl FamilyPlugin {
         }
     }
 
-    fn selection_system(mut commands: Commands, active_dolls: Query<&Family, Added<ActiveDoll>>) {
+    fn activation_system(mut commands: Commands, active_dolls: Query<&Family, Added<ActiveDoll>>) {
         if let Ok(family) = active_dolls.get_single() {
             commands.insert_resource(NextState(GameState::Family));
             commands.entity(family.0).insert(ActiveFamily);
         }
     }
 
-    fn deselection_system(mut commands: Commands, active_dolls: Query<&Family, With<ActiveDoll>>) {
+    fn deactivation_system(mut commands: Commands, active_dolls: Query<&Family, With<ActiveDoll>>) {
         let family = active_dolls.single();
         commands.entity(family.0).remove::<ActiveFamily>();
     }
