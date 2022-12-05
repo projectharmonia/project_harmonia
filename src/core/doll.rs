@@ -33,7 +33,9 @@ impl Plugin for DollPlugin {
                 Self::activation_confirmation_system.run_if_resource_exists::<RenetServer>(),
             )
             .add_exit_system(GameState::Family, Self::deactivation_system)
-            .add_system(Self::deselect_confirmation_system.run_if_resource_exists::<RenetServer>());
+            .add_system(
+                Self::deactivation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+            );
     }
 }
 
@@ -118,7 +120,7 @@ impl DollPlugin {
         deselect_buffer.push(DollDeselect);
     }
 
-    fn deselect_confirmation_system(
+    fn deactivation_confirmation_system(
         mut commands: Commands,
         mut deselect_events: EventReader<ClientEvent<DollDeselect>>,
         mut doll_players: Query<(Entity, &mut DollPlayers)>,
