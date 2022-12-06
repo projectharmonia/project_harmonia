@@ -22,7 +22,7 @@ use crate::core::{
     city::City,
     doll::{ActiveDoll, DollScene, FirstName, LastName},
     error_message,
-    family::{FamilyScene, FamilySpawn, FamilySystems},
+    family::{FamilyScene, FamilySpawn},
     family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset},
     game_paths::GamePaths,
     game_state::GameState,
@@ -43,8 +43,7 @@ impl Plugin for FamilyEditorMenuPlugin {
             .add_system(
                 Self::save_family_dialog_system
                     .pipe(error_message::err_message_system)
-                    .run_if_resource_exists::<SaveFamilyDialog>()
-                    .before(FamilySystems::SaveSystem),
+                    .run_if_resource_exists::<SaveFamilyDialog>(),
             )
             .add_system(
                 Self::place_family_dialog_system.run_if_resource_exists::<PlaceFamilyDialog>(),
