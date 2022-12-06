@@ -20,11 +20,6 @@ use super::{
     },
 };
 
-#[derive(SystemLabel)]
-pub(crate) enum FamilySystems {
-    SaveSystem,
-}
-
 pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
