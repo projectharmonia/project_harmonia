@@ -45,6 +45,7 @@ impl FamiliesTab<'_, '_, '_, '_, '_> {
                                 .first()
                                 .expect("family always have at least one member");
                             self.commands.entity(doll_entity).insert(ActiveDoll);
+                            self.commands.insert_resource(NextState(GameState::Family))
                         }
                         if ui.button("🗑 Delete").clicked() {
                             self.despawn_buffer.push(FamilyDespawn(entity));

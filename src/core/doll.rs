@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
-    city::ActiveCity,
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
@@ -28,7 +27,10 @@ impl Plugin for DollPlugin {
             .add_client_event::<DollDeselect>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::activation_system.run_if_resource_exists::<GameWorld>())
+            .add_enter_system(
+                GameState::Family,
+                Self::activation_system.run_if_resource_exists::<GameWorld>(),
+            )
             .add_system(
                 Self::activation_confirmation_system.run_if_resource_exists::<RenetServer>(),
             )
@@ -71,14 +73,10 @@ impl DollPlugin {
     }
 
     fn activation_system(
-        mut commands: Commands,
         mut select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
-        active_dolls: Query<(Entity, &Parent), Added<ActiveDoll>>,
+        new_active_dolls: Query<Entity, Added<ActiveDoll>>,
     ) {
-        if let Ok((entity, parent)) = active_dolls.get_single() {
-            select_buffer.push(DollSelect(entity));
-            commands.entity(parent.get()).insert(ActiveCity);
-        }
+        select_buffer.push(DollSelect(new_active_dolls.single()));
     }
 
     fn activation_confirmation_system(

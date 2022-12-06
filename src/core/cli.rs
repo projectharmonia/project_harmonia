@@ -101,6 +101,7 @@ impl CliPlugin {
                         .first()
                         .expect("family should contain at least one doll");
                     commands.entity(doll_entity).insert(ActiveDoll);
+                    commands.insert_resource(NextState(GameState::Family))
                 }
             }
         }

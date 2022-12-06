@@ -13,7 +13,6 @@ use tap::TapFallible;
 
 use super::{
     doll::{ActiveDoll, DollBundle, DollScene, DollSelect},
-    game_state::GameState,
     game_world::{GameEntity, GameWorld},
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
@@ -37,8 +36,14 @@ impl Plugin for FamilyPlugin {
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::activation_system.run_if_resource_exists::<GameWorld>())
-            .add_exit_system(GameState::Family, Self::deactivation_system)
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                Self::activation_system.run_if_resource_exists::<GameWorld>(),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                Self::deactivation_system.run_if_resource_exists::<GameWorld>(),
+            )
             .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
     }
 }
@@ -118,16 +123,22 @@ impl FamilyPlugin {
         }
     }
 
-    fn activation_system(mut commands: Commands, active_dolls: Query<&Family, Added<ActiveDoll>>) {
-        if let Ok(family) = active_dolls.get_single() {
-            commands.insert_resource(NextState(GameState::Family));
+    fn activation_system(
+        mut commands: Commands,
+        new_active_dolls: Query<&Family, Added<ActiveDoll>>,
+    ) {
+        if let Ok(family) = new_active_dolls.get_single() {
             commands.entity(family.0).insert(ActiveFamily);
         }
     }
 
-    fn deactivation_system(mut commands: Commands, active_dolls: Query<&Family, With<ActiveDoll>>) {
-        let family = active_dolls.single();
-        commands.entity(family.0).remove::<ActiveFamily>();
+    fn deactivation_system(
+        mut commands: Commands,
+        deactivated_dolls: RemovedComponents<ActiveDoll>,
+    ) {
+        if let Some(doll_entity) = deactivated_dolls.iter().next() {
+            commands.entity(doll_entity).remove::<ActiveFamily>();
+        }
     }
 
     fn cleanup_system(mut commands: Commands, dolls: Query<Entity, With<Dolls>>) {
