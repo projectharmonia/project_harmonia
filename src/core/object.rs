@@ -30,7 +30,6 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CursorObjectPlugin)
-            .register_type::<PathBuf>() // TODO 0.9.1: Remove.
             .register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
