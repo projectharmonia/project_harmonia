@@ -20,7 +20,7 @@ impl Plugin for SelectedObjectPlugin {
                 .run_in_state(GameState::City),
         )
         .add_system(
-            Self::selection_removing_system
+            Self::selection_removal_system
                 .run_if_not(cursor_object::cursor_object_exists)
                 .run_if_resource_exists::<SelectedObject>()
                 .run_in_state(GameState::City),
@@ -46,7 +46,7 @@ impl SelectedObjectPlugin {
             });
     }
 
-    fn selection_removing_system(mut commands: Commands) {
+    fn selection_removal_system(mut commands: Commands) {
         commands.remove_resource::<SelectedObject>();
     }
 }
