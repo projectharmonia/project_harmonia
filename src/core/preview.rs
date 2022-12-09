@@ -11,7 +11,6 @@ use bevy::{
 use bevy_egui::{egui::TextureId, EguiContext};
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
 use iyes_loopless::prelude::*;
-use strum::Display;
 
 use super::asset_metadata::{self, AssetMetadata};
 
@@ -153,7 +152,7 @@ impl PreviewPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum PreviewState {
     Inactive,
     LoadingAsset,

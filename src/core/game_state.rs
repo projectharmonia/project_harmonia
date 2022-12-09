@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
-use strum::Display;
 
 pub(super) struct GameStatePlugin;
 
@@ -10,7 +9,7 @@ impl Plugin for GameStatePlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum GameState {
     MainMenu,
     FamilyEditor,
