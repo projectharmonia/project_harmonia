@@ -59,7 +59,7 @@ impl CityHudPlugin {
                             selected_object.map(|object| object.0),
                         )
                         .show(ui),
-                        CityTab::Dolls | CityTab::Terrain | CityTab::Lots => (),
+                        CityTab::Lots => (),
                     }
                 });
             });
@@ -70,8 +70,6 @@ impl CityHudPlugin {
 enum CityTab {
     #[default]
     Objects,
-    Dolls,
-    Terrain,
     Lots,
 }
 
@@ -79,9 +77,7 @@ impl CityTab {
     fn icon(self) -> &'static str {
         match self {
             CityTab::Objects => "🌳",
-            CityTab::Dolls => "👪",
-            CityTab::Terrain => "⛰",
-            CityTab::Lots => "⛶",
+            CityTab::Lots => "🚧",
         }
     }
 }
