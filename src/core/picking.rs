@@ -4,7 +4,11 @@ use bevy_mod_raycast::RaycastSource;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{action::Action, game_state::GameState, object::cursor_object};
+use super::{
+    action::Action,
+    cursor::{cursor_object, CursorMode},
+    game_state::GameState,
+};
 
 pub(super) struct PickingPlugin;
 
@@ -16,7 +20,8 @@ impl Plugin for PickingPlugin {
                     .pipe(Self::object_picking_system)
                     .pipe(Self::outline_system)
                     .run_if_not(cursor_object::cursor_object_exists)
-                    .run_in_state(GameState::City),
+                    .run_in_state(GameState::City)
+                    .run_not_in_state(CursorMode::Lots),
             )
             .add_system(
                 Self::ray_system

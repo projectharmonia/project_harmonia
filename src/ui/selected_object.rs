@@ -3,8 +3,8 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     city::ActiveCity,
+    cursor::cursor_object::{self, CursorObject},
     game_state::GameState,
-    object::cursor_object::{self, CursorObject},
 };
 
 pub(super) struct SelectedObjectPlugin;

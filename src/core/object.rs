@@ -1,5 +1,3 @@
-pub(crate) mod cursor_object;
-
 use std::path::PathBuf;
 
 use bevy::{
@@ -23,14 +21,12 @@ use super::{
     },
     picking::Pickable,
 };
-use cursor_object::CursorObjectPlugin;
 
 pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(CursorObjectPlugin)
-            .register_type::<ObjectPath>()
+        app.register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
@@ -157,11 +153,11 @@ impl ObjectBundle {
 pub(crate) struct ObjectPath(PathBuf);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct ObjectSpawn {
-    metadata_path: PathBuf,
-    translation: Vec3,
-    rotation: Quat,
-    city_entity: Entity,
+pub(super) struct ObjectSpawn {
+    pub(super) metadata_path: PathBuf,
+    pub(super) translation: Vec3,
+    pub(super) rotation: Quat,
+    pub(super) city_entity: Entity,
 }
 
 impl MapEntities for ObjectSpawn {
@@ -172,10 +168,10 @@ impl MapEntities for ObjectSpawn {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-struct ObjectMove {
-    entity: Entity,
-    translation: Vec3,
-    rotation: Quat,
+pub(super) struct ObjectMove {
+    pub(super) entity: Entity,
+    pub(super) translation: Vec3,
+    pub(super) rotation: Quat,
 }
 
 impl MapEntities for ObjectMove {
@@ -186,7 +182,7 @@ impl MapEntities for ObjectMove {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct ObjectDespawn(pub(super) Entity);
+pub(super) struct ObjectDespawn(pub(super) Entity);
 
 impl MapEntities for ObjectDespawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
@@ -197,4 +193,4 @@ impl MapEntities for ObjectDespawn {
 
 /// An event from server which indicates action confirmation.
 #[derive(Deserialize, Serialize, Debug, Default)]
-struct ObjectConfirmed;
+pub(super) struct ObjectConfirmed;

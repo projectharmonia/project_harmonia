@@ -6,11 +6,12 @@ use bevy_egui::{
     EguiContext,
 };
 use iyes_loopless::prelude::*;
-use strum::{Display, EnumIter, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 use super::selected_object::SelectedObject;
 use crate::core::{
     asset_metadata::AssetMetadata,
+    cursor::CursorMode,
     game_state::GameState,
     preview::{PreviewRequest, Previews},
 };
@@ -26,11 +27,11 @@ impl Plugin for CityHudPlugin {
 
 impl CityHudPlugin {
     fn bottom_panel_system(
-        mut current_tab: Local<CityTab>,
         mut commands: Commands,
         mut preview_events: EventWriter<PreviewRequest>,
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
+        cursor_mode: Res<CurrentState<CursorMode>>,
         metadata: Res<Assets<AssetMetadata>>,
         selected_object: Option<Res<SelectedObject>>,
     ) {
@@ -41,43 +42,33 @@ impl CityHudPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        for tab in CityTab::iter() {
+                        let mut current_mode = cursor_mode.0;
+                        for mode in CursorMode::iter() {
                             ui.selectable_value(
-                                &mut *current_tab,
-                                tab,
-                                RichText::new(tab.icon()).size(22.0),
+                                &mut current_mode,
+                                mode,
+                                RichText::new(mode.glyph()).size(22.0),
                             )
-                            .on_hover_text(tab.to_string());
+                            .on_hover_text(mode.to_string());
+                        }
+                        if current_mode != cursor_mode.0 {
+                            commands.insert_resource(NextState(current_mode))
                         }
                     });
-                    match *current_tab {
-                        CityTab::Objects => ObjectsTab::new(
-                            &mut commands,
-                            &metadata,
-                            &previews,
-                            &mut preview_events,
-                            selected_object.map(|object| object.0),
-                        )
-                        .show(ui),
-                        CityTab::Lots => (),
+                    match cursor_mode.0 {
+                        CursorMode::Objects => {
+                            ObjectsTab::new(
+                                &mut commands,
+                                &metadata,
+                                &previews,
+                                &mut preview_events,
+                                selected_object.map(|object| object.0),
+                            )
+                            .show(ui);
+                        }
+                        CursorMode::Lots => (),
                     }
                 });
             });
-    }
-}
-
-#[derive(Default, Display, EnumIter, PartialEq, Clone, Copy)]
-enum CityTab {
-    #[default]
-    Objects,
-    Lots,
-}
-
-impl CityTab {
-    fn icon(self) -> &'static str {
-        match self {
-            CityTab::Objects => "🌳",
-            CityTab::Lots => "🚧",
-        }
     }
 }

@@ -5,45 +5,59 @@ use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 
+use super::CursorMode;
 use crate::core::{
     action::{self, Action},
     asset_metadata,
     city::ActiveCity,
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
+    object::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
 };
-
-use super::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn};
 
 pub(super) struct CursorObjectPlugin;
 
 impl Plugin for CursorObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::picking_system.run_in_state(GameState::City))
-            // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::init_system.run_in_state(GameState::City),
-            )
-            .add_system(Self::movement_system.run_in_state(GameState::City))
-            .add_system(
-                Self::application_system
-                    .run_if(action::just_pressed(Action::Confirm))
-                    .run_in_state(GameState::City),
-            )
-            .add_system(
-                Self::despawn_system
-                    .run_if(action::just_pressed(Action::Delete))
-                    .run_in_state(GameState::City),
-            )
-            .add_system(
-                Self::cleanup_system
-                    .run_if(action::just_pressed(Action::Cancel))
-                    .run_in_state(GameState::City),
-            )
-            .add_system(Self::cleanup_system.run_on_event::<ObjectConfirmed>());
+        app.add_system(
+            Self::picking_system
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            Self::init_system
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        .add_system(
+            Self::movement_system
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        .add_system(
+            Self::application_system
+                .run_if(action::just_pressed(Action::Confirm))
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        .add_system(
+            Self::despawn_system
+                .run_if(action::just_pressed(Action::Delete))
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        .add_system(
+            Self::cleanup_system
+                .run_if(action::just_pressed(Action::Cancel))
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Objects),
+        )
+        .add_system(Self::cleanup_system.run_on_event::<ObjectConfirmed>())
+        .add_exit_system(CursorMode::Objects, Self::cleanup_system);
     }
 }
 
