@@ -193,6 +193,7 @@ mod tests {
     fn hovering() {
         let mut app = App::new();
         app.add_loopless_state(GameState::City)
+            .add_loopless_state(CursorMode::Objects)
             .init_resource::<ActionState<Action>>()
             .add_plugin(CorePlugin::default())
             .add_plugin(AssetPlugin::default())
