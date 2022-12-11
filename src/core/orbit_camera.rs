@@ -68,9 +68,9 @@ impl OrbitCameraPlugin {
 
     fn rotation_system(
         mut motion_events: EventReader<MouseMotion>,
-        mut camera: Query<&mut OrbitRotation, With<Camera>>,
+        mut cameras: Query<&mut OrbitRotation, With<Camera>>,
     ) {
-        let mut orbit_rotation = camera.single_mut();
+        let mut orbit_rotation = cameras.single_mut();
         const SENSETIVITY: f32 = 0.01;
         orbit_rotation.0 -=
             SENSETIVITY * motion_events.iter().map(|event| &event.delta).sum::<Vec2>();
@@ -80,9 +80,9 @@ impl OrbitCameraPlugin {
     fn position_system(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
-        mut camera: Query<(&mut OrbitOrigin, &Transform), With<Camera>>,
+        mut cameras: Query<(&mut OrbitOrigin, &Transform), With<Camera>>,
     ) {
-        let (mut orbit_origin, transform) = camera.single_mut();
+        let (mut orbit_origin, transform) = cameras.single_mut();
 
         const MOVEMENT_SPEED: f32 = 10.0;
         orbit_origin.current += movement_direction(&action_state, transform.rotation)
@@ -98,9 +98,9 @@ impl OrbitCameraPlugin {
     fn arm_system(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
-        mut camera: Query<&mut SpringArm, With<Camera>>,
+        mut cameras: Query<&mut SpringArm, With<Camera>>,
     ) {
-        let mut spring_arm = camera.single_mut();
+        let mut spring_arm = cameras.single_mut();
         spring_arm.current = (spring_arm.current - action_state.value(Action::ZoomCamera)).max(0.0);
         spring_arm.interpolated = spring_arm.interpolated
             + time.delta_seconds()
@@ -109,9 +109,12 @@ impl OrbitCameraPlugin {
     }
 
     fn transform_system(
-        mut camera: Query<(&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm), With<Camera>>,
+        mut cameras: Query<
+            (&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm),
+            With<Camera>,
+        >,
     ) {
-        let (mut transform, orbit_origin, orbit_rotation, spring_arm) = camera.single_mut();
+        let (mut transform, orbit_origin, orbit_rotation, spring_arm) = cameras.single_mut();
         transform.translation =
             orbit_rotation.sphere_pos() * spring_arm.interpolated + orbit_origin.interpolated;
         transform.look_at(orbit_origin.interpolated, Vec3::Y);

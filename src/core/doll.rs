@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
-    city::ActiveCity,
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
@@ -28,10 +27,17 @@ impl Plugin for DollPlugin {
             .add_client_event::<DollDeselect>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::selection_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::select_confirmation_system.run_if_resource_exists::<RenetServer>())
-            .add_exit_system(GameState::Family, Self::deselection_system)
-            .add_system(Self::deselect_confirmation_system.run_if_resource_exists::<RenetServer>());
+            .add_enter_system(
+                GameState::Family,
+                Self::activation_system.run_if_resource_exists::<GameWorld>(),
+            )
+            .add_system(
+                Self::activation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+            )
+            .add_exit_system(GameState::Family, Self::deactivation_system)
+            .add_system(
+                Self::deactivation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+            );
     }
 }
 
@@ -66,18 +72,14 @@ impl DollPlugin {
         }
     }
 
-    fn selection_system(
-        mut commands: Commands,
+    fn activation_system(
         mut select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
-        active_dolls: Query<(Entity, &Parent), Added<ActiveDoll>>,
+        new_active_dolls: Query<Entity, Added<ActiveDoll>>,
     ) {
-        if let Ok((entity, parent)) = active_dolls.get_single() {
-            select_buffer.push(DollSelect(entity));
-            commands.entity(parent.get()).insert(ActiveCity);
-        }
+        select_buffer.push(DollSelect(new_active_dolls.single()));
     }
 
-    fn select_confirmation_system(
+    fn activation_confirmation_system(
         mut commands: Commands,
         mut select_events: EventReader<ClientEvent<DollSelect>>,
         mut doll_players: Query<&mut DollPlayers>,
@@ -105,7 +107,7 @@ impl DollPlugin {
         }
     }
 
-    fn deselection_system(
+    fn deactivation_system(
         mut commands: Commands,
         mut deselect_buffer: ResMut<ClientSendBuffer<DollDeselect>>,
         active_dolls: Query<Entity, With<ActiveDoll>>,
@@ -116,7 +118,7 @@ impl DollPlugin {
         deselect_buffer.push(DollDeselect);
     }
 
-    fn deselect_confirmation_system(
+    fn deactivation_confirmation_system(
         mut commands: Commands,
         mut deselect_events: EventReader<ClientEvent<DollDeselect>>,
         mut doll_players: Query<(Entity, &mut DollPlayers)>,

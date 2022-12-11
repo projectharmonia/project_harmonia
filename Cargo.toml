@@ -25,7 +25,7 @@ bevy-inspector-egui = { version = "0.14", default-features = false, features = [
 bevy-scene-hook = "5.1"
 iyes_loopless = "0.9"
 bevy-trait-query = "0.1"
-leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager", default-features = false, features = [
+leafwing-input-manager = { version = "0.7", default-features = false, features = [
   "egui",
 ] }
 serde = "1.0"
@@ -48,3 +48,7 @@ walkdir = "2.3"
 fastrand = "1.8.0"
 serde_test = "1.0"
 itertools = "0.10"
+
+# Enable high optimizations for dependencies, but not for our code:
+[profile.dev.package."*"]
+opt-level = 3

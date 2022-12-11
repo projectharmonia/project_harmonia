@@ -3,8 +3,8 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     city::ActiveCity,
+    cursor::cursor_object::{self, CursorObject},
     game_state::GameState,
-    object::cursor_object::{self, CursorObject},
 };
 
 pub(super) struct SelectedObjectPlugin;
@@ -12,7 +12,7 @@ pub(super) struct SelectedObjectPlugin;
 impl Plugin for SelectedObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_to_stage(
-            // Should run in state before `Self::removal_selection_system` to flush spawn command,
+            // Should run in state before `Self::selection_removing_system` to flush spawn command,
             // otherwise `MovingObject` will be missing and it will be detected as removal.
             CoreStage::PreUpdate,
             Self::cursor_spawning_system
@@ -20,7 +20,7 @@ impl Plugin for SelectedObjectPlugin {
                 .run_in_state(GameState::City),
         )
         .add_system(
-            Self::selection_removing_system
+            Self::selection_removal_system
                 .run_if_not(cursor_object::cursor_object_exists)
                 .run_if_resource_exists::<SelectedObject>()
                 .run_in_state(GameState::City),
@@ -46,7 +46,7 @@ impl SelectedObjectPlugin {
             });
     }
 
-    fn selection_removing_system(mut commands: Commands) {
+    fn selection_removal_system(mut commands: Commands) {
         commands.remove_resource::<SelectedObject>();
     }
 }

@@ -8,9 +8,9 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     action::{self, Action},
+    cursor::cursor_object,
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
-    object::cursor_object,
 };
 
 use super::{
