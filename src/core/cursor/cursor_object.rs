@@ -114,7 +114,7 @@ impl CursorObjectPlugin {
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
         action_state: Res<ActionState<Action>>,
-        camera: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
+        cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
         mut cursor_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
             With<CursorObject>,
@@ -125,7 +125,7 @@ impl CursorObjectPlugin {
                 .get_primary()
                 .and_then(|window| window.cursor_position())
             {
-                let (&camera_transform, camera) = camera.single();
+                let (&camera_transform, camera) = cameras.single();
                 let ray = camera
                     .viewport_to_world(&camera_transform, cursor_pos)
                     .expect("ray should be created from screen coordinates");

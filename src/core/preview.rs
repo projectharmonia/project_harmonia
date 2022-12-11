@@ -83,10 +83,10 @@ impl PreviewPlugin {
         mut egui: ResMut<EguiContext>,
         mut images: ResMut<Assets<Image>>,
         asset_server: Res<AssetServer>,
-        mut preview_camera: Query<&mut Camera, With<PreviewCamera>>,
+        mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
         preview_target: Query<(&PreviewMetadataId, &Handle<Scene>)>,
     ) {
-        let mut camera = preview_camera.single_mut();
+        let mut camera = preview_cameras.single_mut();
         let (metadata_id, scene_handle) = preview_target.single();
         match asset_server.get_load_state(scene_handle) {
             LoadState::NotLoaded | LoadState::Loading => (),
