@@ -32,7 +32,7 @@ impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
 
 impl FamiliesTab<'_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for (entity, name, dolls) in self.families {
+        for (family_entity, name, dolls) in self.families {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(
@@ -48,7 +48,7 @@ impl FamiliesTab<'_, '_, '_, '_, '_> {
                             self.commands.insert_resource(NextState(GameState::Family))
                         }
                         if ui.button("🗑 Delete").clicked() {
-                            self.despawn_buffer.push(FamilyDespawn(entity));
+                            self.despawn_buffer.push(FamilyDespawn(family_entity));
                         }
                     })
                 });

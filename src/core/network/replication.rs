@@ -349,16 +349,16 @@ impl Command for ApplyWorldDiff {
             }
 
             for server_entity in self.0.despawns {
-                let local_entity = entity_map
+                let client_entity = entity_map
                     .remove_by_server(server_entity)
                     .expect("server should send valid entities to despawn");
-                world.entity_mut(local_entity).despawn_recursive();
+                world.entity_mut(client_entity).despawn_recursive();
             }
         });
     }
 }
 
-/// Maps entities received from server into local entities.
+/// Maps entities received from server into client entities.
 fn map_entities(
     world: &mut World,
     entity_map: &mut NetworkEntityMap,
@@ -376,7 +376,7 @@ fn apply_component_diff(
     world: &mut World,
     entity_map: &NetworkEntityMap,
     registry: &TypeRegistryInternal,
-    local_entity: Entity,
+    client_entity: Entity,
     component_diff: &ComponentDiff,
 ) {
     let type_name = component_diff.type_name();
@@ -390,14 +390,14 @@ fn apply_component_diff(
 
     match component_diff {
         ComponentDiff::Changed(component) => {
-            reflect_component.apply_or_insert(world, local_entity, &**component);
+            reflect_component.apply_or_insert(world, client_entity, &**component);
             if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
-                    .map_entities(world, entity_map.to_client(), local_entity)
+                    .map_entities(world, entity_map.to_client(), client_entity)
                     .unwrap_or_else(|e| panic!("entities in {type_name} should be mappable: {e}"));
             }
         }
-        ComponentDiff::Removed(_) => reflect_component.remove(world, local_entity),
+        ComponentDiff::Removed(_) => reflect_component.remove(world, client_entity),
     }
 }
 

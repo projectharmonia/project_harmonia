@@ -111,8 +111,8 @@ impl FamilyPlugin {
                 .tap_err(|e| error!("received an invalid family entity to despawn: {e}"))
             {
                 commands.entity(family_entity).despawn();
-                for &entity in dolls.iter() {
-                    commands.entity(entity).despawn_recursive();
+                for &doll_entity in dolls.iter() {
+                    commands.entity(doll_entity).despawn_recursive();
                 }
             }
         }
@@ -131,8 +131,8 @@ impl FamilyPlugin {
         mut commands: Commands,
         deactivated_dolls: RemovedComponents<ActiveDoll>,
     ) {
-        if let Some(doll_entity) = deactivated_dolls.iter().next() {
-            commands.entity(doll_entity).remove::<ActiveFamily>();
+        if let Some(entity) = deactivated_dolls.iter().next() {
+            commands.entity(entity).remove::<ActiveFamily>();
         }
     }
 

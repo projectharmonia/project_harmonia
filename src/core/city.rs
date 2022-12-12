@@ -83,9 +83,9 @@ impl CityPlugin {
         deactivated_dolls: RemovedComponents<ActiveDoll>,
         parents: Query<&Parent>,
     ) {
-        if let Some(doll_entity) = deactivated_dolls.iter().next() {
+        if let Some(entity) = deactivated_dolls.iter().next() {
             let parent = parents
-                .get(doll_entity)
+                .get(entity)
                 .expect("deactivated doll should have a family");
             commands.entity(parent.get()).remove::<ActiveCity>();
         }
@@ -102,9 +102,9 @@ impl CityPlugin {
         mut active_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
         settings: Res<Settings>,
     ) {
-        if let Ok((city_entity, mut visibility)) = active_cities.get_single_mut() {
+        if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             visibility.is_visible = true;
-            commands.entity(city_entity).with_children(|parent| {
+            commands.entity(entity).with_children(|parent| {
                 parent.spawn(OrbitCameraBundle::new(settings.video.render_graph_name()));
             });
         }
@@ -116,12 +116,12 @@ impl CityPlugin {
         mut visibility: Query<&mut Visibility>,
         cameras: Query<Entity, With<OrbitOrigin>>,
     ) {
-        if let Some(city_entity) = deactivated_cities.iter().next() {
+        if let Some(entity) = deactivated_cities.iter().next() {
             let mut visibility = visibility
-                .get_mut(city_entity)
+                .get_mut(entity)
                 .expect("city should always have a visibility component");
             visibility.is_visible = false;
-            commands.entity(city_entity).remove::<ActiveCity>();
+            commands.entity(entity).remove::<ActiveCity>();
             commands.entity(cameras.single()).despawn();
         }
     }

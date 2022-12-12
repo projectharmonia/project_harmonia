@@ -97,18 +97,18 @@ impl FamilyEditorMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     let active_entity = active_dolls.get_single();
-                    for entity in &editable_dolls {
+                    for doll_entity in &editable_dolls {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(current_doll) if entity == current_doll)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(current_doll) if doll_entity == current_doll)),
                             )
                             .clicked()
                         {
                             if let Ok(current_entity) = active_entity {
                                 commands.entity(current_entity).remove::<ActiveDoll>();
                             }
-                            commands.entity(entity).insert(ActiveDoll);
+                            commands.entity(doll_entity).insert(ActiveDoll);
                         }
                     }
                     if ui.button("➕").clicked() {
@@ -142,9 +142,9 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            for (index, doll_entity) in editable_dolls.iter().enumerate() {
+            for (index, entity) in editable_dolls.iter().enumerate() {
                 let (first_name, last_name) = names
-                    .get(doll_entity)
+                    .get(entity)
                     .expect("doll should have a first and a last name");
                 ensure!(
                     !first_name.is_empty(),

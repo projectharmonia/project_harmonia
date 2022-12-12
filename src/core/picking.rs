@@ -66,24 +66,24 @@ impl PickingPlugin {
     }
 
     fn outline_system(
-        In(entity): In<Option<Entity>>,
+        In(hovered_entity): In<Option<Entity>>,
         mut previous_entity: Local<Option<Entity>>,
         mut outlines: Query<&mut OutlineVolume>,
         children: Query<&Children>,
     ) {
-        if *previous_entity == entity {
+        if *previous_entity == hovered_entity {
             return;
         }
 
-        if let Some(entity) = entity {
-            set_outline_recursive(entity, true, &mut outlines, &children);
+        if let Some(hovered_entity) = hovered_entity {
+            set_outline_recursive(hovered_entity, true, &mut outlines, &children);
         }
 
-        if let Some(entity) = *previous_entity {
-            set_outline_recursive(entity, false, &mut outlines, &children);
+        if let Some(previous_entity) = *previous_entity {
+            set_outline_recursive(previous_entity, false, &mut outlines, &children);
         }
 
-        *previous_entity = entity;
+        *previous_entity = hovered_entity;
     }
 }
 
