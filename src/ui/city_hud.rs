@@ -11,8 +11,7 @@ use strum::IntoEnumIterator;
 use super::selected_object::SelectedObject;
 use crate::core::{
     asset_metadata::AssetMetadata,
-    cursor::CursorMode,
-    game_state::GameState,
+    game_state::{CursorMode, GameState},
     preview::{PreviewRequest, Previews},
 };
 use objects_tab::ObjectsTab;

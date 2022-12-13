@@ -5,28 +5,27 @@ use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use super::CursorMode;
 use crate::core::{
     action::{self, Action},
     asset_metadata,
     city::ActiveCity,
-    game_state::GameState,
+    game_state::{CursorMode, GameState},
     network::network_event::client_event::ClientSendBuffer,
     object::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
 };
 
-pub(super) struct CursorObjectPlugin;
+pub(super) struct PlacingObjectPlugin;
 
-impl Plugin for CursorObjectPlugin {
+impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::picking_system
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Objects),
         )
-        // Run in this stage to avoid visibility having effect earlier than spawning cursor object.
+        // Run in this stage to avoid visibility having effect earlier than spawning placing object.
         .add_system_to_stage(
             CoreStage::PostUpdate,
             Self::init_system
@@ -39,7 +38,7 @@ impl Plugin for CursorObjectPlugin {
                 .run_in_state(CursorMode::Objects),
         )
         .add_system(
-            Self::application_system
+            Self::confirmation_system
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Objects),
@@ -61,7 +60,7 @@ impl Plugin for CursorObjectPlugin {
     }
 }
 
-impl CursorObjectPlugin {
+impl PlacingObjectPlugin {
     fn picking_system(
         mut commands: Commands,
         mut pick_events: EventReader<ObjectPicked>,
@@ -70,7 +69,7 @@ impl CursorObjectPlugin {
         for event in pick_events.iter() {
             if let Ok(parent) = parents.get(event.entity) {
                 commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn(CursorObject::Moving(event.entity));
+                    parent.spawn(PlacingObject::Moving(event.entity));
                 });
             }
         }
@@ -80,13 +79,13 @@ impl CursorObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         mut objects: Query<(&Transform, &Handle<Scene>, &mut Visibility)>,
-        new_cursor_objects: Query<(Entity, &CursorObject), Added<CursorObject>>,
+        new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
     ) {
-        for (cursor_entity, cursor_object) in &new_cursor_objects {
-            debug!("created cursor {cursor_object:?}");
-            match cursor_object {
-                CursorObject::Spawning(metadata_path) => {
-                    commands.entity(cursor_entity).insert((
+        for (placing_entity, placing_object) in &new_placing_objects {
+            debug!("created placing object {placing_object:?}");
+            match placing_object {
+                PlacingObject::Spawning(metadata_path) => {
+                    commands.entity(placing_entity).insert((
                         SceneBundle {
                             scene: asset_server.load(&asset_metadata::scene_path(metadata_path)),
                             ..Default::default()
@@ -94,11 +93,11 @@ impl CursorObjectPlugin {
                         CursorOffset::default(),
                     ));
                 }
-                CursorObject::Moving(object_entity) => {
+                PlacingObject::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
                         .get_mut(*object_entity)
                         .expect("moving object should exist with these components");
-                    commands.entity(cursor_entity).insert(SceneBundle {
+                    commands.entity(placing_entity).insert(SceneBundle {
                         scene: scene_handle.clone(),
                         transform: *transform,
                         ..Default::default()
@@ -115,12 +114,12 @@ impl CursorObjectPlugin {
         rapier_ctx: Res<RapierContext>,
         action_state: Res<ActionState<Action>>,
         cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-        mut cursor_objects: Query<
+        mut placing_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
-            With<CursorObject>,
+            With<PlacingObject>,
         >,
     ) {
-        if let Ok((entity, mut transform, cursor_offset)) = cursor_objects.get_single_mut() {
+        if let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() {
             if let Some(cursor_pos) = windows
                 .get_primary()
                 .and_then(|window| window.cursor_position())
@@ -156,22 +155,22 @@ impl CursorObjectPlugin {
         }
     }
 
-    fn application_system(
+    fn confirmation_system(
         mut move_buffers: ResMut<ClientSendBuffer<ObjectMove>>,
         mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawn>>,
-        cursor_objects: Query<(&Transform, &CursorObject)>,
+        placing_objects: Query<(&Transform, &PlacingObject)>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
-        if let Ok((transform, cursor_object)) = cursor_objects.get_single() {
-            debug!("confirmed cursor {cursor_object:?}");
-            match cursor_object {
-                CursorObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
+        if let Ok((transform, placing_object)) = placing_objects.get_single() {
+            debug!("confirmed placing object {placing_object:?}");
+            match placing_object {
+                PlacingObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
                     metadata_path: metadata_path.clone(),
                     translation: transform.translation,
                     rotation: transform.rotation,
                     city_entity: active_cities.single(),
                 }),
-                CursorObject::Moving(entity) => move_buffers.push(ObjectMove {
+                PlacingObject::Moving(entity) => move_buffers.push(ObjectMove {
                     entity: *entity,
                     translation: transform.translation,
                     rotation: transform.rotation,
@@ -183,14 +182,14 @@ impl CursorObjectPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_buffer: ResMut<ClientSendBuffer<ObjectDespawn>>,
-        cursor_objects: Query<(Entity, &CursorObject)>,
+        placing_objects: Query<(Entity, &PlacingObject)>,
     ) {
-        if let Ok((entity, cursor_object)) = cursor_objects.get_single() {
-            if let CursorObject::Moving(entity) = *cursor_object {
-                debug!("sent despawn event for cursor {cursor_object:?}");
+        if let Ok((entity, placing_object)) = placing_objects.get_single() {
+            if let PlacingObject::Moving(entity) = *placing_object {
+                debug!("sent despawn event for placing object {placing_object:?}");
                 despawn_buffer.push(ObjectDespawn(entity));
             } else {
-                debug!("cancelled cursor {cursor_object:?}");
+                debug!("cancelled placing object {placing_object:?}");
                 commands.entity(entity).despawn_recursive();
             }
         }
@@ -198,14 +197,14 @@ impl CursorObjectPlugin {
 
     fn cleanup_system(
         mut commands: Commands,
-        cursor_objects: Query<(Entity, &CursorObject)>,
+        placing_objects: Query<(Entity, &PlacingObject)>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        if let Ok((cursor_entity, cursor_object)) = cursor_objects.get_single() {
-            debug!("despawned cursor {cursor_object:?}");
-            commands.entity(cursor_entity).despawn_recursive();
+        if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
+            debug!("despawned placing object {placing_object:?}");
+            commands.entity(placing_entity).despawn_recursive();
 
-            if let CursorObject::Moving(object_entity) = *cursor_object {
+            if let PlacingObject::Moving(object_entity) = *placing_object {
                 // Object could be invalid in case of removal.
                 if let Ok(mut visibility) = visibility.get_mut(object_entity) {
                     visibility.is_visible = true;
@@ -215,13 +214,13 @@ impl CursorObjectPlugin {
     }
 }
 
-pub(crate) fn cursor_object_exists(cursor_objects: Query<(), With<CursorObject>>) -> bool {
-    !cursor_objects.is_empty()
+pub(crate) fn placing(placing_objects: Query<(), With<PlacingObject>>) -> bool {
+    !placing_objects.is_empty()
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug)]
-pub(crate) enum CursorObject {
+pub(crate) enum PlacingObject {
     Spawning(PathBuf),
     Moving(Entity),
 }

@@ -1,3 +1,5 @@
+pub(crate) mod placing_object;
+
 use std::path::PathBuf;
 
 use bevy::{
@@ -9,6 +11,7 @@ use bevy_mod_raycast::RaycastMesh;
 use bevy_renet::renet::RenetServer;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
+use placing_object::PlacingObjectPlugin;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -26,7 +29,8 @@ pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<ObjectPath>()
+        app.add_plugin(PlacingObjectPlugin)
+            .register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
@@ -128,7 +132,7 @@ impl ObjectPlugin {
 }
 
 #[derive(Bundle)]
-pub(crate) struct ObjectBundle {
+struct ObjectBundle {
     object_path: ObjectPath,
     transform: Transform,
     parent_sync: ParentSync,
@@ -153,11 +157,11 @@ impl ObjectBundle {
 pub(crate) struct ObjectPath(PathBuf);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub(super) struct ObjectSpawn {
-    pub(super) metadata_path: PathBuf,
-    pub(super) translation: Vec3,
-    pub(super) rotation: Quat,
-    pub(super) city_entity: Entity,
+struct ObjectSpawn {
+    metadata_path: PathBuf,
+    translation: Vec3,
+    rotation: Quat,
+    city_entity: Entity,
 }
 
 impl MapEntities for ObjectSpawn {
@@ -168,10 +172,10 @@ impl MapEntities for ObjectSpawn {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub(super) struct ObjectMove {
-    pub(super) entity: Entity,
-    pub(super) translation: Vec3,
-    pub(super) rotation: Quat,
+struct ObjectMove {
+    entity: Entity,
+    translation: Vec3,
+    rotation: Quat,
 }
 
 impl MapEntities for ObjectMove {
@@ -182,7 +186,7 @@ impl MapEntities for ObjectMove {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(super) struct ObjectDespawn(pub(super) Entity);
+struct ObjectDespawn(Entity);
 
 impl MapEntities for ObjectDespawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
@@ -193,4 +197,4 @@ impl MapEntities for ObjectDespawn {
 
 /// An event from server which indicates action confirmation.
 #[derive(Deserialize, Serialize, Debug, Default)]
-pub(super) struct ObjectConfirmed;
+struct ObjectConfirmed;

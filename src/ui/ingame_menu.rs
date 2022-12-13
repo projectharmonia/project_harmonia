@@ -8,9 +8,9 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     action::{self, Action},
-    cursor::cursor_object,
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
+    object::placing_object,
 };
 
 use super::{
@@ -25,7 +25,7 @@ impl Plugin for InGameMenuPlugin {
         app.add_system(
             Self::open_ingame_menu_system
                 .run_if(action::just_pressed(Action::Cancel))
-                .run_if_not(cursor_object::cursor_object_exists)
+                .run_if_not(placing_object::placing)
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
         )
