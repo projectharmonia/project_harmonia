@@ -10,7 +10,7 @@ use crate::core::{
     action::{self, Action},
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
-    object::placing_object,
+    object::placing,
 };
 
 use super::{
@@ -25,7 +25,7 @@ impl Plugin for InGameMenuPlugin {
         app.add_system(
             Self::open_ingame_menu_system
                 .run_if(action::just_pressed(Action::Cancel))
-                .run_if_not(placing_object::placing)
+                .run_if_not(placing::placing_active)
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
         )

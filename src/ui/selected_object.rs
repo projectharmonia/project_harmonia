@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     city::ActiveCity,
     game_state::GameState,
-    object::placing_object::{self, PlacingObject},
+    object::placing::{self, Placing},
 };
 
 pub(super) struct SelectedObjectPlugin;
@@ -21,7 +21,7 @@ impl Plugin for SelectedObjectPlugin {
         )
         .add_system(
             Self::selection_removal_system
-                .run_if_not(placing_object::placing)
+                .run_if_not(placing::placing_active)
                 .run_if_resource_exists::<SelectedObject>()
                 .run_in_state(GameState::City),
         );
@@ -42,7 +42,7 @@ impl SelectedObjectPlugin {
         commands
             .entity(active_cities.single())
             .with_children(|parent| {
-                parent.spawn(PlacingObject::Spawning(metadata_path.path().to_path_buf()));
+                parent.spawn(Placing::Spawning(metadata_path.path().to_path_buf()));
             });
     }
 
