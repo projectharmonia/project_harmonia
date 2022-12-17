@@ -7,7 +7,7 @@ use leafwing_input_manager::prelude::ActionState;
 use super::{
     action::Action,
     game_state::{CursorMode, GameState},
-    object::placing,
+    object::placing_object,
 };
 
 pub(super) struct PickingPlugin;
@@ -19,7 +19,7 @@ impl Plugin for PickingPlugin {
                 Self::ray_system
                     .pipe(Self::object_picking_system)
                     .pipe(Self::outline_system)
-                    .run_if_not(placing::placing_active)
+                    .run_if_not(placing_object::placing_active)
                     .run_in_state(GameState::City)
                     .run_not_in_state(CursorMode::Lots),
             )

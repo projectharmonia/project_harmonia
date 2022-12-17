@@ -16,9 +16,9 @@ use crate::core::{
     preview::PreviewCamera,
 };
 
-pub(super) struct PlacingPlugin;
+pub(super) struct PlacingObjectPlugin;
 
-impl Plugin for PlacingPlugin {
+impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::picking_system
@@ -60,7 +60,7 @@ impl Plugin for PlacingPlugin {
     }
 }
 
-impl PlacingPlugin {
+impl PlacingObjectPlugin {
     fn picking_system(
         mut commands: Commands,
         mut pick_events: EventReader<ObjectPicked>,
@@ -69,7 +69,7 @@ impl PlacingPlugin {
         for event in pick_events.iter() {
             if let Ok(parent) = parents.get(event.entity) {
                 commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn(Placing::Moving(event.entity));
+                    parent.spawn(PlacingObject::Moving(event.entity));
                 });
             }
         }
@@ -79,21 +79,21 @@ impl PlacingPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         mut objects: Query<(&Transform, &Handle<Scene>, &mut Visibility)>,
-        new_placings: Query<(Entity, &Placing), Added<Placing>>,
+        new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
     ) {
-        for (placing_entity, placing) in &new_placings {
-            debug!("started placing {placing:?}");
-            match placing {
-                Placing::Spawning(metadata_path) => {
+        for (placing_entity, placing_object) in &new_placing_objects {
+            debug!("created placing object {placing_object:?}");
+            match placing_object {
+                PlacingObject::Spawning(metadata_path) => {
                     commands.entity(placing_entity).insert((
                         SceneBundle {
-                            scene: asset_server.load(&asset_metadata::scene_path(metadata_path)),
+                            scene: asset_server.load(asset_metadata::scene_path(metadata_path)),
                             ..Default::default()
                         },
                         CursorOffset::default(),
                     ));
                 }
-                Placing::Moving(object_entity) => {
+                PlacingObject::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
                         .get_mut(*object_entity)
                         .expect("moving object should exist with these components");
@@ -114,9 +114,12 @@ impl PlacingPlugin {
         rapier_ctx: Res<RapierContext>,
         action_state: Res<ActionState<Action>>,
         cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-        mut placings: Query<(Entity, &mut Transform, Option<&CursorOffset>), With<Placing>>,
+        mut placing_objects: Query<
+            (Entity, &mut Transform, Option<&CursorOffset>),
+            With<PlacingObject>,
+        >,
     ) {
-        if let Ok((entity, mut transform, cursor_offset)) = placings.get_single_mut() {
+        if let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() {
             if let Some(cursor_pos) = windows
                 .get_primary()
                 .and_then(|window| window.cursor_position())
@@ -155,19 +158,19 @@ impl PlacingPlugin {
     fn confirmation_system(
         mut move_buffers: ResMut<ClientSendBuffer<ObjectMove>>,
         mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawn>>,
-        placings: Query<(&Transform, &Placing)>,
+        placing_objects: Query<(&Transform, &PlacingObject)>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
-        if let Ok((transform, placing)) = placings.get_single() {
-            debug!("confirmed placing {placing:?}");
-            match placing {
-                Placing::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
+        if let Ok((transform, placing_object)) = placing_objects.get_single() {
+            debug!("confirmed placing object {placing_object:?}");
+            match placing_object {
+                PlacingObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
                     metadata_path: metadata_path.clone(),
                     translation: transform.translation,
                     rotation: transform.rotation,
                     city_entity: active_cities.single(),
                 }),
-                Placing::Moving(entity) => move_buffers.push(ObjectMove {
+                PlacingObject::Moving(entity) => move_buffers.push(ObjectMove {
                     entity: *entity,
                     translation: transform.translation,
                     rotation: transform.rotation,
@@ -179,14 +182,14 @@ impl PlacingPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_buffer: ResMut<ClientSendBuffer<ObjectDespawn>>,
-        placings: Query<(Entity, &Placing)>,
+        placing_objects: Query<(Entity, &PlacingObject)>,
     ) {
-        if let Ok((entity, placing)) = placings.get_single() {
-            if let Placing::Moving(entity) = *placing {
-                debug!("sent despawn event for placing {placing:?}");
+        if let Ok((entity, placing_object)) = placing_objects.get_single() {
+            if let PlacingObject::Moving(entity) = *placing_object {
+                debug!("sent despawn event for placing object {placing_object:?}");
                 despawn_buffer.push(ObjectDespawn(entity));
             } else {
-                debug!("cancelled placing {placing:?}");
+                debug!("cancelled placing object {placing_object:?}");
                 commands.entity(entity).despawn_recursive();
             }
         }
@@ -194,14 +197,14 @@ impl PlacingPlugin {
 
     fn cleanup_system(
         mut commands: Commands,
-        placings: Query<(Entity, &Placing)>,
+        placing_objects: Query<(Entity, &PlacingObject)>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        if let Ok((placing_entity, placing)) = placings.get_single() {
-            debug!("despawned placing {placing:?}");
+        if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
+            debug!("despawned placing object {placing_object:?}");
             commands.entity(placing_entity).despawn_recursive();
 
-            if let Placing::Moving(object_entity) = *placing {
+            if let PlacingObject::Moving(object_entity) = *placing_object {
                 // Object could be invalid in case of removal.
                 if let Ok(mut visibility) = visibility.get_mut(object_entity) {
                     visibility.is_visible = true;
@@ -211,13 +214,13 @@ impl PlacingPlugin {
     }
 }
 
-pub(crate) fn placing_active(placings: Query<(), With<Placing>>) -> bool {
-    !placings.is_empty()
+pub(crate) fn placing_active(placing_objects: Query<(), With<PlacingObject>>) -> bool {
+    !placing_objects.is_empty()
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug)]
-pub(crate) enum Placing {
+pub(crate) enum PlacingObject {
     Spawning(PathBuf),
     Moving(Entity),
 }
