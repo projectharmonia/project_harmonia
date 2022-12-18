@@ -10,6 +10,7 @@ use crate::core::{
     action::{self, Action},
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
+    lot::spawning_lot,
     object::placing_object,
 };
 
@@ -26,6 +27,7 @@ impl Plugin for InGameMenuPlugin {
             Self::open_ingame_menu_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_if_not(placing_object::placing_active)
+                .run_if_not(spawning_lot::spawning_active)
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
         )

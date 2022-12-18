@@ -12,6 +12,7 @@ pub(super) mod game_state;
 pub(super) mod game_world;
 mod ground;
 pub(super) mod input_events;
+pub(super) mod lot;
 pub(super) mod network;
 pub(super) mod object;
 mod orbit_camera;
@@ -35,6 +36,7 @@ use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
+use lot::LotPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
 use orbit_camera::OrbitCameraPlugin;
@@ -55,6 +57,7 @@ impl PluginGroup for CorePlugins {
             .add(CityPlugin)
             .add(CliPlugin)
             .add(DollPlugin)
+            .add(LotPlugin)
             .add(GroundPlugin)
             .add(ActionPlugin)
             .add(DeveloperPlugin)

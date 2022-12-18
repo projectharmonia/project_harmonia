@@ -15,8 +15,8 @@ license-files = []
 
 [bans]
 multiple-versions = "allow"
-wildcards = "deny"
+wildcards = "allow"
 
 [sources]
 unknown-registry = "deny"
-unknown-git = "deny"
+unknown-git = "allow"

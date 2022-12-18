@@ -11,6 +11,7 @@ use bevy_hikari::prelude::*;
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
+use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
@@ -44,6 +45,7 @@ fn main() {
         .add_plugin(RenetClientPlugin::default())
         .add_plugin(DefaultRaycastingPlugin::<Pickable>::default())
         .add_plugin(OutlinePlugin)
+        .add_plugin(PolylinePlugin)
         .add_plugin(EguiPlugin)
         .add_plugin(HikariPlugin)
         .add_plugin(WorldInspectorPlugin::new())

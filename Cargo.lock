@@ -640,6 +640,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_polyline"
+version = "0.4.0"
+source = "git+https://github.com/dollisgame/bevy_polyline?branch=remove-render-feature-0.9#c1b9be0a57cd128a7bbe9711ec75c049d0f7bf61"
+dependencies = [
+ "bevy",
+ "bitflags",
+ "naga",
+]
+
+[[package]]
 name = "bevy_ptr"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1400,6 +1410,7 @@ dependencies = [
  "bevy_egui",
  "bevy_mod_outline",
  "bevy_mod_raycast",
+ "bevy_polyline",
  "bevy_rapier3d",
  "bevy_renet",
  "clap",
