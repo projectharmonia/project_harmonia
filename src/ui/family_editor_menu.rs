@@ -242,10 +242,7 @@ impl FamilyEditorMenuPlugin {
                             );
                             ui.label(name.as_str());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                                let mut select = false;
-                                if ui.button("⏵ Place and play").clicked() {
-                                    select = true;
-                                }
+                                let select = ui.button("⏵ Place and play").clicked();
                                 if ui.button("⬇ Place").clicked() || select {
                                     spawn_buffer.push(FamilySpawn {
                                         city_entity,
