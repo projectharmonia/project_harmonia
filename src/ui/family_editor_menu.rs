@@ -96,17 +96,19 @@ impl FamilyEditorMenuPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
+                    let mut editable_dolls = editable_dolls.iter().collect::<Vec<_>>();
+                    editable_dolls.sort(); // To preserve the order, it changes when we insert or remove `ActiveDoll`.
                     let active_entity = active_dolls.get_single();
-                    for doll_entity in &editable_dolls {
+                    for doll_entity in editable_dolls {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(current_doll) if doll_entity == current_doll)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(active_entity) if active_entity == doll_entity)),
                             )
                             .clicked()
                         {
-                            if let Ok(current_entity) = active_entity {
-                                commands.entity(current_entity).remove::<ActiveDoll>();
+                            if let Ok(active_entity) = active_entity {
+                                commands.entity(active_entity).remove::<ActiveDoll>();
                             }
                             commands.entity(doll_entity).insert(ActiveDoll);
                         }
