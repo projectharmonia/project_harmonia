@@ -3281,9 +3281,9 @@ dependencies = [
 
 [[package]]
 name = "standard_paths"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45813d4dbd6382728c2337fb40a17edffe5ce679b689a58aacdb65fd9c81f21b"
+checksum = "15104a0769efe519c0d652b285d595b1f2b4c19e26eb4a776a457dd259e465da"
 dependencies = [
  "home",
  "users",
