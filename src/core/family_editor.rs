@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    doll::{ActiveDoll, FirstName, LastName},
+    doll::{FirstName, LastName},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
     settings::Settings,
@@ -43,17 +43,19 @@ impl FamilyEditorPlugin {
             });
     }
 
-    fn visibility_enable_system(mut new_active_dolls: Query<&mut Visibility, Added<ActiveDoll>>) {
-        for mut visibility in &mut new_active_dolls {
+    fn visibility_enable_system(
+        mut new_selected_dolls: Query<&mut Visibility, Added<SelectedDoll>>,
+    ) {
+        for mut visibility in &mut new_selected_dolls {
             visibility.is_visible = true;
         }
     }
 
     fn visibility_disable_system(
-        removed_active_dolls: RemovedComponents<ActiveDoll>,
+        removed_selected_dolls: RemovedComponents<SelectedDoll>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        for entity in removed_active_dolls.iter() {
+        for entity in removed_selected_dolls.iter() {
             // Entity could be despawned before.
             if let Ok(mut visibility) = visibility.get_mut(entity) {
                 visibility.is_visible = false;
@@ -106,9 +108,11 @@ pub(crate) struct EditableDollBundle {
     transform: Transform,
 }
 
-/// Currently editing doll.
 #[derive(Component, Default)]
 pub(crate) struct EditableDoll;
+
+#[derive(Component)]
+pub(crate) struct SelectedDoll;
 
 /// An event on which family will be reset.
 #[derive(Default)]

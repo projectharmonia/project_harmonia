@@ -20,10 +20,10 @@ use super::{
 use crate::core::{
     action::Action,
     city::City,
-    doll::{ActiveDoll, DollScene, FirstName, LastName},
+    doll::{DollScene, FirstName, LastName},
     error_message,
     family::{FamilyScene, FamilySpawn},
-    family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset},
+    family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset, SelectedDoll},
     game_paths::GamePaths,
     game_state::GameState,
     network::network_event::client_event::ClientSendBuffer,
@@ -54,9 +54,9 @@ impl Plugin for FamilyEditorMenuPlugin {
 impl FamilyEditorMenuPlugin {
     fn personality_window_system(
         mut egui: ResMut<EguiContext>,
-        mut active_dolls: Query<(&mut FirstName, &mut LastName), With<ActiveDoll>>,
+        mut selected_dolls: Query<(&mut FirstName, &mut LastName), With<SelectedDoll>>,
     ) {
-        if let Ok((mut first_name, mut last_name)) = active_dolls.get_single_mut() {
+        if let Ok((mut first_name, mut last_name)) = selected_dolls.get_single_mut() {
             Window::new("Personality")
                 .anchor(Align2::LEFT_TOP, (0.0, 0.0))
                 .resizable(false)
@@ -88,7 +88,7 @@ impl FamilyEditorMenuPlugin {
         mut egui: ResMut<EguiContext>,
         editable_families: Query<Entity, With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
-        active_dolls: Query<Entity, With<ActiveDoll>>,
+        selected_dolls: Query<Entity, With<SelectedDoll>>,
     ) {
         Window::new("Dolls")
             .resizable(false)
@@ -97,28 +97,28 @@ impl FamilyEditorMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     let mut editable_dolls = editable_dolls.iter().collect::<Vec<_>>();
-                    editable_dolls.sort(); // To preserve the order, it changes when we insert or remove `ActiveDoll`.
-                    let active_entity = active_dolls.get_single();
+                    editable_dolls.sort(); // To preserve the order, it changes when we insert or remove `SelectedDoll`.
+                    let selected_entity = selected_dolls.get_single();
                     for doll_entity in editable_dolls {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(active_entity, Ok(active_entity) if active_entity == doll_entity)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(selected_entity, Ok(selected_entity) if selected_entity == doll_entity)),
                             )
                             .clicked()
                         {
-                            if let Ok(active_entity) = active_entity {
-                                commands.entity(active_entity).remove::<ActiveDoll>();
+                            if let Ok(selected_entity) = selected_entity {
+                                commands.entity(selected_entity).remove::<SelectedDoll>();
                             }
-                            commands.entity(doll_entity).insert(ActiveDoll);
+                            commands.entity(doll_entity).insert(SelectedDoll);
                         }
                     }
                     if ui.button("➕").clicked() {
-                        if let Ok(current_entity) = active_entity {
-                            commands.entity(current_entity).remove::<ActiveDoll>();
+                        if let Ok(current_entity) = selected_entity {
+                            commands.entity(current_entity).remove::<SelectedDoll>();
                         }
                         commands.entity(editable_families.single()).with_children(|parent| {
-                            parent.spawn((EditableDollBundle::default(), ActiveDoll));
+                            parent.spawn((EditableDollBundle::default(), SelectedDoll));
                         });
                     }
                 });
