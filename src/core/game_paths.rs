@@ -73,7 +73,7 @@ impl Default for GamePaths {
         );
 
         #[cfg(not(test))]
-        let config_dir = StandardPaths::default()
+        let config_dir = StandardPaths::new(env!("CARGO_PKG_NAME"), Default::default())
             .writable_location(LocationType::AppConfigLocation)
             .expect("app configuration directory should be found");
 
