@@ -1,12 +1,10 @@
 use bevy::{asset::HandleId, prelude::*};
 use bevy_egui::egui::{ImageButton, TextureId, Ui};
 
-use crate::{
-    core::{
-        asset_metadata::{AssetMetadata, MetadataKind},
-        preview::{PreviewPlugin, PreviewRequest, Previews},
-    },
-    ui::selected_object::SelectedObject,
+use crate::core::{
+    asset_metadata::{AssetMetadata, MetadataKind},
+    object::selected_object::SelectedObject,
+    preview::{PreviewPlugin, PreviewRequest, Previews},
 };
 
 pub(super) struct ObjectsTab<'a, 'w, 's, 'wc, 'sc> {

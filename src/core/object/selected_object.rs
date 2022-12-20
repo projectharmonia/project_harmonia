@@ -53,4 +53,4 @@ impl SelectedObjectPlugin {
 
 /// Resource that represents object selection in an object placement menu.
 #[derive(Clone, Copy, Resource)]
-pub(super) struct SelectedObject(pub(crate) HandleId);
+pub(crate) struct SelectedObject(pub(crate) HandleId);

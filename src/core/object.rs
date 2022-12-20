@@ -1,4 +1,5 @@
 pub(crate) mod placing_object;
+pub(crate) mod selected_object;
 
 use std::path::PathBuf;
 
@@ -12,6 +13,7 @@ use bevy_renet::renet::RenetServer;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
 use placing_object::PlacingObjectPlugin;
+use selected_object::SelectedObjectPlugin;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -30,6 +32,7 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
+            .add_plugin(SelectedObjectPlugin)
             .register_type::<ObjectPath>()
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()

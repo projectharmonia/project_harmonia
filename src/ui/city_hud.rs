@@ -8,10 +8,10 @@ use bevy_egui::{
 use iyes_loopless::prelude::*;
 use strum::IntoEnumIterator;
 
-use super::selected_object::SelectedObject;
 use crate::core::{
     asset_metadata::AssetMetadata,
     game_state::{CursorMode, GameState},
+    object::selected_object::SelectedObject,
     preview::{PreviewRequest, Previews},
 };
 use objects_tab::ObjectsTab;

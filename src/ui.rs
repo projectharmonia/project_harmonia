@@ -6,7 +6,6 @@ mod family_hud;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
-mod selected_object;
 mod settings_menu;
 mod task_menu;
 mod world_browser;
@@ -22,7 +21,6 @@ use family_hud::FamilyHudPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
-use selected_object::SelectedObjectPlugin;
 use settings_menu::SettingsMenuPlugin;
 use task_menu::TaskMenuPlugin;
 use world_browser::WorldBrowserPlugin;
@@ -43,7 +41,6 @@ impl PluginGroup for UiPlugins {
             .add(InGameMenuPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)
-            .add(SelectedObjectPlugin)
             .add(SettingsMenuPlugin)
             .add(TaskMenuPlugin)
             .add(WorldBrowserPlugin)
