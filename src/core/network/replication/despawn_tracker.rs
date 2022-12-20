@@ -68,8 +68,6 @@ pub(super) struct DespawnTracker {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
-
     use crate::core::network::network_preset::NetworkPresetPlugin;
 
     use super::*;
@@ -96,12 +94,7 @@ mod tests {
         app.update();
 
         let despawn_tracker = app.world.resource::<DespawnTracker>();
-        let despawned_entity = *despawn_tracker
-            .despawns
-            .iter()
-            .map(|(entity, _)| entity)
-            .exactly_one()
-            .unwrap();
-        assert_eq!(despawned_entity, game_entity);
+        assert_eq!(despawn_tracker.despawns.len(), 1);
+        assert_eq!(despawn_tracker.despawns.first().unwrap().0, game_entity);
     }
 }

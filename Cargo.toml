@@ -48,7 +48,6 @@ walkdir = "2.3"
 [dev-dependencies]
 fastrand = "1.8.0"
 serde_test = "1.0"
-itertools = "0.10"
 
 # Enable high optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

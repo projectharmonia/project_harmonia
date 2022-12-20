@@ -187,11 +187,13 @@ mod tests {
 
         app.update();
 
-        let mut client_events = app.world.resource_mut::<Events<ClientEvent<DummyEvent>>>();
-        itertools::assert_equal(
-            client_events.drain().map(|event| event.event.0),
-            [server_entity],
-        );
+        let client_events: Vec<_> = app
+            .world
+            .resource_mut::<Events<ClientEvent<DummyEvent>>>()
+            .drain()
+            .map(|event| event.event.0)
+            .collect();
+        assert_eq!(client_events, [server_entity]);
     }
 
     #[test]
