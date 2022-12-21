@@ -12,10 +12,13 @@ use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
 use super::{
-    doll::{ActiveDoll, DollBundle, DollScene, DollSelect},
+    doll::{ActiveDoll, DollBundle, DollScene},
     game_world::{GameEntity, GameWorld},
     network::{
-        network_event::client_event::{ClientEvent, ClientEventAppExt},
+        network_event::{
+            client_event::{ClientEvent, ClientEventAppExt},
+            server_event::{SendMode, ServerEvent, ServerEventAppExt},
+        },
         replication::map_entity::ReflectMapEntity,
     },
 };
@@ -28,6 +31,7 @@ impl Plugin for FamilyPlugin {
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
+            .add_mapped_server_event::<SelectedFamilySpawned>()
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>())
@@ -73,30 +77,28 @@ impl FamilyPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: ResMut<Events<ClientEvent<FamilySpawn>>>,
-        mut select_events: EventWriter<ClientEvent<DollSelect>>,
+        mut select_events: EventWriter<ServerEvent<SelectedFamilySpawned>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.drain() {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
             commands.entity(event.city_entity).with_children(|parent| {
-                for (index, doll_scene) in event.scene.dolls.into_iter().enumerate() {
-                    let doll_entity = parent
-                        .spawn(DollBundle::new(
-                            doll_scene.first_name,
-                            doll_scene.last_name,
-                            family_entity,
-                            event.city_entity,
-                        ))
-                        .id();
-                    if index == 0 && event.select {
-                        select_events.send(ClientEvent {
-                            client_id,
-                            event: DollSelect(doll_entity),
-                        })
-                    }
+                for doll_scene in event.scene.dolls {
+                    parent.spawn(DollBundle::new(
+                        doll_scene.first_name,
+                        doll_scene.last_name,
+                        family_entity,
+                        event.city_entity,
+                    ));
                 }
             });
+            if event.select {
+                select_events.send(ServerEvent {
+                    mode: SendMode::Direct(client_id),
+                    event: SelectedFamilySpawned(family_entity),
+                });
+            }
         }
     }
 
@@ -230,6 +232,17 @@ impl MapEntities for FamilySpawn {
 pub(crate) struct FamilyDespawn(pub(crate) Entity);
 
 impl MapEntities for FamilyDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
+
+/// An event from server which indicates spawn confirmation for the selected family.
+#[derive(Deserialize, Serialize, Debug)]
+pub(super) struct SelectedFamilySpawned(pub(super) Entity);
+
+impl MapEntities for SelectedFamilySpawned {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.0 = entity_map.get(self.0)?;
         Ok(())

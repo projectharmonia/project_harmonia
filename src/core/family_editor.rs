@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    doll::{FirstName, LastName},
+    doll::{ActiveDoll, FirstName, LastName},
+    family::{Dolls, SelectedFamilySpawned},
     game_state::GameState,
     orbit_camera::OrbitCameraBundle,
     settings::Settings,
@@ -15,6 +16,7 @@ impl Plugin for FamilyEditorPlugin {
         app.add_event::<FamilyReset>()
             .add_enter_system(GameState::FamilyEditor, Self::spawn_system)
             .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
+            .add_system(Self::selection_system.run_in_state(GameState::FamilyEditor))
             .add_system(Self::reset_family_system.run_on_event::<FamilyReset>())
             .add_system(Self::visibility_enable_system.run_in_state(GameState::FamilyEditor))
             .add_system_to_stage(
@@ -60,6 +62,23 @@ impl FamilyEditorPlugin {
             if let Ok(mut visibility) = visibility.get_mut(entity) {
                 visibility.is_visible = false;
             }
+        }
+    }
+
+    fn selection_system(
+        mut commands: Commands,
+        mut select_events: EventReader<SelectedFamilySpawned>,
+        dolls: Query<&Dolls>,
+    ) {
+        for event in select_events.iter() {
+            let dolls = dolls
+                .get(event.0)
+                .expect("spawned family should have dolls");
+            let doll_entity = *dolls
+                .first()
+                .expect("family should always have at least one member");
+            commands.entity(doll_entity).insert(ActiveDoll);
+            commands.insert_resource(NextState(GameState::Family))
         }
     }
 
