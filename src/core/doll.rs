@@ -12,7 +12,7 @@ use super::{
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
-    network::network_event::client_event::{ClientEvent, ClientEventAppExt, ClientSendBuffer},
+    network::network_event::client_event::{ClientEvent, ClientEventAppExt},
     task::QueuedTasks,
 };
 
@@ -73,10 +73,10 @@ impl DollPlugin {
     }
 
     fn activation_system(
-        mut select_buffer: ResMut<ClientSendBuffer<DollSelect>>,
+        mut select_events: EventWriter<DollSelect>,
         new_active_dolls: Query<Entity, Added<ActiveDoll>>,
     ) {
-        select_buffer.push(DollSelect(new_active_dolls.single()));
+        select_events.send(DollSelect(new_active_dolls.single()));
     }
 
     fn activation_confirmation_system(
@@ -109,13 +109,13 @@ impl DollPlugin {
 
     fn deactivation_system(
         mut commands: Commands,
-        mut deselect_buffer: ResMut<ClientSendBuffer<DollDeselect>>,
+        mut deselect_events: EventWriter<DollDeselect>,
         active_dolls: Query<Entity, With<ActiveDoll>>,
     ) {
         commands
             .entity(active_dolls.single())
             .remove::<ActiveDoll>();
-        deselect_buffer.push(DollDeselect);
+        deselect_events.send(DollDeselect);
     }
 
     fn deactivation_confirmation_system(

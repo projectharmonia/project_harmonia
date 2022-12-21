@@ -11,9 +11,9 @@ use bevy::prelude::*;
 #[derive(Clone, Copy, Default, Resource)]
 pub(crate) struct NetworkEventCounter {
     /// Increments with each instantiation of [`ServerEventPlugin`].
-    pub(crate) server: u8,
+    pub(super) server: u8,
     /// Increments with each instantiation of [`ClientEventPlugin`].
-    pub(crate) client: u8,
+    pub(super) client: u8,
 }
 
 /// Holds a channel ID for `T`.

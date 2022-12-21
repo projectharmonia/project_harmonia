@@ -9,7 +9,6 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     doll::ActiveDoll,
     game_state::GameState,
-    network::network_event::client_event::ClientSendBuffer,
     task::{QueuedTasks, Task, TaskCancel, TaskRequestKind},
 };
 
@@ -24,7 +23,7 @@ impl Plugin for FamilyHudPlugin {
 impl FamilyHudPlugin {
     fn active_tasks_system(
         mut egui: ResMut<EguiContext>,
-        mut cancel_buffer: ResMut<ClientSendBuffer<TaskCancel>>,
+        mut cancel_events: EventWriter<TaskCancel>,
         tasks: Query<(&QueuedTasks, Option<&dyn Task>), With<ActiveDoll>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
@@ -43,7 +42,7 @@ impl FamilyHudPlugin {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
                         if ui.add(button).on_hover_text(task.to_string()).clicked() {
-                            cancel_buffer.push(TaskCancel(task));
+                            cancel_events.send(TaskCancel(task));
                         }
                     }
                 });
@@ -57,7 +56,7 @@ impl FamilyHudPlugin {
                             .on_hover_text(task.kind().to_string())
                             .clicked()
                         {
-                            cancel_buffer.push(TaskCancel(task.kind()))
+                            cancel_events.send(TaskCancel(task.kind()))
                         }
                         task_count += 1;
                     }

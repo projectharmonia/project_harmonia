@@ -6,31 +6,30 @@ use crate::core::{
     doll::ActiveDoll,
     family::{Dolls, FamilyDespawn},
     game_state::GameState,
-    network::network_event::client_event::ClientSendBuffer,
 };
 
-pub(super) struct FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
+pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
-    despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
+    despawn_events: &'a mut EventWriter<'we, 'se, FamilyDespawn>,
     families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
 }
 
-impl<'a, 'w, 's, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'wq, 'sq> {
+impl<'a, 'w, 's, 'we, 'se, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'se, 'wq, 'sq> {
     #[must_use]
     pub(super) fn new(
         commands: &'a mut Commands<'w, 's>,
-        despawn_buffer: &'a mut ClientSendBuffer<FamilyDespawn>,
+        despawn_events: &'a mut EventWriter<'we, 'se, FamilyDespawn>,
         families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
     ) -> Self {
         Self {
             families,
-            despawn_buffer,
+            despawn_events,
             commands,
         }
     }
 }
 
-impl FamiliesTab<'_, '_, '_, '_, '_> {
+impl FamiliesTab<'_, '_, '_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
         for (family_entity, name, dolls) in self.families {
             ui.group(|ui| {
@@ -48,7 +47,7 @@ impl FamiliesTab<'_, '_, '_, '_, '_> {
                             self.commands.insert_resource(NextState(GameState::Family))
                         }
                         if ui.button("🗑 Delete").clicked() {
-                            self.despawn_buffer.push(FamilyDespawn(family_entity));
+                            self.despawn_events.send(FamilyDespawn(family_entity));
                         }
                     })
                 });

@@ -26,7 +26,6 @@ use crate::core::{
     family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset, SelectedDoll},
     game_paths::GamePaths,
     game_state::GameState,
-    network::network_event::client_event::ClientSendBuffer,
 };
 
 pub(super) struct FamilyEditorMenuPlugin;
@@ -227,7 +226,7 @@ impl FamilyEditorMenuPlugin {
         mut reset_events: EventWriter<FamilyReset>,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
-        mut spawn_buffer: ResMut<ClientSendBuffer<FamilySpawn>>,
+        mut spawn_events: EventWriter<FamilySpawn>,
         mut place_dialog: ResMut<PlaceFamilyDialog>,
         cities: Query<(Entity, &Name), With<City>>,
     ) {
@@ -246,7 +245,7 @@ impl FamilyEditorMenuPlugin {
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 let select = ui.button("⏵ Place and play").clicked();
                                 if ui.button("⬇ Place").clicked() || select {
-                                    spawn_buffer.push(FamilySpawn {
+                                    spawn_events.send(FamilySpawn {
                                         city_entity,
                                         scene: mem::take(&mut place_dialog.0),
                                         select,

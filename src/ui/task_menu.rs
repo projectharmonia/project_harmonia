@@ -8,7 +8,6 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     game_state::GameState,
-    network::network_event::client_event::ClientSendBuffer,
     task::{TaskList, TaskRequest},
 };
 
@@ -25,7 +24,7 @@ impl TaskMenuPlugin {
         mut position: Local<Pos2>,
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut task_buffer: ResMut<ClientSendBuffer<TaskRequest>>,
+        mut task_events: EventWriter<TaskRequest>,
         windows: Res<Windows>,
         task_lists: Query<(Entity, &Name, &TaskList, ChangeTrackers<TaskList>)>,
     ) {
@@ -51,7 +50,7 @@ impl TaskMenuPlugin {
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         for &task in &task_list.tasks {
                             if ui.button(task.to_string()).clicked() {
-                                task_buffer.push(task_list.queue_task(task));
+                                task_events.send(task_list.queue_task(task));
                                 commands.entity(entity).remove::<TaskList>();
                             }
                         }

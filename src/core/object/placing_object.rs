@@ -10,7 +10,6 @@ use crate::core::{
     asset_metadata,
     city::ActiveCity,
     game_state::{CursorMode, GameState},
-    network::network_event::client_event::ClientSendBuffer,
     object::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
@@ -156,21 +155,21 @@ impl PlacingObjectPlugin {
     }
 
     fn confirmation_system(
-        mut move_buffers: ResMut<ClientSendBuffer<ObjectMove>>,
-        mut spawn_events: ResMut<ClientSendBuffer<ObjectSpawn>>,
+        mut move_events: EventWriter<ObjectMove>,
+        mut spawn_events: EventWriter<ObjectSpawn>,
         placing_objects: Query<(&Transform, &PlacingObject)>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
             debug!("confirmed placing object {placing_object:?}");
             match placing_object {
-                PlacingObject::Spawning(metadata_path) => spawn_events.push(ObjectSpawn {
+                PlacingObject::Spawning(metadata_path) => spawn_events.send(ObjectSpawn {
                     metadata_path: metadata_path.clone(),
                     translation: transform.translation,
                     rotation: transform.rotation,
                     city_entity: active_cities.single(),
                 }),
-                PlacingObject::Moving(entity) => move_buffers.push(ObjectMove {
+                PlacingObject::Moving(entity) => move_events.send(ObjectMove {
                     entity: *entity,
                     translation: transform.translation,
                     rotation: transform.rotation,
@@ -181,13 +180,13 @@ impl PlacingObjectPlugin {
 
     fn despawn_system(
         mut commands: Commands,
-        mut despawn_buffer: ResMut<ClientSendBuffer<ObjectDespawn>>,
+        mut despawn_events: EventWriter<ObjectDespawn>,
         placing_objects: Query<(Entity, &PlacingObject)>,
     ) {
         if let Ok((entity, placing_object)) = placing_objects.get_single() {
             if let PlacingObject::Moving(entity) = *placing_object {
                 debug!("sent despawn event for placing object {placing_object:?}");
-                despawn_buffer.push(ObjectDespawn(entity));
+                despawn_events.send(ObjectDespawn(entity));
             } else {
                 debug!("cancelled placing object {placing_object:?}");
                 commands.entity(entity).despawn_recursive();

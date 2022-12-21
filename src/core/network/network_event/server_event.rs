@@ -24,7 +24,7 @@ enum ServerEventSystems<T> {
 
 /// An extension trait for [`App`] for creating server events.
 pub(crate) trait ServerEventAppExt {
-    /// Registers event `T` that will be emitted on client after adding to [`ServerSendBuffer<T>`] on server.
+    /// Registers event `T` that will be emitted on client after sending [`ServerEvent<T>`] on server.
     fn add_server_event<T: Event + Serialize + DeserializeOwned + Debug>(&mut self) -> &mut Self;
 }
 
@@ -37,7 +37,7 @@ impl ServerEventAppExt for App {
         let current_channel_id = REPLICATION_CHANNEL_ID + event_counter.server;
 
         self.add_event::<T>()
-            .init_resource::<ServerSendBuffer<T>>()
+            .add_event::<ServerEvent<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
             .add_system(receiving_system::<T>.run_if_resource_exists::<RenetClient>());
 
@@ -67,10 +67,10 @@ impl ServerEventAppExt for App {
 
 fn sending_system<T: Event + Serialize + Debug>(
     mut server: ResMut<RenetServer>,
-    server_buffer: Res<ServerSendBuffer<T>>,
+    mut server_events: EventReader<ServerEvent<T>>,
     channel: Res<EventChannel<T>>,
 ) {
-    for ServerEvent { event, mode } in server_buffer.iter() {
+    for ServerEvent { event, mode } in server_events.iter() {
         let message = rmp_serde::to_vec(&event).expect("unable serialize event for client(s)");
 
         match *mode {
@@ -96,28 +96,28 @@ fn sending_system<T: Event + Serialize + Debug>(
     }
 }
 
-/// Transforms [`EventSent<T>`] events into [`T`] events to "emulate"
+/// Transforms [`ServerEvent<T>`] events into [`T`] events to "emulate"
 /// message sending for offline mode or when server is also a player
 fn local_resending_system<T: Event + Debug>(
-    mut server_buffer: ResMut<ServerSendBuffer<T>>,
-    mut server_events: EventWriter<T>,
+    mut server_events: ResMut<Events<ServerEvent<T>>>,
+    mut local_events: EventWriter<T>,
 ) {
-    for ServerEvent { event, mode } in server_buffer.drain(..) {
+    for ServerEvent { event, mode } in server_events.drain() {
         match mode {
             SendMode::Broadcast => {
                 debug!("converted broadcasted server event {event:?} into a local");
-                server_events.send(event);
+                local_events.send(event);
             }
             SendMode::BroadcastExcept(client_id) => {
                 if client_id != SERVER_ID {
                     debug!("converted broadcasted server event {event:?} except client {client_id} into a local");
-                    server_events.send(event);
+                    local_events.send(event);
                 }
             }
             SendMode::Direct(client_id) => {
                 if client_id == SERVER_ID {
                     debug!("converted direct server event {event:?} into a local");
-                    server_events.send(event);
+                    local_events.send(event);
                 }
             }
         }
@@ -133,18 +133,6 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
         let event = rmp_serde::from_slice(&message).expect("server should send valid events");
         debug!("received event {event:?} from server");
         server_events.send(event);
-    }
-}
-
-/// A container for events that will be send to clients.
-///
-/// Emits [`T`] event on clients.
-#[derive(Deref, DerefMut, Resource)]
-pub(crate) struct ServerSendBuffer<T>(Vec<ServerEvent<T>>);
-
-impl<T> Default for ServerSendBuffer<T> {
-    fn default() -> Self {
-        Self(Vec::new())
     }
 }
 
@@ -186,8 +174,8 @@ mod tests {
             (SendMode::BroadcastExcept(SERVER_ID), 1),
             (SendMode::BroadcastExcept(client_id), 0),
         ] {
-            let mut server_buffer = app.world.resource_mut::<ServerSendBuffer<DummyEvent>>();
-            server_buffer.push(ServerEvent {
+            let mut server_events = app.world.resource_mut::<Events<ServerEvent<DummyEvent>>>();
+            server_events.send(ServerEvent {
                 mode: send_mode,
                 event: DummyEvent,
             });
@@ -196,7 +184,7 @@ mod tests {
 
             // Cleanup buffer manually when client and server are in the same world.
             app.world
-                .resource_mut::<ServerSendBuffer<DummyEvent>>()
+                .resource_mut::<Events<ServerEvent<DummyEvent>>>()
                 .clear();
 
             app.update();
@@ -224,16 +212,16 @@ mod tests {
             (SendMode::BroadcastExcept(SERVER_ID), 0),
             (SendMode::BroadcastExcept(DUMMY_CLIENT_ID), 1),
         ] {
-            let mut server_buffer = app.world.resource_mut::<ServerSendBuffer<DummyEvent>>();
-            server_buffer.push(ServerEvent {
+            let mut server_events = app.world.resource_mut::<Events<ServerEvent<DummyEvent>>>();
+            server_events.send(ServerEvent {
                 mode: send_mode,
                 event: DummyEvent,
             });
 
             app.update();
 
-            let server_buffer = app.world.resource::<ServerSendBuffer<DummyEvent>>();
-            assert!(server_buffer.is_empty());
+            let server_events = app.world.resource::<Events<ServerEvent<DummyEvent>>>();
+            assert!(server_events.is_empty());
 
             let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
             assert_eq!(

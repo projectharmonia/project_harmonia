@@ -22,7 +22,7 @@ use super::{
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
-        server_event::{SendMode, ServerEvent, ServerEventAppExt, ServerSendBuffer},
+        server_event::{SendMode, ServerEvent, ServerEventAppExt},
     },
     picking::Pickable,
 };
@@ -83,7 +83,7 @@ impl ObjectPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
-        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn(ObjectBundle::new(
@@ -92,7 +92,7 @@ impl ObjectPlugin {
                 event.rotation,
                 event.city_entity,
             ));
-            confirm_buffer.push(ServerEvent {
+            confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
                 event: ObjectConfirmed,
             });
@@ -101,7 +101,7 @@ impl ObjectPlugin {
 
     fn movement_system(
         mut move_events: EventReader<ClientEvent<ObjectMove>>,
-        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
         mut transforms: Query<&mut Transform>,
     ) {
         for ClientEvent { client_id, event } in move_events.iter().copied() {
@@ -111,7 +111,7 @@ impl ObjectPlugin {
             {
                 transform.translation = event.translation;
                 transform.rotation = event.rotation;
-                confirm_buffer.push(ServerEvent {
+                confirm_events.send(ServerEvent {
                     mode: SendMode::Direct(client_id),
                     event: ObjectConfirmed,
                 });
@@ -122,11 +122,11 @@ impl ObjectPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<ClientEvent<ObjectDespawn>>,
-        mut confirm_buffer: ResMut<ServerSendBuffer<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in despawn_events.iter().copied() {
             commands.entity(event.0).despawn_recursive();
-            confirm_buffer.push(ServerEvent {
+            confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
                 event: ObjectConfirmed,
             });

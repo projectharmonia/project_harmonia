@@ -18,7 +18,6 @@ use crate::core::{
     city::{City, CityBundle},
     family::{Dolls, FamilyDespawn},
     game_state::GameState,
-    network::network_event::client_event::ClientSendBuffer,
 };
 use cities_tab::CitiesTab;
 use families_tab::FamiliesTab;
@@ -37,7 +36,7 @@ impl WorldMenuPlugin {
         mut current_tab: Local<WorldMenuTab>,
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
-        mut despawn_buffer: ResMut<ClientSendBuffer<FamilyDespawn>>,
+        mut despawn_events: EventWriter<FamilyDespawn>,
         families: Query<(Entity, &'static Name, &'static Dolls)>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
@@ -53,7 +52,7 @@ impl WorldMenuPlugin {
                 });
                 match *current_tab {
                     WorldMenuTab::Families => {
-                        FamiliesTab::new(&mut commands, &mut despawn_buffer, &families).show(ui)
+                        FamiliesTab::new(&mut commands, &mut despawn_events, &families).show(ui)
                     }
                     WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }

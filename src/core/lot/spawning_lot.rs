@@ -4,7 +4,6 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     action::{self, Action},
     game_state::{CursorMode, GameState},
-    network::network_event::client_event::ClientSendBuffer,
     preview::PreviewCamera,
 };
 
@@ -90,7 +89,7 @@ impl SpawningLotPlugin {
     }
 
     fn vertex_placement_system(
-        mut spawn_events: ResMut<ClientSendBuffer<LotSpawn>>,
+        mut spawn_events: EventWriter<LotSpawn>,
         mut spawning_lots: Query<&mut LotVertices, With<SpawningLot>>,
     ) {
         if let Ok(mut lot_vertices) = spawning_lots.get_single_mut() {
@@ -99,7 +98,7 @@ impl SpawningLotPlugin {
                 .expect("vertices should have at least initial position");
             let last_position = *lot_vertices.last().unwrap();
             if first_position == last_position {
-                spawn_events.push(LotSpawn(lot_vertices.0.clone()));
+                spawn_events.send(LotSpawn(lot_vertices.0.clone()));
             } else {
                 lot_vertices.push(last_position);
             }

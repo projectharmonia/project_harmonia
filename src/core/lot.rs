@@ -10,7 +10,7 @@ use super::{
     game_world::GameWorld,
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
-        server_event::{SendMode, ServerEvent, ServerEventAppExt, ServerSendBuffer},
+        server_event::{SendMode, ServerEvent, ServerEventAppExt},
     },
 };
 use spawning_lot::SpawningLotPlugin;
@@ -63,11 +63,11 @@ impl LotPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<LotSpawn>>,
-        mut confirm_buffer: ResMut<ServerSendBuffer<LotConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<LotConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn(LotVertices(event.0));
-            confirm_buffer.push(ServerEvent {
+            confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
                 event: LotConfirmed,
             });
