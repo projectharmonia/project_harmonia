@@ -10,7 +10,7 @@ use crate::core::{
     asset_metadata,
     city::ActiveCity,
     game_state::{CursorMode, GameState},
-    object::{ObjectConfirmed, ObjectDespawn, ObjectMove, ObjectPath, ObjectSpawn},
+    object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
 };
@@ -54,7 +54,7 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Objects),
         )
-        .add_system(Self::cleanup_system.run_on_event::<ObjectConfirmed>())
+        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
         .add_exit_system(CursorMode::Objects, Self::cleanup_system);
     }
 }

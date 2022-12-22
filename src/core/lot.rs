@@ -21,7 +21,7 @@ impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(SpawningLotPlugin)
             .add_client_event::<LotSpawn>()
-            .add_server_event::<LotConfirmed>()
+            .add_server_event::<LotSpawnConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>());
@@ -63,13 +63,13 @@ impl LotPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<LotSpawn>>,
-        mut confirm_events: EventWriter<ServerEvent<LotConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<LotSpawnConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn(LotVertices(event.0));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: LotConfirmed,
+                event: LotSpawnConfirmed,
             });
         }
     }
@@ -98,4 +98,4 @@ impl FromWorld for LotMaterial {
 struct LotSpawn(Vec<Vec3>);
 
 #[derive(Debug, Deserialize, Serialize)]
-struct LotConfirmed;
+struct LotSpawnConfirmed;

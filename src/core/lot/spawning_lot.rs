@@ -7,7 +7,7 @@ use crate::core::{
     preview::PreviewCamera,
 };
 
-use super::{LotConfirmed, LotSpawn, LotVertices};
+use super::{LotSpawn, LotSpawnConfirmed, LotVertices};
 
 pub(super) struct SpawningLotPlugin;
 
@@ -39,7 +39,7 @@ impl Plugin for SpawningLotPlugin {
         )
         .add_system(
             Self::despawn_system
-                .run_on_event::<LotConfirmed>()
+                .run_on_event::<LotSpawnConfirmed>()
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots),
         );

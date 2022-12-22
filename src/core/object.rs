@@ -37,7 +37,7 @@ impl Plugin for ObjectPlugin {
             .add_mapped_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
-            .add_server_event::<ObjectConfirmed>()
+            .add_server_event::<ObjectEventConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
             .add_system(Self::movement_system.run_if_resource_exists::<RenetServer>())
@@ -83,7 +83,7 @@ impl ObjectPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn(ObjectBundle::new(
@@ -94,14 +94,14 @@ impl ObjectPlugin {
             ));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: ObjectConfirmed,
+                event: ObjectEventConfirmed,
             });
         }
     }
 
     fn movement_system(
         mut move_events: EventReader<ClientEvent<ObjectMove>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
         mut transforms: Query<&mut Transform>,
     ) {
         for ClientEvent { client_id, event } in move_events.iter().copied() {
@@ -113,7 +113,7 @@ impl ObjectPlugin {
                 transform.rotation = event.rotation;
                 confirm_events.send(ServerEvent {
                     mode: SendMode::Direct(client_id),
-                    event: ObjectConfirmed,
+                    event: ObjectEventConfirmed,
                 });
             }
         }
@@ -122,13 +122,13 @@ impl ObjectPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<ClientEvent<ObjectDespawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in despawn_events.iter().copied() {
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: ObjectConfirmed,
+                event: ObjectEventConfirmed,
             });
         }
     }
@@ -200,4 +200,4 @@ impl MapEntities for ObjectDespawn {
 
 /// An event from server which indicates action confirmation.
 #[derive(Deserialize, Serialize, Debug, Default)]
-struct ObjectConfirmed;
+struct ObjectEventConfirmed;
