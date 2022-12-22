@@ -133,7 +133,6 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
 
 /// An event indicating that a message from client was received.
 /// Emited only on server.
-#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub(crate) struct ClientEvent<T> {
     pub(crate) client_id: u64,
