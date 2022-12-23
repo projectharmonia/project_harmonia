@@ -1,4 +1,4 @@
-pub(crate) mod spawning_lot;
+pub(crate) mod editing_lot;
 
 use bevy::prelude::*;
 use bevy_polyline::prelude::*;
@@ -13,13 +13,13 @@ use super::{
         server_event::{SendMode, ServerEvent, ServerEventAppExt},
     },
 };
-use spawning_lot::SpawningLotPlugin;
+use editing_lot::EditingLotPlugin;
 
 pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(SpawningLotPlugin)
+        app.add_plugin(EditingLotPlugin)
             .add_client_event::<LotSpawn>()
             .add_server_event::<LotSpawnConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())

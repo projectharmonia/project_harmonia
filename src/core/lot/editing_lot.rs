@@ -9,14 +9,14 @@ use crate::core::{
 
 use super::{LotSpawn, LotSpawnConfirmed, LotVertices};
 
-pub(super) struct SpawningLotPlugin;
+pub(super) struct EditingLotPlugin;
 
-impl Plugin for SpawningLotPlugin {
+impl Plugin for EditingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::spawn_system
                 .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(spawning_active)
+                .run_if_not(editing_active)
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots),
         )
@@ -46,7 +46,7 @@ impl Plugin for SpawningLotPlugin {
     }
 }
 
-impl SpawningLotPlugin {
+impl EditingLotPlugin {
     fn spawn_system(
         mut commands: Commands,
         windows: Res<Windows>,
@@ -58,15 +58,15 @@ impl SpawningLotPlugin {
             .unwrap_or_default();
         // Spawn with two the same vertices because we edit the last one on cursor movement.
         let position = intersection_with_ground(&cameras, cursor_pos);
-        commands.spawn((LotVertices(vec![position; 2]), SpawningLot));
+        commands.spawn((LotVertices(vec![position; 2]), EditingLot));
     }
 
     fn movement_system(
         windows: Res<Windows>,
-        mut spawning_lots: Query<&mut LotVertices, With<SpawningLot>>,
+        mut editing_lots: Query<&mut LotVertices, With<EditingLot>>,
         cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
     ) {
-        if let Ok(mut lot_vertices) = spawning_lots.get_single_mut() {
+        if let Ok(mut lot_vertices) = editing_lots.get_single_mut() {
             if let Some(cursor_pos) = windows
                 .get_primary()
                 .and_then(|window| window.cursor_position())
@@ -90,9 +90,9 @@ impl SpawningLotPlugin {
 
     fn vertex_placement_system(
         mut spawn_events: EventWriter<LotSpawn>,
-        mut spawning_lots: Query<&mut LotVertices, With<SpawningLot>>,
+        mut editing_lots: Query<&mut LotVertices, With<EditingLot>>,
     ) {
-        if let Ok(mut lot_vertices) = spawning_lots.get_single_mut() {
+        if let Ok(mut lot_vertices) = editing_lots.get_single_mut() {
             let first_position = *lot_vertices
                 .first()
                 .expect("vertices should have at least initial position");
@@ -105,8 +105,8 @@ impl SpawningLotPlugin {
         }
     }
 
-    fn despawn_system(mut commands: Commands, spawning_lots: Query<Entity, With<SpawningLot>>) {
-        if let Ok(entity) = spawning_lots.get_single() {
+    fn despawn_system(mut commands: Commands, editing_lots: Query<Entity, With<EditingLot>>) {
+        if let Ok(entity) = editing_lots.get_single() {
             commands.entity(entity).despawn();
         }
     }
@@ -124,9 +124,9 @@ fn intersection_with_ground(
     ray.origin + ray.direction * length
 }
 
-pub(crate) fn spawning_active(spawning_lots: Query<(), With<SpawningLot>>) -> bool {
+pub(crate) fn editing_active(spawning_lots: Query<(), With<EditingLot>>) -> bool {
     !spawning_lots.is_empty()
 }
 
 #[derive(Component)]
-pub(crate) struct SpawningLot;
+pub(crate) struct EditingLot;
