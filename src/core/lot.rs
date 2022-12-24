@@ -38,7 +38,7 @@ impl LotPlugin {
         for (entity, vertices) in &spawned_lots {
             commands.entity(entity).insert(PolylineBundle {
                 polyline: polylines.add(Polyline {
-                    vertices: vertices.0.clone(),
+                    vertices: vertices.to_plain(),
                 }),
                 material: lot_material.0.clone(),
                 ..Default::default()
@@ -55,7 +55,7 @@ impl LotPlugin {
                 let polyline = polylines
                     .get_mut(polyline_handle)
                     .expect("polyline should be spawned on init");
-                polyline.vertices = vertices.0.clone();
+                polyline.vertices = vertices.to_plain();
             }
         }
     }
@@ -76,7 +76,16 @@ impl LotPlugin {
 }
 
 #[derive(Component, Deref, DerefMut)]
-struct LotVertices(Vec<Vec3>);
+struct LotVertices(Vec<Vec2>);
+
+impl LotVertices {
+    /// Converts polygon points to 3D coordinates with y = 0.
+    fn to_plain(&self) -> Vec<Vec3> {
+        self.iter()
+            .map(|point| Vec3::new(point.x, 0.0, point.y))
+            .collect()
+    }
+}
 
 /// Stores a handle for the lot line material.
 #[derive(Resource)]
@@ -95,7 +104,7 @@ impl FromWorld for LotMaterial {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct LotSpawn(Vec<Vec3>);
+struct LotSpawn(Vec<Vec2>);
 
 #[derive(Debug, Deserialize, Serialize)]
 struct LotSpawnConfirmed;

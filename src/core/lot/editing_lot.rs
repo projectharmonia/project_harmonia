@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::Vec3Swizzles, prelude::*};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
@@ -79,7 +79,7 @@ impl EditingLotPlugin {
 
                 const SNAP_DELTA: f32 = 0.1;
                 let delta = first_position - new_position;
-                if delta.x.abs() <= SNAP_DELTA && delta.z.abs() <= SNAP_DELTA {
+                if delta.x.abs() <= SNAP_DELTA && delta.y.abs() <= SNAP_DELTA {
                     *last_position = first_position;
                 } else {
                     *last_position = new_position;
@@ -115,13 +115,14 @@ impl EditingLotPlugin {
 fn intersection_with_ground(
     cameras: &Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
     cursor_pos: Vec2,
-) -> Vec3 {
+) -> Vec2 {
     let (&transform, camera) = cameras.single();
     let ray = camera
         .viewport_to_world(&transform, cursor_pos)
         .expect("ray should be created from screen coordinates");
     let length = -ray.origin.y / ray.direction.y; // The length to intersect the plane.
-    ray.origin + ray.direction * length
+    let intersection = ray.origin + ray.direction * length;
+    intersection.xz() // y is always 0.
 }
 
 pub(crate) fn editing_active(spawning_lots: Query<(), With<EditingLot>>) -> bool {
