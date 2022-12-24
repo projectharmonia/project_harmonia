@@ -66,7 +66,9 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ServerEvent<LotSpawnConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
-            commands.spawn(LotVertices(event.0));
+            commands.entity(event.city_entity).with_children(|parent| {
+                parent.spawn(LotVertices(event.vertices));
+            });
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
                 event: LotSpawnConfirmed,
@@ -104,7 +106,10 @@ impl FromWorld for LotMaterial {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct LotSpawn(Vec<Vec2>);
+struct LotSpawn {
+    vertices: Vec<Vec2>,
+    city_entity: Entity,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct LotSpawnConfirmed;
