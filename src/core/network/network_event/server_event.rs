@@ -78,8 +78,8 @@ impl ServerEventAppExt for App {
             .after(ServerEventSystem::<T>::SendingSystem);
 
         if cfg!(test) {
-            self.add_system_to_stage(CoreStage::Update, sending_system)
-                .add_system_to_stage(CoreStage::Update, local_resending_system);
+            self.add_system(sending_system)
+                .add_system(local_resending_system);
         } else {
             self.add_fixed_timestep_system(ServerFixedTimestep::Tick.into(), 0, sending_system)
                 .add_fixed_timestep_system(

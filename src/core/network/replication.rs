@@ -53,7 +53,7 @@ impl Plugin for ReplicationPlugin {
             Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>();
 
         if cfg!(test) {
-            app.add_system_to_stage(CoreStage::Update, world_diffs_sending_system);
+            app.add_system(world_diffs_sending_system);
         } else {
             app.add_fixed_timestep_system(
                 ServerFixedTimestep::Tick.into(),
