@@ -1,10 +1,10 @@
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::core::{
     action::{self, Action},
     game_state::{CursorMode, GameState},
-    preview::PreviewCamera,
+    ground::GroundPlugin,
 };
 
 use super::{LotSpawn, LotSpawnConfirmed, LotVertices};
@@ -14,14 +14,16 @@ pub(super) struct EditingLotPlugin;
 impl Plugin for EditingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
-            Self::spawn_system
+            GroundPlugin::cursor_to_ground_system
+                .pipe(Self::spawn_system)
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_if_not(editing_active)
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots),
         )
         .add_system(
-            Self::movement_system
+            GroundPlugin::cursor_to_ground_system
+                .pipe(Self::movement_system)
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots),
         )
@@ -47,31 +49,19 @@ impl Plugin for EditingLotPlugin {
 }
 
 impl EditingLotPlugin {
-    fn spawn_system(
-        mut commands: Commands,
-        windows: Res<Windows>,
-        cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-    ) {
-        let cursor_pos = windows
-            .get_primary()
-            .and_then(|window| window.cursor_position())
-            .unwrap_or_default();
-        // Spawn with two the same vertices because we edit the last one on cursor movement.
-        let position = intersection_with_ground(&cameras, cursor_pos);
-        commands.spawn((LotVertices(vec![position; 2]), EditingLot));
+    fn spawn_system(In(position): In<Option<Vec2>>, mut commands: Commands) {
+        if let Some(position) = position {
+            // Spawn with two the same vertices because we edit the last one on cursor movement.
+            commands.spawn((LotVertices(vec![position; 2]), EditingLot));
+        }
     }
 
     fn movement_system(
-        windows: Res<Windows>,
+        In(new_position): In<Option<Vec2>>,
         mut editing_lots: Query<&mut LotVertices, With<EditingLot>>,
-        cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
     ) {
         if let Ok(mut lot_vertices) = editing_lots.get_single_mut() {
-            if let Some(cursor_pos) = windows
-                .get_primary()
-                .and_then(|window| window.cursor_position())
-            {
-                let new_position = intersection_with_ground(&cameras, cursor_pos);
+            if let Some(new_position) = new_position {
                 let first_position = *lot_vertices
                     .first()
                     .expect("vertices should have at least initial position");
@@ -110,19 +100,6 @@ impl EditingLotPlugin {
             commands.entity(entity).despawn();
         }
     }
-}
-
-fn intersection_with_ground(
-    cameras: &Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
-    cursor_pos: Vec2,
-) -> Vec2 {
-    let (&transform, camera) = cameras.single();
-    let ray = camera
-        .viewport_to_world(&transform, cursor_pos)
-        .expect("ray should be created from screen coordinates");
-    let length = -ray.origin.y / ray.direction.y; // The length to intersect the plane.
-    let intersection = ray.origin + ray.direction * length;
-    intersection.xz() // y is always 0.
 }
 
 pub(crate) fn editing_active(spawning_lots: Query<(), With<EditingLot>>) -> bool {

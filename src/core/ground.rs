@@ -1,9 +1,12 @@
-use bevy::prelude::{shape::Plane, *};
+use bevy::{
+    math::Vec3Swizzles,
+    prelude::{shape::Plane, *},
+};
 use bevy_mod_raycast::RaycastMesh;
 use bevy_rapier3d::prelude::{Collider, RigidBody};
 use iyes_loopless::prelude::*;
 
-use super::{city::ActiveCity, game_state::GameState, picking::Pickable};
+use super::{city::ActiveCity, game_state::GameState, picking::Pickable, preview::PreviewCamera};
 
 pub(super) struct GroundPlugin;
 
@@ -57,6 +60,23 @@ impl GroundPlugin {
     ) {
         commands.entity(direction_lights.single()).despawn();
         commands.entity(grounds.single()).despawn();
+    }
+
+    /// Converts cursor position into position on the ground.
+    pub(super) fn cursor_to_ground_system(
+        windows: Res<Windows>,
+        cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
+    ) -> Option<Vec2> {
+        let cursor_position = windows
+            .get_primary()
+            .and_then(|window| window.cursor_position())?;
+        let (&transform, camera) = cameras.single();
+        let ray = camera
+            .viewport_to_world(&transform, cursor_position)
+            .expect("ray should be created from screen coordinates");
+        let length = -ray.origin.y / ray.direction.y; // The length to intersect the ground.
+        let intersection = ray.origin + ray.direction * length;
+        Some(intersection.xz()) // y is always 0.
     }
 }
 
