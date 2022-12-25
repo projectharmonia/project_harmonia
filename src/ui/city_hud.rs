@@ -11,6 +11,7 @@ use strum::IntoEnumIterator;
 use crate::core::{
     asset_metadata::AssetMetadata,
     game_state::{CursorMode, GameState},
+    lot::LotTool,
     object::selected_object::SelectedObject,
     preview::{PreviewRequest, Previews},
 };
@@ -31,6 +32,7 @@ impl CityHudPlugin {
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
         cursor_mode: Res<CurrentState<CursorMode>>,
+        lot_tool: Res<CurrentState<LotTool>>,
         metadata: Res<Assets<AssetMetadata>>,
         selected_object: Option<Res<SelectedObject>>,
     ) {
@@ -65,7 +67,22 @@ impl CityHudPlugin {
                             )
                             .show(ui);
                         }
-                        CursorMode::Lots => (),
+                        CursorMode::Lots => {
+                            ui.vertical(|ui| {
+                                let mut current_tool = lot_tool.0;
+                                for tool in LotTool::iter() {
+                                    ui.selectable_value(
+                                        &mut current_tool,
+                                        tool,
+                                        RichText::new(tool.glyph()).size(22.0),
+                                    )
+                                    .on_hover_text(tool.to_string());
+                                }
+                                if current_tool != lot_tool.0 {
+                                    commands.insert_resource(NextState(current_tool))
+                                }
+                            });
+                        }
                     }
                 });
             });

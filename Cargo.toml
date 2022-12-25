@@ -44,6 +44,7 @@ tap = "1.0"
 once_cell = "1.16"
 smallvec = "1.10"
 walkdir = "2.3"
+itertools = "0.10"
 
 [dev-dependencies]
 fastrand = "1.8.0"

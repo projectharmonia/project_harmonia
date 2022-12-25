@@ -8,7 +8,7 @@ use crate::core::{
     ground::GroundPlugin,
 };
 
-use super::{LotSpawn, LotSpawnConfirmed, LotVertices};
+use super::{LotEventConfirmed, LotSpawn, LotTool, LotVertices};
 
 pub(super) struct EditingLotPlugin;
 
@@ -20,31 +20,36 @@ impl Plugin for EditingLotPlugin {
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_if_not(editing_active)
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots),
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Edit),
         )
         .add_system(
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::movement_system)
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots),
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Edit),
         )
         .add_system(
             Self::vertex_placement_system
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots),
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Edit),
         )
         .add_system(
             Self::despawn_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots),
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Edit),
         )
         .add_system(
             Self::despawn_system
-                .run_on_event::<LotSpawnConfirmed>()
+                .run_on_event::<LotEventConfirmed>()
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots),
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Edit),
         );
     }
 }
