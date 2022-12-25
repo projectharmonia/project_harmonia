@@ -3,7 +3,7 @@ use std::{env, fs::DirEntry, path::PathBuf};
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 #[cfg(not(test))]
-use standard_paths::{LocationType, StandardPaths};
+use standard_paths::{default_paths, LocationType};
 
 /// Initializes [`GamePaths`] resource.
 pub(super) struct GamePathsPlugin;
@@ -73,7 +73,7 @@ impl Default for GamePaths {
         );
 
         #[cfg(not(test))]
-        let config_dir = StandardPaths::new(env!("CARGO_PKG_NAME"), Default::default())
+        let config_dir = default_paths!()
             .writable_location(LocationType::AppConfigLocation)
             .expect("app configuration directory should be found");
 
