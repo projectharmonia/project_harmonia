@@ -34,7 +34,7 @@ strum = { version = "0.24", features = ["derive"] }
 derive_more = { version = "0.99", default-features = false, features = [
   "constructor",
 ] }
-standard_paths = "1.2"
+standard_paths = "2.0"
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.5"
