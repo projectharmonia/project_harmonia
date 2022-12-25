@@ -10,6 +10,7 @@ use crate::core::{
     doll::{FirstName, LastName},
     family::{Budget, FamilySync},
     game_world::GameEntity,
+    lot::LotVertices,
     object::ObjectPath,
     task::QueuedTasks,
 };
@@ -20,8 +21,8 @@ use crate::core::{
 pub(crate) struct SaveRules {
     /// Components that should be serialized.
     pub(crate) persistent: HashSet<ComponentId>,
-    /// Ignore a key component if its value is present in an archetype.
-    ignored_if_present: HashMap<ComponentId, ComponentId>,
+    /// Ignore a key component if its value components are present in an archetype.
+    ignored_if_present: HashMap<ComponentId, Vec<ComponentId>>,
     /// ID of [`GameWorld`] component, only entities with this components should be serialized.
     game_entity_id: ComponentId,
 }
@@ -40,16 +41,20 @@ impl FromWorld for SaveRules {
             world.init_component::<FirstName>(),
             world.init_component::<LastName>(),
             world.init_component::<QueuedTasks>(),
+            world.init_component::<LotVertices>(),
         ]);
 
         let ignored_if_present = HashMap::from([
             (
                 world.init_component::<Transform>(),
-                world.init_component::<City>(),
+                vec![
+                    world.init_component::<City>(),
+                    world.init_component::<LotVertices>(),
+                ],
             ),
             (
                 world.init_component::<Name>(),
-                world.init_component::<FirstName>(),
+                vec![world.init_component::<FirstName>()],
             ),
         ]);
 
@@ -76,9 +81,11 @@ impl SaveRules {
         component_id: ComponentId,
     ) -> bool {
         if self.persistent.contains(&component_id) {
-            if let Some(&conditional_id) = self.ignored_if_present.get(&component_id) {
-                if archetype.contains(conditional_id) {
-                    return false;
+            if let Some(ignore_ids) = self.ignored_if_present.get(&component_id) {
+                for &ignore_id in ignore_ids {
+                    if archetype.contains(ignore_id) {
+                        return false;
+                    }
                 }
             }
             return true;

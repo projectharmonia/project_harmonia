@@ -12,7 +12,7 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
-    game_world::GameWorld,
+    game_world::{GameEntity, GameWorld},
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
         server_event::{SendMode, ServerEvent, ServerEventAppExt},
@@ -43,6 +43,8 @@ impl Plugin for LotPlugin {
         app.add_loopless_state(LotTool::Edit)
             .add_plugin(EditingLotPlugin)
             .add_plugin(MovingLotPlugin)
+            .register_type::<Vec<Vec2>>()
+            .register_type::<LotVertices>()
             .add_client_event::<LotSpawn>()
             .add_client_event::<LotMove>()
             .add_server_event::<LotEventConfirmed>()
@@ -92,7 +94,7 @@ impl LotPlugin {
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             commands.entity(event.city_entity).with_children(|parent| {
-                parent.spawn(LotVertices(event.vertices));
+                parent.spawn((LotVertices(event.vertices), GameEntity));
             });
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
@@ -123,8 +125,9 @@ impl LotPlugin {
     }
 }
 
-#[derive(Clone, Component, Deref, DerefMut)]
-struct LotVertices(Vec<Vec2>);
+#[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
+pub(super) struct LotVertices(Vec<Vec2>);
 
 impl LotVertices {
     /// Converts polygon points to 3D coordinates with y = 0.
