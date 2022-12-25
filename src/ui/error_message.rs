@@ -25,7 +25,7 @@ impl ErrorMessagePlugin {
         ModalWindow::new("Error")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.label(format!("Error: {}", error_message.0));
+                ui.label(format!("Error: {:#}", error_message.0));
                 if ui.button("Ok").clicked() {
                     ui.close_modal();
                 }
