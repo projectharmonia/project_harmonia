@@ -1,7 +1,7 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 use iyes_loopless::prelude::*;
 
-use super::{LotEventConfirmed, LotMove, LotTool, LotVertices};
+use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
     action::{self, Action},
     city::ActiveCity,
@@ -45,6 +45,13 @@ impl Plugin for MovingLotPlugin {
         )
         .add_system(
             Self::despawn_system
+                .run_if(action::just_pressed(Action::Delete))
+                .run_in_state(GameState::City)
+                .run_in_state(CursorMode::Lots)
+                .run_in_state(LotTool::Move),
+        )
+        .add_system(
+            Self::cleanup_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots)
@@ -52,7 +59,7 @@ impl Plugin for MovingLotPlugin {
                 .after(MovingLotPluginSystem::Movement),
         )
         .add_system(
-            Self::despawn_system
+            Self::cleanup_system
                 .run_on_event::<LotEventConfirmed>()
                 .run_in_state(GameState::City)
                 .run_in_state(CursorMode::Lots)
@@ -114,6 +121,15 @@ impl MovingLotPlugin {
     }
 
     fn despawn_system(
+        mut despawn_events: EventWriter<LotDespawn>,
+        moving_lots: Query<Entity, With<MovingLot>>,
+    ) {
+        if let Ok(entity) = moving_lots.get_single() {
+            despawn_events.send(LotDespawn(entity));
+        }
+    }
+
+    fn cleanup_system(
         mut commands: Commands,
         mut visibility: Query<&mut Visibility>,
         mut moving_lots: Query<(Entity, &MovingLot)>,

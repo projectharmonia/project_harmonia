@@ -47,11 +47,13 @@ impl Plugin for LotPlugin {
             .register_type::<LotVertices>()
             .add_client_event::<LotSpawn>()
             .add_client_event::<LotMove>()
+            .add_client_event::<LotDespawn>()
             .add_server_event::<LotEventConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::movement_system.run_if_resource_exists::<RenetServer>());
+            .add_system(Self::movement_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>());
     }
 }
 
@@ -123,6 +125,20 @@ impl LotPlugin {
             }
         }
     }
+
+    fn despawn_system(
+        mut commands: Commands,
+        mut despawn_events: EventReader<ClientEvent<LotDespawn>>,
+        mut confirm_events: EventWriter<ServerEvent<LotEventConfirmed>>,
+    ) {
+        for ClientEvent { client_id, event } in despawn_events.iter().copied() {
+            commands.entity(event.0).despawn();
+            confirm_events.send(ServerEvent {
+                mode: SendMode::Direct(client_id),
+                event: LotEventConfirmed,
+            });
+        }
+    }
 }
 
 #[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
@@ -181,6 +197,9 @@ struct LotMove {
     entity: Entity,
     offset: Vec2,
 }
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+struct LotDespawn(Entity);
 
 #[derive(Debug, Deserialize, Serialize)]
 struct LotEventConfirmed;
