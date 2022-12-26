@@ -50,7 +50,7 @@ impl TaskMenuPlugin {
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         for &task in &task_list.tasks {
                             if ui.button(task.to_string()).clicked() {
-                                task_events.send(task_list.queue_task(task));
+                                task_events.send(TaskRequest::new(task, task_list.position));
                                 commands.entity(entity).remove::<TaskList>();
                             }
                         }

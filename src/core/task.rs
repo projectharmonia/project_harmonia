@@ -111,6 +111,15 @@ pub(crate) enum TaskRequest {
     Walk(Vec3),
 }
 
+impl TaskRequest {
+    #[must_use]
+    pub(crate) fn new(task: TaskRequestKind, position: Vec3) -> Self {
+        match task {
+            TaskRequestKind::Walk => TaskRequest::Walk(position),
+        }
+    }
+}
+
 #[derive(Component)]
 pub(crate) struct TaskList {
     /// The position on the entity at which the list was requested.
@@ -120,17 +129,11 @@ pub(crate) struct TaskList {
 }
 
 impl TaskList {
+    #[must_use]
     fn new(position: Vec3) -> Self {
         Self {
             position,
             tasks: Default::default(),
-        }
-    }
-
-    #[must_use]
-    pub(crate) fn queue_task(&self, task: TaskRequestKind) -> TaskRequest {
-        match task {
-            TaskRequestKind::Walk => TaskRequest::Walk(self.position),
         }
     }
 }
