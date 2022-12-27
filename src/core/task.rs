@@ -1,5 +1,3 @@
-mod movement;
-
 use bevy::{prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetServer;
 use bevy_trait_query::queryable;
@@ -11,17 +9,16 @@ use tap::TapOptional;
 use super::{
     doll::DollPlayers,
     game_state::GameState,
+    ground::Walk,
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
     picking::ObjectPicked,
 };
-use movement::{MovementPlugin, Walk};
 
 pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MovementPlugin)
-            .register_type::<QueuedTasks>()
+        app.register_type::<QueuedTasks>()
             .register_type::<TaskRequest>()
             .register_type::<Vec<TaskRequest>>()
             .add_client_event::<TaskRequest>()
