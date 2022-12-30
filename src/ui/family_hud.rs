@@ -9,7 +9,7 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     doll::ActiveDoll,
     game_state::GameState,
-    task::{QueuedTasks, Task, TaskCancel, TaskRequestKind},
+    task::{Task, TaskCancel, TaskQueue, TaskRequestKind, TaskRequestRemove},
 };
 
 pub(super) struct FamilyHudPlugin;
@@ -24,13 +24,14 @@ impl FamilyHudPlugin {
     fn active_tasks_system(
         mut egui: ResMut<EguiContext>,
         mut cancel_events: EventWriter<TaskCancel>,
-        tasks: Query<(&QueuedTasks, Option<&dyn Task>), With<ActiveDoll>>,
+        mut remove_events: EventWriter<TaskRequestRemove>,
+        tasks: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveDoll>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
         Area::new("Tasks")
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
-                let (queued_tasks, active_tasks) = tasks.single();
+                let (task_queue, active_tasks) = tasks.single();
                 // Show frame with window spacing, but without visuals.
                 let queued_frame = Frame {
                     inner_margin: ui.spacing().window_margin,
@@ -38,11 +39,15 @@ impl FamilyHudPlugin {
                     ..Frame::none()
                 };
                 queued_frame.show(ui, |ui| {
-                    for task in queued_tasks.iter().map(TaskRequestKind::from) {
+                    for (id, task) in task_queue.iter() {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
-                        if ui.add(button).on_hover_text(task.to_string()).clicked() {
-                            cancel_events.send(TaskCancel(task));
+                        if ui
+                            .add(button)
+                            .on_hover_text(TaskRequestKind::from(task).to_string())
+                            .clicked()
+                        {
+                            remove_events.send(TaskRequestRemove(id));
                         }
                     }
                 });

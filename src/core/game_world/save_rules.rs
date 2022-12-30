@@ -12,7 +12,7 @@ use crate::core::{
     game_world::GameEntity,
     lot::LotVertices,
     object::ObjectPath,
-    task::QueuedTasks,
+    task::TaskQueue,
 };
 
 /// Contains [`ComponentId`]'s that used to decide
@@ -40,7 +40,7 @@ impl FromWorld for SaveRules {
             world.init_component::<ParentSync>(),
             world.init_component::<FirstName>(),
             world.init_component::<LastName>(),
-            world.init_component::<QueuedTasks>(),
+            world.init_component::<TaskQueue>(),
             world.init_component::<LotVertices>(),
         ]);
 

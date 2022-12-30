@@ -1,3 +1,5 @@
+mod movement;
+
 use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
@@ -13,14 +15,16 @@ use super::{
     game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
-    task::QueuedTasks,
+    task::TaskQueue,
 };
+use movement::MovementPlugin;
 
 pub(super) struct DollPlugin;
 
 impl Plugin for DollPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<FirstName>()
+        app.add_plugin(MovementPlugin)
+            .register_type::<FirstName>()
             .register_type::<LastName>()
             .register_type::<DollPlayers>()
             .add_mapped_client_event::<DollSelect>()
@@ -182,7 +186,7 @@ pub(crate) struct DollBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
-    queued_tasks: QueuedTasks,
+    task_queue: TaskQueue,
     game_entity: GameEntity,
 }
 
@@ -199,7 +203,7 @@ impl DollBundle {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
-            queued_tasks: Default::default(),
+            task_queue: Default::default(),
             game_entity: GameEntity,
         }
     }

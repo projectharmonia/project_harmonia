@@ -4,26 +4,15 @@ use bevy::{
 };
 use bevy_mod_raycast::RaycastMesh;
 use bevy_rapier3d::prelude::{Collider, RigidBody};
-use bevy_trait_query::RegisterExt;
 use iyes_loopless::prelude::*;
-use serde::{Deserialize, Serialize};
 
-use super::{
-    city::ActiveCity,
-    game_state::GameState,
-    picking::Pickable,
-    preview::PreviewCamera,
-    task::TaskRequestKind,
-    task::{Task, TaskList},
-};
+use super::{city::ActiveCity, game_state::GameState, picking::Pickable, preview::PreviewCamera};
 
 pub(super) struct GroundPlugin;
 
 impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
-        app.register_component_as::<dyn Task, Walk>()
-            .add_system(Self::tasks_system.run_in_state(GameState::Family))
-            .add_enter_system(GameState::City, Self::spawn_system)
+        app.add_enter_system(GameState::City, Self::spawn_system)
             .add_exit_system(GameState::City, Self::despawn_system)
             .add_enter_system(GameState::Family, Self::spawn_system)
             .add_exit_system(GameState::Family, Self::despawn_system);
@@ -31,12 +20,6 @@ impl Plugin for GroundPlugin {
 }
 
 impl GroundPlugin {
-    fn tasks_system(mut ground: Query<&mut TaskList, (With<Ground>, Added<TaskList>)>) {
-        if let Ok(mut task_list) = ground.get_single_mut() {
-            task_list.tasks.push(TaskRequestKind::Walk);
-        }
-    }
-
     fn spawn_system(
         active_cities: Query<Entity, With<ActiveCity>>,
         mut commands: Commands,
@@ -130,12 +113,3 @@ impl Default for GroundBundle {
 
 #[derive(Component)]
 pub(super) struct Ground;
-
-#[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
-pub(crate) struct Walk(pub(crate) Vec3);
-
-impl Task for Walk {
-    fn kind(&self) -> TaskRequestKind {
-        TaskRequestKind::Walk
-    }
-}
