@@ -3,7 +3,7 @@ pub(crate) mod moving_lot;
 
 use bevy::prelude::*;
 use bevy_polyline::prelude::*;
-use bevy_renet::renet::RenetServer;
+use bevy_renet::renet::RenetClient;
 use derive_more::Display;
 use itertools::Itertools;
 use iyes_loopless::prelude::*;
@@ -51,9 +51,9 @@ impl Plugin for LotPlugin {
             .add_server_event::<LotEventConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::movement_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>());
+            .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::movement_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>());
     }
 }
 

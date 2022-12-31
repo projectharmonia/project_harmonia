@@ -6,7 +6,7 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_renet::renet::RenetServer;
+use bevy_renet::renet::RenetClient;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
@@ -33,8 +33,8 @@ impl Plugin for FamilyPlugin {
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()
             .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::spawn_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::despawn_system.run_if_resource_exists::<RenetServer>())
+            .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>())
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 Self::activation_system.run_if_resource_exists::<GameWorld>(),

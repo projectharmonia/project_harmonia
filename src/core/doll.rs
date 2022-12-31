@@ -4,7 +4,7 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_renet::renet::RenetServer;
+use bevy_renet::renet::RenetClient;
 use derive_more::Display;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -36,11 +36,11 @@ impl Plugin for DollPlugin {
                 Self::activation_system.run_if_resource_exists::<GameWorld>(),
             )
             .add_system(
-                Self::activation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+                Self::activation_confirmation_system.run_unless_resource_exists::<RenetClient>(),
             )
             .add_exit_system(GameState::Family, Self::deactivation_system)
             .add_system(
-                Self::deactivation_confirmation_system.run_if_resource_exists::<RenetServer>(),
+                Self::deactivation_confirmation_system.run_unless_resource_exists::<RenetClient>(),
             );
     }
 }
