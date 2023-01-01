@@ -1,7 +1,10 @@
 pub(crate) mod editing_lot;
 pub(crate) mod moving_lot;
 
-use bevy::prelude::*;
+use bevy::{
+    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    prelude::*,
+};
 use bevy_polyline::prelude::*;
 use bevy_renet::renet::RenetClient;
 use derive_more::Display;
@@ -45,9 +48,9 @@ impl Plugin for LotPlugin {
             .add_plugin(MovingLotPlugin)
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
-            .add_client_event::<LotSpawn>()
-            .add_client_event::<LotMove>()
-            .add_client_event::<LotDespawn>()
+            .add_mapped_client_event::<LotSpawn>()
+            .add_mapped_client_event::<LotMove>()
+            .add_mapped_client_event::<LotDespawn>()
             .add_server_event::<LotEventConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
@@ -192,14 +195,35 @@ struct LotSpawn {
     city_entity: Entity,
 }
 
+impl MapEntities for LotSpawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.city_entity = entity_map.get(self.city_entity)?;
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 struct LotMove {
     entity: Entity,
     offset: Vec2,
 }
 
+impl MapEntities for LotMove {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.entity = entity_map.get(self.entity)?;
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 struct LotDespawn(Entity);
+
+impl MapEntities for LotDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct LotEventConfirmed;
