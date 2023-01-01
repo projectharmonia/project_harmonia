@@ -15,7 +15,7 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
-    game_world::{GameEntity, GameWorld},
+    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
         server_event::{SendMode, ServerEvent, ServerEventAppExt},
@@ -98,9 +98,7 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ServerEvent<LotEventConfirmed>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
-            commands.entity(event.city_entity).with_children(|parent| {
-                parent.spawn((LotVertices(event.vertices), GameEntity));
-            });
+            commands.spawn(LotBundle::new(event.vertices, event.city_entity));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
@@ -140,6 +138,23 @@ impl LotPlugin {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
             });
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct LotBundle {
+    vertices: LotVertices,
+    parent_sync: ParentSync,
+    game_entity: GameEntity,
+}
+
+impl LotBundle {
+    fn new(vertices: Vec<Vec2>, city_entity: Entity) -> Self {
+        Self {
+            vertices: LotVertices(vertices),
+            parent_sync: ParentSync(city_entity),
+            game_entity: GameEntity,
         }
     }
 }
