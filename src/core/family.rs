@@ -83,16 +83,14 @@ impl FamilyPlugin {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            commands.entity(event.city_entity).with_children(|parent| {
-                for doll_scene in event.scene.dolls {
-                    parent.spawn(DollBundle::new(
-                        doll_scene.first_name,
-                        doll_scene.last_name,
-                        family_entity,
-                        event.city_entity,
-                    ));
-                }
-            });
+            for doll_scene in event.scene.dolls {
+                commands.spawn(DollBundle::new(
+                    doll_scene.first_name,
+                    doll_scene.last_name,
+                    family_entity,
+                    event.city_entity,
+                ));
+            }
             if event.select {
                 select_events.send(ServerEvent {
                     mode: SendMode::Direct(client_id),
