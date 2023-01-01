@@ -177,12 +177,17 @@ impl FamilyBundle {
     }
 }
 
+/// Contains the family entity to which the doll belongs.
 #[derive(Component)]
 pub(crate) struct Family(pub(crate) Entity);
 
+/// Contains the entities of all the dolls that belong to the family.
 #[derive(Component, Default, Deref, DerefMut)]
 pub(crate) struct Dolls(Vec<Entity>);
 
+/// Contains the family entity to which the doll belongs.
+///
+/// Automatically updates [`Family`] and [`Dolls`] components after insertion.
 #[derive(Component, Reflect)]
 #[reflect(Component, MapEntities, MapEntity)]
 pub(crate) struct FamilySync(pub(crate) Entity);
