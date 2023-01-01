@@ -120,12 +120,9 @@ impl MovingLotPlugin {
         }
     }
 
-    fn despawn_system(
-        mut despawn_events: EventWriter<LotDespawn>,
-        moving_lots: Query<Entity, With<MovingLot>>,
-    ) {
-        if let Ok(entity) = moving_lots.get_single() {
-            despawn_events.send(LotDespawn(entity));
+    fn despawn_system(mut despawn_events: EventWriter<LotDespawn>, moving_lots: Query<&MovingLot>) {
+        if let Ok(moving_lot) = moving_lots.get_single() {
+            despawn_events.send(LotDespawn(moving_lot.entity));
         }
     }
 
@@ -135,11 +132,11 @@ impl MovingLotPlugin {
         mut moving_lots: Query<(Entity, &MovingLot)>,
     ) {
         if let Ok((entity, moving_lot)) = moving_lots.get_single_mut() {
-            let mut visibility = visibility
-                .get_mut(moving_lot.entity)
-                .expect("referenced moving lot should have visbility component");
-            visibility.is_visible = true;
             commands.entity(entity).despawn();
+            // Lot could be invalid in case of removal.
+            if let Ok(mut visibility) = visibility.get_mut(moving_lot.entity) {
+                visibility.is_visible = true;
+            }
         }
     }
 }
