@@ -72,12 +72,8 @@ impl CityHudPlugin {
                             ui.vertical(|ui| {
                                 let mut current_tool = lot_tool.0;
                                 for tool in LotTool::iter() {
-                                    ui.selectable_value(
-                                        &mut current_tool,
-                                        tool,
-                                        RichText::new(tool.glyph()).size(22.0),
-                                    )
-                                    .on_hover_text(tool.to_string());
+                                    ui.selectable_value(&mut current_tool, tool, tool.glyph())
+                                        .on_hover_text(tool.to_string());
                                 }
                                 if current_tool != lot_tool.0 {
                                     commands.insert_resource(NextState(current_tool))
