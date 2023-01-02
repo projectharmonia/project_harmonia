@@ -1419,7 +1419,6 @@ dependencies = [
  "itertools",
  "iyes_loopless",
  "leafwing-input-manager",
- "once_cell",
  "rmp-serde",
  "ron",
  "serde",
