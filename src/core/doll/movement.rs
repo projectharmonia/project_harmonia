@@ -7,7 +7,7 @@ use tap::TapOptional;
 
 use crate::core::{
     doll::DollPlayers,
-    game_state::GameState,
+    game_state::{FamilyMode, GameState},
     ground::Ground,
     network::network_event::client_event::ClientEvent,
     task::{Task, TaskActivation, TaskCancel, TaskList, TaskRequest, TaskRequestKind},
@@ -18,7 +18,11 @@ pub(super) struct MovementPlugin;
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.register_component_as::<dyn Task, Walk>()
-            .add_system(Self::tasks_system.run_in_state(GameState::Family))
+            .add_system(
+                Self::tasks_system
+                    .run_in_state(GameState::Family)
+                    .run_in_state(FamilyMode::Life),
+            )
             .add_system(Self::activation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::cancellation_system.run_unless_resource_exists::<RenetClient>());
     }

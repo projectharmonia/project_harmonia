@@ -8,7 +8,7 @@ use tap::TapOptional;
 
 use super::{
     doll::DollPlayers,
-    game_state::GameState,
+    game_state::{FamilyMode, GameState},
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
     picking::ObjectPicked,
 };
@@ -25,7 +25,11 @@ impl Plugin for TaskPlugin {
             .add_client_event::<TaskCancel>()
             .add_client_event::<TaskRequestRemove>()
             .add_event::<TaskActivation>()
-            .add_system(Self::task_list_system.run_in_state(GameState::Family))
+            .add_system(
+                Self::task_list_system
+                    .run_in_state(GameState::Family)
+                    .run_in_state(FamilyMode::Life),
+            )
             .add_system(Self::queue_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::activation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::cancellation_system.run_unless_resource_exists::<RenetClient>());

@@ -17,7 +17,7 @@ use tap::TapFallible;
 
 use super::{
     family::Family,
-    game_state::GameState,
+    game_state::{FamilyMode, GameState},
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     ground::Ground,
     network::network_event::{
@@ -57,7 +57,11 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotMove>()
             .add_mapped_client_event::<LotDespawn>()
             .add_server_event::<LotEventConfirmed>()
-            .add_system(Self::tasks_system.run_in_state(GameState::Family))
+            .add_system(
+                Self::tasks_system
+                    .run_in_state(GameState::Family)
+                    .run_in_state(FamilyMode::Life),
+            )
             .add_system(Self::buying_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())

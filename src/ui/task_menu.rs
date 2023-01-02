@@ -7,7 +7,7 @@ use bevy_inspector_egui::egui::{Align, Layout};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    game_state::GameState,
+    game_state::{FamilyMode, GameState},
     task::{TaskList, TaskRequest},
 };
 
@@ -15,7 +15,11 @@ pub(super) struct TaskMenuPlugin;
 
 impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::menu_system.run_in_state(GameState::Family));
+        app.add_system(
+            Self::menu_system
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Life),
+        );
     }
 }
 
