@@ -36,7 +36,6 @@ impl MovementPlugin {
         mut activation_events: EventReader<TaskActivation>,
     ) {
         for TaskActivation { entity, task } in activation_events.iter().copied() {
-            #[allow(irrefutable_let_patterns)]
             if let TaskRequest::Walk(position) = task {
                 commands.entity(entity).insert(Walk(position));
             }
@@ -55,7 +54,6 @@ impl MovementPlugin {
                 .map(|(entity, _)| entity)
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
-                #[allow(irrefutable_let_patterns)]
                 if let TaskRequestKind::Walk = event.0 {
                     commands.entity(entity).remove::<Walk>();
                 }

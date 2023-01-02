@@ -3,6 +3,7 @@ pub(crate) mod moving_lot;
 
 use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    math::Vec3Swizzles,
     prelude::*,
 };
 use bevy_polyline::prelude::*;
@@ -15,11 +16,15 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
+    family::Family,
+    game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
+    ground::Ground,
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
         server_event::{SendMode, ServerEvent, ServerEventAppExt},
     },
+    task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
 use editing_lot::EditingLotPlugin;
 use moving_lot::MovingLotPlugin;
@@ -52,6 +57,8 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotMove>()
             .add_mapped_client_event::<LotDespawn>()
             .add_server_event::<LotEventConfirmed>()
+            .add_system(Self::tasks_system.run_in_state(GameState::Family))
+            .add_system(Self::buying_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
             .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
@@ -61,6 +68,41 @@ impl Plugin for LotPlugin {
 }
 
 impl LotPlugin {
+    fn tasks_system(
+        mut ground: Query<&mut TaskList, (With<Ground>, Added<TaskList>)>,
+        lots: Query<&LotVertices, Without<LotFamily>>,
+    ) {
+        if let Ok(mut task_list) = ground.get_single_mut() {
+            let position = task_list.position.xz();
+            if lots
+                .iter()
+                .any(|vertices| vertices.contains_point(position))
+            {
+                task_list.tasks.push(TaskRequestKind::Buy);
+            }
+        }
+    }
+
+    fn buying_system(
+        mut commands: Commands,
+        mut activation_events: EventReader<TaskActivation>,
+        lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
+        dolls: Query<&Family>,
+    ) {
+        for TaskActivation { entity, task } in activation_events.iter().copied() {
+            if let TaskRequest::Buy(position) = task {
+                let family = dolls.get(entity).expect("doll should belong to a family");
+                if let Some(lot_entity) = lots
+                    .iter()
+                    .find(|(_, vertices)| vertices.contains_point(position))
+                    .map(|(lot_entity, _)| lot_entity)
+                {
+                    commands.entity(lot_entity).insert(LotFamily(family.0));
+                }
+            }
+        }
+    }
+
     fn init_system(
         lot_material: Local<LotMaterial>,
         mut commands: Commands,
@@ -162,6 +204,10 @@ impl LotBundle {
 #[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
 pub(super) struct LotVertices(Vec<Vec2>);
+
+/// Contains a family entity that owns the lot.
+#[derive(Component)]
+struct LotFamily(Entity);
 
 impl LotVertices {
     /// Converts polygon points to 3D coordinates with y = 0.

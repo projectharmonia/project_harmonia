@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::FromReflect};
+use bevy::{math::Vec3Swizzles, prelude::*, reflect::FromReflect};
 use bevy_renet::renet::RenetClient;
 use bevy_trait_query::queryable;
 use iyes_loopless::prelude::*;
@@ -101,6 +101,7 @@ impl TaskPlugin {
 #[strum_discriminants(derive(Display, Serialize, Deserialize))]
 pub(crate) enum TaskRequest {
     Walk(Vec3),
+    Buy(Vec2),
 }
 
 impl TaskRequest {
@@ -108,6 +109,7 @@ impl TaskRequest {
     pub(crate) fn new(task: TaskRequestKind, position: Vec3) -> Self {
         match task {
             TaskRequestKind::Walk => TaskRequest::Walk(position),
+            TaskRequestKind::Buy => TaskRequest::Buy(position.xz()),
         }
     }
 }
