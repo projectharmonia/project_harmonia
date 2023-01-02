@@ -11,6 +11,7 @@ use bevy::{
     utils::BoxedFuture,
 };
 use serde::Deserialize;
+use strum::Display;
 use walkdir::WalkDir;
 
 const METADATA_EXTENSION: &str = "toml";
@@ -110,6 +111,7 @@ pub(crate) struct GeneralMetadata {
 #[serde(rename_all = "snake_case")]
 pub(crate) enum MetadataKind {
     Object(ObjectMetadata),
+    Clothes,
 }
 
 #[derive(Deserialize)]
@@ -117,7 +119,7 @@ pub(crate) struct ObjectMetadata {
     pub(crate) category: ObjectCategory,
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Clone, Copy, PartialEq, Display)]
 pub(crate) enum ObjectCategory {
     Rocks,
     Foliage,
@@ -126,11 +128,17 @@ pub(crate) enum ObjectCategory {
 }
 
 impl ObjectCategory {
-    pub(crate) fn is_placable_in_city(self) -> bool {
+    pub(crate) const CITY_CATEGORIES: &[ObjectCategory] = &[
+        ObjectCategory::Rocks,
+        ObjectCategory::Foliage,
+        ObjectCategory::OutdoorFurniture,
+    ];
+
+    pub(crate) fn glyph(self) -> &'static str {
         match self {
-            ObjectCategory::Rocks | ObjectCategory::Foliage | ObjectCategory::OutdoorFurniture => {
-                true
-            }
+            ObjectCategory::Rocks => "🗻",
+            ObjectCategory::Foliage => "🍀",
+            ObjectCategory::OutdoorFurniture => "🏡",
         }
     }
 }

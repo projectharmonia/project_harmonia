@@ -6,6 +6,7 @@ mod family_hud;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
+mod objects_view;
 mod settings_menu;
 mod task_menu;
 mod world_browser;
