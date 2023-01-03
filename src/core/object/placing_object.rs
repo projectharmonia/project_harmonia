@@ -9,7 +9,7 @@ use crate::core::{
     action::{self, Action},
     asset_metadata,
     city::ActiveCity,
-    game_state::{CursorMode, GameState},
+    game_state::{CursorMode, FamilyMode, GameState},
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
@@ -55,7 +55,45 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(CursorMode::Objects),
         )
         .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
-        .add_exit_system(CursorMode::Objects, Self::cleanup_system);
+        // TODO 0.10: clone system set.
+        .add_exit_system(CursorMode::Objects, Self::cleanup_system)
+        .add_system(
+            Self::picking_system
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        // Run in this stage to avoid visibility having effect earlier than spawning placing object.
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            Self::init_system
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(
+            Self::movement_system
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(
+            Self::confirmation_system
+                .run_if(action::just_pressed(Action::Confirm))
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(
+            Self::despawn_system
+                .run_if(action::just_pressed(Action::Delete))
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(
+            Self::cleanup_system
+                .run_if(action::just_pressed(Action::Cancel))
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
+        .add_exit_system(FamilyMode::Building, Self::cleanup_system);
     }
 }
 

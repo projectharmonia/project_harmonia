@@ -3,7 +3,7 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     city::ActiveCity,
-    game_state::GameState,
+    game_state::{FamilyMode, GameState},
     object::placing_object::{self, PlacingObject},
 };
 
@@ -24,6 +24,23 @@ impl Plugin for SelectedObjectPlugin {
                 .run_if_not(placing_object::placing_active)
                 .run_if_resource_exists::<SelectedObject>()
                 .run_in_state(GameState::City),
+        )
+        // TODO 0.10: clone system set.
+        .add_system_to_stage(
+            // Should run in state before `Self::selection_removing_system` to flush spawn command,
+            // otherwise `MovingObject` will be missing and it will be detected as removal.
+            CoreStage::PreUpdate,
+            Self::cursor_spawning_system
+                .run_if_resource_added::<SelectedObject>()
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
+        )
+        .add_system(
+            Self::selection_removal_system
+                .run_if_not(placing_object::placing_active)
+                .run_if_resource_exists::<SelectedObject>()
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building),
         );
     }
 }

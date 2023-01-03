@@ -1,3 +1,4 @@
+mod building_hud;
 mod city_hud;
 mod connection_dialog;
 mod error_message;
@@ -14,6 +15,7 @@ mod world_menu;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use building_hud::BuildingHudPlugin;
 use city_hud::CityHudPlugin;
 use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
@@ -34,6 +36,7 @@ pub(super) struct UiPlugins;
 impl PluginGroup for UiPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
+            .add(BuildingHudPlugin)
             .add(CityHudPlugin)
             .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
