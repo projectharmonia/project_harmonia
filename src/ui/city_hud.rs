@@ -9,7 +9,8 @@ use strum::IntoEnumIterator;
 use super::objects_view::ObjectsView;
 use crate::core::{
     asset_metadata::{AssetMetadata, ObjectCategory},
-    game_state::{CursorMode, GameState},
+    city::CityMode,
+    game_state::GameState,
     lot::LotTool,
     object::selected_object::SelectedObject,
     preview::{PreviewRequest, Previews},
@@ -30,7 +31,7 @@ impl CityHudPlugin {
         mut preview_events: EventWriter<PreviewRequest>,
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
-        cursor_mode: Res<CurrentState<CursorMode>>,
+        city_mode: Res<CurrentState<CityMode>>,
         lot_tool: Res<CurrentState<LotTool>>,
         metadata: Res<Assets<AssetMetadata>>,
         selected_object: Option<Res<SelectedObject>>,
@@ -42,8 +43,8 @@ impl CityHudPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        let mut current_mode = cursor_mode.0;
-                        for mode in CursorMode::iter() {
+                        let mut current_mode = city_mode.0;
+                        for mode in CityMode::iter() {
                             ui.selectable_value(
                                 &mut current_mode,
                                 mode,
@@ -51,12 +52,12 @@ impl CityHudPlugin {
                             )
                             .on_hover_text(mode.to_string());
                         }
-                        if current_mode != cursor_mode.0 {
+                        if current_mode != city_mode.0 {
                             commands.insert_resource(NextState(current_mode))
                         }
                     });
-                    match cursor_mode.0 {
-                        CursorMode::Objects => {
+                    match city_mode.0 {
+                        CityMode::Objects => {
                             ObjectsView::new(
                                 &mut current_category,
                                 ObjectCategory::CITY_CATEGORIES,
@@ -68,7 +69,7 @@ impl CityHudPlugin {
                             )
                             .show(ui);
                         }
-                        CursorMode::Lots => {
+                        CityMode::Lots => {
                             ui.vertical(|ui| {
                                 let mut current_tool = lot_tool.0;
                                 for tool in LotTool::iter() {

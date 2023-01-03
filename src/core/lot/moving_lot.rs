@@ -4,8 +4,8 @@ use iyes_loopless::prelude::*;
 use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
     action::{self, Action},
-    city::ActiveCity,
-    game_state::{CursorMode, GameState},
+    city::{ActiveCity, CityMode},
+    game_state::GameState,
     ground::GroundPlugin,
 };
 
@@ -25,14 +25,14 @@ impl Plugin for MovingLotPlugin {
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_if_not(movement_active)
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move),
         )
         .add_system(
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::movement_system)
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move)
                 .label(MovingLotPluginSystem::Movement),
         )
@@ -40,21 +40,21 @@ impl Plugin for MovingLotPlugin {
             Self::confirmation_system
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move),
         )
         .add_system(
             Self::despawn_system
                 .run_if(action::just_pressed(Action::Delete))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move),
         )
         .add_system(
             Self::cleanup_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move)
                 .after(MovingLotPluginSystem::Movement),
         )
@@ -62,7 +62,7 @@ impl Plugin for MovingLotPlugin {
             Self::cleanup_system
                 .run_on_event::<LotEventConfirmed>()
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Lots)
+                .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move)
                 .after(MovingLotPluginSystem::Movement),
         );

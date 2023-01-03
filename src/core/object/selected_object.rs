@@ -3,7 +3,8 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     city::ActiveCity,
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     object::placing_object::{self, PlacingObject},
 };
 

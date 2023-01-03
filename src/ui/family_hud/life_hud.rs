@@ -8,7 +8,8 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     doll::ActiveDoll,
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     task::{Task, TaskCancel, TaskQueue, TaskRequestKind, TaskRequestRemove},
 };
 

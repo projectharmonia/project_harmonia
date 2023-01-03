@@ -8,8 +8,9 @@ use leafwing_input_manager::prelude::*;
 use crate::core::{
     action::{self, Action},
     asset_metadata,
-    city::ActiveCity,
-    game_state::{CursorMode, FamilyMode, GameState},
+    city::{ActiveCity, CityMode},
+    family::FamilyMode,
+    game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     picking::ObjectPicked,
     preview::PreviewCamera,
@@ -22,41 +23,41 @@ impl Plugin for PlacingObjectPlugin {
         app.add_system(
             Self::picking_system
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         // Run in this stage to avoid visibility having effect earlier than spawning placing object.
         .add_system_to_stage(
             CoreStage::PostUpdate,
             Self::init_system
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         .add_system(
             Self::movement_system
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         .add_system(
             Self::confirmation_system
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         .add_system(
             Self::despawn_system
                 .run_if(action::just_pressed(Action::Delete))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         .add_system(
             Self::cleanup_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_in_state(GameState::City)
-                .run_in_state(CursorMode::Objects),
+                .run_in_state(CityMode::Objects),
         )
         .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
         // TODO 0.10: clone system set.
-        .add_exit_system(CursorMode::Objects, Self::cleanup_system)
+        .add_exit_system(CityMode::Objects, Self::cleanup_system)
         .add_system(
             Self::picking_system
                 .run_in_state(GameState::Family)

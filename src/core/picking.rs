@@ -4,11 +4,7 @@ use bevy_mod_raycast::RaycastSource;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use super::{
-    action::Action,
-    game_state::{CursorMode, GameState},
-    object::placing_object,
-};
+use super::{action::Action, city::CityMode, game_state::GameState, object::placing_object};
 
 pub(super) struct PickingPlugin;
 
@@ -21,7 +17,7 @@ impl Plugin for PickingPlugin {
                     .pipe(Self::outline_system)
                     .run_if_not(placing_object::placing_active)
                     .run_in_state(GameState::City)
-                    .run_not_in_state(CursorMode::Lots),
+                    .run_not_in_state(CityMode::Lots),
             )
             .add_system(
                 Self::ray_system
@@ -193,7 +189,7 @@ mod tests {
     fn hovering() {
         let mut app = App::new();
         app.add_loopless_state(GameState::City)
-            .add_loopless_state(CursorMode::Objects)
+            .add_loopless_state(CityMode::Objects)
             .init_resource::<ActionState<Action>>()
             .add_plugin(CorePlugin::default())
             .add_plugin(AssetPlugin::default())

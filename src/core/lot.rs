@@ -16,8 +16,8 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
-    family::Family,
-    game_state::{FamilyMode, GameState},
+    family::{Family, FamilyMode},
+    game_state::GameState,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     ground::Ground,
     network::network_event::{
@@ -28,21 +28,6 @@ use super::{
 };
 use editing_lot::EditingLotPlugin;
 use moving_lot::MovingLotPlugin;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
-pub(crate) enum LotTool {
-    Edit,
-    Move,
-}
-
-impl LotTool {
-    pub(crate) fn glyph(self) -> &'static str {
-        match self {
-            Self::Edit => "✏",
-            Self::Move => "↔",
-        }
-    }
-}
 
 pub(super) struct LotPlugin;
 
@@ -184,6 +169,21 @@ impl LotPlugin {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
             });
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+pub(crate) enum LotTool {
+    Edit,
+    Move,
+}
+
+impl LotTool {
+    pub(crate) fn glyph(self) -> &'static str {
+        match self {
+            Self::Edit => "✏",
+            Self::Move => "↔",
         }
     }
 }

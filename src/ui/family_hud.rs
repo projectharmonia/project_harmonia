@@ -8,7 +8,7 @@ use bevy_egui::{
 use iyes_loopless::prelude::*;
 use strum::IntoEnumIterator;
 
-use crate::core::game_state::{FamilyMode, GameState};
+use crate::core::{family::FamilyMode, game_state::GameState};
 use life_hud::LifeHudPlugin;
 
 pub(super) struct FamilyHudPlugin;

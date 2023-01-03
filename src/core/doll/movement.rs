@@ -7,7 +7,8 @@ use tap::TapOptional;
 
 use crate::core::{
     doll::DollPlayers,
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     ground::Ground,
     network::network_event::client_event::ClientEvent,
     task::{Task, TaskActivation, TaskCancel, TaskList, TaskRequest, TaskRequestKind},

@@ -7,7 +7,8 @@ use bevy_inspector_egui::egui::{Align, Layout};
 use iyes_loopless::prelude::*;
 
 use crate::core::{
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     task::{TaskList, TaskRequest},
 };
 

@@ -7,8 +7,10 @@ use bevy::{
     prelude::*,
 };
 use bevy_renet::renet::RenetClient;
+use derive_more::Display;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
@@ -27,7 +29,8 @@ pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<FamilySync>()
+        app.add_loopless_state(FamilyMode::Life)
+            .register_type::<FamilySync>()
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
@@ -173,6 +176,21 @@ impl FamilyBundle {
             name,
             budget,
             game_entity: GameEntity,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+pub(crate) enum FamilyMode {
+    Life,
+    Building,
+}
+
+impl FamilyMode {
+    pub(crate) fn glyph(self) -> &'static str {
+        match self {
+            Self::Life => "👪",
+            Self::Building => "🏠",
         }
     }
 }

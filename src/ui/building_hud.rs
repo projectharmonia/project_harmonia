@@ -8,7 +8,8 @@ use iyes_loopless::prelude::*;
 use super::objects_view::ObjectsView;
 use crate::core::{
     asset_metadata::{AssetMetadata, ObjectCategory},
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     object::selected_object::SelectedObject,
     preview::{PreviewRequest, Previews},
 };

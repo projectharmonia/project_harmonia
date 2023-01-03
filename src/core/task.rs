@@ -8,7 +8,8 @@ use tap::TapOptional;
 
 use super::{
     doll::DollPlayers,
-    game_state::{FamilyMode, GameState},
+    family::FamilyMode,
+    game_state::GameState,
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
     picking::ObjectPicked,
 };

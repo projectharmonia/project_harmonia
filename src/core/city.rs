@@ -1,5 +1,7 @@
 use bevy::prelude::*;
+use derive_more::Display;
 use iyes_loopless::prelude::*;
+use strum::EnumIter;
 
 use super::{
     doll::ActiveDoll,
@@ -17,7 +19,8 @@ pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PlacedCities>()
+        app.add_loopless_state(CityMode::Objects)
+            .init_resource::<PlacedCities>()
             .register_type::<City>()
             .add_stage_after(
                 CoreStage::PostUpdate,
@@ -136,6 +139,21 @@ impl CityPlugin {
     /// Resets [`PlacedCities`] counter to 0.
     fn placed_cities_reset_system(mut placed_citites: ResMut<PlacedCities>) {
         placed_citites.0 = 0;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+pub(crate) enum CityMode {
+    Objects,
+    Lots,
+}
+
+impl CityMode {
+    pub(crate) fn glyph(self) -> &'static str {
+        match self {
+            Self::Objects => "🌳",
+            Self::Lots => "🚧",
+        }
     }
 }
 
