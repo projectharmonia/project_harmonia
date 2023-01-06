@@ -5,7 +5,12 @@
 mod core;
 mod ui;
 
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{
+    log::LogPlugin,
+    pbr::wireframe::WireframePlugin,
+    prelude::*,
+    render::settings::{WgpuFeatures, WgpuSettings},
+};
 use bevy_egui::EguiPlugin;
 use bevy_hikari::prelude::*;
 use bevy_inspector_egui::prelude::*;
@@ -23,6 +28,10 @@ use ui::UiPlugins;
 fn main() {
     App::new()
         .init_resource::<Cli>()
+        .insert_resource(WgpuSettings {
+            features: WgpuFeatures::POLYGON_MODE_LINE,
+            ..Default::default()
+        })
         .add_plugins(
             DefaultPlugins
                 .set(LogPlugin {
@@ -37,6 +46,7 @@ fn main() {
                     ..Default::default()
                 }),
         )
+        .add_plugin(WireframePlugin)
         .add_plugin(HookPlugin)
         .add_plugin(InputManagerPlugin::<Action>::default())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())

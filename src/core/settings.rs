@@ -136,4 +136,5 @@ impl Default for ControlsSettings {
 pub(crate) struct DeveloperSettings {
     pub(crate) world_inspector: bool,
     pub(crate) debug_collisions: bool,
+    pub(crate) wireframe: bool,
 }
