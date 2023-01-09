@@ -599,12 +599,13 @@ dependencies = [
 
 [[package]]
 name = "bevy_mod_outline"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531162ea32f16c73d461b415146f8b10ca6e6112db8280f12ea646788a7fca75"
+checksum = "b7e41dc6d66a318fe1333dcd78212e6450cdde15fbd2f4fb49842c6accdaea8d"
 dependencies = [
  "bevy",
  "bitfield",
+ "interpolation",
  "thiserror",
 ]
 
@@ -1998,6 +1999,12 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "interpolation"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3b7357d2bbc5ee92f8e899ab645233e43d21407573cceb37fed8bc3dede2c02"
 
 [[package]]
 name = "io-kit-sys"
