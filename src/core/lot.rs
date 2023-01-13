@@ -1,4 +1,4 @@
-pub(crate) mod editing_lot;
+pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
 use bevy::{
@@ -26,15 +26,15 @@ use super::{
     },
     task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
-use editing_lot::EditingLotPlugin;
+use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
 pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(LotTool::Edit)
-            .add_plugin(EditingLotPlugin)
+        app.add_loopless_state(LotTool::Create)
+            .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
@@ -175,14 +175,14 @@ impl LotPlugin {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
 pub(crate) enum LotTool {
-    Edit,
+    Create,
     Move,
 }
 
 impl LotTool {
     pub(crate) fn glyph(self) -> &'static str {
         match self {
-            Self::Edit => "✏",
+            Self::Create => "✏",
             Self::Move => "↔",
         }
     }

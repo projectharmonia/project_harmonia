@@ -10,51 +10,51 @@ use crate::core::{
 
 use super::{LotEventConfirmed, LotSpawn, LotTool, LotVertices};
 
-pub(super) struct EditingLotPlugin;
+pub(super) struct CreatingLotPlugin;
 
-impl Plugin for EditingLotPlugin {
+impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::spawn_system)
                 .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(editing_active)
+                .run_if_not(creating_active)
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Edit),
+                .run_in_state(LotTool::Create),
         )
         .add_system(
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::movement_system)
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Edit),
+                .run_in_state(LotTool::Create),
         )
         .add_system(
             Self::vertex_placement_system
                 .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Edit),
+                .run_in_state(LotTool::Create),
         )
         .add_system(
             Self::despawn_system
                 .run_if(action::just_pressed(Action::Cancel))
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Edit),
+                .run_in_state(LotTool::Create),
         )
         .add_system(
             Self::despawn_system
                 .run_on_event::<LotEventConfirmed>()
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Edit),
+                .run_in_state(LotTool::Create),
         );
     }
 }
 
-impl EditingLotPlugin {
+impl CreatingLotPlugin {
     fn spawn_system(
         In(position): In<Option<Vec2>>,
         mut commands: Commands,
@@ -65,16 +65,16 @@ impl EditingLotPlugin {
             commands
                 .entity(active_cities.single())
                 .with_children(|parent| {
-                    parent.spawn((LotVertices(vec![position; 2]), EditingLot));
+                    parent.spawn((LotVertices(vec![position; 2]), CreatingLot));
                 });
         }
     }
 
     fn movement_system(
         In(new_position): In<Option<Vec2>>,
-        mut editing_lots: Query<&mut LotVertices, With<EditingLot>>,
+        mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
     ) {
-        if let Ok(mut lot_vertices) = editing_lots.get_single_mut() {
+        if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
             if let Some(new_position) = new_position {
                 let first_position = *lot_vertices
                     .first()
@@ -94,10 +94,10 @@ impl EditingLotPlugin {
 
     fn vertex_placement_system(
         mut spawn_events: EventWriter<LotSpawn>,
-        mut editing_lots: Query<&mut LotVertices, With<EditingLot>>,
+        mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
-        if let Ok(mut lot_vertices) = editing_lots.get_single_mut() {
+        if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
             let first_position = *lot_vertices
                 .first()
                 .expect("vertices should have at least initial position");
@@ -113,16 +113,16 @@ impl EditingLotPlugin {
         }
     }
 
-    fn despawn_system(mut commands: Commands, editing_lots: Query<Entity, With<EditingLot>>) {
-        if let Ok(entity) = editing_lots.get_single() {
+    fn despawn_system(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
+        if let Ok(entity) = creating_lots.get_single() {
             commands.entity(entity).despawn();
         }
     }
 }
 
-pub(crate) fn editing_active(spawning_lots: Query<(), With<EditingLot>>) -> bool {
+pub(crate) fn creating_active(spawning_lots: Query<(), With<CreatingLot>>) -> bool {
     !spawning_lots.is_empty()
 }
 
 #[derive(Component)]
-pub(crate) struct EditingLot;
+pub(crate) struct CreatingLot;
