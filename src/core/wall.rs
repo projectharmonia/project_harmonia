@@ -1,3 +1,5 @@
+mod creating_wall;
+
 use std::f32::consts::PI;
 
 use bevy::{
@@ -5,13 +7,18 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
 use itertools::{Itertools, MinMaxResult};
+use iyes_loopless::prelude::*;
+
+use super::game_world::GameWorld;
+use creating_wall::CreatingWallPlugin;
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(Self::spawn_system)
-            .add_system(Self::mesh_update_system);
+        app.add_plugin(CreatingWallPlugin)
+            .add_system(Self::spawn_system.run_if_resource_exists::<GameWorld>())
+            .add_system(Self::mesh_update_system.run_if_resource_exists::<GameWorld>());
     }
 }
 
@@ -20,22 +27,16 @@ impl WallPlugin {
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
+        spawned_walls: Query<Entity, Added<WallVertices>>,
     ) {
-        commands.spawn(WallBundle {
-            vertices: WallVertices(vec![
-                (Vec2::ZERO, Vec2::X * 4.0),
-                (Vec2::ZERO, Vec2::ONE * 4.0),
-                (Vec2::ZERO, Vec2::Y * 4.0),
-                // (Vec2::Y * 4.0, -Vec2::ONE * 8.0),
-                // (Vec2::Y * 4.0, -Vec2::ONE * 8.0),
-            ]),
-            pbr_bundle: PbrBundle {
+        for entity in &spawned_walls {
+            commands.entity(entity).insert(PbrBundle {
                 mesh: meshes.add(Mesh::new(PrimitiveTopology::TriangleList)),
                 material: materials.add(StandardMaterial::default()),
                 transform: Transform::from_xyz(1.0, 0.0, 0.0),
                 ..Default::default()
-            },
-        });
+            });
+        }
     }
 
     fn mesh_update_system(
@@ -90,7 +91,7 @@ impl WallPlugin {
                 indices.push(last_index + 5);
 
                 // Right
-                indices.push(last_index + 0);
+                indices.push(last_index);
                 indices.push(last_index + 4);
                 indices.push(last_index + 3);
                 indices.push(last_index + 4);
@@ -103,7 +104,7 @@ impl WallPlugin {
                         // Back
                         indices.push(last_index + 1);
                         indices.push(last_index + 4);
-                        indices.push(last_index + 0);
+                        indices.push(last_index);
                         indices.push(last_index + 1);
                         indices.push(last_index + 5);
                         indices.push(last_index + 4);
@@ -144,12 +145,15 @@ impl WallPlugin {
     }
 }
 
+/// Calculates the wall thickness vector that faces to the left relative to the wall vector.
 fn width_vec(start: Vec2, end: Vec2) -> Vec2 {
     const WIDTH: f32 = 0.25;
     const HALF_WIDTH: f32 = WIDTH / 2.0;
     (end - start).perp().normalize() * HALF_WIDTH
 }
 
+/// Calculates the left and right wall points for the `start` point of the wall,
+/// considering intersections with other walls.
 fn offset_points(
     start: Vec2,
     end: Vec2,
@@ -169,35 +173,39 @@ fn offset_points(
     }
 }
 
-fn minmax_angles(a: Vec2, b: Vec2, vertices: &[(Vec2, Vec2)]) -> MinMaxResult<(Vec2, Vec2)> {
-    let direction = b - a;
+/// Returns the points with the maximum and minimum angle relative
+/// to the wall vector that come out of point `start`.
+fn minmax_angles(start: Vec2, end: Vec2, vertices: &[(Vec2, Vec2)]) -> MinMaxResult<(Vec2, Vec2)> {
+    let dir = end - start;
     vertices
         .iter()
-        .filter_map(|&(p1, p2)| {
-            if p1 == a && p2 != b {
-                Some((p1, p2))
-            } else if p2 == a && p1 != b {
-                Some((p2, p1))
+        .filter_map(|&(a, b)| {
+            if a == start && b != end {
+                Some((a, b))
+            } else if b == start && a != end {
+                Some((b, a))
             } else {
                 None
             }
         })
-        .minmax_by_key(|&(p1, p2)| {
-            let angle = (p2 - p1).angle_between(direction);
+        .minmax_by_key(|&(a, b)| {
+            let angle = (b - a).angle_between(dir);
             if angle < 0.0 {
-                angle + PI
+                angle + 2.0 * PI
             } else {
                 angle
             }
         })
 }
 
+/// Returns the intersection of the part of the wall that is `width` away
+/// at the line constructed from `start` and `end` points with another part of the wall.
+///
+/// If the walls do not intersect, then returns a point that is a `width` away from the `start` point.
 fn wall_intersection(start: Vec2, end: Vec2, a: Vec2, b: Vec2, width: Vec2) -> Vec2 {
-    let current_line = Line::with_offset(start, end, width);
-    let line = Line::with_offset(a, b, width_vec(a, b));
-    current_line
-        .intersection(line)
-        .unwrap_or_else(|| start + width)
+    Line::with_offset(start, end, width)
+        .intersection(Line::with_offset(a, b, width_vec(a, b)))
+        .unwrap_or_else(|| start - width)
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -234,12 +242,6 @@ impl Line {
     }
 }
 
-#[derive(Bundle)]
-struct WallBundle {
-    vertices: WallVertices,
-    pbr_bundle: PbrBundle,
-}
-
 /// Stores a handle for the lot line material.
 #[derive(Resource)]
 struct WallMaterial(Handle<StandardMaterial>);
@@ -264,7 +266,7 @@ mod tests {
         let line_a = Line::new(Vec2::X, Vec2::ONE);
         let line_b = Line::new(Vec2::ZERO, Vec2::X * 2.0);
 
-        assert_eq!(line_a.intersection(line_b), Some(Vec2::X));
+        assert_eq!(line_a.intersection(line_b), Some(-Vec2::X));
     }
 
     #[test]
@@ -273,5 +275,88 @@ mod tests {
         let line_b = Line::new(Vec2::X * 2.0, Vec2::ONE * 2.0);
 
         assert_eq!(line_a.intersection(line_b), None);
+    }
+
+    #[test]
+    fn single_wall() {
+        const A: Vec2 = Vec2::ZERO;
+        const B: Vec2 = Vec2::X;
+        const VERTICES: &[(Vec2, Vec2)] = &[(A, B)];
+
+        let width = width_vec(A, B);
+        let a_edges = minmax_angles(A, B, VERTICES);
+        let (left_a, right_a) = offset_points(A, B, a_edges, width);
+
+        let b_edges = minmax_angles(B, A, VERTICES);
+        let (left_b, right_b) = offset_points(B, A, b_edges, width);
+
+        assert_eq!(left_a, Vec2::new(0.0, -0.125));
+        assert_eq!(right_a, Vec2::new(0.0, 0.125));
+        assert_eq!(left_b, Vec2::new(1.0, -0.125));
+        assert_eq!(right_b, Vec2::new(1.0, 0.125));
+    }
+
+    #[test]
+    fn diagonal_walls() {
+        const VERTICES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::ONE), (Vec2::ZERO, Vec2::NEG_ONE)];
+        const LEFT: [Vec2; 4] = [
+            Vec2::new(0.088388346, -0.088388346),
+            Vec2::new(-0.088388346, 0.088388346),
+            Vec2::new(1.0883883, 0.9116117),
+            Vec2::new(0.9116117, 1.0883883),
+        ];
+
+        for (&(a, b), expected) in VERTICES.iter().zip(&[LEFT, LEFT.map(|vec| -vec)]) {
+            let width = width_vec(a, b);
+            let a_edges = minmax_angles(a, b, VERTICES);
+            let (left_a, right_a) = offset_points(a, b, a_edges, width);
+
+            let b_edges = minmax_angles(b, a, VERTICES);
+            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+
+            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn crossed_walls() {
+        const VERTICES: &[(Vec2, Vec2)] = &[
+            (Vec2::ZERO, Vec2::X),
+            (Vec2::ZERO, Vec2::NEG_X),
+            (Vec2::ZERO, Vec2::Y),
+            (Vec2::ZERO, Vec2::NEG_Y),
+        ];
+        const HORIZONTAL: [Vec2; 4] = [
+            Vec2::new(0.125, -0.125),
+            Vec2::new(0.125, 0.125),
+            Vec2::new(1.0, -0.125),
+            Vec2::new(1.0, 0.125),
+        ];
+        const VERTICAL: [Vec2; 4] = [
+            Vec2::new(0.125, 0.125),
+            Vec2::new(-0.125, 0.125),
+            Vec2::new(0.125, 1.0),
+            Vec2::new(-0.125, 1.0),
+        ];
+
+        for (&(a, b), expected) in VERTICES.iter().zip(&[
+            HORIZONTAL,
+            HORIZONTAL.map(|vec| -vec),
+            VERTICAL,
+            VERTICAL.map(|vec| -vec),
+        ]) {
+            let width = width_vec(a, b);
+            let a_edges = minmax_angles(a, b, VERTICES);
+            let (left_a, right_a) = offset_points(a, b, a_edges, width);
+
+            let b_edges = minmax_angles(b, a, VERTICES);
+            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+
+            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
+                assert_eq!(actual, expected);
+            }
+        }
     }
 }
