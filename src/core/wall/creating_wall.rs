@@ -3,13 +3,13 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     action::{self, Action},
-    city::ActiveCity,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     ground::GroundPlugin,
+    lot::LotVertices,
 };
 
-use super::WallVertices;
+use super::WallEdges;
 
 pub(super) struct CreatingWallPlugin;
 
@@ -23,55 +23,48 @@ impl Plugin for CreatingWallPlugin {
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .run_in_state(BuildingMode::Walls),
+        )
+        .add_system(
+            GroundPlugin::cursor_to_ground_system
+                .pipe(Self::movement_system)
+                .run_if(action::pressed(Action::Confirm))
+                .run_if(creating_active)
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
+                .run_in_state(BuildingMode::Walls),
         );
     }
 }
 
 impl CreatingWallPlugin {
-    // fn test_system(
-    //     mut commands: Commands,
-    //     mut meshes: ResMut<Assets<Mesh>>,
-    //     mut materials: ResMut<Assets<StandardMaterial>>,
-    // ) {
-    //     commands.spawn((
-    //         WallVertices(vec![
-    //             // (Vec2::ZERO, Vec2::X),
-    //             // (Vec2::ZERO, Vec2::NEG_X),
-    //             // (Vec2::ZERO, Vec2::Y),
-    //             // (Vec2::ZERO, Vec2::NEG_Y),
-    //             // (Vec2::ZERO, -Vec2::X * 4.0),
-    //             (Vec2::ZERO, Vec2::X),
-    //             (Vec2::ZERO, Vec2::NEG_X),
-    //             (Vec2::ZERO, Vec2::Y),
-    //             (Vec2::ZERO, Vec2::NEG_Y),
-    //             // (Vec2::ZERO, Vec2::Y * 4.0),
-    //             // (Vec2::ZERO, -Vec2::Y * 4.0),
-    //             // (Vec2::Y * 4.0, -Vec2::ONE * 8.0),
-    //             // (Vec2::Y * 4.0, -Vec2::ONE * 8.0),
-    //         ]),
-    //         PbrBundle {
-    //             mesh: meshes.add(Mesh::new(PrimitiveTopology::TriangleList)),
-    //             material: materials.add(StandardMaterial::default()),
-    //             transform: Transform::from_xyz(1.0, 0.0, 0.0),
-    //             ..Default::default()
-    //         },
-    //     ));
-    // }
-
     fn spawn_system(
         In(position): In<Option<Vec2>>,
         mut commands: Commands,
-        active_cities: Query<Entity, With<ActiveCity>>,
+        lots: Query<(Entity, &LotVertices)>,
     ) {
         if let Some(position) = position {
-            commands
-                .entity(active_cities.single())
-                .with_children(|parent| {
-                    parent.spawn((
-                        WallVertices(vec![(position, position + 10.0)]),
-                        CreatingWall,
-                    ));
+            if let Some(entity) = lots
+                .iter()
+                .find(|(_, vertices)| vertices.contains_point(position))
+                .map(|(lot_entity, _)| lot_entity)
+            {
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn((WallEdges(vec![(position, position + 10.0)]), CreatingWall));
                 });
+            }
+        }
+    }
+
+    fn movement_system(
+        In(position): In<Option<Vec2>>,
+        mut creating_walls: Query<&mut WallEdges, With<CreatingWall>>,
+    ) {
+        if let Some(position) = position {
+            let mut wall = creating_walls.single_mut();
+            let mut edge = wall
+                .last_mut()
+                .expect("creating wall should always consist of one edge");
+            edge.1 = position;
         }
     }
 }

@@ -12,7 +12,7 @@ use crate::core::{
     game_world::GameEntity,
     lot::LotVertices,
     object::ObjectPath,
-    task::TaskQueue,
+    task::TaskQueue, wall::WallEdges,
 };
 
 /// Contains [`ComponentId`]'s that used to decide
@@ -42,6 +42,7 @@ impl FromWorld for SaveRules {
             world.init_component::<LastName>(),
             world.init_component::<TaskQueue>(),
             world.init_component::<LotVertices>(),
+            world.init_component::<WallEdges>(),
         ]);
 
         let ignored_if_present = HashMap::from([

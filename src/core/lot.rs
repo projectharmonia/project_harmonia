@@ -224,7 +224,7 @@ impl LotVertices {
 
     /// A port of W. Randolph Franklin's [PNPOLY](https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html) algorithm.
     #[must_use]
-    fn contains_point(&self, point: Vec2) -> bool {
+    pub(super) fn contains_point(&self, point: Vec2) -> bool {
         let mut inside = false;
         for (a, b) in self.iter().tuple_windows() {
             if ((a.y > point.y) != (b.y > point.y))
