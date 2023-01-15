@@ -12,7 +12,8 @@ use crate::core::{
     game_world::GameEntity,
     lot::LotVertices,
     object::ObjectPath,
-    task::TaskQueue, wall::WallEdges,
+    task::TaskQueue,
+    wall::WallEdges,
 };
 
 /// Contains [`ComponentId`]'s that used to decide

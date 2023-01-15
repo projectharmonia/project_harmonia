@@ -1,15 +1,24 @@
-mod creating_wall;
+pub(crate) mod creating_wall;
 
 use std::f32::consts::PI;
 
 use bevy::{
+    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
+use bevy_renet::renet::RenetClient;
 use itertools::{Itertools, MinMaxResult};
 use iyes_loopless::prelude::*;
+use serde::{Deserialize, Serialize};
 
-use super::game_world::GameWorld;
+use super::{
+    game_world::{GameEntity, GameWorld},
+    network::network_event::{
+        client_event::{ClientEvent, ClientEventAppExt},
+        server_event::{SendMode, ServerEvent, ServerEventAppExt},
+    },
+};
 use creating_wall::CreatingWallPlugin;
 
 pub(super) struct WallPlugin;
@@ -17,10 +26,14 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CreatingWallPlugin)
+            .register_type::<WallEdges>()
+            .add_mapped_client_event::<WallCreate>()
+            .add_server_event::<WallEventConfirmed>()
             .add_system_to_stage(
                 CoreStage::PreUpdate,
                 Self::init_system.run_if_resource_exists::<GameWorld>(),
             )
+            .add_system(Self::wall_creation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::mesh_update_system.run_if_resource_exists::<GameWorld>());
     }
 }
@@ -38,6 +51,32 @@ impl WallPlugin {
                 material: materials.add(StandardMaterial::default()),
                 transform: Transform::from_xyz(1.0, 0.0, 0.0),
                 ..Default::default()
+            });
+        }
+    }
+
+    fn wall_creation_system(
+        mut commands: Commands,
+        mut create_events: EventReader<ClientEvent<WallCreate>>,
+        mut confirm_events: EventWriter<ServerEvent<WallEventConfirmed>>,
+        children: Query<&Children>,
+        mut walls: Query<&mut WallEdges>,
+    ) {
+        for ClientEvent { client_id, event } in create_events.iter().copied() {
+            confirm_events.send(ServerEvent {
+                mode: SendMode::Direct(client_id),
+                event: WallEventConfirmed,
+            });
+            if let Ok(children) = children.get(event.lot_entity) {
+                if let Some(mut edges) = walls.iter_many_mut(children.iter()).fetch_next() {
+                    edges.push(event.edge);
+                    return;
+                }
+            }
+
+            // No wall entity found, create a new one
+            commands.entity(event.lot_entity).with_children(|parent| {
+                parent.spawn((WallEdges(vec![event.edge]), GameEntity));
             });
         }
     }
@@ -259,6 +298,23 @@ impl FromWorld for WallMaterial {
 #[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
 pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
+
+/// Client event that a wall has been created.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+struct WallCreate {
+    lot_entity: Entity,
+    edge: (Vec2, Vec2),
+}
+
+impl MapEntities for WallCreate {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.lot_entity = entity_map.get(self.lot_entity)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WallEventConfirmed;
 
 #[cfg(test)]
 mod tests {

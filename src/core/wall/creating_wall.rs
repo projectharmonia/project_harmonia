@@ -9,7 +9,7 @@ use crate::core::{
     lot::LotVertices,
 };
 
-use super::WallEdges;
+use super::{WallCreate, WallEdges, WallEventConfirmed};
 
 pub(super) struct CreatingWallPlugin;
 
@@ -32,6 +32,28 @@ impl Plugin for CreatingWallPlugin {
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .run_in_state(BuildingMode::Walls),
+        )
+        .add_system(
+            Self::creation_system
+                .run_if(action::just_released(Action::Confirm))
+                .run_if(creating_active)
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
+                .run_in_state(BuildingMode::Walls),
+        )
+        .add_system(
+            Self::despawn_system
+                .run_if(action::just_pressed(Action::Cancel))
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
+                .run_in_state(BuildingMode::Walls),
+        )
+        .add_system(
+            Self::despawn_system
+                .run_on_event::<WallEventConfirmed>()
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
+                .run_in_state(BuildingMode::Walls),
         );
     }
 }
@@ -49,7 +71,7 @@ impl CreatingWallPlugin {
                 .map(|(lot_entity, _)| lot_entity)
             {
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((WallEdges(vec![(position, position + 10.0)]), CreatingWall));
+                    parent.spawn((WallEdges(vec![(position, position)]), CreatingWall));
                 });
             }
         }
@@ -60,11 +82,31 @@ impl CreatingWallPlugin {
         mut creating_walls: Query<&mut WallEdges, With<CreatingWall>>,
     ) {
         if let Some(position) = position {
-            let mut wall = creating_walls.single_mut();
-            let mut edge = wall
+            let mut edge = creating_walls.single_mut();
+            let mut edge = edge
                 .last_mut()
                 .expect("creating wall should always consist of one edge");
             edge.1 = position;
+        }
+    }
+
+    fn creation_system(
+        mut create_events: EventWriter<WallCreate>,
+        creating_walls: Query<(&Parent, &WallEdges), With<CreatingWall>>,
+    ) {
+        let (parent, edges) = creating_walls.single();
+        let edge = *edges
+            .last()
+            .expect("creating wall should always consist of one edge");
+        create_events.send(WallCreate {
+            lot_entity: parent.get(),
+            edge,
+        });
+    }
+
+    fn despawn_system(mut commands: Commands, creating_walls: Query<Entity, With<CreatingWall>>) {
+        if let Ok(entity) = creating_walls.get_single() {
+            commands.entity(entity).despawn();
         }
     }
 }

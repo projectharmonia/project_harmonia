@@ -21,7 +21,7 @@ pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
 mod video;
-mod wall;
+pub(super) mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
