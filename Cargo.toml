@@ -35,7 +35,7 @@ derive_more = { version = "0.99", default-features = false, features = [
   "constructor",
 ] }
 standard_paths = "2.0"
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.5"
 rmp-serde = "1.1"
