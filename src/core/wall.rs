@@ -60,7 +60,7 @@ impl WallPlugin {
         mut create_events: EventReader<ClientEvent<WallCreate>>,
         mut confirm_events: EventWriter<ServerEvent<WallEventConfirmed>>,
         children: Query<&Children>,
-        mut walls: Query<&mut WallEdges>,
+        mut walls: Query<&mut WallEdges, With<GameEntity>>,
     ) {
         for ClientEvent { client_id, event } in create_events.iter().copied() {
             confirm_events.send(ServerEvent {
