@@ -80,13 +80,25 @@ impl CreatingWallPlugin {
     fn movement_system(
         In(position): In<Option<Vec2>>,
         mut creating_walls: Query<&mut WallEdges, With<CreatingWall>>,
+        walls: Query<&WallEdges, Without<CreatingWall>>,
     ) {
         if let Some(position) = position {
+            const SNAP_DELTA: f32 = 0.5;
             let mut edge = creating_walls.single_mut();
             let mut edge = edge
                 .last_mut()
                 .expect("creating wall should always consist of one edge");
-            edge.1 = position;
+
+            if let Some(vertex) = walls
+                .iter()
+                .flat_map(|edges| edges.iter())
+                .flat_map(|edge| [edge.0, edge.1])
+                .find(|vertex| vertex.distance(position) < SNAP_DELTA)
+            {
+                edge.1 = vertex;
+            } else {
+                edge.1 = position;
+            }
         }
     }
 
