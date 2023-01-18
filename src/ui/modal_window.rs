@@ -21,18 +21,17 @@ impl Plugin for ModalWindowPlugin {
 
 impl ModalWindowPlugin {
     fn modal_area_system(mut egui: ResMut<EguiContext>) {
-        let id = match egui
+        let Some(layer) = egui
             .ctx_mut()
             .data()
             .get_temp_mut_or_default::<ModalIds>(Id::null())
             .retain_registered()
-        {
-            Some(id) => id,
-            None => return,
+        else {
+            return
         };
 
         const BACKGROUND_ALPHA: u8 = 150;
-        Area::new(id) // Use id of the widget as an identifier to avoid ordering issues.
+        Area::new(Id::new(layer)) // Use layer of the widget as an id to avoid ordering issues.
             .fixed_pos(Pos2::ZERO)
             .show(egui.ctx_mut(), |ui| {
                 let screen = ui.ctx().input().screen_rect();
@@ -44,7 +43,7 @@ impl ModalWindowPlugin {
                 ui.allocate_space(screen.size());
             });
 
-        egui.ctx_mut().move_to_top(id);
+        egui.ctx_mut().move_to_top(layer);
     }
 }
 

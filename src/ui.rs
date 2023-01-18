@@ -4,6 +4,7 @@ mod connection_dialog;
 mod error_message;
 mod family_editor_menu;
 mod family_hud;
+mod game_inspector;
 mod ingame_menu;
 mod main_menu;
 mod modal_window;
@@ -21,6 +22,7 @@ use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
 use family_editor_menu::FamilyEditorMenuPlugin;
 use family_hud::FamilyHudPlugin;
+use game_inspector::GameInspectorPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
@@ -42,6 +44,7 @@ impl PluginGroup for UiPlugins {
             .add(ErrorMessagePlugin)
             .add(FamilyEditorMenuPlugin)
             .add(FamilyHudPlugin)
+            .add(GameInspectorPlugin)
             .add(InGameMenuPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)

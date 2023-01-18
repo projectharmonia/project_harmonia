@@ -134,7 +134,7 @@ impl Default for ControlsSettings {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct DeveloperSettings {
-    pub(crate) world_inspector: bool,
+    pub(crate) game_inspector: bool,
     pub(crate) debug_collisions: bool,
     pub(crate) wireframe: bool,
 }

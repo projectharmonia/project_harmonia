@@ -32,7 +32,20 @@ pub(crate) const fn pressed(action: Action) -> impl Fn(Res<ActionState<Action>>)
     move |action_state: Res<ActionState<Action>>| -> bool { action_state.pressed(action) }
 }
 
-#[derive(Actionlike, Clone, Copy, Debug, Deserialize, Display, Hash, PartialEq, Serialize)]
+#[derive(
+    Actionlike,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+)]
 pub(crate) enum Action {
     #[strum(serialize = "Camera Forward")]
     CameraForward,

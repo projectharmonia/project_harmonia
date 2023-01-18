@@ -16,8 +16,8 @@ impl<'a> DeveloperTab<'a> {
 impl DeveloperTab<'_> {
     pub(super) fn show(self, ui: &mut Ui) {
         ui.checkbox(
-            &mut self.developer_settings.world_inspector,
-            "Enable world inspector",
+            &mut self.developer_settings.game_inspector,
+            "Enable game inspector",
         );
         ui.checkbox(
             &mut self.developer_settings.debug_collisions,
