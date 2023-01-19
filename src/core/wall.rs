@@ -117,46 +117,46 @@ impl WallPlugin {
                 positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
 
                 // Top
+                indices.push(last_index + 5);
                 indices.push(last_index + 4);
-                indices.push(last_index + 5);
-                indices.push(last_index + 7);
-                indices.push(last_index + 5);
                 indices.push(last_index + 6);
+                indices.push(last_index + 4);
                 indices.push(last_index + 7);
+                indices.push(last_index + 6);
 
                 // Left
-                indices.push(last_index + 2);
-                indices.push(last_index + 5);
-                indices.push(last_index + 1);
-                indices.push(last_index + 2);
-                indices.push(last_index + 6);
-                indices.push(last_index + 5);
+                indices.push(last_index + 3);
+                indices.push(last_index + 4);
+                indices.push(last_index);
+                indices.push(last_index + 3);
+                indices.push(last_index + 7);
+                indices.push(last_index + 4);
 
                 // Right
-                indices.push(last_index);
-                indices.push(last_index + 4);
-                indices.push(last_index + 3);
-                indices.push(last_index + 4);
-                indices.push(last_index + 7);
-                indices.push(last_index + 3);
+                indices.push(last_index + 1);
+                indices.push(last_index + 5);
+                indices.push(last_index + 2);
+                indices.push(last_index + 5);
+                indices.push(last_index + 6);
+                indices.push(last_index + 2);
 
                 match a_edges {
                     MinMaxResult::OneElement(_) => (),
                     MinMaxResult::NoElements => {
                         // Back
-                        indices.push(last_index + 1);
-                        indices.push(last_index + 4);
                         indices.push(last_index);
-                        indices.push(last_index + 1);
                         indices.push(last_index + 5);
+                        indices.push(last_index + 1);
+                        indices.push(last_index);
                         indices.push(last_index + 4);
+                        indices.push(last_index + 5);
                     }
                     MinMaxResult::MinMax(_, _) => {
                         // Inside triangle to fill the gap between 3+ walls
                         positions.push(Vec3::new(a.x, HEIGHT, a.y));
-                        indices.push(last_index + 4);
-                        indices.push(positions.len() as u32 - 1);
                         indices.push(last_index + 5);
+                        indices.push(positions.len() as u32 - 1);
+                        indices.push(last_index + 4);
                     }
                 }
 
@@ -164,19 +164,19 @@ impl WallPlugin {
                     MinMaxResult::OneElement(_) => (),
                     MinMaxResult::NoElements => {
                         // Front
-                        indices.push(last_index + 3);
-                        indices.push(last_index + 7);
                         indices.push(last_index + 2);
-                        indices.push(last_index + 7);
                         indices.push(last_index + 6);
-                        indices.push(last_index + 2);
+                        indices.push(last_index + 3);
+                        indices.push(last_index + 6);
+                        indices.push(last_index + 7);
+                        indices.push(last_index + 3);
                     }
                     MinMaxResult::MinMax(_, _) => {
                         // Inside triangle to fill the gap between 3+ walls
                         positions.push(Vec3::new(a.x, HEIGHT, a.y));
-                        indices.push(last_index + 7);
-                        indices.push(positions.len() as u32 - 1);
                         indices.push(last_index + 6);
+                        indices.push(positions.len() as u32 - 1);
+                        indices.push(last_index + 7);
                     }
                 }
             }
@@ -203,14 +203,14 @@ fn offset_points(
     width: Vec2,
 ) -> (Vec2, Vec2) {
     match edges {
-        MinMaxResult::NoElements => (start - width, start + width),
+        MinMaxResult::NoElements => (start + width, start - width),
         MinMaxResult::OneElement((a, b)) => (
-            wall_intersection(start, end, b, a, width),
             wall_intersection(start, end, a, b, -width),
+            wall_intersection(start, end, b, a, width),
         ),
         MinMaxResult::MinMax((min_a, min_b), (max_a, max_b)) => (
-            wall_intersection(start, end, min_b, min_a, width),
             wall_intersection(start, end, max_a, max_b, -width),
+            wall_intersection(start, end, min_b, min_a, width),
         ),
     }
 }
@@ -349,20 +349,20 @@ mod tests {
         let b_edges = minmax_angles(B, A, EDGES);
         let (left_b, right_b) = offset_points(B, A, b_edges, width);
 
-        assert_eq!(left_a, Vec2::new(0.0, -0.125));
-        assert_eq!(right_a, Vec2::new(0.0, 0.125));
-        assert_eq!(left_b, Vec2::new(1.0, -0.125));
-        assert_eq!(right_b, Vec2::new(1.0, 0.125));
+        assert_eq!(left_a, Vec2::new(0.0, 0.125));
+        assert_eq!(right_a, Vec2::new(0.0, -0.125));
+        assert_eq!(left_b, Vec2::new(1.0, 0.125));
+        assert_eq!(right_b, Vec2::new(1.0, -0.125));
     }
 
     #[test]
     fn diagonal_walls() {
         const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::ONE), (Vec2::ZERO, Vec2::NEG_ONE)];
         const LEFT: [Vec2; 4] = [
-            Vec2::new(0.088388346, -0.088388346),
             Vec2::new(-0.088388346, 0.088388346),
-            Vec2::new(1.0883883, 0.9116117),
+            Vec2::new(0.088388346, -0.088388346),
             Vec2::new(0.9116117, 1.0883883),
+            Vec2::new(1.0883883, 0.9116117),
         ];
 
         for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, LEFT.map(|vec| -vec)]) {
@@ -388,16 +388,16 @@ mod tests {
             (Vec2::ZERO, Vec2::NEG_Y),
         ];
         const HORIZONTAL: [Vec2; 4] = [
-            Vec2::new(0.125, -0.125),
             Vec2::new(0.125, 0.125),
-            Vec2::new(1.0, -0.125),
+            Vec2::new(0.125, -0.125),
             Vec2::new(1.0, 0.125),
+            Vec2::new(1.0, -0.125),
         ];
         const VERTICAL: [Vec2; 4] = [
-            Vec2::new(0.125, 0.125),
             Vec2::new(-0.125, 0.125),
-            Vec2::new(0.125, 1.0),
+            Vec2::new(0.125, 0.125),
             Vec2::new(-0.125, 1.0),
+            Vec2::new(0.125, 1.0),
         ];
 
         for (&(a, b), expected) in EDGES.iter().zip(&[
