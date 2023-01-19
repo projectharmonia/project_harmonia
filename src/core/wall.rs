@@ -103,18 +103,18 @@ impl WallPlugin {
                 let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
                 let b_edges = minmax_angles(b, a, edges);
-                let (left_b, right_b) = offset_points(b, a, b_edges, width);
+                let (left_b, right_b) = offset_points(b, a, b_edges, -width);
 
                 positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
                 positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
-                positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
                 positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
+                positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
 
                 const HEIGHT: f32 = 2.0;
                 positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
                 positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
-                positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
                 positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
+                positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
 
                 // Top
                 indices.push(last_index + 5);
@@ -152,10 +152,10 @@ impl WallPlugin {
                         indices.push(last_index + 5);
                     }
                     MinMaxResult::MinMax(_, _) => {
-                        // Inside triangle to fill the gap between 3+ walls
+                        // Inside triangle to fill the gap between 3+ walls.
                         positions.push(Vec3::new(a.x, HEIGHT, a.y));
                         indices.push(last_index + 5);
-                        indices.push(positions.len() as u32 - 1);
+                        indices.push(last_index + 8); // Point `b` added above.
                         indices.push(last_index + 4);
                     }
                 }
@@ -172,11 +172,11 @@ impl WallPlugin {
                         indices.push(last_index + 3);
                     }
                     MinMaxResult::MinMax(_, _) => {
-                        // Inside triangle to fill the gap between 3+ walls
-                        positions.push(Vec3::new(a.x, HEIGHT, a.y));
+                        // Inside triangle to fill the gap between 3+ walls.
+                        positions.push(Vec3::new(b.x, HEIGHT, b.y));
                         indices.push(last_index + 6);
-                        indices.push(positions.len() as u32 - 1);
                         indices.push(last_index + 7);
+                        indices.push(last_index + 8); // Point `b` added above.
                     }
                 }
             }
