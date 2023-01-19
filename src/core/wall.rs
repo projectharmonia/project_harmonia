@@ -46,12 +46,14 @@ impl WallPlugin {
         spawned_walls: Query<Entity, Added<WallEdges>>,
     ) {
         for entity in &spawned_walls {
-            commands.entity(entity).insert(PbrBundle {
-                mesh: meshes.add(Mesh::new(PrimitiveTopology::TriangleList)),
-                material: materials.add(StandardMaterial::default()),
-                transform: Transform::from_xyz(1.0, 0.0, 0.0),
-                ..Default::default()
-            });
+            commands.entity(entity).insert((
+                Name::new("Walls"),
+                PbrBundle {
+                    mesh: meshes.add(Mesh::new(PrimitiveTopology::TriangleList)),
+                    material: materials.add(StandardMaterial::default()),
+                    ..Default::default()
+                },
+            ));
         }
     }
 
