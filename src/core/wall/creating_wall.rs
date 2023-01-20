@@ -59,19 +59,30 @@ impl Plugin for CreatingWallPlugin {
 }
 
 impl CreatingWallPlugin {
+    const SNAP_DELTA: f32 = 0.5;
+
     fn spawn_system(
         In(position): In<Option<Vec2>>,
         mut commands: Commands,
-        lots: Query<(Entity, &LotVertices)>,
+        walls: Query<&WallEdges>,
+        lots: Query<(Entity, Option<&Children>, &LotVertices)>,
     ) {
         if let Some(position) = position {
-            if let Some(entity) = lots
+            if let Some((entity, children)) = lots
                 .iter()
-                .find(|(_, vertices)| vertices.contains_point(position))
-                .map(|(lot_entity, _)| lot_entity)
+                .find(|(.., vertices)| vertices.contains_point(position))
+                .map(|(entity, children, _)| (entity, children))
             {
+                // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
+                let vertex = walls
+                    .iter_many(children.iter().flat_map(|children| children.iter()))
+                    .flat_map(|edges| edges.iter())
+                    .flat_map(|edge| [edge.0, edge.1])
+                    .find(|vertex| vertex.distance(position) < Self::SNAP_DELTA)
+                    .unwrap_or(position);
+
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((WallEdges(vec![(position, position)]), CreatingWall));
+                    parent.spawn((WallEdges(vec![(vertex, vertex)]), CreatingWall));
                 });
             }
         }
@@ -79,26 +90,26 @@ impl CreatingWallPlugin {
 
     fn movement_system(
         In(position): In<Option<Vec2>>,
-        mut creating_walls: Query<&mut WallEdges, With<CreatingWall>>,
+        mut creating_walls: Query<(&mut WallEdges, &Parent), With<CreatingWall>>,
         walls: Query<&WallEdges, Without<CreatingWall>>,
+        children: Query<&Children>,
     ) {
         if let Some(position) = position {
-            const SNAP_DELTA: f32 = 0.5;
-            let mut edge = creating_walls.single_mut();
-            let mut edge = edge
+            let (mut edges, parent) = creating_walls.single_mut();
+            let children = children.get(parent.get()).unwrap();
+            let mut edge = edges
                 .last_mut()
                 .expect("creating wall should always consist of one edge");
 
-            if let Some(vertex) = walls
-                .iter()
+            // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
+            let vertex = walls
+                .iter_many(children)
                 .flat_map(|edges| edges.iter())
                 .flat_map(|edge| [edge.0, edge.1])
-                .find(|vertex| vertex.distance(position) < SNAP_DELTA)
-            {
-                edge.1 = vertex;
-            } else {
-                edge.1 = position;
-            }
+                .find(|vertex| vertex.distance(position) < Self::SNAP_DELTA)
+                .unwrap_or(position);
+
+            edge.1 = vertex;
         }
     }
 
