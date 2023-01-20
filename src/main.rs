@@ -11,6 +11,7 @@ use bevy::{
     prelude::*,
     render::settings::{WgpuFeatures, WgpuSettings},
 };
+use bevy_atmosphere::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_hikari::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
@@ -47,6 +48,7 @@ fn main() {
                 }),
         )
         .add_plugin(WireframePlugin)
+        .add_plugin(AtmospherePlugin)
         .add_plugin(HookPlugin)
         .add_plugin(InputManagerPlugin::<Action>::default())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())

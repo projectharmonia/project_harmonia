@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_atmosphere::prelude::*;
 use derive_more::Display;
 use iyes_loopless::prelude::*;
 use strum::EnumIter;
@@ -108,7 +109,10 @@ impl CityPlugin {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             visibility.is_visible = true;
             commands.entity(entity).with_children(|parent| {
-                parent.spawn(OrbitCameraBundle::new(settings.video.render_graph_name()));
+                parent.spawn((
+                    OrbitCameraBundle::new(settings.video.render_graph_name()),
+                    AtmosphereCamera::default(),
+                ));
             });
         }
     }
