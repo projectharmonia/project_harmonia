@@ -279,8 +279,8 @@ impl Line {
             None
         } else {
             Some(Vec2 {
-                x: (self.b * rhs.c - rhs.b * self.c) / det,
-                y: (rhs.a * self.c - self.a * rhs.c) / det,
+                x: (rhs.b * self.c - self.b * rhs.c) / det,
+                y: (self.a * rhs.c - rhs.a * self.c) / det,
             })
         }
     }
@@ -327,7 +327,7 @@ mod tests {
         let line_a = Line::new(Vec2::X, Vec2::ONE);
         let line_b = Line::new(Vec2::ZERO, Vec2::X * 2.0);
 
-        assert_eq!(line_a.intersection(line_b), Some(-Vec2::X));
+        assert_eq!(line_a.intersection(line_b), Some(Vec2::X));
     }
 
     #[test]
