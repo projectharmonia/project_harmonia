@@ -358,6 +358,32 @@ mod tests {
     }
 
     #[test]
+    fn opposite_walls() {
+        const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::X), (Vec2::NEG_X, Vec2::ZERO)];
+        const LEFT: [Vec2; 4] = [
+            Vec2::new(0.0, 0.125),
+            Vec2::new(0.0, -0.125),
+            Vec2::new(1.0, 0.125),
+            Vec2::new(1.0, -0.125),
+        ];
+        let mut right = LEFT.map(|vertex| -vertex);
+        right.reverse();
+
+        for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, right]) {
+            let width = width_vec(a, b);
+            let a_edges = minmax_angles(a, b, EDGES);
+            let (left_a, right_a) = offset_points(a, b, a_edges, width);
+
+            let b_edges = minmax_angles(b, a, EDGES);
+            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+
+            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
     fn diagonal_walls() {
         const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::ONE), (Vec2::ZERO, Vec2::NEG_ONE)];
         const LEFT: [Vec2; 4] = [
@@ -367,7 +393,7 @@ mod tests {
             Vec2::new(1.0883883, 0.9116117),
         ];
 
-        for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, LEFT.map(|vec| -vec)]) {
+        for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, LEFT.map(|vertex| -vertex)]) {
             let width = width_vec(a, b);
             let a_edges = minmax_angles(a, b, EDGES);
             let (left_a, right_a) = offset_points(a, b, a_edges, width);
@@ -375,7 +401,7 @@ mod tests {
             let b_edges = minmax_angles(b, a, EDGES);
             let (left_b, right_b) = offset_points(b, a, b_edges, width);
 
-            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
+            for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
                 assert_eq!(actual, expected);
             }
         }
@@ -404,9 +430,9 @@ mod tests {
 
         for (&(a, b), expected) in EDGES.iter().zip(&[
             HORIZONTAL,
-            HORIZONTAL.map(|vec| -vec),
+            HORIZONTAL.map(|vertex| -vertex),
             VERTICAL,
-            VERTICAL.map(|vec| -vec),
+            VERTICAL.map(|vertex| -vertex),
         ]) {
             let width = width_vec(a, b);
             let a_edges = minmax_angles(a, b, EDGES);
@@ -415,7 +441,7 @@ mod tests {
             let b_edges = minmax_angles(b, a, EDGES);
             let (left_b, right_b) = offset_points(b, a, b_edges, width);
 
-            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
+            for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
                 assert_eq!(actual, expected);
             }
         }
