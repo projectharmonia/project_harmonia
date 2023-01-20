@@ -301,7 +301,7 @@ impl FromWorld for WallMaterial {
 #[reflect(Component)]
 pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
 
-/// Client event that a wall has been created.
+/// Client event to request a wall creation.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 struct WallCreate {
     lot_entity: Entity,
