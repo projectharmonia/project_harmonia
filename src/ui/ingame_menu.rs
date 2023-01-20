@@ -12,6 +12,7 @@ use crate::core::{
     game_world::{GameSave, GameWorld, GameWorldSystem},
     lot::{creating_lot, moving_lot},
     object::placing_object,
+    wall::creating_wall,
 };
 
 use super::{
@@ -29,6 +30,7 @@ impl Plugin for InGameMenuPlugin {
                 .run_if_not(placing_object::placing_active)
                 .run_if_not(creating_lot::creating_active)
                 .run_if_not(moving_lot::movement_active)
+                .run_if_not(creating_wall::creating_active)
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
         )

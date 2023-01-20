@@ -30,6 +30,7 @@ pub(super) struct FamilyPlugin;
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_loopless_state(FamilyMode::Life)
+            .add_loopless_state(BuildingMode::Objects)
             .register_type::<FamilySync>()
             .register_type::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
@@ -191,6 +192,21 @@ impl FamilyMode {
         match self {
             Self::Life => "👪",
             Self::Building => "🏠",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+pub(crate) enum BuildingMode {
+    Objects,
+    Walls,
+}
+
+impl BuildingMode {
+    pub(crate) fn glyph(self) -> &'static str {
+        match self {
+            Self::Objects => "💺",
+            Self::Walls => "◧",
         }
     }
 }

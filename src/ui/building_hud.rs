@@ -1,14 +1,15 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{Align2, Window},
+    egui::{Align2, RichText, Window},
     EguiContext,
 };
 use iyes_loopless::prelude::*;
+use strum::IntoEnumIterator;
 
 use super::objects_view::ObjectsView;
 use crate::core::{
     asset_metadata::{AssetMetadata, ObjectCategory},
-    family::FamilyMode,
+    family::{BuildingMode, FamilyMode},
     game_state::GameState,
     object::selected_object::SelectedObject,
     preview::{PreviewRequest, Previews},
@@ -33,6 +34,7 @@ impl BuildingHudPlugin {
         mut preview_events: EventWriter<PreviewRequest>,
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
+        building_mode: Res<CurrentState<BuildingMode>>,
         metadata: Res<Assets<AssetMetadata>>,
         selected_object: Option<Res<SelectedObject>>,
     ) {
@@ -42,16 +44,32 @@ impl BuildingHudPlugin {
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    ObjectsView::new(
-                        &mut current_category,
-                        ObjectCategory::CITY_CATEGORIES,
-                        &mut commands,
-                        &metadata,
-                        &previews,
-                        &mut preview_events,
-                        selected_object.map(|object| object.0),
-                    )
-                    .show(ui);
+                    ui.vertical(|ui| {
+                        let mut current_mode = building_mode.0;
+                        for mode in BuildingMode::iter() {
+                            ui.selectable_value(
+                                &mut current_mode,
+                                mode,
+                                RichText::new(mode.glyph()).size(22.0),
+                            )
+                            .on_hover_text(mode.to_string());
+                        }
+                        if current_mode != building_mode.0 {
+                            commands.insert_resource(NextState(current_mode))
+                        }
+                    });
+                    if building_mode.0 == BuildingMode::Objects {
+                        ObjectsView::new(
+                            &mut current_category,
+                            ObjectCategory::CITY_CATEGORIES,
+                            &mut commands,
+                            &metadata,
+                            &previews,
+                            &mut preview_events,
+                            selected_object.map(|object| object.0),
+                        )
+                        .show(ui);
+                    }
                 });
             });
     }

@@ -27,6 +27,11 @@ pub(crate) const fn just_pressed(action: Action) -> impl Fn(Res<ActionState<Acti
     move |action_state: Res<ActionState<Action>>| -> bool { action_state.just_pressed(action) }
 }
 
+/// A condition for systems to check if an action was just released.
+pub(crate) const fn just_released(action: Action) -> impl Fn(Res<ActionState<Action>>) -> bool {
+    move |action_state: Res<ActionState<Action>>| -> bool { action_state.just_released(action) }
+}
+
 /// A condition for systems to check if an action was pressed.
 pub(crate) const fn pressed(action: Action) -> impl Fn(Res<ActionState<Action>>) -> bool {
     move |action_state: Res<ActionState<Action>>| -> bool { action_state.pressed(action) }

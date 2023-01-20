@@ -13,6 +13,7 @@ use bevy::{
 };
 use bevy_egui::EguiPlugin;
 use bevy_hikari::prelude::*;
+use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_mod_raycast::DefaultRaycastingPlugin;
 use bevy_polyline::prelude::*;
@@ -56,6 +57,7 @@ fn main() {
         .add_plugin(OutlinePlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(EguiPlugin)
+        .add_plugin(DefaultInspectorConfigPlugin)
         .add_plugin(HikariPlugin)
         .add_plugins(CorePlugins)
         .add_plugins(UiPlugins)
