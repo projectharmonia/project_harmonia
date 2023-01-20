@@ -207,12 +207,12 @@ fn offset_points(
     match edges {
         MinMaxResult::NoElements => (start + width, start - width),
         MinMaxResult::OneElement((a, b)) => (
-            wall_intersection(start, end, a, b, -width),
-            wall_intersection(start, end, b, a, width),
+            wall_intersection(start, end, a, b, width),
+            wall_intersection(start, end, b, a, -width),
         ),
         MinMaxResult::MinMax((min_a, min_b), (max_a, max_b)) => (
-            wall_intersection(start, end, max_a, max_b, -width),
-            wall_intersection(start, end, min_b, min_a, width),
+            wall_intersection(start, end, max_a, max_b, width),
+            wall_intersection(start, end, min_b, min_a, -width),
         ),
     }
 }
@@ -248,8 +248,8 @@ fn minmax_angles(start: Vec2, end: Vec2, edges: &[(Vec2, Vec2)]) -> MinMaxResult
 /// If the walls do not intersect, then returns a point that is a `width` away from the `start` point.
 fn wall_intersection(start: Vec2, end: Vec2, a: Vec2, b: Vec2, width: Vec2) -> Vec2 {
     Line::with_offset(start, end, width)
-        .intersection(Line::with_offset(a, b, width_vec(a, b)))
-        .unwrap_or_else(|| start - width)
+        .intersection(Line::with_offset(a, b, -width_vec(a, b)))
+        .unwrap_or_else(|| start + width)
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
