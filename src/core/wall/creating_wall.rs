@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
+use super::{WallCreate, WallEdges, WallEventConfirmed};
 use crate::core::{
     action::{self, Action},
     family::{BuildingMode, FamilyMode},
@@ -8,8 +9,6 @@ use crate::core::{
     ground::GroundPlugin,
     lot::LotVertices,
 };
-
-use super::{WallCreate, WallEdges, WallEventConfirmed};
 
 pub(super) struct CreatingWallPlugin;
 
