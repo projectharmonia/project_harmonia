@@ -1,12 +1,14 @@
 use bevy::{asset::HandleId, prelude::*};
 use bevy_egui::egui::{ImageButton, TextureId, Ui};
+use derive_more::Constructor;
 
 use crate::core::{
     asset_metadata::{AssetMetadata, MetadataKind, ObjectCategory},
-    object::selected_object::SelectedObject,
+    object::placing_object::PlacingObject,
     preview::{PreviewPlugin, PreviewRequest, Previews},
 };
 
+#[derive(Constructor)]
 pub(super) struct ObjectsView<'a, 'w, 's, 'wc, 'sc> {
     current_category: &'a mut Option<ObjectCategory>,
     categories: &'a [ObjectCategory],
@@ -15,29 +17,7 @@ pub(super) struct ObjectsView<'a, 'w, 's, 'wc, 'sc> {
     previews: &'a Previews,
     preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
     selected_id: Option<HandleId>,
-}
-
-impl<'a, 'w, 's, 'wc, 'sc> ObjectsView<'a, 'w, 's, 'wc, 'sc> {
-    #[must_use]
-    pub(super) fn new(
-        current_category: &'a mut Option<ObjectCategory>,
-        categories: &'a [ObjectCategory],
-        commands: &'a mut Commands<'wc, 'sc>,
-        metadata: &'a Assets<AssetMetadata>,
-        previews: &'a Previews,
-        preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
-        selected_id: Option<HandleId>,
-    ) -> Self {
-        Self {
-            current_category,
-            categories,
-            commands,
-            metadata,
-            previews,
-            preview_events,
-            selected_id,
-        }
-    }
+    spawn_parent: Entity,
 }
 
 impl ObjectsView<'_, '_, '_, '_, '_> {
@@ -89,7 +69,11 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     .on_hover_text(name)
                     .clicked()
                 {
-                    self.commands.insert_resource(SelectedObject(id))
+                    self.commands
+                        .entity(self.spawn_parent)
+                        .with_children(|parent| {
+                            parent.spawn(PlacingObject::Spawning(id));
+                        });
                 }
             }
         });

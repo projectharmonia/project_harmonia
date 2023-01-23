@@ -1,5 +1,4 @@
 pub(crate) mod placing_object;
-pub(crate) mod selected_object;
 
 use std::path::PathBuf;
 
@@ -13,12 +12,12 @@ use bevy_renet::renet::RenetClient;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
 use placing_object::PlacingObjectPlugin;
-use selected_object::SelectedObjectPlugin;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
 use super::{
     asset_metadata,
+    city::{City, CityPlugin},
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
@@ -32,9 +31,8 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
-            .add_plugin(SelectedObjectPlugin)
             .register_type::<ObjectPath>()
-            .add_mapped_client_event::<ObjectSpawn>()
+            .add_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
             .add_server_event::<ObjectEventConfirmed>()
@@ -84,13 +82,33 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
         mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        cities: Query<(Entity, &Transform), With<City>>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
+            const HALF_CITY_SIZE: f32 = CityPlugin::CITY_SIZE / 2.0;
+            if event.position.y.abs() > HALF_CITY_SIZE {
+                error!(
+                    "received object spawn position {} with 'y' outside of city size",
+                    event.position
+                );
+                continue;
+            }
+
+            let Some(entity) = cities
+                .iter()
+                .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
+                .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
+                .map(|(entity, _)| entity)
+            else {
+                error!("unable to find a city for object spawn position {}", event.position);
+                continue;
+            };
+
             commands.spawn(ObjectBundle::new(
                 event.metadata_path,
-                event.translation,
+                Vec3::new(event.position.x, 0.0, event.position.y),
                 event.rotation,
-                event.city_entity,
+                entity,
             ));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
@@ -162,16 +180,8 @@ pub(crate) struct ObjectPath(PathBuf);
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct ObjectSpawn {
     metadata_path: PathBuf,
-    translation: Vec3,
+    position: Vec2,
     rotation: Quat,
-    city_entity: Entity,
-}
-
-impl MapEntities for ObjectSpawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.city_entity = entity_map.get(self.city_entity)?;
-        Ok(())
-    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]

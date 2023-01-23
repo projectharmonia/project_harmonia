@@ -9,9 +9,10 @@ use strum::IntoEnumIterator;
 use super::objects_view::ObjectsView;
 use crate::core::{
     asset_metadata::{AssetMetadata, ObjectCategory},
+    city::ActiveCity,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
-    object::selected_object::SelectedObject,
+    object::placing_object::PlacingObject,
     preview::{PreviewRequest, Previews},
 };
 
@@ -36,7 +37,8 @@ impl BuildingHudPlugin {
         previews: Res<Previews>,
         building_mode: Res<CurrentState<BuildingMode>>,
         metadata: Res<Assets<AssetMetadata>>,
-        selected_object: Option<Res<SelectedObject>>,
+        placing_objects: Query<&PlacingObject>,
+        active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         Window::new("Building bottom panel")
             .resizable(false)
@@ -66,7 +68,11 @@ impl BuildingHudPlugin {
                             &metadata,
                             &previews,
                             &mut preview_events,
-                            selected_object.map(|object| object.0),
+                            placing_objects
+                                .get_single()
+                                .ok()
+                                .and_then(|object| object.spawning_id()),
+                            active_cities.single(),
                         )
                         .show(ui);
                     }

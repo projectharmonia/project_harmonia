@@ -1,6 +1,6 @@
-use std::{f32::consts::FRAC_PI_4, fmt::Debug, path::PathBuf};
+use std::{f32::consts::FRAC_PI_4, fmt::Debug};
 
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*};
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -8,7 +8,7 @@ use leafwing_input_manager::prelude::*;
 use crate::core::{
     action::{self, Action},
     asset_metadata,
-    city::{ActiveCity, CityMode},
+    city::CityMode,
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
@@ -122,10 +122,14 @@ impl PlacingObjectPlugin {
         for (placing_entity, placing_object) in &new_placing_objects {
             debug!("created placing object {placing_object:?}");
             match placing_object {
-                PlacingObject::Spawning(metadata_path) => {
+                PlacingObject::Spawning(id) => {
+                    let metadata_path = asset_server
+                        .get_handle_path(*id)
+                        .expect("spawning object metadata should have a path");
                     commands.entity(placing_entity).insert((
                         SceneBundle {
-                            scene: asset_server.load(asset_metadata::scene_path(metadata_path)),
+                            scene: asset_server
+                                .load(asset_metadata::scene_path(metadata_path.path())),
                             ..Default::default()
                         },
                         CursorOffset::default(),
@@ -196,18 +200,22 @@ impl PlacingObjectPlugin {
     fn confirmation_system(
         mut move_events: EventWriter<ObjectMove>,
         mut spawn_events: EventWriter<ObjectSpawn>,
+        asset_server: Res<AssetServer>,
         placing_objects: Query<(&Transform, &PlacingObject)>,
-        active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
             debug!("confirmed placing object {placing_object:?}");
             match placing_object {
-                PlacingObject::Spawning(metadata_path) => spawn_events.send(ObjectSpawn {
-                    metadata_path: metadata_path.clone(),
-                    translation: transform.translation,
-                    rotation: transform.rotation,
-                    city_entity: active_cities.single(),
-                }),
+                PlacingObject::Spawning(id) => {
+                    let metadata_path = asset_server
+                        .get_handle_path(*id)
+                        .expect("spawning object metadata should have a path");
+                    spawn_events.send(ObjectSpawn {
+                        metadata_path: metadata_path.path().to_path_buf(),
+                        position: transform.translation.xz(),
+                        rotation: transform.rotation,
+                    });
+                }
                 PlacingObject::Moving(entity) => move_events.send(ObjectMove {
                     entity: *entity,
                     translation: transform.translation,
@@ -257,10 +265,19 @@ pub(crate) fn placing_active(placing_objects: Query<(), With<PlacingObject>>) ->
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone, Copy)]
 pub(crate) enum PlacingObject {
-    Spawning(PathBuf),
+    Spawning(HandleId),
     Moving(Entity),
+}
+
+impl PlacingObject {
+    pub(crate) fn spawning_id(self) -> Option<HandleId> {
+        match self {
+            PlacingObject::Spawning(id) => Some(id),
+            PlacingObject::Moving(_) => None,
+        }
+    }
 }
 
 /// Contains an offset between cursor position on first creation and object origin.
