@@ -121,10 +121,10 @@ impl PlacingObjectPlugin {
     ) {
         for (placing_entity, placing_object) in &new_placing_objects {
             debug!("created placing object {placing_object:?}");
-            match placing_object {
+            match *placing_object {
                 PlacingObject::Spawning(id) => {
                     let metadata_path = asset_server
-                        .get_handle_path(*id)
+                        .get_handle_path(id)
                         .expect("spawning object metadata should have a path");
                     commands.entity(placing_entity).insert((
                         SceneBundle {
@@ -137,7 +137,7 @@ impl PlacingObjectPlugin {
                 }
                 PlacingObject::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
-                        .get_mut(*object_entity)
+                        .get_mut(object_entity)
                         .expect("moving object should exist with these components");
                     commands.entity(placing_entity).insert(SceneBundle {
                         scene: scene_handle.clone(),
@@ -205,10 +205,10 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
             debug!("confirmed placing object {placing_object:?}");
-            match placing_object {
+            match *placing_object {
                 PlacingObject::Spawning(id) => {
                     let metadata_path = asset_server
-                        .get_handle_path(*id)
+                        .get_handle_path(id)
                         .expect("spawning object metadata should have a path");
                     spawn_events.send(ObjectSpawn {
                         metadata_path: metadata_path.path().to_path_buf(),
@@ -217,7 +217,7 @@ impl PlacingObjectPlugin {
                     });
                 }
                 PlacingObject::Moving(entity) => move_events.send(ObjectMove {
-                    entity: *entity,
+                    entity,
                     translation: transform.translation,
                     rotation: transform.rotation,
                 }),
