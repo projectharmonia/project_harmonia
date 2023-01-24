@@ -19,6 +19,7 @@ use super::{
     asset_metadata,
     city::{City, CityPlugin},
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
+    lot::LotVertices,
     network::network_event::{
         client_event::{ClientEvent, ClientEventAppExt},
         server_event::{SendMode, ServerEvent, ServerEventAppExt},
@@ -83,6 +84,7 @@ impl ObjectPlugin {
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
         mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
         cities: Query<(Entity, &Transform), With<City>>,
+        lots: Query<(Entity, &LotVertices)>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
             const HALF_CITY_SIZE: f32 = CityPlugin::CITY_SIZE / 2.0;
@@ -94,7 +96,7 @@ impl ObjectPlugin {
                 continue;
             }
 
-            let Some(entity) = cities
+            let Some(city_entity) = cities
                 .iter()
                 .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
                 .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
@@ -104,11 +106,18 @@ impl ObjectPlugin {
                 continue;
             };
 
+            // TODO: Add a check if user can spawn an object on the lot.
+            let parent_entity = lots
+                .iter()
+                .find(|(_, vertices)| vertices.contains_point(event.position))
+                .map(|(lot_entity, _)| lot_entity)
+                .unwrap_or(city_entity);
+
             commands.spawn(ObjectBundle::new(
                 event.metadata_path,
                 Vec3::new(event.position.x, 0.0, event.position.y),
                 event.rotation,
-                entity,
+                parent_entity,
             ));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
