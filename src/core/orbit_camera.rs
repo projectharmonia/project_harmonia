@@ -2,14 +2,12 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::CameraRenderGraph};
 use bevy_hikari::HikariSettings;
-use bevy_mod_raycast::{RaycastMethod, RaycastSource};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::{
     action::{self, Action},
     game_state::GameState,
-    picking::Pickable,
 };
 
 #[derive(SystemLabel)]
@@ -24,18 +22,17 @@ pub(super) struct OrbitCameraPlugin;
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
         for state in [GameState::FamilyEditor, GameState::City, GameState::Family] {
-            app.add_system(Self::update_raycast_source_system.run_in_state(state))
-                .add_system(
-                    Self::rotation_system
-                        .run_if(action::pressed(Action::RotateCamera))
-                        .run_in_state(state)
-                        .label(OrbitCameraSystem::Rotation),
-                )
-                .add_system(
-                    Self::arm_system
-                        .run_in_state(state)
-                        .label(OrbitCameraSystem::Arm),
-                );
+            app.add_system(
+                Self::rotation_system
+                    .run_if(action::pressed(Action::RotateCamera))
+                    .run_in_state(state)
+                    .label(OrbitCameraSystem::Rotation),
+            )
+            .add_system(
+                Self::arm_system
+                    .run_in_state(state)
+                    .label(OrbitCameraSystem::Arm),
+            );
 
             if state != GameState::FamilyEditor {
                 app.add_system(
@@ -119,17 +116,6 @@ impl OrbitCameraPlugin {
             orbit_rotation.sphere_pos() * spring_arm.interpolated + orbit_origin.interpolated;
         transform.look_at(orbit_origin.interpolated, Vec3::Y);
     }
-
-    fn update_raycast_source_system(
-        mut cursor_events: EventReader<CursorMoved>,
-        mut ray_sources: Query<&mut RaycastSource<Pickable>>,
-    ) {
-        if let Some(cursor_pos) = cursor_events.iter().last().map(|event| event.position) {
-            for mut ray_source in &mut ray_sources {
-                ray_source.cast_method = RaycastMethod::Screenspace(cursor_pos);
-            }
-        }
-    }
 }
 
 fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec3 {
@@ -158,7 +144,6 @@ pub(crate) struct OrbitCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
-    ray_source: RaycastSource<Pickable>,
     hikari_settings: HikariSettings,
 
     #[bundle]
@@ -171,7 +156,6 @@ impl OrbitCameraBundle {
             target_translation: Default::default(),
             orbit_rotation: Default::default(),
             spring_arm: Default::default(),
-            ray_source: Default::default(),
             hikari_settings: Default::default(),
             camera_3d_bundle: Camera3dBundle {
                 camera_render_graph: CameraRenderGraph::new(render_graph_name),

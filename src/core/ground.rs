@@ -2,8 +2,7 @@ use bevy::{
     math::Vec3Swizzles,
     prelude::{shape::Plane, *},
 };
-use bevy_mod_raycast::RaycastMesh;
-use bevy_rapier3d::prelude::{Collider, RigidBody};
+use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{city::ActiveCity, game_state::GameState, picking::Pickable, preview::PreviewCamera};
@@ -85,7 +84,7 @@ struct GroundBundle {
     name: Name,
     rigid_body: RigidBody,
     collider: Collider,
-    ray_cast_mesh: RaycastMesh<Pickable>,
+    collision_groups: CollisionGroups,
     ground: Ground,
     pickable: Pickable,
 
@@ -103,7 +102,7 @@ impl Default for GroundBundle {
             name: Name::new("Ground"),
             rigid_body: RigidBody::Fixed,
             collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
-            ray_cast_mesh: RaycastMesh::<Pickable>::default(),
+            collision_groups: CollisionGroups::new(Group::ALL, Group::ALL),
             ground: Ground,
             pickable: Pickable,
             pbr_bundle: Default::default(),

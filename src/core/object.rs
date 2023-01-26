@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
-use bevy_mod_raycast::RaycastMesh;
+use bevy_rapier3d::prelude::*;
 use bevy_renet::renet::RenetClient;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
@@ -57,11 +57,14 @@ impl ObjectPlugin {
             commands.entity(entity).insert((
                 scene_handle,
                 Pickable,
+                AsyncSceneCollider::default(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
                 SceneHook::new(|entity, commands| {
                     if entity.contains::<Handle<Mesh>>() {
                         commands.insert((
+                            RigidBody::Fixed,
+                            CollisionGroups::new(Group::GROUP_1, Group::GROUP_1),
                             OutlineBundle {
                                 outline: OutlineVolume {
                                     visible: false,
@@ -70,7 +73,6 @@ impl ObjectPlugin {
                                 },
                                 ..Default::default()
                             },
-                            RaycastMesh::<Pickable>::default(),
                         ));
                     }
                 }),

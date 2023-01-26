@@ -16,14 +16,13 @@ use bevy_egui::EguiPlugin;
 use bevy_hikari::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
-use bevy_mod_raycast::DefaultRaycastingPlugin;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
-use crate::core::{action::Action, cli::Cli, picking::Pickable, CorePlugins};
+use crate::core::{action::Action, cli::Cli, CorePlugins};
 use ui::UiPlugins;
 
 fn main() {
@@ -55,7 +54,6 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(RenetServerPlugin::default())
         .add_plugin(RenetClientPlugin::default())
-        .add_plugin(DefaultRaycastingPlugin::<Pickable>::default())
         .add_plugin(OutlinePlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(EguiPlugin)

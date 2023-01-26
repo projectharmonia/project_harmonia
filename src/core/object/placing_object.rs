@@ -177,7 +177,7 @@ impl PlacingObjectPlugin {
                         ray.direction,
                         f32::MAX,
                         false,
-                        QueryFilter::new(),
+                        CollisionGroups::new(Group::GROUP_2, Group::GROUP_2).into(),
                     )
                     .map(|(_, toi)| toi)
                     .unwrap_or_default();
