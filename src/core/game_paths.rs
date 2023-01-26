@@ -151,7 +151,7 @@ mod tests {
         fs::create_dir_all(game_paths.worlds.join("Directory"))?;
         File::create(game_paths.worlds.join("Not a world"))?;
         File::create(game_paths.worlds.join("Not a world.txt"))?;
-        File::create(game_paths.worlds.join(format!(".{}", SCENE_EXTENSION)))?;
+        File::create(game_paths.worlds.join(format!(".{SCENE_EXTENSION}")))?;
         File::create(game_paths.world_path(WORLD_NAME))?;
 
         let world_names = game_paths.get_world_names()?;

@@ -35,13 +35,13 @@ impl ControlsTab<'_> {
                     for index in 0..INPUT_VARIANTS {
                         let button_text = match inputs.get_at(index) {
                             Some(UserInput::Single(InputKind::GamepadButton(gamepad_button))) => {
-                                format!("🎮 {:?}", gamepad_button)
+                                format!("🎮 {gamepad_button:?}")
                             }
                             Some(UserInput::Single(InputKind::Keyboard(keycode))) => {
-                                format!("🖮 {:?}", keycode)
+                                format!("🖮 {keycode:?}")
                             }
                             Some(UserInput::Single(InputKind::Mouse(mouse_button))) => {
-                                format!("🖱 {:?}", mouse_button)
+                                format!("🖱 {mouse_button:?}")
                             }
                             _ => "Empty".to_string(),
                         };
