@@ -63,7 +63,6 @@ impl ObjectPlugin {
                 SceneHook::new(|entity, commands| {
                     if entity.contains::<Handle<Mesh>>() {
                         commands.insert((
-                            RigidBody::Fixed,
                             CollisionGroups::new(Group::GROUP_1, Group::GROUP_1),
                             OutlineBundle {
                                 outline: OutlineVolume {

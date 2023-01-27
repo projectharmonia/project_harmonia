@@ -82,7 +82,6 @@ impl GroundPlugin {
 #[derive(Bundle)]
 struct GroundBundle {
     name: Name,
-    rigid_body: RigidBody,
     collider: Collider,
     collision_groups: CollisionGroups,
     ground: Ground,
@@ -100,7 +99,6 @@ impl Default for GroundBundle {
     fn default() -> Self {
         Self {
             name: Name::new("Ground"),
-            rigid_body: RigidBody::Fixed,
             collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
             collision_groups: CollisionGroups::new(Group::ALL, Group::ALL),
             ground: Ground,
