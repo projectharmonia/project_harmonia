@@ -7,8 +7,8 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::{
-    action::Action, city::CityMode, game_state::GameState, object::placing_object,
-    preview::PreviewCamera,
+    action::Action, city::CityMode, collision_groups::DollisGroups, game_state::GameState,
+    object::placing_object, preview::PreviewCamera,
 };
 
 pub(super) struct PickingPlugin;
@@ -52,7 +52,7 @@ impl PickingPlugin {
                     ray.direction,
                     f32::MAX,
                     false,
-                    CollisionGroups::new(Group::GROUP_1, Group::GROUP_1).into(),
+                    CollisionGroups::new(Group::ALL, Group::OBJECT).into(),
                 ) {
                     let picked_entity = iter::once(child_entity)
                         .chain(parents.iter_ancestors(child_entity))

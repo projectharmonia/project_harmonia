@@ -18,6 +18,7 @@ use tap::TapFallible;
 use super::{
     asset_metadata,
     city::{City, CityPlugin},
+    collision_groups::DollisGroups,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
     lot::LotVertices,
     network::network_event::{
@@ -63,7 +64,7 @@ impl ObjectPlugin {
                 SceneHook::new(|entity, commands| {
                     if entity.contains::<Handle<Mesh>>() {
                         commands.insert((
-                            CollisionGroups::new(Group::GROUP_1, Group::GROUP_1),
+                            CollisionGroups::new(Group::OBJECT, Group::ALL),
                             OutlineBundle {
                                 outline: OutlineVolume {
                                     visible: false,

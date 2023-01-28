@@ -9,6 +9,7 @@ use crate::core::{
     action::{self, Action},
     asset_metadata,
     city::CityMode,
+    collision_groups::DollisGroups,
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
@@ -177,7 +178,7 @@ impl PlacingObjectPlugin {
                         ray.direction,
                         f32::MAX,
                         false,
-                        CollisionGroups::new(Group::GROUP_2, Group::GROUP_2).into(),
+                        CollisionGroups::new(Group::ALL, Group::GROUND).into(),
                     )
                     .map(|(_, toi)| toi)
                     .unwrap_or_default();
