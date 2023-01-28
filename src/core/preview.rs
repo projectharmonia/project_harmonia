@@ -12,7 +12,7 @@ use bevy_egui::{egui::TextureId, EguiContext};
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
 use iyes_loopless::prelude::*;
 
-use super::asset_metadata::{self, AssetMetadata};
+use super::asset_metadata::{self, ObjectMetadata};
 
 pub(crate) struct PreviewPlugin;
 
@@ -41,16 +41,17 @@ impl PreviewPlugin {
         mut preview_events: EventReader<PreviewRequest>,
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
-        metadata: Res<Assets<AssetMetadata>>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
         if let Some(preview_event) = preview_events
             .iter()
             .find(|preview_event| !previews.contains_key(&preview_event.0))
         {
-            let metadata_handle = metadata.get_handle(preview_event.0);
-            let metadata = metadata
+            let metadata_handle = object_metadata.get_handle(preview_event.0);
+            let preview_translation = object_metadata
                 .get(&metadata_handle)
+                .map(|metadata| metadata.general.preview_translation)
                 .expect("preview event handle should be a metadata handle");
 
             let metadata_path = asset_server
@@ -65,7 +66,7 @@ impl PreviewPlugin {
                 .entity(preview_cameras.single())
                 .with_children(|parent| {
                     parent.spawn(PreviewTargetBundle::new(
-                        metadata.general.preview_translation,
+                        preview_translation,
                         scene_handle,
                         preview_event.0,
                     ));

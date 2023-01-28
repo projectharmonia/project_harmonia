@@ -3,7 +3,7 @@ use bevy_egui::egui::{ImageButton, TextureId, Ui};
 use derive_more::Constructor;
 
 use crate::core::{
-    asset_metadata::{AssetMetadata, MetadataKind, ObjectCategory},
+    asset_metadata::{ObjectCategory, ObjectMetadata},
     object::placing_object::PlacingObject,
     preview::{PreviewPlugin, PreviewRequest, Previews},
 };
@@ -13,7 +13,7 @@ pub(super) struct ObjectsView<'a, 'w, 's, 'wc, 'sc> {
     current_category: &'a mut Option<ObjectCategory>,
     categories: &'a [ObjectCategory],
     commands: &'a mut Commands<'wc, 'sc>,
-    metadata: &'a Assets<AssetMetadata>,
+    object_metadata: &'a Assets<ObjectMetadata>,
     previews: &'a Previews,
     preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
     selected_id: Option<HandleId>,
@@ -34,25 +34,13 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
             }
         });
         ui.group(|ui| {
-            for (id, name) in self
-                .metadata
-                .iter()
-                .filter_map(|(id, metadata)| {
-                    if let MetadataKind::Object(object) = &metadata.kind {
-                        Some((id, &metadata.general.name, object.category))
-                    } else {
-                        None
-                    }
-                })
-                .filter(|(.., category)| {
-                    if let Some(current_category) = self.current_category {
-                        current_category == category
-                    } else {
-                        self.categories.contains(category)
-                    }
-                })
-                .map(|(id, name, _)| (id, name))
-            {
+            for (id, metadata) in self.object_metadata.iter().filter(|(_, metadata)| {
+                if let Some(current_category) = self.current_category {
+                    *current_category == metadata.category
+                } else {
+                    self.categories.contains(&metadata.category)
+                }
+            }) {
                 let texture_id = self.previews.get(&id).unwrap_or_else(|| {
                     self.preview_events.send(PreviewRequest(id));
                     &TextureId::Managed(0)
@@ -66,7 +54,7 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     .add(ImageButton::new(*texture_id, SIZE).selected(
                         matches!(self.selected_id, Some(selected_id) if selected_id == id),
                     ))
-                    .on_hover_text(name)
+                    .on_hover_text(&metadata.general.name)
                     .clicked()
                 {
                     self.commands

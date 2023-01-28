@@ -1,6 +1,4 @@
-[general]
+[object]
 name = "Classic bench"
 preview_translation = [0.0, -0.4, -3.4]
-
-[object]
 category = "Outdoor furniture"

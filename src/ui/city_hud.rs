@@ -8,7 +8,7 @@ use strum::IntoEnumIterator;
 
 use super::objects_view::ObjectsView;
 use crate::core::{
-    asset_metadata::{AssetMetadata, ObjectCategory},
+    asset_metadata::{ObjectCategory, ObjectMetadata},
     city::{ActiveCity, CityMode},
     game_state::GameState,
     lot::LotTool,
@@ -33,7 +33,7 @@ impl CityHudPlugin {
         previews: Res<Previews>,
         city_mode: Res<CurrentState<CityMode>>,
         lot_tool: Res<CurrentState<LotTool>>,
-        metadata: Res<Assets<AssetMetadata>>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
         placing_objects: Query<&PlacingObject>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
@@ -63,7 +63,7 @@ impl CityHudPlugin {
                                 &mut current_category,
                                 ObjectCategory::CITY_CATEGORIES,
                                 &mut commands,
-                                &metadata,
+                                &object_metadata,
                                 &previews,
                                 &mut preview_events,
                                 placing_objects

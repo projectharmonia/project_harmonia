@@ -1,6 +1,4 @@
-[general]
+[object]
 name = "Medium stone"
 preview_translation = [-0.20, -0.35, -2.1]
-
-[object]
 category = "Rocks"

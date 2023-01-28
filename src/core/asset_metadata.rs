@@ -20,7 +20,7 @@ pub(super) struct AssetMetadataPlugin;
 
 impl Plugin for AssetMetadataPlugin {
     fn build(&self, app: &mut App) {
-        app.add_asset::<AssetMetadata>()
+        app.add_asset::<ObjectMetadata>()
             .init_asset_loader::<AssetMetadataLoader>()
             .add_startup_system(Self::load_system);
     }
@@ -42,7 +42,7 @@ impl AssetMetadataPlugin {
                         .path()
                         .strip_prefix(&folder)
                         .unwrap_or_else(|e| panic!("entries should start with {folder:?}: {e}"));
-                    handles.push(asset_server.load::<AssetMetadata, _>(path));
+                    handles.push(asset_server.load_untyped(path));
                 }
             }
         }
@@ -61,8 +61,12 @@ impl AssetLoader for AssetMetadataLoader {
         load_context: &'a mut LoadContext,
     ) -> BoxedFuture<'a, Result<()>> {
         Box::pin(async move {
-            let metadata = toml::from_slice::<AssetMetadata>(bytes)?;
-            load_context.set_default_asset(LoadedAsset::new(metadata));
+            match toml::from_slice::<AssetMetadata>(bytes)? {
+                AssetMetadata::Object(metadata) => {
+                    load_context.set_default_asset(LoadedAsset::new(metadata))
+                }
+                AssetMetadata::Cloth => unimplemented!(),
+            }
             Ok(())
         })
     }
@@ -91,14 +95,13 @@ pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
 }
 
 #[derive(Deref, DerefMut, Resource)]
-struct MetadataHandles(Vec<Handle<AssetMetadata>>);
+struct MetadataHandles(Vec<HandleUntyped>);
 
-#[derive(Deserialize, TypeUuid)]
-#[uuid = "39cadc56-aa9c-4543-8640-a018b74b5052"]
-pub(crate) struct AssetMetadata {
-    pub(crate) general: GeneralMetadata,
-    #[serde(flatten)]
-    pub(crate) kind: MetadataKind,
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AssetMetadata {
+    Object(ObjectMetadata),
+    Cloth,
 }
 
 #[derive(Deserialize)]
@@ -107,15 +110,11 @@ pub(crate) struct GeneralMetadata {
     pub(crate) preview_translation: Vec3,
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum MetadataKind {
-    Object(ObjectMetadata),
-    Clothes,
-}
-
-#[derive(Deserialize)]
+#[derive(Deserialize, TypeUuid)]
+#[uuid = "39cadc56-aa9c-4543-8640-a018b74b5052"]
 pub(crate) struct ObjectMetadata {
+    #[serde(flatten)]
+    pub(crate) general: GeneralMetadata,
     pub(crate) category: ObjectCategory,
 }
 
