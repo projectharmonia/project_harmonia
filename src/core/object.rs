@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
 use super::{
-    asset_metadata,
+    asset_metadata::{self, ObjectMetadata},
     city::{City, CityPlugin},
     collision_groups::DollisGroups,
     game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
@@ -49,14 +49,21 @@ impl ObjectPlugin {
     fn init_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
     ) {
         for (entity, object_path) in &spawned_objects {
+            let metadata_handle = asset_server.load(&*object_path.0);
+            let object_metadata = object_metadata
+                .get(&metadata_handle)
+                .unwrap_or_else(|| panic!("object metadata {:?} is invalid", object_path.0));
+
             let scene_path = asset_metadata::scene_path(&object_path.0);
             let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
 
             commands.entity(entity).insert((
                 scene_handle,
+                Name::new(object_metadata.general.name.clone()),
                 Pickable,
                 AsyncSceneCollider::default(),
                 GlobalTransform::default(),
