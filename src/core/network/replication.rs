@@ -452,13 +452,14 @@ mod tests {
     fn spawn_replication() {
         let mut app = App::new();
         app.add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(ReplicationPlugin);
+            .add_plugin(ReplicationPlugin)
+            .register_and_replicate::<TableComponent>();
 
         // Wait two ticks to send and receive acknowledge.
         app.update();
         app.update();
 
-        let server_entity = app.world.spawn(Replication).id();
+        let server_entity = app.world.spawn((TableComponent, Replication)).id();
 
         app.update();
 
@@ -470,7 +471,7 @@ mod tests {
 
         let client_entity = app
             .world
-            .query::<Entity>()
+            .query_filtered::<Entity, (With<TableComponent>, With<Replication>)>()
             .get_single(&app.world)
             .expect("server entity should be replicated to client");
         let entity_map = app.world.resource::<NetworkEntityMap>();
@@ -493,6 +494,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(NetworkPresetPlugin::client_and_server())
             .add_plugin(ReplicationPlugin)
+            .register_and_replicate::<TableComponent>()
             .register_and_replicate::<SparseSetComponent>();
 
         app.update();
@@ -500,7 +502,12 @@ mod tests {
 
         let replicated_entity = app
             .world
-            .spawn((Replication, SparseSetComponent, NonReflectedComponent))
+            .spawn((
+                Replication,
+                TableComponent,
+                SparseSetComponent,
+                NonReflectedComponent,
+            ))
             .id();
 
         // Mark as already spawned.
@@ -513,7 +520,6 @@ mod tests {
         // Remove components before client replicates it,
         // since in test client and server in the same world.
         let mut replicated_entity = app.world.entity_mut(replicated_entity);
-        replicated_entity.remove::<Replication>();
         replicated_entity.remove::<SparseSetComponent>();
         replicated_entity.remove::<NonReflectedComponent>();
         let replicated_entity = replicated_entity.id();
@@ -521,7 +527,6 @@ mod tests {
         app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
-        assert!(replicated_entity.contains::<Replication>());
         assert!(replicated_entity.contains::<SparseSetComponent>());
         assert!(!replicated_entity.contains::<NonReflectedComponent>());
     }
@@ -638,6 +643,10 @@ mod tests {
             Self(Entity::from_raw(u32::MAX))
         }
     }
+
+    #[derive(Component, Default, Reflect)]
+    #[reflect(Component)]
+    struct TableComponent;
 
     #[derive(Component, Default, Reflect)]
     #[component(storage = "SparseSet")]

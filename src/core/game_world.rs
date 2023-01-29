@@ -15,8 +15,10 @@ use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
 use super::{
-    error_message, game_paths::GamePaths, game_state::GameState,
-    network::replication::replication_rules::ReplicationRules,
+    error_message,
+    game_paths::GamePaths,
+    game_state::GameState,
+    network::replication::replication_rules::{Replication, ReplicationRules},
 };
 use parent_sync::ParentSyncPlugin;
 
@@ -98,9 +100,14 @@ impl GameWorldPlugin {
         let scene_deserializer = SceneDeserializer {
             type_registry: &registry.read(),
         };
-        let scene = scene_deserializer
+        let mut scene = scene_deserializer
             .deserialize(&mut deserializer)
             .with_context(|| format!("unable to deserialize {world_path:?}"))?;
+
+        // All saved entities should have `Replication` component.
+        for entity in &mut scene.entities {
+            entity.components.push(Replication.clone_value());
+        }
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
 
@@ -256,12 +263,14 @@ mod tests {
         app.update();
 
         assert_eq!(
-            *app.world.query::<&Transform>().single(&app.world),
+            *app.world
+                .query_filtered::<&Transform, With<Replication>>()
+                .single(&app.world),
             TRANSFORM,
         );
         assert!(
             app.world
-                .query_filtered::<(), (With<City>, Without<Transform>)>()
+                .query_filtered::<(), (With<City>, With<Replication>, Without<Transform>)>()
                 .get_single(&app.world)
                 .is_ok(),
             "loaded city shouldn't contain transform"

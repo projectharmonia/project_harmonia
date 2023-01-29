@@ -9,8 +9,8 @@ pub(crate) struct ReplicationRulesPlugin;
 
 impl Plugin for ReplicationRulesPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ReplicationRules>()
-            .register_and_replicate::<Replication>();
+        app.register_type::<Replication>()
+            .init_resource::<ReplicationRules>();
     }
 }
 

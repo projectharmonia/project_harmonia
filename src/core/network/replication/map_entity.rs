@@ -2,8 +2,9 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
     reflect::FromType,
-    utils::Entry,
 };
+
+use super::replication_rules::Replication;
 
 /// Maps server entities to client entities and vice versa.
 ///
@@ -26,14 +27,14 @@ impl NetworkEntityMap {
         world: &mut World,
         server_entity: Entity,
     ) -> Entity {
-        match self.server_to_client.entry(server_entity) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let client_entity = *entry.insert(world.spawn_empty().id());
+        *self
+            .server_to_client
+            .entry(server_entity)
+            .or_insert_with(|| {
+                let client_entity = world.spawn(Replication).id();
                 self.client_to_server.insert(client_entity, server_entity);
                 client_entity
-            }
-        }
+            })
     }
 
     pub(crate) fn remove_by_server(
