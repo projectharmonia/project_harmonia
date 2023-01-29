@@ -13,7 +13,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
-    picking::ObjectPicked,
+    picking::Picked,
     preview::PreviewCamera,
 };
 
@@ -102,7 +102,7 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn picking_system(
         mut commands: Commands,
-        mut pick_events: EventReader<ObjectPicked>,
+        mut pick_events: EventReader<Picked>,
         parents: Query<&Parent, With<ObjectPath>>,
     ) {
         for event in pick_events.iter() {

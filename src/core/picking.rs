@@ -15,10 +15,10 @@ pub(super) struct PickingPlugin;
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ObjectPicked>()
+        app.add_event::<Picked>()
             .add_system(
                 Self::ray_system
-                    .pipe(Self::object_picking_system)
+                    .pipe(Self::picking_system)
                     .pipe(Self::outline_system)
                     .run_if_not(placing_object::placing_active)
                     .run_in_state(GameState::City)
@@ -26,7 +26,7 @@ impl Plugin for PickingPlugin {
             )
             .add_system(
                 Self::ray_system
-                    .pipe(Self::object_picking_system)
+                    .pipe(Self::picking_system)
                     .pipe(Self::outline_system)
                     .run_in_state(GameState::Family),
             );
@@ -57,7 +57,7 @@ impl PickingPlugin {
                     let picked_entity = iter::once(child_entity)
                         .chain(parents.iter_ancestors(child_entity))
                         .find(|&ancestor_entity| pickable.get(ancestor_entity).is_ok())
-                        .expect("object entity should have a pickable parent");
+                        .expect("entity should have a pickable parent");
                     let position = ray.origin + ray.direction * toi;
                     return Some((picked_entity, position));
                 }
@@ -67,14 +67,14 @@ impl PickingPlugin {
         None
     }
 
-    fn object_picking_system(
+    fn picking_system(
         In(pick): In<Option<(Entity, Vec3)>>,
-        mut pick_events: EventWriter<ObjectPicked>,
+        mut pick_events: EventWriter<Picked>,
         action_state: Res<ActionState<Action>>,
     ) -> Option<Entity> {
         if let Some((entity, position)) = pick {
             if action_state.just_pressed(Action::Confirm) {
-                pick_events.send(ObjectPicked { entity, position });
+                pick_events.send(Picked { entity, position });
                 None
             } else {
                 Some(entity)
@@ -117,7 +117,7 @@ impl PickingPlugin {
 #[derive(Component)]
 pub(super) struct Pickable;
 
-pub(super) struct ObjectPicked {
+pub(super) struct Picked {
     pub(super) entity: Entity,
     pub(super) position: Vec3,
 }

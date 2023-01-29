@@ -11,7 +11,7 @@ use super::{
     family::FamilyMode,
     game_state::GameState,
     network::network_event::client_event::{ClientEvent, ClientEventAppExt},
-    picking::ObjectPicked,
+    picking::Picked,
 };
 
 pub(super) struct TaskPlugin;
@@ -40,7 +40,7 @@ impl Plugin for TaskPlugin {
 impl TaskPlugin {
     fn task_list_system(
         mut commands: Commands,
-        mut pick_events: EventReader<ObjectPicked>,
+        mut pick_events: EventReader<Picked>,
         task_lists: Query<Entity, With<TaskList>>,
     ) {
         if let Some(event) = pick_events.iter().last() {
