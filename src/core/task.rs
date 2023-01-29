@@ -10,7 +10,10 @@ use super::{
     doll::DollPlayers,
     family::FamilyMode,
     game_state::GameState,
-    network::network_event::client_event::{ClientEvent, ClientEventAppExt},
+    network::{
+        network_event::client_event::{ClientEvent, ClientEventAppExt},
+        replication::replication_rules::AppReplicationExt,
+    },
     picking::Picked,
 };
 
@@ -18,7 +21,7 @@ pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<TaskQueue>()
+        app.register_and_replicate::<TaskQueue>()
             .register_type::<TaskRequest>()
             .register_type::<(u8, TaskRequest)>()
             .register_type::<Vec<(u8, TaskRequest)>>()

@@ -7,7 +7,8 @@ use strum::EnumIter;
 use super::{
     doll::ActiveDoll,
     game_state::GameState,
-    game_world::{GameEntity, GameWorld},
+    game_world::GameWorld,
+    network::replication::replication_rules::{AppReplicationExt, Replication},
     orbit_camera::{OrbitCameraBundle, OrbitOrigin},
     settings::Settings,
 };
@@ -21,8 +22,9 @@ pub(super) struct CityPlugin;
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.add_loopless_state(CityMode::Objects)
+            .register_and_replicate::<City>()
+            .not_replicate_if_present::<Transform, City>()
             .init_resource::<PlacedCities>()
-            .register_type::<City>()
             .add_stage_after(
                 CoreStage::PostUpdate,
                 CityVisiblilityStage,
@@ -167,7 +169,7 @@ impl CityMode {
 pub(crate) struct CityBundle {
     name: Name,
     city: City,
-    game_world: GameEntity,
+    replication: Replication,
 }
 
 impl CityBundle {
@@ -175,7 +177,7 @@ impl CityBundle {
         Self {
             name,
             city: City,
-            game_world: GameEntity,
+            replication: Replication,
         }
     }
 }

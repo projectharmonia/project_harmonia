@@ -15,10 +15,13 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     collision_groups::DollisGroups,
-    game_world::{GameEntity, GameWorld},
-    network::network_event::{
-        client_event::{ClientEvent, ClientEventAppExt},
-        server_event::{SendMode, ServerEvent, ServerEventAppExt},
+    game_world::GameWorld,
+    network::{
+        network_event::{
+            client_event::{ClientEvent, ClientEventAppExt},
+            server_event::{SendMode, ServerEvent, ServerEventAppExt},
+        },
+        replication::replication_rules::{AppReplicationExt, Replication},
     },
 };
 use creating_wall::CreatingWallPlugin;
@@ -28,7 +31,7 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CreatingWallPlugin)
-            .register_type::<WallEdges>()
+            .register_and_replicate::<WallEdges>()
             .add_mapped_client_event::<WallCreate>()
             .add_server_event::<WallEventConfirmed>()
             .add_system_to_stage(
@@ -65,7 +68,7 @@ impl WallPlugin {
         mut create_events: EventReader<ClientEvent<WallCreate>>,
         mut confirm_events: EventWriter<ServerEvent<WallEventConfirmed>>,
         children: Query<&Children>,
-        mut walls: Query<&mut WallEdges, With<GameEntity>>,
+        mut walls: Query<&mut WallEdges, With<Replication>>,
     ) {
         for ClientEvent { client_id, event } in create_events.iter().copied() {
             confirm_events.send(ServerEvent {
@@ -81,7 +84,7 @@ impl WallPlugin {
 
             // No wall entity found, create a new one
             commands.entity(event.lot_entity).with_children(|parent| {
-                parent.spawn((WallEdges(vec![event.edge]), GameEntity));
+                parent.spawn((WallEdges(vec![event.edge]), Replication));
             });
         }
     }

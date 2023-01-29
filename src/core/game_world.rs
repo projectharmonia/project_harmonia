@@ -1,5 +1,4 @@
 pub(crate) mod parent_sync;
-pub(super) mod save_rules;
 
 use std::fs;
 
@@ -10,13 +9,16 @@ use bevy::{
     reflect::TypeRegistry,
     scene::{serde::SceneDeserializer, DynamicEntity},
 };
+use bevy_trait_query::imports::ComponentId;
 use iyes_loopless::prelude::*;
 use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
-use super::{error_message, game_paths::GamePaths, game_state::GameState};
+use super::{
+    error_message, game_paths::GamePaths, game_state::GameState,
+    network::replication::replication_rules::ReplicationRules,
+};
 use parent_sync::ParentSyncPlugin;
-use save_rules::SaveRules;
 
 #[derive(SystemLabel)]
 pub(crate) enum GameWorldSystem {
@@ -29,8 +31,7 @@ pub(super) struct GameWorldPlugin;
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ParentSyncPlugin)
-            .register_type::<GameEntity>()
-            .init_resource::<SaveRules>()
+            .init_resource::<IgnoreSaving>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_enter_system(GameState::MainMenu, Self::cleanup_system)
@@ -59,14 +60,15 @@ impl GameWorldPlugin {
         game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
-        save_rules: Res<SaveRules>,
+        replication_rules: Res<ReplicationRules>,
+        ignore_saving: Res<IgnoreSaving>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.world_name);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
-        let scene = save_to_scene(world, &registry, &save_rules);
+        let scene = save_to_scene(world, &registry, &replication_rules, &ignore_saving);
         let bytes = scene
             .serialize_ron(&registry)
             .expect("game world should be serialized");
@@ -109,8 +111,13 @@ impl GameWorldPlugin {
 }
 
 /// Iterates over a world and serializes all components that implement [`Reflect`]
-/// and not filtered using [`SaveRules`]
-fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules) -> DynamicScene {
+/// and not filtered with [`ReplicationRules`] or [`IgnoreSaving`].
+fn save_to_scene(
+    world: &World,
+    registry: &TypeRegistry,
+    replication_rules: &ReplicationRules,
+    ignore_saving: &IgnoreSaving,
+) -> DynamicScene {
     let mut scene = DynamicScene::default();
     let registry = registry.read();
     for archetype in world
@@ -118,7 +125,7 @@ fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules)
         .iter()
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
-        .filter(|archetype| save_rules.persistent_archetype(archetype))
+        .filter(|archetype| replication_rules.is_replicated_archetype(archetype))
     {
         let entities_offset = scene.entities.len();
         for archetype_entity in archetype.entities() {
@@ -128,10 +135,10 @@ fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules)
             });
         }
 
-        for component_id in archetype
-            .components()
-            .filter(|&component_id| save_rules.persistent_component(archetype, component_id))
-        {
+        for component_id in archetype.components().filter(|&component_id| {
+            replication_rules.is_replicated_component(archetype, component_id)
+                && !ignore_saving.contains(&component_id)
+        }) {
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
             let type_name = component_info.name();
             let reflect_component = component_info
@@ -155,13 +162,6 @@ fn save_to_scene(world: &World, registry: &TypeRegistry, save_rules: &SaveRules)
     scene
 }
 
-/// Marks entity as important for game.
-///
-/// Such entitites will be serialized / replicated.
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
-pub(crate) struct GameEntity;
-
 /// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
 #[derive(Default)]
 pub(crate) struct GameSave;
@@ -183,20 +183,45 @@ impl GameWorld {
     }
 }
 
+/// Contains component IDs that will be ignored on game world serialization.
+#[derive(Default, Deref, DerefMut, Resource)]
+struct IgnoreSaving(Vec<ComponentId>);
+
+pub(super) trait AppIgnoreSavingExt {
+    /// Ignore specified component for game world serialization.
+    fn ignore_saving<T: Component>(&mut self) -> &mut Self;
+}
+
+impl AppIgnoreSavingExt for App {
+    fn ignore_saving<T: Component>(&mut self) -> &mut Self {
+        let component_id = self.world.init_component::<T>();
+        self.world.resource_mut::<IgnoreSaving>().push(component_id);
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::{asset::AssetPlugin, core::CorePlugin, scene::ScenePlugin};
 
     use super::*;
-    use crate::core::city::{City, CityBundle};
+    use crate::core::{
+        city::City,
+        network::replication::replication_rules::{
+            AppReplicationExt, Replication, ReplicationRulesPlugin,
+        },
+    };
 
     #[test]
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
         app.add_loopless_state(GameState::World)
+            .add_plugin(ReplicationRulesPlugin)
             .register_type::<Camera>()
-            .register_type::<City>()
+            .replicate::<Transform>()
+            .register_and_replicate::<City>()
+            .not_replicate_if_present::<Transform, City>()
             .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
             .add_plugin(CorePlugin::default())
@@ -206,33 +231,15 @@ mod tests {
             .add_plugin(GameWorldPlugin);
 
         const TRANSFORM: Transform = Transform::IDENTITY;
-        let non_game_entity = app.world.spawn(TRANSFORM).id();
-        let game_world_entity = app
-            .world
-            .spawn((
-                SpatialBundle {
-                    transform: TRANSFORM,
-                    ..Default::default()
-                },
-                Camera::default(),
-                GameEntity,
-            ))
-            .id();
-        let non_game_city = app.world.spawn((SpatialBundle::default(), City)).id();
-        let city = app
-            .world
-            .spawn((SpatialBundle::default(), CityBundle::default()))
-            .push_children(&[game_world_entity])
-            .id();
-
+        app.world.spawn(Transform::default()); // Non-reflected entity.
+        app.world.spawn((TRANSFORM, Camera::default(), Replication)); // Reflected entity with ignored camera.
+        app.world.spawn((Transform::default(), City, Replication)); // City entity with ignored transform.
         app.world.send_event_default::<GameSave>();
 
         app.update();
 
         app.insert_resource(NextState(GameState::MainMenu));
-        app.world.entity_mut(non_game_entity).despawn();
-        app.world.entity_mut(non_game_city).despawn();
-        app.world.entity_mut(city).despawn_recursive();
+        app.world.clear_entities();
 
         app.update();
 

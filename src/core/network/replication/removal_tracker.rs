@@ -2,12 +2,14 @@ use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
 use bevy_renet::renet::RenetServer;
 use iyes_loopless::prelude::*;
 
-use super::{AckedTicks, NetworkComponents};
-use crate::core::game_world::{save_rules::SaveRules, GameEntity};
+use super::{
+    replication_rules::{Replication, ReplicationRules},
+    AckedTicks,
+};
 
 /// Stores component removals in [`RemovalTracker`] component to make them persistent across ticks.
 ///
-/// Used only on server and tracks only entities with [`GameEntity`] component.
+/// Used only on server and tracks only entities with [`Replication`] component.
 pub(super) struct RemovalTrackerPlugin;
 
 impl Plugin for RemovalTrackerPlugin {
@@ -24,9 +26,9 @@ impl Plugin for RemovalTrackerPlugin {
 impl RemovalTrackerPlugin {
     fn insertion_system(
         mut commands: Commands,
-        new_game_entities: Query<Entity, (Added<GameEntity>, Without<RemovalTracker>)>,
+        new_replicated_entities: Query<Entity, (Added<Replication>, Without<RemovalTracker>)>,
     ) {
-        for entity in &new_game_entities {
+        for entity in &new_replicated_entities {
             commands.entity(entity).insert(RemovalTracker::default());
         }
     }
@@ -44,15 +46,10 @@ impl RemovalTrackerPlugin {
 
     fn detection_system(
         mut set: ParamSet<(&World, Query<&mut RemovalTracker>)>,
-        save_rules: Res<SaveRules>,
-        network_components: Res<NetworkComponents>,
+        replication_rules: Res<ReplicationRules>,
     ) {
         let current_tick = set.p0().read_change_tick();
-        for &component_id in save_rules
-            .persistent
-            .iter()
-            .chain(network_components.iter())
-        {
+        for &component_id in &replication_rules.replicated {
             let entities: Vec<_> = set.p0().removed_with_id(component_id).collect();
             for entity in entities {
                 if let Ok(mut removal_tracker) = set.p1().get_mut(entity) {
@@ -68,7 +65,9 @@ pub(super) struct RemovalTracker(pub(super) HashMap<ComponentId, u32>);
 
 #[cfg(test)]
 mod tests {
-    use crate::core::network::network_preset::NetworkPresetPlugin;
+    use crate::core::network::{
+        network_preset::NetworkPresetPlugin, replication::replication_rules::AppReplicationExt,
+    };
 
     use super::*;
 
@@ -76,8 +75,8 @@ mod tests {
     fn detection() {
         let mut app = App::new();
         app.init_resource::<AckedTicks>()
-            .init_resource::<SaveRules>()
-            .init_resource::<NetworkComponents>()
+            .init_resource::<ReplicationRules>()
+            .replicate::<Transform>()
             .add_plugin(NetworkPresetPlugin::server())
             .add_plugin(RemovalTrackerPlugin);
 
@@ -87,14 +86,16 @@ mod tests {
             .resource_mut::<AckedTicks>()
             .insert(DUMMY_CLIENT_ID, 0);
 
-        let game_entity = app.world.spawn((Transform::default(), GameEntity)).id();
+        let replicated_entity = app.world.spawn((Transform::default(), Replication)).id();
 
-        app.world.entity_mut(game_entity).remove::<Transform>();
+        app.world
+            .entity_mut(replicated_entity)
+            .remove::<Transform>();
 
         app.update();
 
         let transform_id = app.world.component_id::<Transform>().unwrap();
-        let removal_tracker = app.world.get::<RemovalTracker>(game_entity).unwrap();
+        let removal_tracker = app.world.get::<RemovalTracker>(replicated_entity).unwrap();
         assert!(removal_tracker.contains_key(&transform_id));
     }
 }

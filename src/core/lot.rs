@@ -18,11 +18,14 @@ use tap::TapFallible;
 use super::{
     family::{Family, FamilyMode},
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
+    game_world::{parent_sync::ParentSync, GameWorld},
     ground::Ground,
-    network::network_event::{
-        client_event::{ClientEvent, ClientEventAppExt},
-        server_event::{SendMode, ServerEvent, ServerEventAppExt},
+    network::{
+        network_event::{
+            client_event::{ClientEvent, ClientEventAppExt},
+            server_event::{SendMode, ServerEvent, ServerEventAppExt},
+        },
+        replication::replication_rules::{AppReplicationExt, Replication},
     },
     task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
@@ -37,7 +40,8 @@ impl Plugin for LotPlugin {
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
             .register_type::<Vec<Vec2>>()
-            .register_type::<LotVertices>()
+            .register_and_replicate::<LotVertices>()
+            .not_replicate_if_present::<Transform, LotVertices>()
             .add_mapped_client_event::<LotSpawn>()
             .add_mapped_client_event::<LotMove>()
             .add_mapped_client_event::<LotDespawn>()
@@ -192,7 +196,7 @@ impl LotTool {
 struct LotBundle {
     vertices: LotVertices,
     parent_sync: ParentSync,
-    game_entity: GameEntity,
+    replication: Replication,
 }
 
 impl LotBundle {
@@ -200,7 +204,7 @@ impl LotBundle {
         Self {
             vertices: LotVertices(vertices),
             parent_sync: ParentSync(city_entity),
-            game_entity: GameEntity,
+            replication: Replication,
         }
     }
 }
