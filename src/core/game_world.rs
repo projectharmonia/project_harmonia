@@ -33,7 +33,7 @@ impl Plugin for GameWorldPlugin {
             .init_resource::<SaveRules>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
-            .add_system(Self::main_menu_transition_system.run_if_resource_removed::<GameWorld>())
+            .add_enter_system(GameState::MainMenu, Self::cleanup_system)
             .add_system(
                 Self::saving_system
                     .pipe(error_message::err_message_system)
@@ -43,15 +43,14 @@ impl Plugin for GameWorldPlugin {
             .add_system(
                 Self::loading_system
                     .pipe(error_message::err_message_system)
-                    .run_on_event::<GameLoad>()
                     .label(GameWorldSystem::Loading),
             );
     }
 }
 
 impl GameWorldPlugin {
-    fn main_menu_transition_system(mut commands: Commands) {
-        commands.insert_resource(NextState(GameState::MainMenu));
+    fn cleanup_system(mut commands: Commands) {
+        commands.remove_resource::<GameWorld>();
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
@@ -79,14 +78,17 @@ impl GameWorldPlugin {
     /// Loads world from disk with the name from [`GameWorld`] resource.
     fn loading_system(
         mut commands: Commands,
+        mut load_events: ResMut<Events<GameLoad>>,
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
-        game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&game_world.world_name);
+        let Some(load_event) = load_events.drain().last() else {
+            return Ok(());
+        };
 
+        let world_path = game_paths.world_path(&load_event.0);
         let bytes =
             fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
         let mut deserializer = Deserializer::from_bytes(&bytes)
@@ -99,7 +101,8 @@ impl GameWorldPlugin {
             .with_context(|| format!("unable to deserialize {world_path:?}"))?;
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
-        commands.insert_resource(NextState(GameState::World));
+
+        commands.insert_resource(GameWorld::new(load_event.0));
 
         Ok(())
     }
@@ -163,9 +166,10 @@ pub(crate) struct GameEntity;
 #[derive(Default)]
 pub(crate) struct GameSave;
 
-/// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
-#[derive(Default)]
-pub(crate) struct GameLoad;
+/// Event that indicates that game is about to be loaded based on the specified name.
+///
+/// Creates [`GameWorld`] resource on loading.
+pub(crate) struct GameLoad(pub(crate) String);
 
 /// Contains meta-information about the currently loaded world.
 #[derive(Default, Deref, Resource)]
@@ -190,7 +194,8 @@ mod tests {
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
-        app.register_type::<Camera>()
+        app.add_loopless_state(GameState::World)
+            .register_type::<Camera>()
             .register_type::<City>()
             .init_resource::<GamePaths>()
             .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
@@ -224,19 +229,25 @@ mod tests {
 
         app.update();
 
+        app.insert_resource(NextState(GameState::MainMenu));
         app.world.entity_mut(non_game_entity).despawn();
         app.world.entity_mut(non_game_city).despawn();
         app.world.entity_mut(city).despawn_recursive();
 
-        app.world.send_event_default::<GameLoad>();
-
-        app.update();
         app.update();
 
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::World
+        assert!(
+            app.world.get_resource::<GameWorld>().is_none(),
+            "game world should be removed after entering main menu"
         );
+
+        app.world
+            .resource_mut::<Events<GameLoad>>()
+            .send(GameLoad(WORLD_NAME.to_string()));
+
+        app.update();
+        app.update();
+
         assert_eq!(
             *app.world.query::<&Transform>().single(&app.world),
             TRANSFORM,

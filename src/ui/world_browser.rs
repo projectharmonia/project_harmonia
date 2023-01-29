@@ -78,8 +78,8 @@ impl WorldBrowserPlugin {
                             ui.label(world_name.as_str());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {
-                                    commands.insert_resource(GameWorld::new(mem::take(world_name)));
-                                    load_events.send_default();
+                                    load_events.send(GameLoad(mem::take(world_name)));
+                                    commands.insert_resource(NextState(GameState::World));
                                 }
                                 if ui.button("👥 Host").clicked() {
                                     commands.insert_resource(HostWorldDialog::new(index));
@@ -186,8 +186,8 @@ impl WorldBrowserPlugin {
 
             if confirmed {
                 let world_name = world_browser.world_names.remove(dialog.world_index);
-                commands.insert_resource(GameWorld::new(world_name));
-                load_events.send_default();
+                load_events.send(GameLoad(world_name));
+                commands.insert_resource(NextState(GameState::World));
                 let server = server_settings
                     .create_server(*event_counter)
                     .context("unable to create server")?;

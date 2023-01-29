@@ -9,7 +9,7 @@ use super::{
     error_message::{self, ErrorMessage},
     family::Dolls,
     game_state::GameState,
-    game_world::{GameLoad, GameWorld},
+    game_world::GameLoad,
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -43,8 +43,8 @@ impl CliPlugin {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
                 GameCommand::Play(world_load) => {
-                    commands.insert_resource(GameWorld::new(world_load.world_name.clone()));
-                    load_events.send_default();
+                    load_events.send(GameLoad(world_load.world_name.clone()));
+                    commands.insert_resource(NextState(GameState::World));
                 }
                 GameCommand::Host {
                     world_load,
@@ -56,8 +56,8 @@ impl CliPlugin {
                     commands.insert_resource(server);
                     commands.insert_resource(server_settings.clone());
 
-                    commands.insert_resource(GameWorld::new(world_load.world_name.clone()));
-                    load_events.send_default();
+                    load_events.send(GameLoad(world_load.world_name.clone()));
+                    commands.insert_resource(NextState(GameState::World));
                 }
                 GameCommand::Join(connection_settings) => {
                     let client = connection_settings

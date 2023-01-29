@@ -144,11 +144,11 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if client.is_none() && ui.button("Save and exit").clicked() {
                         save_events.send_default();
-                        commands.remove_resource::<GameWorld>();
+                        commands.insert_resource(NextState(GameState::MainMenu));
                         ui.close_modal();
                     }
                     if ui.button("Exit to main menu").clicked() {
-                        commands.remove_resource::<GameWorld>();
+                        commands.insert_resource(NextState(GameState::MainMenu));
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
