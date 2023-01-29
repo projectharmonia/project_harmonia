@@ -15,13 +15,16 @@ use tap::TapFallible;
 
 use super::{
     doll::{ActiveDoll, DollBundle, DollScene},
-    game_world::{GameEntity, GameWorld},
+    game_world::GameWorld,
     network::{
         network_event::{
             client_event::{ClientEvent, ClientEventAppExt},
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
-        replication::map_entity::ReflectMapEntity,
+        replication::{
+            map_entity::ReflectMapEntity,
+            replication_rules::{AppReplicationExt, Replication},
+        },
     },
 };
 
@@ -31,8 +34,8 @@ impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_loopless_state(FamilyMode::Life)
             .add_loopless_state(BuildingMode::Objects)
-            .register_type::<FamilySync>()
-            .register_type::<Budget>()
+            .register_and_replicate::<FamilySync>()
+            .register_and_replicate::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()
@@ -168,7 +171,7 @@ impl FamilyScene {
 struct FamilyBundle {
     name: Name,
     budget: Budget,
-    game_entity: GameEntity,
+    replication: Replication,
 }
 
 impl FamilyBundle {
@@ -176,7 +179,7 @@ impl FamilyBundle {
         Self {
             name,
             budget,
-            game_entity: GameEntity,
+            replication: Replication,
         }
     }
 }

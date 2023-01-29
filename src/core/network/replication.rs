@@ -1,12 +1,13 @@
 mod despawn_tracker;
 pub(crate) mod map_entity;
 mod removal_tracker;
+pub(crate) mod replication_rules;
 mod world_diff;
 
 use bevy::{
     ecs::{
         archetype::ArchetypeId,
-        component::{ComponentId, ComponentTicks, StorageType},
+        component::{ComponentTicks, StorageType},
         system::Command,
     },
     prelude::*,
@@ -21,27 +22,26 @@ use tap::TapFallible;
 
 use super::server::ServerFixedTimestep;
 use super::{client, REPLICATION_CHANNEL_ID};
-use crate::core::{
-    doll::DollPlayers,
-    game_state::GameState,
-    game_world::{save_rules::SaveRules, GameWorld},
-};
+use crate::core::{game_state::GameState, game_world::GameWorld};
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
 use removal_tracker::{RemovalTracker, RemovalTrackerPlugin};
+use replication_rules::{AppReplicationExt, ReplicationRules, ReplicationRulesPlugin};
 use world_diff::{ComponentDiff, WorldDiff, WorldDiffDeserializer, WorldDiffSerializer};
 
-/// Replicates components using [`SaveRules`] and [`NetworkComponents`] list from server to client.
+/// Replicates components based on [`ReplicationRules`] from server to client.
 pub(super) struct ReplicationPlugin;
 
 impl Plugin for ReplicationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RemovalTrackerPlugin)
+        app.add_plugin(ReplicationRulesPlugin)
+            .add_plugin(RemovalTrackerPlugin)
             .add_plugin(DespawnTrackerPlugin)
+            .replicate::<Transform>()
+            .replicate::<Name>()
             .init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
-            .init_resource::<NetworkComponents>()
             .add_system(Self::tick_ack_sending_system.run_if(client::connected))
             .add_system(Self::world_diff_receiving_system.run_if(client::connected))
             .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
@@ -69,8 +69,7 @@ impl ReplicationPlugin {
         mut set: ParamSet<(&World, ResMut<RenetServer>)>,
         acked_ticks: Res<AckedTicks>,
         registry: Res<AppTypeRegistry>,
-        save_rules: Res<SaveRules>,
-        network_components: Res<NetworkComponents>,
+        replication_rules: Res<ReplicationRules>,
         despawn_tracker: Res<DespawnTracker>,
         removal_trackers: Query<(Entity, &RemovalTracker)>,
     ) {
@@ -80,13 +79,7 @@ impl ReplicationPlugin {
             .iter()
             .map(|(&client_id, &last_tick)| (client_id, WorldDiff::new(last_tick)))
             .collect();
-        collect_changes(
-            &mut client_diffs,
-            set.p0(),
-            &registry,
-            &save_rules,
-            &network_components,
-        );
+        collect_changes(&mut client_diffs, set.p0(), &registry, &replication_rules);
         collect_removals(&mut client_diffs, set.p0(), &removal_trackers);
         collect_despawns(&mut client_diffs, &despawn_tracker);
 
@@ -185,15 +178,14 @@ fn collect_changes(
     client_diffs: &mut HashMap<u64, WorldDiff>,
     world: &World,
     registry: &TypeRegistryInternal,
-    save_rules: &SaveRules,
-    network_components: &NetworkComponents,
+    replication_rules: &ReplicationRules,
 ) {
     for archetype in world
         .archetypes()
         .iter()
         .filter(|archetype| archetype.id() != ArchetypeId::EMPTY)
         .filter(|archetype| archetype.id() != ArchetypeId::INVALID)
-        .filter(|archetype| save_rules.persistent_archetype(archetype))
+        .filter(|archetype| replication_rules.is_replicated_archetype(archetype))
     {
         let table = world
             .storages()
@@ -202,8 +194,7 @@ fn collect_changes(
             .expect("archetype should have a table");
 
         for component_id in archetype.components().filter(|&component_id| {
-            save_rules.persistent_component(archetype, component_id)
-                || network_components.contains(&component_id)
+            replication_rules.is_replicated_component(archetype, component_id)
         }) {
             let storage_type = archetype
                 .get_storage_type(component_id)
@@ -413,31 +404,21 @@ struct LastTick(u32);
 #[derive(Default, Deref, DerefMut, Resource)]
 struct AckedTicks(HashMap<u64, u32>);
 
-/// List of component IDs that should be replicated.
-///
-/// This list contains only components that are not in [`SaveRules`]
-/// (i.e. non-persistent components), but that should be networked.
-#[derive(Deref, DerefMut, Resource)]
-struct NetworkComponents(Vec<ComponentId>);
-
-impl FromWorld for NetworkComponents {
-    fn from_world(world: &mut World) -> Self {
-        Self(vec![world.init_component::<DollPlayers>()])
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use bevy::ecs::entity::{EntityMap, MapEntities, MapEntitiesError};
+
     use super::*;
-    use crate::core::{
-        game_world::{parent_sync::ParentSync, GameEntity},
-        network::{network_preset::NetworkPresetPlugin, replication::map_entity::NetworkEntityMap},
+    use crate::core::network::{
+        network_preset::NetworkPresetPlugin,
+        replication::{map_entity::NetworkEntityMap, replication_rules::Replication},
     };
 
     #[test]
     fn acked_ticks_cleanup() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin);
 
         let mut client = app.world.resource_mut::<RenetClient>();
         client.disconnect();
@@ -455,7 +436,8 @@ mod tests {
     #[test]
     fn tick_acks_receiving() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin);
 
         for _ in 0..10 {
             app.update();
@@ -469,14 +451,14 @@ mod tests {
     #[test]
     fn spawn_replication() {
         let mut app = App::new();
-        app.register_type::<GameEntity>()
-            .add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin);
 
         // Wait two ticks to send and receive acknowledge.
         app.update();
         app.update();
 
-        let server_entity = app.world.spawn(GameEntity).id();
+        let server_entity = app.world.spawn(Replication).id();
 
         app.update();
 
@@ -509,21 +491,16 @@ mod tests {
     #[test]
     fn change_replicaiton() {
         let mut app = App::new();
-        app.register_type::<GameEntity>()
-            .register_type::<SparseSetComponent>()
-            .add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin)
+            .register_and_replicate::<SparseSetComponent>();
 
         app.update();
         app.update();
-
-        app.world
-            .resource_scope(|world, mut save_rules: Mut<NetworkComponents>| {
-                save_rules.push(world.init_component::<SparseSetComponent>());
-            });
 
         let replicated_entity = app
             .world
-            .spawn((GameEntity, SparseSetComponent, NonReflectedComponent))
+            .spawn((Replication, SparseSetComponent, NonReflectedComponent))
             .id();
 
         // Mark as already spawned.
@@ -536,7 +513,7 @@ mod tests {
         // Remove components before client replicates it,
         // since in test client and server in the same world.
         let mut replicated_entity = app.world.entity_mut(replicated_entity);
-        replicated_entity.remove::<GameEntity>();
+        replicated_entity.remove::<Replication>();
         replicated_entity.remove::<SparseSetComponent>();
         replicated_entity.remove::<NonReflectedComponent>();
         let replicated_entity = replicated_entity.id();
@@ -544,7 +521,7 @@ mod tests {
         app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
-        assert!(replicated_entity.contains::<GameEntity>());
+        assert!(replicated_entity.contains::<Replication>());
         assert!(replicated_entity.contains::<SparseSetComponent>());
         assert!(!replicated_entity.contains::<NonReflectedComponent>());
     }
@@ -552,9 +529,9 @@ mod tests {
     #[test]
     fn entity_mapping() {
         let mut app = App::new();
-        app.register_type::<GameEntity>()
-            .register_type::<ParentSync>()
-            .add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin)
+            .register_and_replicate::<MappedComponent>();
 
         app.update();
         app.update();
@@ -563,7 +540,7 @@ mod tests {
         let server_parent = app.world.spawn_empty().id();
         let replicated_entity = app
             .world
-            .spawn((GameEntity, ParentSync(server_parent)))
+            .spawn((Replication, MappedComponent(server_parent)))
             .id();
 
         let mut entity_map = app.world.resource_mut::<NetworkEntityMap>();
@@ -573,7 +550,7 @@ mod tests {
         app.update();
         app.update();
 
-        let parent_sync = app.world.get::<ParentSync>(replicated_entity).unwrap();
+        let parent_sync = app.world.get::<MappedComponent>(replicated_entity).unwrap();
         assert_eq!(parent_sync.0, client_parent);
     }
 
@@ -581,19 +558,19 @@ mod tests {
     fn removal_replication() {
         let mut app = App::new();
         app.register_type::<NonReflectedComponent>()
-            .register_type::<GameEntity>()
-            .add_plugin(TestReplicationPlugin);
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin);
 
         app.update();
         app.update();
 
         // Mark components as removed.
         const REMOVAL_TICK: u32 = 1; // Should be more then 0 since both client and server starts with 0 tick and think that everything is replicated at this point.
-        let game_entity_id = app.world.init_component::<GameEntity>();
-        let removal_tracker = RemovalTracker(HashMap::from([(game_entity_id, REMOVAL_TICK)]));
+        let replication_id = app.world.init_component::<Replication>();
+        let removal_tracker = RemovalTracker(HashMap::from([(replication_id, REMOVAL_TICK)]));
         let replicated_entity = app
             .world
-            .spawn((removal_tracker, GameEntity, NonReflectedComponent))
+            .spawn((removal_tracker, Replication, NonReflectedComponent))
             .id();
 
         app.world
@@ -604,14 +581,15 @@ mod tests {
         app.update();
 
         let replicated_entity = app.world.entity(replicated_entity);
-        assert!(!replicated_entity.contains::<GameEntity>());
+        assert!(!replicated_entity.contains::<Replication>());
         assert!(replicated_entity.contains::<NonReflectedComponent>());
     }
 
     #[test]
     fn despawn_replication() {
         let mut app = App::new();
-        app.add_plugin(TestReplicationPlugin);
+        app.add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(ReplicationPlugin);
 
         app.update();
         app.update();
@@ -644,14 +622,20 @@ mod tests {
             .is_empty());
     }
 
-    struct TestReplicationPlugin;
+    #[derive(Component, Reflect)]
+    #[reflect(Component, MapEntity)]
+    struct MappedComponent(Entity);
 
-    impl Plugin for TestReplicationPlugin {
-        fn build(&self, app: &mut App) {
-            app.init_resource::<SaveRules>()
-                .init_resource::<DespawnTracker>()
-                .add_plugin(NetworkPresetPlugin::client_and_server())
-                .add_plugin(ReplicationPlugin);
+    impl MapEntities for MappedComponent {
+        fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+            self.0 = entity_map.get(self.0)?;
+            Ok(())
+        }
+    }
+
+    impl FromWorld for MappedComponent {
+        fn from_world(_world: &mut World) -> Self {
+            Self(Entity::from_raw(u32::MAX))
         }
     }
 

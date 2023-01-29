@@ -8,7 +8,9 @@ use bevy::{
 use iyes_loopless::prelude::*;
 
 use super::GameWorld;
-use crate::core::network::replication::map_entity::ReflectMapEntity;
+use crate::core::network::replication::{
+    map_entity::ReflectMapEntity, replication_rules::AppReplicationExt,
+};
 
 pub(super) struct ParentSyncPlugin;
 
@@ -17,7 +19,7 @@ pub(super) struct ParentSyncPlugin;
 /// This allows to save / replicate hierarchy using only [`SyncParent`] component.
 impl Plugin for ParentSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<ParentSync>()
+        app.register_and_replicate::<ParentSync>()
             .add_system(Self::parent_sync_system.run_if_resource_exists::<GameWorld>());
     }
 }
@@ -57,6 +59,7 @@ mod tests {
     use bevy::{asset::AssetPlugin, scene::ScenePlugin};
 
     use super::*;
+    use crate::core::network::replication::replication_rules::ReplicationRulesPlugin;
 
     #[test]
     fn entity_mapping() {
@@ -64,6 +67,7 @@ mod tests {
         app.init_resource::<GameWorld>()
             .add_plugin(AssetPlugin::default())
             .add_plugin(ScenePlugin)
+            .add_plugin(ReplicationRulesPlugin)
             .add_plugin(ParentSyncPlugin);
 
         let mut other_world = World::new();

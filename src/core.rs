@@ -55,8 +55,9 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(NetworkPlugin) // Should be built first to register server fixed timestep.
-            .add(AssetMetadataPlugin)
             .add(GameStatePlugin)
+            .add(GameWorldPlugin)
+            .add(AssetMetadataPlugin)
             .add(CityPlugin)
             .add(CliPlugin)
             .add(DollPlugin)
@@ -73,7 +74,6 @@ impl PluginGroup for CorePlugins {
             .add(SettingsPlugin)
             .add(VideoPlugin)
             .add(TaskPlugin)
-            .add(GameWorldPlugin)
             .add(ObjectPlugin)
             .add(WallPlugin)
     }

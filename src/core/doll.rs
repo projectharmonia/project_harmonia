@@ -13,8 +13,11 @@ use smallvec::{smallvec, SmallVec};
 use super::{
     family::FamilySync,
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
-    network::network_event::client_event::{ClientEvent, ClientEventAppExt},
+    game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, GameWorld},
+    network::{
+        network_event::client_event::{ClientEvent, ClientEventAppExt},
+        replication::replication_rules::{AppReplicationExt, Replication},
+    },
     task::TaskQueue,
 };
 use movement::MovementPlugin;
@@ -24,9 +27,11 @@ pub(super) struct DollPlugin;
 impl Plugin for DollPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MovementPlugin)
-            .register_type::<FirstName>()
-            .register_type::<LastName>()
-            .register_type::<DollPlayers>()
+            .register_and_replicate::<FirstName>()
+            .register_and_replicate::<LastName>()
+            .register_and_replicate::<DollPlayers>()
+            .not_replicate_if_present::<Name, FirstName>()
+            .ignore_saving::<DollPlayers>()
             .add_mapped_client_event::<DollSelect>()
             .add_client_event::<DollDeselect>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
@@ -187,7 +192,7 @@ pub(crate) struct DollBundle {
     parent_sync: ParentSync,
     transform: Transform,
     task_queue: TaskQueue,
-    game_entity: GameEntity,
+    replication: Replication,
 }
 
 impl DollBundle {
@@ -204,7 +209,7 @@ impl DollBundle {
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
             task_queue: Default::default(),
-            game_entity: GameEntity,
+            replication: Replication,
         }
     }
 }

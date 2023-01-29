@@ -19,11 +19,14 @@ use super::{
     asset_metadata::{self, ObjectMetadata},
     city::{City, CityPlugin},
     collision_groups::DollisGroups,
-    game_world::{parent_sync::ParentSync, GameEntity, GameWorld},
+    game_world::{parent_sync::ParentSync, GameWorld},
     lot::LotVertices,
-    network::network_event::{
-        client_event::{ClientEvent, ClientEventAppExt},
-        server_event::{SendMode, ServerEvent, ServerEventAppExt},
+    network::{
+        network_event::{
+            client_event::{ClientEvent, ClientEventAppExt},
+            server_event::{SendMode, ServerEvent, ServerEventAppExt},
+        },
+        replication::replication_rules::{AppReplicationExt, Replication},
     },
     picking::Pickable,
 };
@@ -33,7 +36,7 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
-            .register_type::<ObjectPath>()
+            .register_and_replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
@@ -175,7 +178,7 @@ struct ObjectBundle {
     object_path: ObjectPath,
     transform: Transform,
     parent_sync: ParentSync,
-    game_entity: GameEntity,
+    replication: Replication,
 }
 
 impl ObjectBundle {
@@ -186,7 +189,7 @@ impl ObjectBundle {
                 .with_translation(translation)
                 .with_rotation(rotation),
             parent_sync: ParentSync(parent),
-            game_entity: GameEntity,
+            replication: Replication,
         }
     }
 }
