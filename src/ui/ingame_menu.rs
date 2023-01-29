@@ -42,7 +42,11 @@ impl Plugin for InGameMenuPlugin {
                 .run_if_resource_exists::<ExitToMainMenuDialog>()
                 .before(GameWorldSystem::Saving),
         )
-        .add_system(Self::exit_game_system.run_if_resource_exists::<ExitGameDialog>());
+        .add_system(
+            Self::exit_game_system
+                .run_if_resource_exists::<ExitGameDialog>()
+                .before(GameWorldSystem::Saving),
+        );
     }
 }
 
