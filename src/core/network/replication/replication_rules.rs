@@ -20,11 +20,14 @@ pub(crate) trait AppReplicationExt {
 
     /// Marks component for replication.
     ///
-    /// For replication component should be registered,
-    /// implement [`Reflect`] and have `#[reflect(Component)]`.
+    /// The component should be registered, implement [`Reflect`] and have `#[reflect(Component)]`.
     fn replicate<T: Component>(&mut self) -> &mut Self;
 
     /// Ignores component `T` replication if component `U` is present on the same entity.
+    ///
+    /// Component `T` should be marked for replication.
+    /// Could be called multiple times for the same component to disable replication
+    /// for different presented components.
     fn not_replicate_if_present<T: Component, U: Component>(&mut self) -> &mut Self;
 }
 
@@ -41,14 +44,14 @@ impl AppReplicationExt for App {
     }
 
     fn not_replicate_if_present<T: Component, U: Component>(&mut self) -> &mut Self {
-        let ignore_component_id = self.world.init_component::<T>();
-        let present_component_id = self.world.init_component::<U>();
+        let ignore_id = self.world.init_component::<T>();
+        let present_id = self.world.init_component::<U>();
         let mut replication_rules = self.world.resource_mut::<ReplicationRules>();
         replication_rules
             .ignored_if_present
-            .entry(ignore_component_id)
+            .entry(ignore_id)
             .or_default()
-            .push(present_component_id);
+            .push(present_id);
         self
     }
 }
@@ -59,8 +62,10 @@ impl AppReplicationExt for App {
 pub(crate) struct ReplicationRules {
     /// Components that should be replicated.
     pub(super) replicated: HashSet<ComponentId>,
+
     /// Ignore a key component if any of its value components are present in an archetype.
     ignored_if_present: HashMap<ComponentId, Vec<ComponentId>>,
+
     /// ID of [`Replication`] component, only entities with this components should be replicated.
     replication_id: ComponentId,
 }
