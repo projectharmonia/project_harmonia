@@ -1,4 +1,7 @@
+use std::marker::PhantomData;
+
 use bevy::{
+    ecs::system::{Command, EntityCommands},
     prelude::*,
     reflect::GetTypeRegistration,
     utils::{HashMap, HashSet},
@@ -23,6 +26,13 @@ pub(crate) trait AppReplicationExt {
     /// The component should be registered, implement [`Reflect`] and have `#[reflect(Component)]`.
     fn replicate<T: Component>(&mut self) -> &mut Self;
 
+    /// Registers [`Pause<T>`] as a component that pauses replication for `T` when present.
+    ///
+    /// The component `T` should be marked for replication.
+    fn enable_replication_pause<T: Component + FromWorld + GetTypeRegistration + Reflect>(
+        &mut self,
+    ) -> &mut Self;
+
     /// Ignores component `T` replication if component `U` is present on the same entity.
     ///
     /// Component `T` should be marked for replication.
@@ -40,6 +50,19 @@ impl AppReplicationExt for App {
         let component_id = self.world.init_component::<T>();
         let mut replication_rules = self.world.resource_mut::<ReplicationRules>();
         replication_rules.replicated.insert(component_id);
+        self
+    }
+
+    fn enable_replication_pause<T: Component + FromWorld + GetTypeRegistration + Reflect>(
+        &mut self,
+    ) -> &mut Self {
+        self.register_type::<Paused<T>>();
+        let component_id = self.world.init_component::<T>();
+        let paused_id = self.world.init_component::<Paused<T>>();
+        let mut replication_rules = self.world.resource_mut::<ReplicationRules>();
+        replication_rules
+            .pausable
+            .insert(component_id, paused_id);
         self
     }
 
@@ -65,6 +88,9 @@ pub(crate) struct ReplicationRules {
 
     /// Ignore a key component if any of its value components are present in an archetype.
     ignored_if_present: HashMap<ComponentId, Vec<ComponentId>>,
+
+    /// Contains a pausable [`ComponentId`] as a value for replicated components.
+    pausable: HashMap<ComponentId, ComponentId>,
 
     /// ID of [`Replication`] component, only entities with this components should be replicated.
     replication_id: ComponentId,
@@ -95,6 +121,10 @@ impl ReplicationRules {
 
         false
     }
+
+    pub(crate) fn pausable_id(&self, component_id: ComponentId) -> Option<ComponentId> {
+        self.pausable.get(&component_id).copied()
+    }
 }
 
 impl FromWorld for ReplicationRules {
@@ -102,6 +132,7 @@ impl FromWorld for ReplicationRules {
         Self {
             replicated: Default::default(),
             ignored_if_present: Default::default(),
+            pausable: Default::default(),
             replication_id: world.init_component::<Replication>(),
         }
     }
@@ -111,3 +142,82 @@ impl FromWorld for ReplicationRules {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct Replication;
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Paused<T: FromWorld + Reflect>(T);
+
+impl<T: FromWorld + Reflect> FromWorld for Paused<T> {
+    fn from_world(world: &mut World) -> Self {
+        Self(T::from_world(world))
+    }
+}
+
+trait ReplicationCommandsExt<T> {
+    fn pause_replication(&mut self) -> &mut Self;
+    fn restore_replication(&mut self) -> &mut Self;
+}
+
+impl<T: Component + Clone + Reflect + FromWorld> ReplicationCommandsExt<T>
+    for EntityCommands<'_, '_, '_>
+{
+    fn pause_replication(&mut self) -> &mut Self {
+        let entity = self.id();
+        self.commands().add(PauseReplication::<T>::new(entity));
+        self
+    }
+
+    fn restore_replication(&mut self) -> &mut Self {
+        let entity = self.id();
+        self.commands().add(RestoreReplication::<T>::new(entity));
+        self
+    }
+}
+
+struct PauseReplication<T> {
+    entity: Entity,
+    marker: PhantomData<T>,
+}
+
+impl<T> PauseReplication<T> {
+    fn new(entity: Entity) -> Self {
+        Self {
+            entity,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T: Component + Clone + Reflect + FromWorld> Command for PauseReplication<T> {
+    fn write(self, world: &mut World) {
+        let mut entity = world.entity_mut(self.entity);
+        let component = entity
+            .get::<T>()
+            .expect("paused component for replication should be on the entity");
+        entity.insert(Paused(component.clone()));
+    }
+}
+
+struct RestoreReplication<T> {
+    entity: Entity,
+    marker: PhantomData<T>,
+}
+
+impl<T> RestoreReplication<T> {
+    fn new(entity: Entity) -> Self {
+        Self {
+            entity,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T: Component + Clone + Reflect + FromWorld> Command for RestoreReplication<T> {
+    fn write(self, world: &mut World) {
+        let mut entity = world.entity_mut(self.entity);
+        let paused = entity
+            .remove::<Paused<T>>()
+            .expect("component for replication pause should be on the entity");
+        entity.insert(paused.0);
+    }
+}
