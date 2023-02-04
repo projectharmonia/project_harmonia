@@ -13,13 +13,15 @@ use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
 use placing_object::PlacingObjectPlugin;
 use serde::{Deserialize, Serialize};
-use tap::TapFallible;
+use tap::{TapFallible, TapOptional};
 
 use super::{
     asset_metadata::{self, ObjectMetadata},
-    city::{City, CityPlugin},
+    city::{City, CityMode, CityPlugin},
     collision_groups::DollisGroups,
-    game_world::{parent_sync::ParentSync, GameWorld},
+    family::FamilyMode,
+    game_state::GameState,
+    game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, GameWorld},
     lot::LotVertices,
     network::{
         network_event::{
@@ -28,7 +30,7 @@ use super::{
         },
         replication::replication_rules::{AppReplicationExt, Replication},
     },
-    picking::Pickable,
+    picking::{Pickable, Picked},
 };
 
 pub(super) struct ObjectPlugin;
@@ -37,11 +39,27 @@ impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
             .register_and_replicate::<ObjectPath>()
+            .register_and_replicate::<PickedPlayer>()
+            .ignore_saving::<PickedPlayer>()
+            .add_mapped_client_event::<ObjectPick>()
+            .add_client_event::<ObjectPickCancel>()
             .add_client_event::<ObjectSpawn>()
-            .add_mapped_client_event::<ObjectMove>()
-            .add_mapped_client_event::<ObjectDespawn>()
-            .add_server_event::<ObjectEventConfirmed>()
+            .add_client_event::<ObjectMove>()
+            .add_client_event::<ObjectDespawn>()
+            .add_server_event::<ObjectSpawnConfirmed>()
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
+            .add_system(
+                Self::picking_system
+                    .run_in_state(GameState::Family)
+                    .run_in_state(FamilyMode::Building),
+            )
+            .add_system(
+                Self::picking_system
+                    .run_in_state(GameState::City)
+                    .run_in_state(CityMode::Objects),
+            )
+            .add_system(Self::pick_confirmation_system.run_unless_resource_exists::<RenetClient>())
+            .add_system(Self::pick_cancellation_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::movement_system.run_unless_resource_exists::<RenetClient>())
             .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>());
@@ -91,10 +109,55 @@ impl ObjectPlugin {
         }
     }
 
+    fn picking_system(
+        mut pick_events: EventReader<Picked>,
+        mut object_pick_events: EventWriter<ObjectPick>,
+        objects: Query<(), With<ObjectPath>>,
+    ) {
+        for event in pick_events.iter() {
+            if objects.get(event.entity).is_ok() {
+                object_pick_events.send(ObjectPick(event.entity));
+            }
+        }
+    }
+
+    fn pick_confirmation_system(
+        mut commands: Commands,
+        mut pick_events: EventReader<ClientEvent<ObjectPick>>,
+        unpicked_objects: Query<(), (With<ObjectPath>, Without<PickedPlayer>)>,
+    ) {
+        for ClientEvent { client_id, event } in pick_events.iter().copied() {
+            if unpicked_objects
+                .get(event.0)
+                .tap_err(|e| error!("entity {:?} can't be picked: {e}", event.0))
+                .is_ok()
+            {
+                commands.entity(event.0).insert(PickedPlayer(client_id));
+            }
+        }
+    }
+
+    fn pick_cancellation_system(
+        mut commands: Commands,
+        mut cancel_events: EventReader<ClientEvent<ObjectPickCancel>>,
+        picked_objects: Query<(Entity, &PickedPlayer)>,
+    ) {
+        for client_id in cancel_events.iter().map(|event| event.client_id) {
+            if let Some(entity) = picked_objects
+                .iter()
+                .find(|(_, picked)| picked.0 == client_id)
+                .map(|(entity, _)| entity)
+                .tap_none(|| error!("unable to find picked entity for client {client_id}"))
+            {
+                commands.entity(entity).remove::<PickedPlayer>();
+            }
+        }
+    }
+
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        mut confirm_events: EventWriter<ServerEvent<ObjectSpawnConfirmed>>,
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
@@ -133,27 +196,26 @@ impl ObjectPlugin {
             ));
             confirm_events.send(ServerEvent {
                 mode: SendMode::Direct(client_id),
-                event: ObjectEventConfirmed,
+                event: ObjectSpawnConfirmed,
             });
         }
     }
 
     fn movement_system(
+        mut commands: Commands,
         mut move_events: EventReader<ClientEvent<ObjectMove>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
-        mut transforms: Query<&mut Transform>,
+        mut transforms: Query<(Entity, &mut Transform, &PickedPlayer)>,
     ) {
         for ClientEvent { client_id, event } in move_events.iter().copied() {
-            if let Ok(mut transform) = transforms
-                .get_mut(event.entity)
-                .tap_err(|e| error!("unable to apply movement from client {client_id}: {e}"))
+            if let Some((entity, mut transform)) = transforms
+                .iter_mut()
+                .find(|(.., picked)| picked.0 == client_id)
+                .map(|(entity, transform, _)| (entity, transform))
+                .tap_none(|| error!("no picked object to apply movement from client {client_id}"))
             {
                 transform.translation = event.translation;
                 transform.rotation = event.rotation;
-                confirm_events.send(ServerEvent {
-                    mode: SendMode::Direct(client_id),
-                    event: ObjectEventConfirmed,
-                });
+                commands.entity(entity).remove::<PickedPlayer>();
             }
         }
     }
@@ -161,14 +223,17 @@ impl ObjectPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<ClientEvent<ObjectDespawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        mut picked_objects: Query<(Entity, &PickedPlayer)>,
     ) {
-        for ClientEvent { client_id, event } in despawn_events.iter().copied() {
-            commands.entity(event.0).despawn_recursive();
-            confirm_events.send(ServerEvent {
-                mode: SendMode::Direct(client_id),
-                event: ObjectEventConfirmed,
-            });
+        for client_id in despawn_events.iter().map(|event| event.client_id) {
+            if let Some(entity) = picked_objects
+                .iter_mut()
+                .find(|(_, picked)| picked.0 == client_id)
+                .map(|(entity, _)| entity)
+                .tap_none(|| error!("no picked object to apply despawn from client {client_id}"))
+            {
+                commands.entity(entity).despawn_recursive();
+            }
         }
     }
 }
@@ -194,9 +259,30 @@ impl ObjectBundle {
     }
 }
 
+/// Contains path to the object metadata file.
 #[derive(Clone, Component, Debug, Default, Reflect)]
 #[reflect(Component)]
-pub(crate) struct ObjectPath(PathBuf);
+pub(crate) struct ObjectPath(pub(crate) PathBuf);
+
+/// Client id that picked the object.
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct PickedPlayer(u64);
+
+/// A client event for picking an entity.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct ObjectPick(Entity);
+
+impl MapEntities for ObjectPick {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
+
+/// An event to cancel the currenly picked object for sender.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+struct ObjectPickCancel;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct ObjectSpawn {
@@ -205,30 +291,17 @@ struct ObjectSpawn {
     rotation: Quat,
 }
 
+/// An event to apply translation and rotation to the currently picked object.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 struct ObjectMove {
-    entity: Entity,
     translation: Vec3,
     rotation: Quat,
 }
 
-impl MapEntities for ObjectMove {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.entity = entity_map.get(self.entity)?;
-        Ok(())
-    }
-}
-
+/// An event to despawn the currently picked object.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct ObjectDespawn(Entity);
+struct ObjectDespawn;
 
-impl MapEntities for ObjectDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
-    }
-}
-
-/// An event from server which indicates action confirmation.
+/// An event from server which indicates spawn confirmation.
 #[derive(Deserialize, Serialize, Debug, Default)]
-struct ObjectEventConfirmed;
+struct ObjectSpawnConfirmed;

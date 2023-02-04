@@ -1,10 +1,10 @@
-use bevy::{asset::HandleId, prelude::*};
+use bevy::prelude::*;
 use bevy_egui::egui::{ImageButton, TextureId, Ui};
 use derive_more::Constructor;
 
 use crate::core::{
     asset_metadata::{ObjectCategory, ObjectMetadata},
-    object::placing_object::PlacingObject,
+    object::{placing_object::SpawningObjectBundle, ObjectPath},
     preview::{PreviewPlugin, PreviewRequest, Previews},
 };
 
@@ -13,10 +13,11 @@ pub(super) struct ObjectsView<'a, 'w, 's, 'wc, 'sc> {
     current_category: &'a mut Option<ObjectCategory>,
     categories: &'a [ObjectCategory],
     commands: &'a mut Commands<'wc, 'sc>,
+    asset_server: &'a AssetServer,
     object_metadata: &'a Assets<ObjectMetadata>,
     previews: &'a Previews,
     preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
-    selected_id: Option<HandleId>,
+    selected_path: Option<&'a ObjectPath>,
     spawn_parent: Entity,
 }
 
@@ -45,6 +46,10 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     self.preview_events.send(PreviewRequest(id));
                     &TextureId::Managed(0)
                 });
+                let asset_path = self
+                    .asset_server
+                    .get_handle_path(id)
+                    .expect("all objects should have a path");
 
                 const SIZE: (f32, f32) = (
                     PreviewPlugin::PREVIEW_SIZE as f32,
@@ -52,7 +57,7 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                 );
                 if ui
                     .add(ImageButton::new(*texture_id, SIZE).selected(
-                        matches!(self.selected_id, Some(selected_id) if selected_id == id),
+                        matches!(self.selected_path, Some(selected_path) if selected_path.0 == asset_path.path()),
                     ))
                     .on_hover_text(&metadata.general.name)
                     .clicked()
@@ -60,7 +65,7 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     self.commands
                         .entity(self.spawn_parent)
                         .with_children(|parent| {
-                            parent.spawn(PlacingObject::Spawning(id));
+                            parent.spawn(SpawningObjectBundle::new(asset_path.path().to_path_buf()));
                         });
                 }
             }

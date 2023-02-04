@@ -20,6 +20,7 @@ mod orbit_camera;
 pub(super) mod picking;
 pub(super) mod preview;
 pub(super) mod settings;
+mod suspend;
 pub(super) mod task;
 mod video;
 pub(super) mod wall;
@@ -45,6 +46,7 @@ use orbit_camera::OrbitCameraPlugin;
 use picking::PickingPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
+use suspend::SuspendPlugin;
 use task::TaskPlugin;
 use video::VideoPlugin;
 use wall::WallPlugin;
@@ -72,6 +74,7 @@ impl PluginGroup for CorePlugins {
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin)
+            .add(SuspendPlugin)
             .add(VideoPlugin)
             .add(TaskPlugin)
             .add(ObjectPlugin)
