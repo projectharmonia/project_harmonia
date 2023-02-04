@@ -12,7 +12,7 @@ use crate::core::{
     city::{ActiveCity, CityMode},
     game_state::GameState,
     lot::LotTool,
-    object::placing_object::PlacingObject,
+    object::{placing_object::PlacingObject, ObjectPath},
     preview::{PreviewRequest, Previews},
 };
 
@@ -33,8 +33,9 @@ impl CityHudPlugin {
         previews: Res<Previews>,
         city_mode: Res<CurrentState<CityMode>>,
         lot_tool: Res<CurrentState<LotTool>>,
+        asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        placing_objects: Query<&PlacingObject>,
+        placing_objects: Query<&ObjectPath, With<PlacingObject>>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         Window::new("City bottom panel")
@@ -63,13 +64,11 @@ impl CityHudPlugin {
                                 &mut current_category,
                                 ObjectCategory::CITY_CATEGORIES,
                                 &mut commands,
+                                &asset_server,
                                 &object_metadata,
                                 &previews,
                                 &mut preview_events,
-                                placing_objects
-                                    .get_single()
-                                    .ok()
-                                    .and_then(|object| object.spawning_id()),
+                                placing_objects.get_single().ok(),
                                 active_cities.single(),
                             )
                             .show(ui);
