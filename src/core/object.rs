@@ -16,9 +16,11 @@ use serde::{Deserialize, Serialize};
 use tap::{TapFallible, TapOptional};
 
 use super::{
+    action::{self, Action},
     asset_metadata::{self, ObjectMetadata},
     city::{City, CityMode, CityPlugin},
     collision_groups::DollisGroups,
+    cursor_hover::{CursorHover, Hoverable},
     family::FamilyMode,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, GameWorld},
@@ -30,7 +32,6 @@ use super::{
         },
         replication::replication_rules::{AppReplicationExt, Replication},
     },
-    picking::{Pickable, Picked},
 };
 
 pub(super) struct ObjectPlugin;
@@ -50,11 +51,13 @@ impl Plugin for ObjectPlugin {
             .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
             .add_system(
                 Self::picking_system
+                    .run_if(action::just_pressed(Action::Confirm))
                     .run_in_state(GameState::Family)
                     .run_in_state(FamilyMode::Building),
             )
             .add_system(
                 Self::picking_system
+                    .run_if(action::just_pressed(Action::Confirm))
                     .run_in_state(GameState::City)
                     .run_in_state(CityMode::Objects),
             )
@@ -85,7 +88,7 @@ impl ObjectPlugin {
             commands.entity(entity).insert((
                 scene_handle,
                 Name::new(object_metadata.general.name.clone()),
-                Pickable,
+                Hoverable,
                 AsyncSceneCollider::default(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
@@ -110,14 +113,11 @@ impl ObjectPlugin {
     }
 
     fn picking_system(
-        mut pick_events: EventReader<Picked>,
-        mut object_pick_events: EventWriter<ObjectPick>,
-        objects: Query<(), With<ObjectPath>>,
+        mut pick_events: EventWriter<ObjectPick>,
+        hovered_objects: Query<Entity, (With<ObjectPath>, With<CursorHover>)>,
     ) {
-        for event in pick_events.iter() {
-            if objects.get(event.entity).is_ok() {
-                object_pick_events.send(ObjectPick(event.entity));
-            }
+        for entity in hovered_objects.iter() {
+            pick_events.send(ObjectPick(entity));
         }
     }
 

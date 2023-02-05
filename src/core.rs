@@ -3,6 +3,7 @@ pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
 mod collision_groups;
+mod cursor_hover;
 pub(super) mod developer;
 pub(super) mod doll;
 pub(super) mod error_message;
@@ -17,7 +18,6 @@ pub(super) mod lot;
 pub(super) mod network;
 pub(super) mod object;
 mod orbit_camera;
-pub(super) mod picking;
 pub(super) mod preview;
 pub(super) mod settings;
 mod suspend;
@@ -31,6 +31,7 @@ use action::ActionPlugin;
 use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
 use cli::CliPlugin;
+use cursor_hover::CursorHoverPlugin;
 use developer::DeveloperPlugin;
 use doll::DollPlugin;
 use family::FamilyPlugin;
@@ -43,7 +44,6 @@ use lot::LotPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
 use orbit_camera::OrbitCameraPlugin;
-use picking::PickingPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use suspend::SuspendPlugin;
@@ -62,6 +62,7 @@ impl PluginGroup for CorePlugins {
             .add(AssetMetadataPlugin)
             .add(CityPlugin)
             .add(CliPlugin)
+            .add(CursorHoverPlugin)
             .add(DollPlugin)
             .add(LotPlugin)
             .add(GroundPlugin)
@@ -70,7 +71,6 @@ impl PluginGroup for CorePlugins {
             .add(FamilyPlugin)
             .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)
-            .add(PickingPlugin)
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin)
