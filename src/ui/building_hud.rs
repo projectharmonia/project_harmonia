@@ -12,7 +12,7 @@ use crate::core::{
     city::ActiveCity,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
-    object::{placing_object::PlacingObject, ObjectPath},
+    object::placing_object::PlacingObject,
     preview::{PreviewRequest, Previews},
 };
 
@@ -36,9 +36,8 @@ impl BuildingHudPlugin {
         mut egui: ResMut<EguiContext>,
         previews: Res<Previews>,
         building_mode: Res<CurrentState<BuildingMode>>,
-        asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        placing_objects: Query<&ObjectPath, With<PlacingObject>>,
+        placing_objects: Query<&PlacingObject>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
         Window::new("Building bottom panel")
@@ -66,11 +65,13 @@ impl BuildingHudPlugin {
                             &mut current_category,
                             ObjectCategory::CITY_CATEGORIES,
                             &mut commands,
-                            &asset_server,
                             &object_metadata,
                             &previews,
                             &mut preview_events,
-                            placing_objects.get_single().ok(),
+                            placing_objects
+                                .get_single()
+                                .ok()
+                                .and_then(|object| object.spawning_id()),
                             active_cities.single(),
                         )
                         .show(ui);
