@@ -194,6 +194,7 @@ impl ObjectBundle {
     }
 }
 
+/// Contains path to the object metadata file.
 #[derive(Clone, Component, Debug, Default, Reflect)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(PathBuf);

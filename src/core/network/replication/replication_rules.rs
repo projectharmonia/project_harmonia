@@ -26,6 +26,7 @@ pub(crate) trait AppReplicationExt {
     /// Ignores component `T` replication if component `U` is present on the same entity.
     ///
     /// Component `T` should be marked for replication.
+    /// Component `U` should be registered.
     /// Could be called multiple times for the same component to disable replication
     /// for different presented components.
     fn not_replicate_if_present<T: Component, U: Component>(&mut self) -> &mut Self;
