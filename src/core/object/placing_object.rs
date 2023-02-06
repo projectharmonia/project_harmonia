@@ -273,9 +273,9 @@ pub(crate) enum PlacingObject {
 }
 
 impl PlacingObject {
-    pub(crate) fn spawning_id(self) -> Option<HandleId> {
+    pub(crate) fn spawning_id(&self) -> Option<HandleId> {
         match self {
-            PlacingObject::Spawning(id) => Some(id),
+            PlacingObject::Spawning(id) => Some(*id),
             PlacingObject::Moving(_) => None,
         }
     }

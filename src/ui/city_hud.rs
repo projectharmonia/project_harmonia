@@ -69,7 +69,7 @@ impl CityHudPlugin {
                                 placing_objects
                                     .get_single()
                                     .ok()
-                                    .and_then(|object| object.spawning_id()),
+                                    .and_then(PlacingObject::spawning_id),
                                 active_cities.single(),
                             )
                             .show(ui);
