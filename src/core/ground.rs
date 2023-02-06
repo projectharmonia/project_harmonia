@@ -6,8 +6,8 @@ use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    city::ActiveCity, collision_groups::DollisGroups, cursor_hover::Hoverable,
-    game_state::GameState, preview::PreviewCamera,
+    city::ActiveCity, collision_groups::DollisGroups, game_state::GameState, picking::Pickable,
+    preview::PreviewCamera,
 };
 
 pub(super) struct GroundPlugin;
@@ -88,7 +88,7 @@ struct GroundBundle {
     collider: Collider,
     collision_groups: CollisionGroups,
     ground: Ground,
-    hoverable: Hoverable,
+    pickable: Pickable,
 
     #[bundle]
     pbr_bundle: PbrBundle,
@@ -105,7 +105,7 @@ impl Default for GroundBundle {
             collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
             collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
             ground: Ground,
-            hoverable: Hoverable,
+            pickable: Pickable,
             pbr_bundle: Default::default(),
         }
     }

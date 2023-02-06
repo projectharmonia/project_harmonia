@@ -7,8 +7,6 @@ use strum::{Display, EnumDiscriminants};
 use tap::TapOptional;
 
 use super::{
-    action::{self, Action},
-    cursor_hover::CursorHover,
     doll::DollPlayers,
     family::FamilyMode,
     game_state::GameState,
@@ -16,6 +14,7 @@ use super::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::replication_rules::AppReplicationExt,
     },
+    picking::Picked,
 };
 
 pub(super) struct TaskPlugin;
@@ -32,7 +31,6 @@ impl Plugin for TaskPlugin {
             .add_event::<TaskActivation>()
             .add_system(
                 Self::task_list_system
-                    .run_if(action::just_pressed(Action::Confirm))
                     .run_in_state(GameState::Family)
                     .run_in_state(FamilyMode::Life),
             )
@@ -45,17 +43,17 @@ impl Plugin for TaskPlugin {
 impl TaskPlugin {
     fn task_list_system(
         mut commands: Commands,
-        hovered: Query<(Entity, &CursorHover)>,
+        mut pick_events: EventReader<Picked>,
         task_lists: Query<Entity, With<TaskList>>,
     ) {
-        if let Ok((hovered_entity, hover)) = hovered.get_single() {
-            if let Ok(previous_entity) = task_lists.get_single() {
-                commands.entity(previous_entity).remove::<TaskList>();
+        if let Some(event) = pick_events.iter().last() {
+            if let Ok(entity) = task_lists.get_single() {
+                commands.entity(entity).remove::<TaskList>();
             }
 
             commands
-                .entity(hovered_entity)
-                .insert(TaskList::new(hover.0));
+                .entity(event.entity)
+                .insert(TaskList::new(event.position));
         }
     }
 
