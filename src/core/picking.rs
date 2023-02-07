@@ -7,8 +7,8 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::{
-    action::Action, city::CityMode, collision_groups::DollisGroups, game_state::GameState,
-    object::placing_object, preview::PreviewCamera,
+    action::Action, city::CityMode, collision_groups::DollisGroups, condition,
+    game_state::GameState, object::placing_object::PlacingObject, preview::PreviewCamera,
 };
 
 pub(super) struct PickingPlugin;
@@ -20,7 +20,7 @@ impl Plugin for PickingPlugin {
                 Self::ray_system
                     .pipe(Self::picking_system)
                     .pipe(Self::outline_system)
-                    .run_if_not(placing_object::placing_active)
+                    .run_if_not(condition::any_component_exists::<PlacingObject>())
                     .run_in_state(GameState::City)
                     .run_not_in_state(CityMode::Lots),
             )

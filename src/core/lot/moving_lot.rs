@@ -5,6 +5,7 @@ use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
     action::{self, Action},
     city::{ActiveCity, CityMode},
+    condition,
     game_state::GameState,
     ground::GroundPlugin,
 };
@@ -23,7 +24,7 @@ impl Plugin for MovingLotPlugin {
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::picking_system)
                 .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(movement_active)
+                .run_if_not(condition::any_component_exists::<MovingLot>())
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Move),
@@ -139,10 +140,6 @@ impl MovingLotPlugin {
             }
         }
     }
-}
-
-pub(crate) fn movement_active(moving_lots: Query<(), With<MovingLot>>) -> bool {
-    !moving_lots.is_empty()
 }
 
 #[derive(Component)]

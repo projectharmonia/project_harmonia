@@ -3,6 +3,7 @@ pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
 mod collision_groups;
+pub(super) mod condition;
 pub(super) mod developer;
 pub(super) mod doll;
 pub(super) mod error_message;

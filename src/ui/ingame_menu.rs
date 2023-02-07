@@ -8,11 +8,11 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::core::{
     action::{self, Action},
+    condition,
     game_state::GameState,
     game_world::{GameSave, GameWorld, GameWorldSystem},
-    lot::{creating_lot, moving_lot},
-    object::placing_object,
-    wall::creating_wall,
+    lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
+    object::placing_object::PlacingObject,
 };
 
 use super::{
@@ -27,10 +27,10 @@ impl Plugin for InGameMenuPlugin {
         app.add_system(
             Self::open_ingame_menu_system
                 .run_if(action::just_pressed(Action::Cancel))
-                .run_if_not(placing_object::placing_active)
-                .run_if_not(creating_lot::creating_active)
-                .run_if_not(moving_lot::movement_active)
-                .run_if_not(creating_wall::creating_active)
+                .run_if_not(condition::any_component_exists::<PlacingObject>())
+                .run_if_not(condition::any_component_exists::<CreatingLot>())
+                .run_if_not(condition::any_component_exists::<MovingLot>())
+                .run_if_not(condition::any_component_exists::<CreatingLot>())
                 .run_unless_resource_exists::<InGameMenu>()
                 .run_not_in_state(GameState::MainMenu),
         )

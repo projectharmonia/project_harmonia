@@ -4,6 +4,7 @@ use iyes_loopless::prelude::*;
 use super::{WallCreate, WallEdges, WallEventConfirmed};
 use crate::core::{
     action::{self, Action},
+    condition,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     ground::GroundPlugin,
@@ -18,7 +19,7 @@ impl Plugin for CreatingWallPlugin {
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::spawn_system)
                 .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(creating_active)
+                .run_if_not(condition::any_component_exists::<CreatingWall>())
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .run_in_state(BuildingMode::Walls),
@@ -27,7 +28,7 @@ impl Plugin for CreatingWallPlugin {
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::movement_system)
                 .run_if(action::pressed(Action::Confirm))
-                .run_if(creating_active)
+                .run_if(condition::any_component_exists::<CreatingWall>())
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .run_in_state(BuildingMode::Walls),
@@ -35,7 +36,7 @@ impl Plugin for CreatingWallPlugin {
         .add_system(
             Self::creation_system
                 .run_if(action::just_released(Action::Confirm))
-                .run_if(creating_active)
+                .run_if(condition::any_component_exists::<CreatingWall>())
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .run_in_state(BuildingMode::Walls),
@@ -131,10 +132,6 @@ impl CreatingWallPlugin {
             commands.entity(entity).despawn();
         }
     }
-}
-
-pub(crate) fn creating_active(building_walls: Query<(), With<CreatingWall>>) -> bool {
-    !building_walls.is_empty()
 }
 
 #[derive(Component, Default)]

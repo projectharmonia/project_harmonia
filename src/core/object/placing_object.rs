@@ -261,10 +261,6 @@ impl PlacingObjectPlugin {
     }
 }
 
-pub(crate) fn placing_active(placing_objects: Query<(), With<PlacingObject>>) -> bool {
-    !placing_objects.is_empty()
-}
-
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) enum PlacingObject {

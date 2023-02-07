@@ -4,6 +4,7 @@ use iyes_loopless::prelude::*;
 use crate::core::{
     action::{self, Action},
     city::{ActiveCity, CityMode},
+    condition,
     game_state::GameState,
     ground::GroundPlugin,
 };
@@ -18,7 +19,7 @@ impl Plugin for CreatingLotPlugin {
             GroundPlugin::cursor_to_ground_system
                 .pipe(Self::spawn_system)
                 .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(creating_active)
+                .run_if_not(condition::any_component_exists::<CreatingLot>())
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Lots)
                 .run_in_state(LotTool::Create),
@@ -118,10 +119,6 @@ impl CreatingLotPlugin {
             commands.entity(entity).despawn();
         }
     }
-}
-
-pub(crate) fn creating_active(spawning_lots: Query<(), With<CreatingLot>>) -> bool {
-    !spawning_lots.is_empty()
 }
 
 #[derive(Component)]
