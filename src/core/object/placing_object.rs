@@ -56,9 +56,8 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Objects),
         )
-        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
-        // TODO 0.10: clone system set.
         .add_exit_system(CityMode::Objects, Self::cleanup_system)
+        // TODO 0.10: clone system set.
         .add_system(
             Self::picking_system
                 .run_in_state(GameState::Family)
