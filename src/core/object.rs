@@ -19,6 +19,7 @@ use super::{
     asset_metadata::{self, ObjectMetadata},
     city::{City, CityPlugin},
     collision_groups::DollisGroups,
+    cursor_hover::Hoverable,
     game_world::{parent_sync::ParentSync, GameWorld},
     lot::LotVertices,
     network::{
@@ -28,7 +29,6 @@ use super::{
         },
         replication::replication_rules::{AppReplicationExt, Replication},
     },
-    picking::Pickable,
 };
 
 pub(super) struct ObjectPlugin;
@@ -67,7 +67,7 @@ impl ObjectPlugin {
             commands.entity(entity).insert((
                 scene_handle,
                 Name::new(object_metadata.general.name.clone()),
-                Pickable,
+                Hoverable,
                 AsyncSceneCollider::default(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),

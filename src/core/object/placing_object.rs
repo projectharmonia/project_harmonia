@@ -10,10 +10,10 @@ use crate::core::{
     asset_metadata,
     city::CityMode,
     collision_groups::DollisGroups,
+    cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
-    picking::Picked,
     preview::PreviewCamera,
 };
 
@@ -23,6 +23,7 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::picking_system
+                .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Objects),
         )
@@ -101,15 +102,12 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn picking_system(
         mut commands: Commands,
-        mut pick_events: EventReader<Picked>,
-        parents: Query<&Parent, With<ObjectPath>>,
+        hovered_objects: Query<(Entity, &Parent), (With<ObjectPath>, With<CursorHover>)>,
     ) {
-        for event in pick_events.iter() {
-            if let Ok(parent) = parents.get(event.entity) {
-                commands.entity(parent.get()).with_children(|parent| {
-                    parent.spawn(PlacingObject::Moving(event.entity));
-                });
-            }
+        if let Ok((entity, parent)) = hovered_objects.get_single() {
+            commands.entity(parent.get()).with_children(|parent| {
+                parent.spawn(PlacingObject::Moving(entity));
+            });
         }
     }
 
