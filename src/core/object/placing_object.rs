@@ -3,7 +3,6 @@ use std::{f32::consts::FRAC_PI_4, fmt::Debug};
 use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*};
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::*;
 
 use crate::core::{
     action::{self, Action},
@@ -16,6 +15,11 @@ use crate::core::{
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     preview::PreviewCamera,
 };
+
+#[derive(SystemLabel)]
+enum PlacingObjectSystem {
+    Rotation,
+}
 
 pub(super) struct PlacingObjectPlugin;
 
@@ -35,9 +39,17 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(CityMode::Objects),
         )
         .add_system(
+            Self::rotation_system
+                .run_if(action::just_pressed(Action::RotateObject))
+                .run_in_state(GameState::City)
+                .run_in_state(CityMode::Objects)
+                .label(PlacingObjectSystem::Rotation),
+        )
+        .add_system(
             Self::movement_system
                 .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects),
+                .run_in_state(CityMode::Objects)
+                .after(PlacingObjectSystem::Rotation),
         )
         .add_system(
             Self::confirmation_system
@@ -72,9 +84,17 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(FamilyMode::Building),
         )
         .add_system(
+            Self::rotation_system
+                .run_if(action::just_pressed(Action::RotateObject))
+                .run_in_state(GameState::City)
+                .run_in_state(CityMode::Objects)
+                .label(PlacingObjectSystem::Rotation),
+        )
+        .add_system(
             Self::movement_system
                 .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
+                .run_in_state(FamilyMode::Building)
+                .after(PlacingObjectSystem::Rotation),
         )
         .add_system(
             Self::confirmation_system
@@ -148,11 +168,17 @@ impl PlacingObjectPlugin {
         }
     }
 
+    fn rotation_system(mut placing_objects: Query<&mut Transform, With<PlacingObject>>) {
+        if let Ok(mut transform) = placing_objects.get_single_mut() {
+            const ROTATION_STEP: f32 = -FRAC_PI_4;
+            transform.rotate_y(ROTATION_STEP);
+        }
+    }
+
     fn movement_system(
         mut commands: Commands,
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
-        action_state: Res<ActionState<Action>>,
         cameras: Query<(&GlobalTransform, &Camera), Without<PreviewCamera>>,
         mut placing_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
@@ -187,10 +213,6 @@ impl PlacingObjectPlugin {
                     offset
                 });
                 transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
-                if action_state.just_pressed(Action::RotateObject) {
-                    const ROTATION_STEP: f32 = -FRAC_PI_4;
-                    transform.rotate_y(ROTATION_STEP);
-                }
             }
         }
     }
