@@ -31,15 +31,20 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CreatingWallPlugin)
+            .register_type::<(Vec2, Vec2)>()
+            .register_type::<Vec<(Vec2, Vec2)>>()
             .register_and_replicate::<WallEdges>()
             .add_mapped_client_event::<WallCreate>()
             .add_server_event::<WallEventConfirmed>()
             .add_system_to_stage(
-                CoreStage::PreUpdate,
+                CoreStage::PostUpdate, // Run after world loading in order to insert a mesh handle before vertices generation.
                 Self::init_system.run_if_resource_exists::<GameWorld>(),
             )
             .add_system(Self::wall_creation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::mesh_update_system.run_if_resource_exists::<GameWorld>());
+            .add_system_to_stage(
+                CoreStage::PreUpdate,
+                Self::mesh_update_system.run_if_resource_exists::<GameWorld>(),
+            );
     }
 }
 
