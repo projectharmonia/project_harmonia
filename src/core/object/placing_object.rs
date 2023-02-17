@@ -201,12 +201,13 @@ impl PlacingObjectPlugin {
                         ray.direction,
                         f32::MAX,
                         false,
-                        CollisionGroups::new(Group::ALL, Group::GROUND).into(),
+                        CollisionGroups::new(Group::ALL, Group::GROUND | Group::WALL).into(),
                     )
                     .map(|(_, toi)| toi)
                     .unwrap_or_default();
 
-                let ray_translation = ray.origin + ray.direction * toi;
+                let mut ray_translation = ray.origin + ray.direction * toi;
+                ray_translation.y = 0.0;
                 let offset = cursor_offset.copied().unwrap_or_else(|| {
                     let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
                     commands.entity(entity).insert(offset);
