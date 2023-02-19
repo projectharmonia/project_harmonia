@@ -22,6 +22,7 @@ mod orbit_camera;
 pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
+mod unique_asset;
 mod video;
 pub(super) mod wall;
 
@@ -47,6 +48,7 @@ use orbit_camera::OrbitCameraPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use task::TaskPlugin;
+use unique_asset::UniqueAssetPlugin;
 use video::VideoPlugin;
 use wall::WallPlugin;
 
@@ -76,6 +78,7 @@ impl PluginGroup for CorePlugins {
             .add(VideoPlugin)
             .add(TaskPlugin)
             .add(ObjectPlugin)
+            .add(UniqueAssetPlugin::<StandardMaterial>::default())
             .add(WallPlugin)
     }
 }

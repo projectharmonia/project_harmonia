@@ -60,7 +60,7 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     self.commands
                         .entity(self.spawn_parent)
                         .with_children(|parent| {
-                            parent.spawn(PlacingObject::Spawning(id));
+                            parent.spawn(PlacingObject::spawning(id));
                         });
                 }
             }
