@@ -15,7 +15,6 @@ impl<'a> VideoTab<'a> {
 
 impl VideoTab<'_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        ui.checkbox(&mut self.video_settings.path_tracing, "Enable path tracing");
         ComboBox::from_label("MSAA samples")
             .selected_text(self.video_settings.msaa.to_string())
             .show_ui(ui, |ui| {

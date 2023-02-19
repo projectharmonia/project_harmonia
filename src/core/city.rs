@@ -10,7 +10,6 @@ use super::{
     game_world::GameWorld,
     network::replication::replication_rules::{AppReplicationExt, Replication},
     orbit_camera::{OrbitCameraBundle, OrbitOrigin},
-    settings::Settings,
 };
 
 /// To flush activation / deactivation commands after [`CoreStage::PostUpdate`].
@@ -108,15 +107,11 @@ impl CityPlugin {
     fn visibility_enable_system(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
-        settings: Res<Settings>,
     ) {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             visibility.is_visible = true;
             commands.entity(entity).with_children(|parent| {
-                parent.spawn((
-                    OrbitCameraBundle::new(settings.video.render_graph_name()),
-                    AtmosphereCamera::default(),
-                ));
+                parent.spawn((OrbitCameraBundle::default(), AtmosphereCamera::default()));
             });
         }
     }

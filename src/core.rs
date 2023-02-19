@@ -23,7 +23,6 @@ pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
 mod unique_asset;
-mod video;
 pub(super) mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
@@ -49,7 +48,6 @@ use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use task::TaskPlugin;
 use unique_asset::UniqueAssetPlugin;
-use video::VideoPlugin;
 use wall::WallPlugin;
 
 pub(super) struct CorePlugins;
@@ -75,7 +73,6 @@ impl PluginGroup for CorePlugins {
             .add(PreviewPlugin)
             .add(OrbitCameraPlugin)
             .add(SettingsPlugin)
-            .add(VideoPlugin)
             .add(TaskPlugin)
             .add(ObjectPlugin)
             .add(UniqueAssetPlugin::<StandardMaterial>::default())

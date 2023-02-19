@@ -18,7 +18,6 @@ bevy_rapier3d = { git = "https://github.com/dollisgame/bevy_rapier", branch = "r
 bevy_mod_outline = { version = "0.3", default-features = false }
 bevy_egui = "0.19"
 bevy_polyline = { git = "https://github.com/dollisgame/bevy_polyline", branch = "remove-render-feature-0.9" }
-bevy-hikari = "0.3"
 bevy-inspector-egui = "0.17"
 bevy-scene-hook = "5.1"
 iyes_loopless = "0.9"
