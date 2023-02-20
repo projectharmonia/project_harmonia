@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     collision_groups::DollisGroups,
-    game_world::GameWorld,
+    game_world::{parent_sync::ParentSync, GameWorld},
     network::{
         network_event::{
             client_event::{ClientEvent, ClientEventAppExt},
@@ -88,9 +88,11 @@ impl WallPlugin {
             }
 
             // No wall entity found, create a new one
-            commands.entity(event.lot_entity).with_children(|parent| {
-                parent.spawn((WallEdges(vec![event.edge]), Replication));
-            });
+            commands.spawn((
+                WallEdges(vec![event.edge]),
+                Replication,
+                ParentSync(event.lot_entity),
+            ));
         }
     }
 
