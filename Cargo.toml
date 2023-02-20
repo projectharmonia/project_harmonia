@@ -42,7 +42,7 @@ walkdir = "2.3"
 itertools = "0.10"
 
 [dev-dependencies]
-fastrand = "1.8.0"
+fastrand = "1.9.0"
 serde_test = "1.0"
 
 # Enable high optimizations for dependencies, but not for our code:
