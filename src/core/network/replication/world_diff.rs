@@ -40,7 +40,6 @@ impl WorldDiff {
 }
 
 #[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
-#[serde(field_identifier)]
 enum WorldDiffField {
     Tick,
     Entities,
