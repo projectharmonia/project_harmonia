@@ -17,7 +17,7 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
+use strum::{EnumDiscriminants, EnumVariantNames, IntoStaticStr, VariantNames};
 
 /// Changed world data and current tick from server.
 ///
@@ -48,6 +48,9 @@ enum WorldDiffField {
 }
 
 /// Type of component or resource change.
+#[derive(EnumDiscriminants)]
+#[strum_discriminants(derive(Deserialize, EnumVariantNames, IntoStaticStr))]
+#[strum_discriminants(name(ComponentDiffField))]
 pub(super) enum ComponentDiff {
     /// Indicates that a component was added or changed, contains serialized [`Reflect`].
     Changed(Box<dyn Reflect>),
@@ -63,13 +66,6 @@ impl ComponentDiff {
             ComponentDiff::Removed(type_name) => type_name,
         }
     }
-}
-
-#[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
-#[serde(field_identifier)]
-enum ComponentDiffField {
-    Changed,
-    Removed,
 }
 
 #[derive(Constructor)]
