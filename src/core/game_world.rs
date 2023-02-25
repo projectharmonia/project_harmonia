@@ -11,7 +11,6 @@ use bevy::{
 };
 use bevy_trait_query::imports::ComponentId;
 use iyes_loopless::prelude::*;
-use ron::Deserializer;
 use serde::de::DeserializeSeed;
 
 use super::{
@@ -95,7 +94,7 @@ impl GameWorldPlugin {
         let world_path = game_paths.world_path(&load_event.0);
         let bytes =
             fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
-        let mut deserializer = Deserializer::from_bytes(&bytes)
+        let mut deserializer = ron::Deserializer::from_bytes(&bytes)
             .with_context(|| format!("unable to parse {world_path:?}"))?;
         let scene_deserializer = SceneDeserializer {
             type_registry: &registry.read(),

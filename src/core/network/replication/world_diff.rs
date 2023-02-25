@@ -39,6 +39,7 @@ impl WorldDiff {
     }
 }
 
+/// Fields of [`WorldDiff`] for manual deserialization.
 #[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
 enum WorldDiffField {
     Tick,
@@ -48,8 +49,10 @@ enum WorldDiffField {
 
 /// Type of component or resource change.
 #[derive(EnumDiscriminants)]
-#[strum_discriminants(derive(Deserialize, EnumVariantNames, IntoStaticStr))]
-#[strum_discriminants(name(ComponentDiffField))]
+#[strum_discriminants(
+    name(ComponentDiffField),
+    derive(Deserialize, EnumVariantNames, IntoStaticStr)
+)]
 pub(super) enum ComponentDiff {
     /// Indicates that a component was added or changed, contains serialized [`Reflect`].
     Changed(Box<dyn Reflect>),
@@ -230,10 +233,7 @@ struct ComponentsDeserializer<'a> {
 impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
     type Value = Vec<ComponentDiff>;
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_seq(self)
     }
 }

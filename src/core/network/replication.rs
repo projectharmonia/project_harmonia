@@ -16,7 +16,6 @@ use bevy::{
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
 use iyes_loopless::prelude::*;
-use rmp_serde::Deserializer;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -103,7 +102,7 @@ impl ReplicationPlugin {
         let registry = registry.read();
         let mut received_diffs = Vec::<WorldDiff>::new();
         while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
-            let mut deserializer = Deserializer::from_read_ref(&message);
+            let mut deserializer = rmp_serde::Deserializer::from_read_ref(&message);
             let world_diff = WorldDiffDeserializer::new(&registry)
                 .deserialize(&mut deserializer)
                 .expect("server should send valid world diffs");
