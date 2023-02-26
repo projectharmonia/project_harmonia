@@ -19,6 +19,7 @@ use super::{
     asset_metadata::{self, ObjectMetadata},
     city::{City, CityPlugin},
     collision_groups::DollisGroups,
+    component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
     game_world::{parent_sync::ParentSync, GameWorld},
     lot::LotVertices,
@@ -64,29 +65,38 @@ impl ObjectPlugin {
             let scene_path = asset_metadata::scene_path(&object_path.0);
             let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
 
-            commands.entity(entity).insert((
-                scene_handle,
-                Name::new(object_metadata.general.name.clone()),
-                Hoverable,
-                AsyncSceneCollider::default(),
-                GlobalTransform::default(),
-                VisibilityBundle::default(),
-                SceneHook::new(|entity, commands| {
-                    if entity.contains::<Handle<Mesh>>() {
-                        commands.insert((
-                            CollisionGroups::new(Group::OBJECT, Group::ALL),
-                            OutlineBundle {
-                                outline: OutlineVolume {
-                                    visible: false,
-                                    colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
-                                    width: 2.0,
+            commands
+                .entity(entity)
+                .insert((
+                    scene_handle,
+                    Name::new(object_metadata.general.name.clone()),
+                    Hoverable,
+                    AsyncSceneCollider::default(),
+                    GlobalTransform::default(),
+                    VisibilityBundle::default(),
+                    SceneHook::new(|entity, commands| {
+                        if entity.contains::<Handle<Mesh>>() {
+                            commands.insert((
+                                CollisionGroups::new(Group::OBJECT, Group::ALL),
+                                OutlineBundle {
+                                    outline: OutlineVolume {
+                                        visible: false,
+                                        colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
+                                        width: 2.0,
+                                    },
+                                    ..Default::default()
                                 },
-                                ..Default::default()
-                            },
-                        ));
-                    }
-                }),
-            ));
+                            ));
+                        }
+                    }),
+                ))
+                .insert_components(
+                    object_metadata
+                        .components
+                        .iter()
+                        .map(|component| component.clone_value())
+                        .collect(),
+                );
             debug!("spawned object {scene_path:?}");
         }
     }

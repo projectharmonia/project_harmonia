@@ -3,6 +3,7 @@ pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
 mod collision_groups;
+mod component_commands;
 pub(super) mod condition;
 mod cursor_hover;
 pub(super) mod developer;

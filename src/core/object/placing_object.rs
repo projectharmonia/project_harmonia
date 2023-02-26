@@ -7,9 +7,10 @@ use iyes_loopless::prelude::*;
 
 use crate::core::{
     action::{self, Action},
-    asset_metadata,
+    asset_metadata::{self, ObjectMetadata},
     city::CityMode,
     collision_groups::DollisGroups,
+    component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
@@ -177,6 +178,7 @@ impl PlacingObjectPlugin {
     fn init_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
         mut objects: Query<(&Transform, &Handle<Scene>, &mut Visibility)>,
         new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
     ) {
@@ -187,23 +189,38 @@ impl PlacingObjectPlugin {
                     let metadata_path = asset_server
                         .get_handle_path(id)
                         .expect("spawning object metadata should have a path");
-                    commands.entity(placing_entity).insert((
-                        AsyncSceneCollider::default(),
-                        UniqueAsset::<StandardMaterial>::default(),
-                        HookedSceneBundle {
-                            scene: SceneBundle {
-                                scene: asset_server
-                                    .load(asset_metadata::scene_path(metadata_path.path())),
-                                ..Default::default()
+                    let metadata_handle = asset_server.get_handle(id);
+                    let object_metadata = object_metadata
+                        .get(&metadata_handle)
+                        .unwrap_or_else(|| panic!("object metadata {metadata_path:?} is invalid"));
+
+                    commands
+                        .entity(placing_entity)
+                        .insert((
+                            AsyncSceneCollider::default(),
+                            UniqueAsset::<StandardMaterial>::default(),
+                            HookedSceneBundle {
+                                scene: SceneBundle {
+                                    scene: asset_server
+                                        .load(asset_metadata::scene_path(metadata_path.path())),
+                                    ..Default::default()
+                                },
+                                hook: SceneHook::new(|entity, commands| {
+                                    if entity.contains::<Handle<Mesh>>() {
+                                        commands
+                                            .insert(CollisionGroups::new(Group::NONE, Group::NONE));
+                                    }
+                                }),
                             },
-                            hook: SceneHook::new(|entity, commands| {
-                                if entity.contains::<Handle<Mesh>>() {
-                                    commands.insert(CollisionGroups::new(Group::NONE, Group::NONE));
-                                }
-                            }),
-                        },
-                        CursorOffset::default(),
-                    ));
+                            CursorOffset::default(),
+                        ))
+                        .insert_components(
+                            object_metadata
+                                .components
+                                .iter()
+                                .map(|component| component.clone_value())
+                                .collect(),
+                        );
                 }
                 PlacingObjectKind::Moving(object_entity) => {
                     let (transform, scene_handle, mut visibility) = objects
