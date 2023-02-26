@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use bevy::{
     ecs::archetype::ArchetypeId,
     prelude::*,
-    reflect::TypeRegistry,
+    reflect::TypeRegistryArc,
     scene::{serde::SceneDeserializer, DynamicEntity},
 };
 use bevy_trait_query::imports::ComponentId;
@@ -120,7 +120,7 @@ impl GameWorldPlugin {
 /// and not filtered with [`ReplicationRules`] or [`IgnoreSaving`].
 fn save_to_scene(
     world: &World,
-    registry: &TypeRegistry,
+    registry: &TypeRegistryArc,
     replication_rules: &ReplicationRules,
     ignore_saving: &IgnoreSaving,
 ) -> DynamicScene {
