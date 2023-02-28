@@ -207,7 +207,7 @@ impl Default for PreviewCameraBundle {
 
 /// Indicates that a camera is used for generating previews.
 #[derive(Component)]
-pub(crate) struct PreviewCamera;
+struct PreviewCamera;
 
 #[derive(Bundle)]
 struct PreviewTargetBundle {
