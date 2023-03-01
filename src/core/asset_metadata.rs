@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
     prelude::*,
-    reflect::{serde::UntypedReflectDeserializer, TypeRegistry, TypeRegistryInternal, TypeUuid},
+    reflect::{serde::TypedReflectDeserializer, TypeRegistry, TypeRegistryInternal, TypeUuid},
     utils::BoxedFuture,
 };
 use derive_more::Constructor;
@@ -318,12 +318,48 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
         let mut components = Vec::with_capacity(seq.size_hint().unwrap_or_default());
         while let Some(component) =
-            seq.next_element_seed(UntypedReflectDeserializer::new(self.registry))?
+            seq.next_element_seed(ShortReflectDeserializer::new(self.registry))?
         {
             components.push(component);
         }
 
         Ok(components)
+    }
+}
+
+/// Like [`UntypedReflectDeserializer`], but searches for registration by short name.
+#[derive(Constructor)]
+pub struct ShortReflectDeserializer<'a> {
+    registry: &'a TypeRegistryInternal,
+}
+
+impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
+    type Value = Box<dyn Reflect>;
+
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_map(self)
+    }
+}
+
+impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
+    type Value = Box<dyn Reflect>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(any::type_name::<Self::Value>())
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let type_name = map
+            .next_key::<String>()?
+            .ok_or_else(|| de::Error::invalid_length(0, &"at least one entry"))?;
+
+        let registration = self
+            .registry
+            .get_with_short_name(&type_name)
+            .ok_or_else(|| de::Error::custom(format!("no registration found for {type_name}")))?;
+        let value =
+            map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
+        Ok(value)
     }
 }
 
