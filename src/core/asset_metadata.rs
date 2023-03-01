@@ -361,6 +361,17 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
         Ok(value)
     }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        let registration = self
+            .registry
+            .get_with_short_name(v)
+            .ok_or_else(|| de::Error::custom(format!("no registration found for {v}")))?;
+        let reflect_default = registration
+            .data::<ReflectDefault>()
+            .ok_or_else(|| de::Error::custom(format!("reflect(Default) is missing for {v}")))?;
+        Ok(reflect_default.default())
+    }
 }
 
 #[cfg(test)]
