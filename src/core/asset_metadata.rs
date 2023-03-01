@@ -270,7 +270,7 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
                         ));
                     }
                     components =
-                        Some(map.next_value_seed(PropertiesDeserializer::new(self.registry))?);
+                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
                 }
             }
         }
@@ -296,11 +296,11 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
 }
 
 #[derive(Constructor)]
-struct PropertiesDeserializer<'a> {
+struct ComponentsDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'de> DeserializeSeed<'de> for PropertiesDeserializer<'_> {
+impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
@@ -308,7 +308,7 @@ impl<'de> DeserializeSeed<'de> for PropertiesDeserializer<'_> {
     }
 }
 
-impl<'de> Visitor<'de> for PropertiesDeserializer<'_> {
+impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
