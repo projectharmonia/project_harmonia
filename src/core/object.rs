@@ -58,9 +58,9 @@ impl ObjectPlugin {
     ) {
         for (entity, object_path) in &spawned_objects {
             let metadata_handle = asset_server.load(&*object_path.0);
-            let object_metadata = object_metadata
-                .get(&metadata_handle)
-                .unwrap_or_else(|| panic!("object metadata {:?} is invalid", object_path.0));
+            let object_metadata = object_metadata.get(&metadata_handle).unwrap_or_else(|| {
+                panic!("path {:?} should correspond to metadata", object_path.0)
+            });
 
             let scene_path = asset_metadata::scene_path(&object_path.0);
             let scene_handle: Handle<Scene> = asset_server.load(&scene_path);

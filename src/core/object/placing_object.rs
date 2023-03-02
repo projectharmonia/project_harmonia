@@ -179,12 +179,15 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        mut objects: Query<(&Transform, &Handle<Scene>, &mut Visibility)>,
+        mut objects: Query<(&Transform, &Handle<Scene>, &ObjectPath, &mut Visibility)>,
         new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
     ) {
         for (placing_entity, placing_object) in &new_placing_objects {
             debug!("created placing object {placing_object:?}");
-            match placing_object.kind {
+
+            let mut placing_entity = commands.entity(placing_entity);
+
+            let (transform, scene_handle, object_metadata) = match placing_object.kind {
                 PlacingObjectKind::Spawning(id) => {
                     let metadata_path = asset_server
                         .get_handle_path(id)
@@ -193,58 +196,51 @@ impl PlacingObjectPlugin {
                     let object_metadata = object_metadata
                         .get(&metadata_handle)
                         .unwrap_or_else(|| panic!("object metadata {metadata_path:?} is invalid"));
+                    let scene_handle =
+                        asset_server.load(asset_metadata::scene_path(metadata_path.path()));
+                    placing_entity.insert(CursorOffset::default());
 
-                    commands
-                        .entity(placing_entity)
-                        .insert((
-                            AsyncSceneCollider::default(),
-                            UniqueAsset::<StandardMaterial>::default(),
-                            HookedSceneBundle {
-                                scene: SceneBundle {
-                                    scene: asset_server
-                                        .load(asset_metadata::scene_path(metadata_path.path())),
-                                    ..Default::default()
-                                },
-                                hook: SceneHook::new(|entity, commands| {
-                                    if entity.contains::<Handle<Mesh>>() {
-                                        commands
-                                            .insert(CollisionGroups::new(Group::NONE, Group::NONE));
-                                    }
-                                }),
-                            },
-                            CursorOffset::default(),
-                        ))
-                        .insert_components(
-                            object_metadata
-                                .components
-                                .iter()
-                                .map(|component| component.clone_value())
-                                .collect(),
-                        );
+                    (Transform::default(), scene_handle, object_metadata)
                 }
                 PlacingObjectKind::Moving(object_entity) => {
-                    let (transform, scene_handle, mut visibility) = objects
+                    let (transform, scene_handle, object_path, mut visibility) = objects
                         .get_mut(object_entity)
                         .expect("moving object should exist with these components");
-                    commands.entity(placing_entity).insert((
-                        AsyncSceneCollider::default(),
-                        UniqueAsset::<StandardMaterial>::default(),
-                        HookedSceneBundle {
-                            scene: SceneBundle {
-                                scene: scene_handle.clone(),
-                                transform: *transform,
-                                ..Default::default()
-                            },
-                            hook: SceneHook::new(|entity, commands| {
-                                if entity.contains::<Handle<Mesh>>() {
-                                    commands.insert(CollisionGroups::new(Group::NONE, Group::NONE));
-                                }
-                            }),
-                        },
-                    ));
                     visibility.is_visible = false;
+                    let metadata_handle = asset_server.load(&*object_path.0);
+                    let object_metadata =
+                        object_metadata.get(&metadata_handle).unwrap_or_else(|| {
+                            panic!("path {:?} should correspond to metadata", object_path.0)
+                        });
+
+                    (*transform, scene_handle.clone(), object_metadata)
                 }
-            }
+            };
+
+            placing_entity
+                .insert((
+                    AsyncSceneCollider::default(),
+                    UniqueAsset::<StandardMaterial>::default(),
+                    HookedSceneBundle {
+                        scene: SceneBundle {
+                            scene: scene_handle,
+                            transform,
+                            ..Default::default()
+                        },
+                        hook: SceneHook::new(|entity, commands| {
+                            if entity.contains::<Handle<Mesh>>() {
+                                commands.insert(CollisionGroups::new(Group::NONE, Group::NONE));
+                            }
+                        }),
+                    },
+                ))
+                .insert_components(
+                    object_metadata
+                        .components
+                        .iter()
+                        .map(|component| component.clone_value())
+                        .collect(),
+                );
         }
     }
 
