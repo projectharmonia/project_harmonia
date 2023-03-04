@@ -7,7 +7,7 @@ use iyes_loopless::prelude::*;
 
 use super::{
     city::CityMode, collision_groups::DollisGroups, condition, game_state::GameState,
-    object::placing_object::PlacingObject, orbit_camera::OrbitOrigin,
+    object::placing_object::PlacingObject, player_camera::PlayerCamera,
 };
 
 pub(super) struct CursorHoverPlugin;
@@ -58,7 +58,7 @@ impl CursorHoverPlugin {
         mut commands: Commands,
         rapier_ctx: Res<RapierContext>,
         windows: Res<Windows>,
-        cameras: Query<(&GlobalTransform, &Camera), With<OrbitOrigin>>,
+        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
         hoverable: Query<(), With<Hoverable>>,
         hovered: Query<Entity, With<CursorHover>>,

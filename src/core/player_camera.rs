@@ -10,61 +10,61 @@ use super::{
 };
 
 #[derive(SystemLabel)]
-enum OrbitCameraSystem {
+enum PlayerCameraSystem {
     Rotation,
     Position,
     Arm,
 }
 
-pub(super) struct OrbitCameraPlugin;
+pub(super) struct PlayerCameraPlugin;
 
-impl Plugin for OrbitCameraPlugin {
+impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
         for state in [GameState::FamilyEditor, GameState::City, GameState::Family] {
             app.add_system(
                 Self::rotation_system
                     .run_if(action::pressed(Action::RotateCamera))
                     .run_in_state(state)
-                    .label(OrbitCameraSystem::Rotation),
+                    .label(PlayerCameraSystem::Rotation),
             )
             .add_system(
                 Self::arm_system
                     .run_in_state(state)
-                    .label(OrbitCameraSystem::Arm),
+                    .label(PlayerCameraSystem::Arm),
             );
 
             if state != GameState::FamilyEditor {
                 app.add_system(
                     Self::position_system
                         .run_in_state(state)
-                        .label(OrbitCameraSystem::Position),
+                        .label(PlayerCameraSystem::Position),
                 )
                 .add_system(
                     Self::transform_system
                         .run_in_state(state)
-                        .after(OrbitCameraSystem::Rotation)
-                        .after(OrbitCameraSystem::Arm)
-                        .after(OrbitCameraSystem::Position),
+                        .after(PlayerCameraSystem::Rotation)
+                        .after(PlayerCameraSystem::Arm)
+                        .after(PlayerCameraSystem::Position),
                 );
             } else {
                 app.add_system(
                     Self::transform_system
                         .run_in_state(state)
-                        .after(OrbitCameraSystem::Rotation)
-                        .after(OrbitCameraSystem::Arm),
+                        .after(PlayerCameraSystem::Rotation)
+                        .after(PlayerCameraSystem::Arm),
                 );
             }
         }
     }
 }
 
-impl OrbitCameraPlugin {
+impl PlayerCameraPlugin {
     /// Interpolation multiplier for movement and camera zoom.
     const INTERPOLATION_SPEED: f32 = 5.0;
 
     fn rotation_system(
         mut motion_events: EventReader<MouseMotion>,
-        mut cameras: Query<&mut OrbitRotation, With<Camera>>,
+        mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
     ) {
         let mut orbit_rotation = cameras.single_mut();
         const SENSETIVITY: f32 = 0.01;
@@ -76,7 +76,7 @@ impl OrbitCameraPlugin {
     fn position_system(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
-        mut cameras: Query<(&mut OrbitOrigin, &Transform), With<Camera>>,
+        mut cameras: Query<(&mut OrbitOrigin, &Transform), With<PlayerCamera>>,
     ) {
         let (mut orbit_origin, transform) = cameras.single_mut();
 
@@ -94,7 +94,7 @@ impl OrbitCameraPlugin {
     fn arm_system(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
-        mut cameras: Query<&mut SpringArm, With<Camera>>,
+        mut cameras: Query<&mut SpringArm, With<PlayerCamera>>,
     ) {
         let mut spring_arm = cameras.single_mut();
         spring_arm.current = (spring_arm.current - action_state.value(Action::ZoomCamera)).max(0.0);
@@ -107,7 +107,7 @@ impl OrbitCameraPlugin {
     fn transform_system(
         mut cameras: Query<
             (&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm),
-            With<Camera>,
+            With<PlayerCamera>,
         >,
     ) {
         let (mut transform, orbit_origin, orbit_rotation, spring_arm) = cameras.single_mut();
@@ -139,10 +139,11 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
 }
 
 #[derive(Bundle, Default)]
-pub(crate) struct OrbitCameraBundle {
+pub(crate) struct PlayerCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
+    player_camera: PlayerCamera,
 
     #[bundle]
     camera_3d_bundle: Camera3dBundle,
@@ -150,7 +151,7 @@ pub(crate) struct OrbitCameraBundle {
 
 /// The origin of a camera.
 #[derive(Component, Default)]
-pub(super) struct OrbitOrigin {
+struct OrbitOrigin {
     current: Vec3,
     interpolated: Vec3,
 }
@@ -186,3 +187,6 @@ impl Default for SpringArm {
         }
     }
 }
+
+#[derive(Component, Default)]
+pub(super) struct PlayerCamera;

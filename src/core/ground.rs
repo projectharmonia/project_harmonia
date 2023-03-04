@@ -7,7 +7,7 @@ use iyes_loopless::prelude::*;
 
 use super::{
     city::ActiveCity, collision_groups::DollisGroups, cursor_hover::Hoverable,
-    game_state::GameState, orbit_camera::OrbitOrigin,
+    game_state::GameState, player_camera::PlayerCamera,
 };
 
 pub(super) struct GroundPlugin;
@@ -67,7 +67,7 @@ impl GroundPlugin {
     /// Converts cursor position into position on the ground.
     pub(super) fn cursor_to_ground_system(
         windows: Res<Windows>,
-        cameras: Query<(&GlobalTransform, &Camera), With<OrbitOrigin>>,
+        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) -> Option<Vec2> {
         let cursor_position = windows
             .get_primary()

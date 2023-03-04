@@ -15,7 +15,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
-    orbit_camera::OrbitOrigin,
+    player_camera::PlayerCamera,
     unique_asset::UniqueAsset,
 };
 
@@ -255,7 +255,7 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
-        cameras: Query<(&GlobalTransform, &Camera), With<OrbitOrigin>>,
+        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         mut placing_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
             With<PlacingObject>,

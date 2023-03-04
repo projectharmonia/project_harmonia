@@ -5,7 +5,7 @@ use super::{
     doll::{ActiveDoll, FirstName, LastName},
     family::{Dolls, SelectedFamilySpawned},
     game_state::GameState,
-    orbit_camera::OrbitCameraBundle,
+    player_camera::PlayerCameraBundle,
 };
 
 pub(super) struct FamilyEditorPlugin;
@@ -40,7 +40,7 @@ impl FamilyEditorPlugin {
                     transform: Transform::from_xyz(4.0, 8.0, 4.0),
                     ..Default::default()
                 });
-                parent.spawn(OrbitCameraBundle::default());
+                parent.spawn(PlayerCameraBundle::default());
             });
     }
 

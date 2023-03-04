@@ -9,7 +9,7 @@ use super::{
     game_state::GameState,
     game_world::GameWorld,
     network::replication::replication_rules::{AppReplicationExt, Replication},
-    orbit_camera::{OrbitCameraBundle, OrbitOrigin},
+    player_camera::{PlayerCamera, PlayerCameraBundle},
 };
 
 /// To flush activation / deactivation commands after [`CoreStage::PostUpdate`].
@@ -111,7 +111,7 @@ impl CityPlugin {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             visibility.is_visible = true;
             commands.entity(entity).with_children(|parent| {
-                parent.spawn((OrbitCameraBundle::default(), AtmosphereCamera::default()));
+                parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
             });
         }
     }
@@ -120,7 +120,7 @@ impl CityPlugin {
         mut commands: Commands,
         deactivated_cities: RemovedComponents<ActiveCity>,
         mut visibility: Query<&mut Visibility>,
-        cameras: Query<Entity, With<OrbitOrigin>>,
+        cameras: Query<Entity, With<PlayerCamera>>,
     ) {
         if let Some(entity) = deactivated_cities.iter().next() {
             let mut visibility = visibility
