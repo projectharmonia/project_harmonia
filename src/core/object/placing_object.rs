@@ -93,6 +93,7 @@ impl Plugin for PlacingObjectPlugin {
         // TODO 0.10: clone system set.
         .add_system(
             Self::picking_system
+                .run_if(action::just_pressed(Action::Confirm))
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building),
         )
