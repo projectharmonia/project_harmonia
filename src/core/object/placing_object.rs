@@ -150,8 +150,8 @@ impl Plugin for PlacingObjectPlugin {
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building),
         )
-        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>())
-        .add_exit_system(FamilyMode::Building, Self::cleanup_system);
+        .add_exit_system(FamilyMode::Building, Self::cleanup_system)
+        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>());
     }
 }
 
