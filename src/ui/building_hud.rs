@@ -63,7 +63,7 @@ impl BuildingHudPlugin {
                     if building_mode.0 == BuildingMode::Objects {
                         ObjectsView::new(
                             &mut current_category,
-                            ObjectCategory::CITY_CATEGORIES,
+                            ObjectCategory::FAMILY_CATEGORIES,
                             &mut commands,
                             &object_metadata,
                             &previews,

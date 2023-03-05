@@ -155,6 +155,7 @@ pub(crate) enum ObjectCategory {
     Foliage,
     #[serde(rename = "Outdoor furniture")]
     OutdoorFurniture,
+    Decorations,
 }
 
 impl ObjectCategory {
@@ -164,11 +165,19 @@ impl ObjectCategory {
         ObjectCategory::OutdoorFurniture,
     ];
 
+    pub(crate) const FAMILY_CATEGORIES: &[ObjectCategory] = &[
+        ObjectCategory::Rocks,
+        ObjectCategory::Foliage,
+        ObjectCategory::OutdoorFurniture,
+        ObjectCategory::Decorations,
+    ];
+
     pub(crate) fn glyph(self) -> &'static str {
         match self {
             ObjectCategory::Rocks => "🗻",
             ObjectCategory::Foliage => "🍀",
             ObjectCategory::OutdoorFurniture => "🏡",
+            ObjectCategory::Decorations => "🌸",
         }
     }
 }
@@ -379,11 +388,13 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::core::object::mirror::Mirror;
 
     #[test]
     fn deserialization() -> Result<()> {
         const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
-        let type_registry = TypeRegistryInternal::new();
+        let mut type_registry = TypeRegistryInternal::new();
+        type_registry.register::<Mirror>();
         for entry in WalkDir::new(ASSETS_DIR)
             .into_iter()
             .filter_map(|entry| entry.ok())

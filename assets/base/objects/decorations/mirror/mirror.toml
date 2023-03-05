@@ -1,0 +1,5 @@
+[object]
+name = "Mirror"
+preview_translation = [0.0, -1.0, -4.0]
+category = "Decorations"
+components = ["Mirror"]

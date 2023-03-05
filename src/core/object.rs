@@ -1,3 +1,4 @@
+pub(super) mod mirror;
 pub(crate) mod placing_object;
 
 use std::path::PathBuf;
@@ -11,7 +12,6 @@ use bevy_rapier3d::prelude::*;
 use bevy_renet::renet::RenetClient;
 use bevy_scene_hook::SceneHook;
 use iyes_loopless::prelude::*;
-use placing_object::PlacingObjectPlugin;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -31,12 +31,15 @@ use super::{
         replication::replication_rules::{AppReplicationExt, Replication},
     },
 };
+use mirror::MirrorPlugin;
+use placing_object::PlacingObjectPlugin;
 
 pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
+            .add_plugin(MirrorPlugin)
             .register_and_replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
