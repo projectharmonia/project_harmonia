@@ -319,17 +319,15 @@ impl PlacingObjectPlugin {
                     },
                 );
                 if intersects {
-                    // Disallow placing on first collision.
-                    if placing_object.placeable {
-                        placing_object.placeable = false;
+                    if !placing_object.collides {
+                        placing_object.collides = true;
                     }
                     return;
                 }
             }
 
-            // No collisions found, allow placing.
-            if !placing_object.placeable {
-                placing_object.placeable = true;
+            if placing_object.collides {
+                placing_object.collides = false;
             }
         }
     }
@@ -348,10 +346,10 @@ impl PlacingObjectPlugin {
                 let mut material = materials
                     .get_mut(handle)
                     .expect("material handle should be valid");
-                material.base_color = if placing_object.placeable {
-                    Color::WHITE
-                } else {
+                material.base_color = if placing_object.collides {
                     Color::RED
+                } else {
+                    Color::WHITE
                 };
             }
             debug!("assigned material color for {placing_object:?}");
@@ -365,7 +363,7 @@ impl PlacingObjectPlugin {
         placing_objects: Query<(&Transform, &PlacingObject)>,
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
-            if placing_object.placeable {
+            if !placing_object.collides {
                 debug!("confirmed placing object {placing_object:?}");
                 match placing_object.kind {
                     PlacingObjectKind::Spawning(id) => {
@@ -435,21 +433,21 @@ impl PlacingObjectPlugin {
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) struct PlacingObject {
     kind: PlacingObjectKind,
-    placeable: bool,
+    collides: bool,
 }
 
 impl PlacingObject {
     pub(crate) fn moving(object_entity: Entity) -> Self {
         Self {
             kind: PlacingObjectKind::Moving(object_entity),
-            placeable: false,
+            collides: false,
         }
     }
 
     pub(crate) fn spawning(id: HandleId) -> Self {
         Self {
             kind: PlacingObjectKind::Spawning(id),
-            placeable: false,
+            collides: false,
         }
     }
 
