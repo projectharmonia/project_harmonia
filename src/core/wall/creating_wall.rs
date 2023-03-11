@@ -58,9 +58,9 @@ impl Plugin for CreatingWallPlugin {
     }
 }
 
-impl CreatingWallPlugin {
-    const SNAP_DELTA: f32 = 0.5;
+const SNAP_DELTA: f32 = 0.5;
 
+impl CreatingWallPlugin {
     fn spawn_system(
         In(position): In<Option<Vec2>>,
         mut commands: Commands,
@@ -78,7 +78,7 @@ impl CreatingWallPlugin {
                     .iter_many(children.iter().flat_map(|children| children.iter()))
                     .flat_map(|edges| edges.iter())
                     .flat_map(|edge| [edge.0, edge.1])
-                    .find(|vertex| vertex.distance(position) < Self::SNAP_DELTA)
+                    .find(|vertex| vertex.distance(position) < SNAP_DELTA)
                     .unwrap_or(position);
 
                 commands.entity(entity).with_children(|parent| {
@@ -106,7 +106,7 @@ impl CreatingWallPlugin {
                 .iter_many(children)
                 .flat_map(|edges| edges.iter())
                 .flat_map(|edge| [edge.0, edge.1])
-                .find(|vertex| vertex.distance(position) < Self::SNAP_DELTA)
+                .find(|vertex| vertex.distance(position) < SNAP_DELTA)
                 .unwrap_or(position);
 
             edge.1 = vertex;

@@ -17,7 +17,7 @@ use tap::TapFallible;
 
 use super::{
     asset_metadata::{self, ObjectMetadata},
-    city::{City, CityPlugin},
+    city::{City, HALF_CITY_SIZE},
     collision_groups::DollisGroups,
     component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
@@ -112,7 +112,6 @@ impl ObjectPlugin {
         lots: Query<(Entity, &LotVertices)>,
     ) {
         for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
-            const HALF_CITY_SIZE: f32 = CityPlugin::CITY_SIZE / 2.0;
             if event.position.y.abs() > HALF_CITY_SIZE {
                 error!(
                     "received object spawn position {} with 'y' outside of city size",

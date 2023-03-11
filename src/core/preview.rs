@@ -14,7 +14,7 @@ use iyes_loopless::prelude::*;
 
 use super::asset_metadata::{self, ObjectMetadata};
 
-pub(crate) struct PreviewPlugin;
+pub(super) struct PreviewPlugin;
 
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
@@ -29,9 +29,9 @@ impl Plugin for PreviewPlugin {
     }
 }
 
-impl PreviewPlugin {
-    pub(crate) const PREVIEW_SIZE: u32 = 64;
+pub(crate) const PREVIEW_SIZE: u32 = 64;
 
+impl PreviewPlugin {
     fn spawn_camera_system(mut commands: Commands) {
         commands.spawn(PreviewCameraBundle::default());
     }
@@ -100,8 +100,8 @@ impl PreviewPlugin {
                 let mut image = Image::default();
                 image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
                 image.resize(Extent3d {
-                    width: Self::PREVIEW_SIZE,
-                    height: Self::PREVIEW_SIZE,
+                    width: PREVIEW_SIZE,
+                    height: PREVIEW_SIZE,
                     ..Default::default()
                 });
 

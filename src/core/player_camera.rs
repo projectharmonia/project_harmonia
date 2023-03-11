@@ -58,10 +58,10 @@ impl Plugin for PlayerCameraPlugin {
     }
 }
 
-impl PlayerCameraPlugin {
-    /// Interpolation multiplier for movement and camera zoom.
-    const INTERPOLATION_SPEED: f32 = 5.0;
+/// Interpolation multiplier for movement and camera zoom.
+const INTERPOLATION_SPEED: f32 = 5.0;
 
+impl PlayerCameraPlugin {
     fn rotation_system(
         mut motion_events: EventReader<MouseMotion>,
         mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
@@ -87,7 +87,7 @@ impl PlayerCameraPlugin {
 
         orbit_origin.interpolated = orbit_origin.interpolated.lerp(
             orbit_origin.current,
-            time.delta_seconds() * Self::INTERPOLATION_SPEED,
+            time.delta_seconds() * INTERPOLATION_SPEED,
         );
     }
 
@@ -100,7 +100,7 @@ impl PlayerCameraPlugin {
         spring_arm.current = (spring_arm.current - action_state.value(Action::ZoomCamera)).max(0.0);
         spring_arm.interpolated = spring_arm.interpolated
             + time.delta_seconds()
-                * Self::INTERPOLATION_SPEED
+                * INTERPOLATION_SPEED
                 * (spring_arm.current - spring_arm.interpolated);
     }
 

@@ -52,10 +52,11 @@ impl Plugin for CityPlugin {
     }
 }
 
-impl CityPlugin {
-    /// City square side size.
-    pub(super) const CITY_SIZE: f32 = 100.0;
+/// City square side size.
+const CITY_SIZE: f32 = 100.0;
+pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
+impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn init_system(
         mut commands: Commands,
@@ -64,7 +65,7 @@ impl CityPlugin {
     ) {
         for entity in &added_cities {
             let transform =
-                Transform::from_translation(Vec3::X * Self::CITY_SIZE * placed_citites.0 as f32);
+                Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
             commands.entity(entity).insert((
                 TransformBundle::from_transform(transform),
                 VisibilityBundle {

@@ -5,7 +5,7 @@ use derive_more::Constructor;
 use crate::core::{
     asset_metadata::{ObjectCategory, ObjectMetadata},
     object::placing_object::PlacingObject,
-    preview::{PreviewPlugin, PreviewRequest, Previews},
+    preview::{PreviewRequest, Previews, PREVIEW_SIZE},
 };
 
 #[derive(Constructor)]
@@ -46,10 +46,7 @@ impl ObjectsView<'_, '_, '_, '_, '_> {
                     &TextureId::Managed(0)
                 });
 
-                const SIZE: (f32, f32) = (
-                    PreviewPlugin::PREVIEW_SIZE as f32,
-                    PreviewPlugin::PREVIEW_SIZE as f32,
-                );
+                const SIZE: (f32, f32) = (PREVIEW_SIZE as f32, PREVIEW_SIZE as f32);
                 if ui
                     .add(ImageButton::new(*texture_id, SIZE).selected(
                         matches!(self.selected_id, Some(selected_id) if selected_id == id),
