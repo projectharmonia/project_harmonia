@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use super::{
     city::{ActiveCity, City},
     doll::ActiveDoll,
-    error_message::{self, ErrorMessage},
+    error::{self, LastError},
     family::Dolls,
     game_state::GameState,
     game_world::GameLoad,
@@ -23,11 +23,11 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_startup_system(Self::subcommand_system.pipe(error_message::err_message_system))
+        app.add_startup_system(Self::subcommand_system.pipe(error::report))
             .add_system_to_stage(
                 CoreStage::PostUpdate, // To run after `Dolls` component insertion.
                 Self::quick_loading_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .run_if(first_world_load),
             );
     }
@@ -112,7 +112,7 @@ impl CliPlugin {
 
 fn first_world_load(
     mut was_loaded: Local<bool>,
-    error_message: Option<Res<ErrorMessage>>,
+    error_message: Option<Res<LastError>>,
     added_scenes: Query<(), Added<City>>,
 ) -> bool {
     if *was_loaded {

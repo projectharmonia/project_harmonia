@@ -4,13 +4,13 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 use super::modal_window::{ModalUiExt, ModalWindow};
-use crate::core::{action::Action, error_message::ErrorMessage};
+use crate::core::{action::Action, error::LastError};
 
 pub(super) struct ErrorMessagePlugin;
 
 impl Plugin for ErrorMessagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::error_message_system.run_if_resource_exists::<ErrorMessage>());
+        app.add_system(Self::error_message_system.run_if_resource_exists::<LastError>());
     }
 }
 
@@ -19,7 +19,7 @@ impl ErrorMessagePlugin {
         mut commands: Commands,
         mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
-        error_message: Res<ErrorMessage>,
+        error_message: Res<LastError>,
     ) {
         let mut open = true;
         ModalWindow::new("Error")
@@ -32,7 +32,7 @@ impl ErrorMessagePlugin {
             });
 
         if !open {
-            commands.remove_resource::<ErrorMessage>();
+            commands.remove_resource::<LastError>();
         }
     }
 }

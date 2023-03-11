@@ -14,7 +14,7 @@ use tap::TapFallible;
 use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
     action::Action,
-    error_message,
+    error,
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorld, GameWorldSystem},
@@ -35,18 +35,18 @@ impl Plugin for WorldBrowserPlugin {
             )
             .add_system(
                 Self::join_world_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .run_if_resource_exists::<JoinWorldDialog>(),
             )
             .add_system(
                 Self::host_world_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .run_if_resource_exists::<HostWorldDialog>(),
             )
             .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
             .add_system(
                 Self::remove_world_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .run_if_resource_exists::<RemoveWorldDialog>(),
             );
     }

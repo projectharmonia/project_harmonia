@@ -14,7 +14,7 @@ use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{
-    error_message,
+    error,
     game_paths::GamePaths,
     game_state::GameState,
     network::replication::replication_rules::{Replication, ReplicationRules},
@@ -38,13 +38,13 @@ impl Plugin for GameWorldPlugin {
             .add_enter_system(GameState::MainMenu, Self::cleanup_system)
             .add_system(
                 Self::saving_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .run_on_event::<GameSave>()
                     .label(GameWorldSystem::Saving),
             )
             .add_system(
                 Self::loading_system
-                    .pipe(error_message::err_message_system)
+                    .pipe(error::report)
                     .label(GameWorldSystem::Loading),
             );
     }

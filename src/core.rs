@@ -8,7 +8,7 @@ pub(super) mod condition;
 mod cursor_hover;
 pub(super) mod developer;
 pub(super) mod doll;
-pub(super) mod error_message;
+pub(super) mod error;
 pub(super) mod family;
 pub(super) mod family_editor;
 pub(super) mod game_paths;
