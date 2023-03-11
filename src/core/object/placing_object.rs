@@ -17,6 +17,7 @@ use crate::core::{
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
     unique_asset::UniqueAsset,
+    wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
 #[derive(SystemLabel)]
@@ -257,12 +258,18 @@ impl PlacingObjectPlugin {
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
-        mut placing_objects: Query<
-            (Entity, &mut Transform, Option<&CursorOffset>),
-            With<PlacingObject>,
-        >,
+        walls: Query<&WallEdges>,
+        mut placing_objects: Query<(
+            Entity,
+            &mut Transform,
+            &mut PlacingObject,
+            Option<&CursorOffset>,
+            Option<&WallObject>,
+        )>,
     ) {
-        if let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() {
+        if let Ok((entity, mut transform, mut placing_object, cursor_offset, wall_object)) =
+            placing_objects.get_single_mut()
+        {
             if let Some(cursor_pos) = windows
                 .get_primary()
                 .and_then(|window| window.cursor_position())
@@ -291,6 +298,34 @@ impl PlacingObjectPlugin {
                     offset
                 });
                 transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
+
+                if wall_object.is_some() {
+                    const SNAP_DELTA: f32 = 1.0;
+                    let translation_2d = transform.translation.xz();
+                    if let Some((edge, edge_point)) = walls
+                        .iter()
+                        .flat_map(|edges| edges.iter())
+                        .map(|&(a, b)| {
+                            let edge = b - a;
+                            (edge, closest_point(a, edge, translation_2d))
+                        })
+                        .find(|(_, edge_point)| edge_point.distance(translation_2d) <= SNAP_DELTA)
+                    {
+                        const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
+                        let sign = edge.perp_dot(translation_2d - edge_point).signum();
+                        let snap_point =
+                            edge_point + sign * edge.perp().normalize() * (HALF_WIDTH + GAP);
+                        let edge_angle = edge.angle_between(Vec2::X * sign);
+                        transform.translation.x = snap_point.x;
+                        transform.translation.z = snap_point.y;
+                        transform.rotation = Quat::from_rotation_y(edge_angle);
+                        if !placing_object.allowed_place {
+                            placing_object.allowed_place = true;
+                        }
+                    } else if placing_object.allowed_place {
+                        placing_object.allowed_place = false;
+                    }
+                }
             }
         }
     }
@@ -346,7 +381,7 @@ impl PlacingObjectPlugin {
                 let mut material = materials
                     .get_mut(handle)
                     .expect("material handle should be valid");
-                material.base_color = if placing_object.collides {
+                material.base_color = if placing_object.collides || !placing_object.allowed_place {
                     Color::RED
                 } else {
                     Color::WHITE
@@ -363,7 +398,7 @@ impl PlacingObjectPlugin {
         placing_objects: Query<(&Transform, &PlacingObject)>,
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
-            if !placing_object.collides {
+            if !placing_object.collides && placing_object.allowed_place {
                 debug!("confirmed placing object {placing_object:?}");
                 match placing_object.kind {
                     PlacingObjectKind::Spawning(id) => {
@@ -430,10 +465,19 @@ impl PlacingObjectPlugin {
     }
 }
 
+/// Returns the minimal distance from point `p` to the segment defined by its `origin` and `displacement` vector.
+fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
+    // Consider the line extending the segment, parameterized as `origin + t * displacement`.
+    let t = (p - origin).dot(displacement) / displacement.length_squared();
+    // We clamp `t` to handle points outside the segment.
+    origin + t.clamp(0.0, 1.0) * displacement // Projection of point `p` onto the segment.
+}
+
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) struct PlacingObject {
     kind: PlacingObjectKind,
     collides: bool,
+    allowed_place: bool,
 }
 
 impl PlacingObject {
@@ -441,6 +485,7 @@ impl PlacingObject {
         Self {
             kind: PlacingObjectKind::Moving(object_entity),
             collides: false,
+            allowed_place: true,
         }
     }
 
@@ -448,6 +493,7 @@ impl PlacingObject {
         Self {
             kind: PlacingObjectKind::Spawning(id),
             collides: false,
+            allowed_place: true,
         }
     }
 

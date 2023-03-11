@@ -31,6 +31,7 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(CreatingWallPlugin)
+            .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
             .register_and_replicate::<WallEdges>()
@@ -207,10 +208,11 @@ impl WallPlugin {
     }
 }
 
+const WIDTH: f32 = 0.25;
+pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
+
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
 fn width_vec(start: Vec2, end: Vec2) -> Vec2 {
-    const WIDTH: f32 = 0.25;
-    const HALF_WIDTH: f32 = WIDTH / 2.0;
     (end - start).perp().normalize() * HALF_WIDTH
 }
 
@@ -335,6 +337,11 @@ impl MapEntities for WallCreate {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WallEventConfirmed;
+
+/// A component that marks that entity can be placed only on walls.
+#[derive(Component, Default, Reflect)]
+#[reflect(Component, Default)]
+pub(super) struct WallObject;
 
 #[cfg(test)]
 mod tests {

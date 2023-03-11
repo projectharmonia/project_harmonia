@@ -388,13 +388,14 @@ mod tests {
     use std::fs;
 
     use super::*;
-    use crate::core::object::mirror::Mirror;
+    use crate::core::{object::mirror::Mirror, wall::WallObject};
 
     #[test]
     fn deserialization() -> Result<()> {
         const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
         let mut type_registry = TypeRegistryInternal::new();
         type_registry.register::<Mirror>();
+        type_registry.register::<WallObject>();
         for entry in WalkDir::new(ASSETS_DIR)
             .into_iter()
             .filter_map(|entry| entry.ok())
