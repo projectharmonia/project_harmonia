@@ -116,8 +116,8 @@ impl Plugin for PlacingObjectPlugin {
         .add_system(
             Self::rotation_system
                 .run_if(action::just_pressed(Action::RotateObject))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
                 .label(PlacingObjectSystem::Rotation),
         )
         .add_system(
