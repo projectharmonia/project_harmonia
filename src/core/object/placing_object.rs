@@ -24,6 +24,7 @@ use crate::core::{
 enum PlacingObjectSystem {
     Rotation,
     Movement,
+    Snapping,
     Collision,
 }
 
@@ -59,10 +60,17 @@ impl Plugin for PlacingObjectPlugin {
                 .label(PlacingObjectSystem::Movement),
         )
         .add_system(
-            Self::collision_system
+            Self::snapping_system
                 .run_in_state(GameState::City)
                 .run_in_state(CityMode::Objects)
                 .after(PlacingObjectSystem::Movement)
+                .label(PlacingObjectSystem::Snapping),
+        )
+        .add_system(
+            Self::collision_system
+                .run_in_state(GameState::City)
+                .run_in_state(CityMode::Objects)
+                .after(PlacingObjectSystem::Snapping)
                 .label(PlacingObjectSystem::Collision),
         )
         .add_system(
@@ -120,10 +128,17 @@ impl Plugin for PlacingObjectPlugin {
                 .label(PlacingObjectSystem::Movement),
         )
         .add_system(
-            Self::collision_system
+            Self::snapping_system
                 .run_in_state(GameState::Family)
                 .run_in_state(FamilyMode::Building)
                 .after(PlacingObjectSystem::Movement)
+                .label(PlacingObjectSystem::Snapping),
+        )
+        .add_system(
+            Self::collision_system
+                .run_in_state(GameState::Family)
+                .run_in_state(FamilyMode::Building)
+                .after(PlacingObjectSystem::Snapping)
                 .label(PlacingObjectSystem::Collision),
         )
         .add_system(
@@ -258,75 +273,75 @@ impl PlacingObjectPlugin {
         windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
-        walls: Query<&WallEdges>,
-        mut placing_objects: Query<(
-            Entity,
-            &mut Transform,
-            &mut PlacingObject,
-            Option<&CursorOffset>,
-            Option<&WallObject>,
-        )>,
+        mut placing_objects: Query<
+            (Entity, &mut Transform, Option<&CursorOffset>),
+            With<PlacingObject>,
+        >,
     ) {
-        if let Ok((entity, mut transform, mut placing_object, cursor_offset, wall_object)) =
-            placing_objects.get_single_mut()
+        let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() else {
+            return;
+        };
+        let Some(cursor_pos) = windows.get_primary().and_then(|window| window.cursor_position()) else {
+            return;
+        };
+
+        let (&camera_transform, camera) = cameras.single();
+        let ray = camera
+            .viewport_to_world(&camera_transform, cursor_pos)
+            .expect("ray should be created from screen coordinates");
+
+        let toi = rapier_ctx
+            .cast_ray(
+                ray.origin,
+                ray.direction,
+                f32::MAX,
+                false,
+                CollisionGroups::new(Group::ALL, Group::GROUND | Group::WALL).into(),
+            )
+            .map(|(_, toi)| toi)
+            .unwrap_or_default();
+
+        let mut ray_translation = ray.origin + ray.direction * toi;
+        ray_translation.y = 0.0;
+        let offset = cursor_offset.copied().unwrap_or_else(|| {
+            let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
+            commands.entity(entity).insert(offset);
+            offset
+        });
+        transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
+    }
+
+    fn snapping_system(
+        walls: Query<&WallEdges>,
+        mut placing_objects: Query<(&mut Transform, &mut PlacingObject), With<WallObject>>,
+    ) {
+        let Ok((mut transform, mut placing_object)) = placing_objects.get_single_mut() else {
+            return;
+        };
+
+        const SNAP_DELTA: f32 = 1.0;
+        let translation_2d = transform.translation.xz();
+        if let Some((edge, edge_point)) = walls
+            .iter()
+            .flat_map(|edges| edges.iter())
+            .map(|&(a, b)| {
+                let edge = b - a;
+                (edge, closest_point(a, edge, translation_2d))
+            })
+            .find(|(_, edge_point)| edge_point.distance(translation_2d) <= SNAP_DELTA)
         {
-            if let Some(cursor_pos) = windows
-                .get_primary()
-                .and_then(|window| window.cursor_position())
-            {
-                let (&camera_transform, camera) = cameras.single();
-                let ray = camera
-                    .viewport_to_world(&camera_transform, cursor_pos)
-                    .expect("ray should be created from screen coordinates");
-
-                let toi = rapier_ctx
-                    .cast_ray(
-                        ray.origin,
-                        ray.direction,
-                        f32::MAX,
-                        false,
-                        CollisionGroups::new(Group::ALL, Group::GROUND | Group::WALL).into(),
-                    )
-                    .map(|(_, toi)| toi)
-                    .unwrap_or_default();
-
-                let mut ray_translation = ray.origin + ray.direction * toi;
-                ray_translation.y = 0.0;
-                let offset = cursor_offset.copied().unwrap_or_else(|| {
-                    let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
-                    commands.entity(entity).insert(offset);
-                    offset
-                });
-                transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
-
-                if wall_object.is_some() {
-                    const SNAP_DELTA: f32 = 1.0;
-                    let translation_2d = transform.translation.xz();
-                    if let Some((edge, edge_point)) = walls
-                        .iter()
-                        .flat_map(|edges| edges.iter())
-                        .map(|&(a, b)| {
-                            let edge = b - a;
-                            (edge, closest_point(a, edge, translation_2d))
-                        })
-                        .find(|(_, edge_point)| edge_point.distance(translation_2d) <= SNAP_DELTA)
-                    {
-                        const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
-                        let sign = edge.perp_dot(translation_2d - edge_point).signum();
-                        let snap_point =
-                            edge_point + sign * edge.perp().normalize() * (HALF_WIDTH + GAP);
-                        let edge_angle = edge.angle_between(Vec2::X * sign);
-                        transform.translation.x = snap_point.x;
-                        transform.translation.z = snap_point.y;
-                        transform.rotation = Quat::from_rotation_y(edge_angle);
-                        if !placing_object.allowed_place {
-                            placing_object.allowed_place = true;
-                        }
-                    } else if placing_object.allowed_place {
-                        placing_object.allowed_place = false;
-                    }
-                }
+            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
+            let sign = edge.perp_dot(translation_2d - edge_point).signum();
+            let snap_point = edge_point + sign * edge.perp().normalize() * (HALF_WIDTH + GAP);
+            let edge_angle = edge.angle_between(Vec2::X * sign);
+            transform.translation.x = snap_point.x;
+            transform.translation.z = snap_point.y;
+            transform.rotation = Quat::from_rotation_y(edge_angle);
+            if !placing_object.allowed_place {
+                placing_object.allowed_place = true;
             }
+        } else if placing_object.allowed_place {
+            placing_object.allowed_place = false;
         }
     }
 
