@@ -351,34 +351,36 @@ impl PlacingObjectPlugin {
         children: Query<&Children>,
         child_meshes: Query<(&Collider, &GlobalTransform)>,
     ) {
-        if let Ok((object_entity, mut placing_object)) = placing_objects.get_single_mut() {
-            for (collider, transform) in children
-                .iter_descendants(object_entity)
-                .flat_map(|entity| child_meshes.get(entity))
-            {
-                let (_, rotation, translation) = transform.to_scale_rotation_translation();
-                let mut intersects = false;
-                rapier_ctx.intersections_with_shape(
-                    translation,
-                    rotation,
-                    collider,
-                    CollisionGroups::new(Group::ALL, Group::OBJECT | Group::WALL).into(),
-                    |_| {
-                        intersects = true;
-                        false
-                    },
-                );
-                if intersects {
-                    if !placing_object.collides {
-                        placing_object.collides = true;
-                    }
-                    return;
-                }
-            }
+        let Ok((object_entity, mut placing_object)) = placing_objects.get_single_mut() else {
+            return;
+        };
 
-            if placing_object.collides {
-                placing_object.collides = false;
+        for (collider, transform) in children
+            .iter_descendants(object_entity)
+            .flat_map(|entity| child_meshes.get(entity))
+        {
+            let (_, rotation, translation) = transform.to_scale_rotation_translation();
+            let mut intersects = false;
+            rapier_ctx.intersections_with_shape(
+                translation,
+                rotation,
+                collider,
+                CollisionGroups::new(Group::ALL, Group::OBJECT | Group::WALL).into(),
+                |_| {
+                    intersects = true;
+                    false
+                },
+            );
+            if intersects {
+                if !placing_object.collides {
+                    placing_object.collides = true;
+                }
+                return;
             }
+        }
+
+        if placing_object.collides {
+            placing_object.collides = false;
         }
     }
 

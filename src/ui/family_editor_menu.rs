@@ -55,31 +55,33 @@ impl FamilyEditorMenuPlugin {
         mut egui: ResMut<EguiContext>,
         mut selected_dolls: Query<(&mut FirstName, &mut LastName), With<SelectedDoll>>,
     ) {
-        if let Ok((mut first_name, mut last_name)) = selected_dolls.get_single_mut() {
-            Window::new("Personality")
-                .anchor(Align2::LEFT_TOP, (0.0, 0.0))
-                .resizable(false)
-                .show(egui.ctx_mut(), |ui| {
-                    if ui
-                        .add(
-                            TextEdit::singleline(&mut first_name.bypass_change_detection().0)
-                                .hint_text("First name"),
-                        )
-                        .changed()
-                    {
-                        first_name.set_changed();
-                    }
-                    if ui
-                        .add(
-                            TextEdit::singleline(&mut last_name.bypass_change_detection().0)
-                                .hint_text("Last name"),
-                        )
-                        .changed()
-                    {
-                        last_name.set_changed();
-                    }
-                });
-        }
+        let Ok((mut first_name, mut last_name)) = selected_dolls.get_single_mut() else {
+            return;
+        };
+
+        Window::new("Personality")
+            .anchor(Align2::LEFT_TOP, (0.0, 0.0))
+            .resizable(false)
+            .show(egui.ctx_mut(), |ui| {
+                if ui
+                    .add(
+                        TextEdit::singleline(&mut first_name.bypass_change_detection().0)
+                            .hint_text("First name"),
+                    )
+                    .changed()
+                {
+                    first_name.set_changed();
+                }
+                if ui
+                    .add(
+                        TextEdit::singleline(&mut last_name.bypass_change_detection().0)
+                            .hint_text("Last name"),
+                    )
+                    .changed()
+                {
+                    last_name.set_changed();
+                }
+            });
     }
 
     fn dolls_panel_system(
