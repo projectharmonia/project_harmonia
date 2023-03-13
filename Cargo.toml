@@ -22,7 +22,7 @@ bevy-inspector-egui = "0.17"
 bevy-scene-hook = "5.2"
 iyes_loopless = "0.9"
 bevy-trait-query = "0.1"
-leafwing-input-manager = { version = "0.8", default-features = false, features = [
+leafwing-input-manager = { version = "0.9", default-features = false, features = [
   "egui",
 ] }
 serde = "1.0"
