@@ -9,6 +9,7 @@ use derive_more::Display;
 use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
+use strum::EnumIter;
 
 use super::{
     family::FamilySync,
@@ -151,6 +152,7 @@ impl DollPlugin {
 pub(crate) struct DollScene {
     pub(crate) first_name: FirstName,
     pub(crate) last_name: LastName,
+    pub(crate) sex: Sex,
 }
 
 #[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
@@ -160,6 +162,22 @@ pub(crate) struct FirstName(pub(crate) String);
 #[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
+
+#[derive(Clone, Component, Copy, Default, Debug, Serialize, Deserialize, EnumIter, PartialEq)]
+pub(crate) enum Sex {
+    #[default]
+    Male,
+    Female,
+}
+
+impl Sex {
+    pub(crate) fn glyph(self) -> &'static str {
+        match self {
+            Sex::Male => "♂",
+            Sex::Female => "♀",
+        }
+    }
+}
 
 /// Contains list of player IDs who controls this doll.
 #[derive(Component, Default, Deref, DerefMut, Reflect)]
@@ -188,6 +206,7 @@ pub(crate) struct DollDeselect;
 pub(crate) struct DollBundle {
     first_name: FirstName,
     last_name: LastName,
+    sex: Sex,
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
@@ -199,12 +218,14 @@ impl DollBundle {
     pub(crate) fn new(
         first_name: FirstName,
         last_name: LastName,
+        sex: Sex,
         family_entity: Entity,
         city_entity: Entity,
     ) -> Self {
         Self {
             first_name,
             last_name,
+            sex,
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),

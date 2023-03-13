@@ -12,6 +12,7 @@ use bevy_egui::{
 use bevy_inspector_egui::egui::Button;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
+use strum::IntoEnumIterator;
 
 use super::{
     modal_window::{ModalUiExt, ModalWindow},
@@ -20,7 +21,7 @@ use super::{
 use crate::core::{
     action::Action,
     city::City,
-    doll::{DollScene, FirstName, LastName},
+    doll::{DollScene, FirstName, LastName, Sex},
     error,
     family::{FamilyScene, FamilySpawn},
     family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset, SelectedDoll},
@@ -53,9 +54,9 @@ impl Plugin for FamilyEditorMenuPlugin {
 impl FamilyEditorMenuPlugin {
     fn personality_window_system(
         mut egui: ResMut<EguiContext>,
-        mut selected_dolls: Query<(&mut FirstName, &mut LastName), With<SelectedDoll>>,
+        mut selected_dolls: Query<(&mut FirstName, &mut LastName, &mut Sex), With<SelectedDoll>>,
     ) {
-        let Ok((mut first_name, mut last_name)) = selected_dolls.get_single_mut() else {
+        let Ok((mut first_name, mut last_name, mut sex)) = selected_dolls.get_single_mut() else {
             return;
         };
 
@@ -81,6 +82,20 @@ impl FamilyEditorMenuPlugin {
                 {
                     last_name.set_changed();
                 }
+                ui.horizontal(|ui| {
+                    for sex_variant in Sex::iter() {
+                        if ui
+                            .selectable_value(
+                                sex.bypass_change_detection(),
+                                sex_variant,
+                                sex_variant.glyph(),
+                            )
+                            .changed()
+                        {
+                            sex.set_changed();
+                        }
+                    }
+                });
             });
     }
 
@@ -170,7 +185,7 @@ impl FamilyEditorMenuPlugin {
         mut action_state: ResMut<ActionState<Action>>,
         mut egui: ResMut<EguiContext>,
         game_paths: Res<GamePaths>,
-        editable_dolls: Query<(&FirstName, &LastName), With<EditableDoll>>,
+        editable_dolls: Query<(&FirstName, &LastName, &Sex), With<EditableDoll>>,
     ) -> Result<()> {
         let mut confirmed = false;
         let mut open = true;
@@ -200,10 +215,11 @@ impl FamilyEditorMenuPlugin {
 
             if confirmed {
                 let mut dolls = Vec::new();
-                for (first_name, last_name) in &editable_dolls {
+                for (first_name, last_name, &sex) in &editable_dolls {
                     dolls.push(DollScene {
                         first_name: first_name.clone(),
                         last_name: last_name.clone(),
+                        sex,
                     })
                 }
                 let family_scene = FamilyScene::new(mem::take(&mut save_dialog.family_name), dolls);

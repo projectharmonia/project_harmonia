@@ -94,6 +94,7 @@ impl FamilyPlugin {
                 commands.spawn(DollBundle::new(
                     doll_scene.first_name,
                     doll_scene.last_name,
+                    doll_scene.sex,
                     family_entity,
                     event.city_entity,
                 ));
