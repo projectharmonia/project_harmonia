@@ -21,7 +21,7 @@ use super::{
 use crate::core::{
     action::Action,
     city::City,
-    doll::{DollScene, FirstName, LastName, Sex},
+    doll::{DollBundle, FirstName, LastName, Sex},
     error,
     family::{FamilyScene, FamilySpawn},
     family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset, SelectedDoll},
@@ -214,15 +214,16 @@ impl FamilyEditorMenuPlugin {
             commands.remove_resource::<SaveFamilyDialog>();
 
             if confirmed {
-                let mut dolls = Vec::new();
+                let mut doll_bundle = Vec::new();
                 for (first_name, last_name, &sex) in &editable_dolls {
-                    dolls.push(DollScene {
+                    doll_bundle.push(DollBundle {
                         first_name: first_name.clone(),
                         last_name: last_name.clone(),
                         sex,
                     })
                 }
-                let family_scene = FamilyScene::new(mem::take(&mut save_dialog.family_name), dolls);
+                let family_scene =
+                    FamilyScene::new(mem::take(&mut save_dialog.family_name), doll_bundle);
 
                 fs::create_dir_all(&game_paths.families)
                     .with_context(|| format!("unable to create {:?}", game_paths.families))?;

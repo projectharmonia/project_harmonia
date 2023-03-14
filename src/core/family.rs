@@ -14,7 +14,7 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
-    doll::{ActiveDoll, DollBundle, DollScene},
+    doll::{ActiveDoll, DollBundle, PlayableDollBundle},
     game_world::GameWorld,
     network::{
         network_event::{
@@ -90,11 +90,9 @@ impl FamilyPlugin {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            for doll_scene in event.scene.dolls {
-                commands.spawn(DollBundle::new(
-                    doll_scene.first_name,
-                    doll_scene.last_name,
-                    doll_scene.sex,
+            for doll_bundle in event.scene.doll_bundles {
+                commands.spawn(PlayableDollBundle::new(
+                    doll_bundle,
                     family_entity,
                     event.city_entity,
                 ));
@@ -155,15 +153,15 @@ impl FamilyPlugin {
 pub(crate) struct FamilyScene {
     pub(crate) name: Name,
     pub(crate) budget: Budget,
-    pub(crate) dolls: Vec<DollScene>,
+    pub(crate) doll_bundles: Vec<DollBundle>,
 }
 
 impl FamilyScene {
-    pub(crate) fn new(name: String, dolls: Vec<DollScene>) -> Self {
+    pub(crate) fn new(name: String, doll_bundles: Vec<DollBundle>) -> Self {
         Self {
             name: Name::new(name),
             budget: Budget::default(),
-            dolls,
+            doll_bundles,
         }
     }
 }

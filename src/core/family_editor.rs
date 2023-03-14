@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
 use super::{
-    doll::{ActiveDoll, FirstName, LastName, Sex},
+    doll::{ActiveDoll, DollBundle},
     family::{Dolls, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
@@ -118,13 +118,14 @@ impl Default for EditableFamilyBundle {
 #[derive(Component, Default)]
 pub(crate) struct EditableFamily;
 
+/// Components for a doll inside the editor.
 #[derive(Bundle, Default)]
 pub(crate) struct EditableDollBundle {
     editable_doll: EditableDoll,
-    first_name: FirstName,
-    last_name: LastName,
-    sex: Sex,
     transform: Transform,
+
+    #[bundle]
+    doll_bundle: DollBundle,
 }
 
 #[derive(Component, Default)]

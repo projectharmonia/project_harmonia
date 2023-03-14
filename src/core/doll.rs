@@ -148,13 +148,6 @@ impl DollPlugin {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct DollScene {
-    pub(crate) first_name: FirstName,
-    pub(crate) last_name: LastName,
-    pub(crate) sex: Sex,
-}
-
 #[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct FirstName(pub(crate) String);
@@ -202,35 +195,38 @@ impl MapEntities for DollSelect {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub(crate) struct DollDeselect;
 
-#[derive(Bundle)]
+/// Minimal doll components.
+///
+/// Used as a part of bigger bundles like [`PlayableDollBundle`] or [`EditableDollBundle`].
+#[derive(Bundle, Debug, Deserialize, Serialize, Clone, Default)]
 pub(crate) struct DollBundle {
-    first_name: FirstName,
-    last_name: LastName,
-    sex: Sex,
+    pub(crate) first_name: FirstName,
+    pub(crate) last_name: LastName,
+    pub(crate) sex: Sex,
+}
+
+/// Components for a doll inside the game.
+#[derive(Bundle)]
+pub(super) struct PlayableDollBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
     task_queue: TaskQueue,
     replication: Replication,
+
+    #[bundle]
+    doll_bundle: DollBundle,
 }
 
-impl DollBundle {
-    pub(crate) fn new(
-        first_name: FirstName,
-        last_name: LastName,
-        sex: Sex,
-        family_entity: Entity,
-        city_entity: Entity,
-    ) -> Self {
+impl PlayableDollBundle {
+    pub(super) fn new(doll_bundle: DollBundle, family_entity: Entity, city_entity: Entity) -> Self {
         Self {
-            first_name,
-            last_name,
-            sex,
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
             task_queue: Default::default(),
             replication: Replication,
+            doll_bundle,
         }
     }
 }
