@@ -34,10 +34,7 @@ fn main() {
         .add_plugins(
             DefaultPlugins
                 .set(LogPlugin {
-                    filter:
-                        // Disable `bevy_render` due to wgpu error in debug mode caused by path tracing.
-                        "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,bevy_render=off,dollis=debug"
-                            .into(),
+                    filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,dollis=debug".into(),
                     level: bevy::log::Level::DEBUG,
                 })
                 .set(AssetPlugin {
