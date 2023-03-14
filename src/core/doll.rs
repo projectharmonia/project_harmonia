@@ -29,6 +29,7 @@ impl Plugin for DollPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MovementPlugin)
             .register_and_replicate::<FirstName>()
+            .register_and_replicate::<Sex>()
             .register_and_replicate::<LastName>()
             .register_and_replicate::<DollPlayers>()
             .not_replicate_if_present::<Name, FirstName>()
@@ -54,17 +55,19 @@ impl Plugin for DollPlugin {
 impl DollPlugin {
     fn init_system(
         mut commands: Commands,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut materials: ResMut<Assets<StandardMaterial>>,
-        new_dolls: Query<Entity, Added<FirstName>>,
+        asset_server: Res<AssetServer>,
+        new_dolls: Query<(Entity, &Sex), Changed<Sex>>,
     ) {
-        for entity in &new_dolls {
-            commands.entity(entity).insert((
-                VisibilityBundle::default(),
-                GlobalTransform::default(),
-                meshes.add(Mesh::from(shape::Capsule::default())),
-                materials.add(Color::rgb(0.3, 0.3, 0.3).into()),
-            ));
+        for (entity, &sex) in &new_dolls {
+            let scene_handle: Handle<Scene> = asset_server.load(sex.model_path());
+            commands
+                .entity(entity)
+                .insert((
+                    VisibilityBundle::default(),
+                    GlobalTransform::default(),
+                    scene_handle,
+                ))
+                .despawn_descendants();
         }
     }
 
@@ -156,7 +159,10 @@ pub(crate) struct FirstName(pub(crate) String);
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
 
-#[derive(Clone, Component, Copy, Default, Debug, Serialize, Deserialize, EnumIter, PartialEq)]
+#[derive(
+    Clone, Component, Copy, Debug, Default, Deserialize, EnumIter, PartialEq, Reflect, Serialize,
+)]
+#[reflect(Component)]
 pub(crate) enum Sex {
     #[default]
     Male,
@@ -168,6 +174,13 @@ impl Sex {
         match self {
             Sex::Male => "♂",
             Sex::Female => "♀",
+        }
+    }
+
+    fn model_path(self) -> &'static str {
+        match self {
+            Sex::Male => "base/dolls/bot/y_bot/y_bot.gltf#Scene0",
+            Sex::Female => "base/dolls/bot/x_bot/x_bot.gltf#Scene0",
         }
     }
 }
