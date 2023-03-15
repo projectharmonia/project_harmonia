@@ -28,32 +28,7 @@ impl Plugin for AssetMetadataPlugin {
     fn build(&self, app: &mut App) {
         app.add_asset::<ObjectMetadata>()
             .init_asset_loader::<AssetMetadataLoader>()
-            .add_startup_system(Self::load_system);
-    }
-}
-
-impl AssetMetadataPlugin {
-    fn load_system(mut commands: Commands, asset_server: ResMut<AssetServer>) {
-        let mut dir: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap_or_default().into();
-        dir.push("assets"); // TODO: Read setting from `AssetIo` trait.
-
-        let mut handles = Vec::new();
-        for entry in WalkDir::new(&dir)
-            .into_iter()
-            .filter_map(|entry| entry.ok())
-        {
-            if let Some(extension) = entry.path().extension() {
-                if extension == METADATA_EXTENSION {
-                    let path = entry
-                        .path()
-                        .strip_prefix(&dir)
-                        .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
-                    handles.push(asset_server.load_untyped(path));
-                }
-            }
-        }
-
-        commands.insert_resource(MetadataHandles(handles));
+            .init_resource::<MetadataHandles>();
     }
 }
 
@@ -111,6 +86,32 @@ pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
 
 #[derive(Deref, DerefMut, Resource)]
 struct MetadataHandles(Vec<HandleUntyped>);
+
+impl FromWorld for MetadataHandles {
+    fn from_world(world: &mut World) -> Self {
+        let mut dir: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap_or_default().into();
+        dir.push("assets"); // TODO: Read setting from `AssetIo` trait.
+
+        let mut handles = Vec::new();
+        let asset_server = world.resource::<AssetServer>();
+        for entry in WalkDir::new(&dir)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
+        {
+            if let Some(extension) = entry.path().extension() {
+                if extension == METADATA_EXTENSION {
+                    let path = entry
+                        .path()
+                        .strip_prefix(&dir)
+                        .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
+                    handles.push(asset_server.load_untyped(path));
+                }
+            }
+        }
+
+        Self(handles)
+    }
+}
 
 #[derive(EnumDiscriminants)]
 #[strum_discriminants(
