@@ -59,7 +59,6 @@ impl PluginGroup for CorePlugins {
             .add(NetworkPlugin) // Should be built first to register server fixed timestep.
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
-            .add(AssetMetadataPlugin)
             .add(CityPlugin)
             .add(CliPlugin)
             .add(CursorHoverPlugin)
@@ -78,5 +77,6 @@ impl PluginGroup for CorePlugins {
             .add(ObjectPlugin)
             .add(UniqueAssetPlugin::<StandardMaterial>::default())
             .add(WallPlugin)
+            .add(AssetMetadataPlugin) // Should run after registering components.
     }
 }
