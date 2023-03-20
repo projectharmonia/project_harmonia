@@ -3,7 +3,7 @@ unmaintained = "deny"
 yanked = "deny"
 notice = "deny"
 unsound = "deny"
-ignore = ["RUSTSEC-2020-0168"]
+ignore = ["RUSTSEC-2020-0168", "RUSTSEC-2022-0048"]
 
 [licenses]
 copyleft = "allow"
@@ -16,8 +16,16 @@ expression = "MIT"
 license-files = []
 
 [bans]
-multiple-versions = "allow"
+multiple-versions = "deny"
 wildcards = "allow"
+skip = [
+  { name = "ahash", version = "0.7.6" },       # from bevy_utils v0.10.0
+  { name = "memoffset", version = "0.6.5" },   # from nix v0.24.3
+  { name = "nix", version = "0.24" },          # from x11rb v0.10.1
+  { name = "redox_syscall", version = "0.2" }, # from notify v5.1.0
+  { name = "windows-sys", version = "0.42" },  # from notify v5.1.0
+  { name = "windows", version = "0.43" },      # from gilrs v0.10.1
+]
 
 [sources]
 unknown-registry = "deny"

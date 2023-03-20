@@ -50,8 +50,8 @@ impl AssetLoader for AssetMetadataLoader {
         Box::pin(async move {
             let data = str::from_utf8(bytes)
                 .with_context(|| format!("{:?} contains invalid UTF-8", load_context.path()))?;
-            let mut deserializer = toml::Deserializer::new(data);
-            match AssetMetadataDeserializer::new(&self.read()).deserialize(&mut deserializer)? {
+            let deserializer = toml::Deserializer::new(data);
+            match AssetMetadataDeserializer::new(&self.read()).deserialize(deserializer)? {
                 AssetMetadata::Object(metadata) => {
                     load_context.set_default_asset(LoadedAsset::new(metadata))
                 }
@@ -404,9 +404,8 @@ mod tests {
             if let Some(extension) = entry.path().extension() {
                 if extension == METADATA_EXTENSION {
                     let data = fs::read_to_string(entry.path())?;
-                    let mut deserializer = toml::Deserializer::new(&data);
-                    AssetMetadataDeserializer::new(&type_registry)
-                        .deserialize(&mut deserializer)?;
+                    let deserializer = toml::Deserializer::new(&data);
+                    AssetMetadataDeserializer::new(&type_registry).deserialize(deserializer)?;
                 }
             }
         }

@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use clap::{Args, Parser, Subcommand};
-use iyes_loopless::prelude::*;
 
 use super::{
     city::{ActiveCity, City},
@@ -9,7 +8,7 @@ use super::{
     error::{self, LastError},
     family::Dolls,
     game_state::GameState,
-    game_world::GameLoad,
+    game_world::{GameLoad, WorldName, WorldState},
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -24,10 +23,11 @@ pub(super) struct CliPlugin;
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(Self::subcommand_system.pipe(error::report))
-            .add_system_to_stage(
-                CoreStage::PostUpdate, // To run after `Dolls` component insertion.
+            .add_system(
                 Self::quick_loading_system
                     .pipe(error::report)
+                    .after(apply_state_transition::<GameState>)
+                    .in_set(OnUpdate(WorldState::InWorld))
                     .run_if(first_world_load),
             );
     }
@@ -43,8 +43,8 @@ impl CliPlugin {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
                 GameCommand::Play(world_load) => {
-                    load_events.send(GameLoad(world_load.world_name.clone()));
-                    commands.insert_resource(NextState(GameState::World));
+                    load_events.send_default();
+                    commands.insert_resource(WorldName(world_load.world_name.clone()));
                 }
                 GameCommand::Host {
                     world_load,
@@ -56,8 +56,8 @@ impl CliPlugin {
                     commands.insert_resource(server);
                     commands.insert_resource(server_settings.clone());
 
-                    load_events.send(GameLoad(world_load.world_name.clone()));
-                    commands.insert_resource(NextState(GameState::World));
+                    commands.insert_resource(WorldName(world_load.world_name.clone()));
+                    load_events.send_default();
                 }
                 GameCommand::Join(connection_settings) => {
                     let client = connection_settings
@@ -74,6 +74,7 @@ impl CliPlugin {
 
     fn quick_loading_system(
         mut commands: Commands,
+        mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
         families: Query<(&Dolls, &Name)>,
@@ -88,7 +89,7 @@ impl CliPlugin {
                         .with_context(|| format!("unable to find city named {name}"))?;
 
                     commands.entity(city_entity).insert(ActiveCity);
-                    commands.insert_resource(NextState(GameState::City));
+                    game_state.set(GameState::City);
                 }
                 QuickLoad::Family { name } => {
                     let dolls = families
@@ -101,7 +102,7 @@ impl CliPlugin {
                         .first()
                         .expect("family should contain at least one doll");
                     commands.entity(doll_entity).insert(ActiveDoll);
-                    commands.insert_resource(NextState(GameState::Family))
+                    game_state.set(GameState::Family);
                 }
             }
         }
@@ -110,10 +111,11 @@ impl CliPlugin {
     }
 }
 
+/// Returns `true` for the first full world load (including first update tick to apply components like [`Dolls`])
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_message: Option<Res<LastError>>,
-    added_scenes: Query<(), Added<City>>,
+    added_scenes: Query<(), Added<Dolls>>,
 ) -> bool {
     if *was_loaded {
         return false;

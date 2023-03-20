@@ -3,28 +3,21 @@ use std::fmt::Debug;
 use bevy::{
     ecs::{entity::MapEntities, event::Event},
     prelude::*,
+    time::common_conditions::on_timer,
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
-use iyes_loopless::prelude::*;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
-    game_world::GameWorld,
+    game_world::WorldState,
     network::{
         replication::map_entity::NetworkEntityMap,
-        server::{ServerFixedTimestep, SERVER_ID},
+        server::{SERVER_ID, TICK_TIME},
+        sets::NetworkSet,
         REPLICATION_CHANNEL_ID,
     },
 };
-
-#[derive(SystemLabel)]
-enum ServerEventSystem<T> {
-    SendingSystem,
-    #[allow(dead_code)]
-    #[system_label(ignore_fields)]
-    Marker(T),
-}
 
 /// An extension trait for [`App`] for creating server events.
 pub(crate) trait ServerEventAppExt {
@@ -37,9 +30,9 @@ pub(crate) trait ServerEventAppExt {
     ) -> &mut Self;
 
     /// Same as [`add_server_event`], but uses the specified receiving system.
-    fn add_server_event_with<T: Event + Serialize + DeserializeOwned + Debug, Params>(
+    fn add_server_event_with<T: Event + Serialize + DeserializeOwned + Debug, Marker>(
         &mut self,
-        receiving_system: impl IntoConditionalSystem<Params>,
+        receiving_system: impl IntoSystemConfig<Marker>,
     ) -> &mut Self;
 }
 
@@ -54,9 +47,9 @@ impl ServerEventAppExt for App {
         self.add_server_event_with::<T, _>(receiving_and_mapping_system::<T>)
     }
 
-    fn add_server_event_with<T: Event + Serialize + DeserializeOwned + Debug, Params>(
+    fn add_server_event_with<T: Event + Serialize + DeserializeOwned + Debug, Marker>(
         &mut self,
-        receiving_system: impl IntoConditionalSystem<Params>,
+        receiving_system: impl IntoSystemConfig<Marker>,
     ) -> &mut Self {
         let mut event_counter = self
             .world
@@ -67,26 +60,20 @@ impl ServerEventAppExt for App {
         self.add_event::<T>()
             .init_resource::<Events<ServerEvent<T>>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(receiving_system.run_if_resource_exists::<RenetClient>());
+            .add_system(receiving_system.in_set(NetworkSet::ClientConnected));
 
-        let sending_system = sending_system::<T>
-            .run_if_resource_exists::<RenetServer>()
-            .label(ServerEventSystem::<T>::SendingSystem);
         let local_resending_system = local_resending_system::<T>
-            .run_unless_resource_exists::<RenetClient>()
-            .run_if_resource_exists::<GameWorld>()
-            .after(ServerEventSystem::<T>::SendingSystem);
+            .after(sending_system::<T>)
+            .in_set(OnUpdate(WorldState::InWorld))
+            .in_set(NetworkSet::Authoritve);
+        let sending_system = sending_system::<T>.in_set(NetworkSet::Server);
 
         if cfg!(test) {
             self.add_system(sending_system)
                 .add_system(local_resending_system);
         } else {
-            self.add_fixed_timestep_system(ServerFixedTimestep::Tick.into(), 0, sending_system)
-                .add_fixed_timestep_system(
-                    ServerFixedTimestep::Tick.into(),
-                    0,
-                    local_resending_system,
-                );
+            self.add_system(sending_system.run_if(on_timer(TICK_TIME)))
+                .add_system(local_resending_system.run_if(on_timer(TICK_TIME)));
         }
 
         self
@@ -206,12 +193,13 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::network_preset::NetworkPresetPlugin;
+    use crate::core::network::{network_preset::NetworkPresetPlugin, sets::NetworkSetsPlugin};
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
-        app.add_server_event::<DummyEvent>()
+        app.add_plugin(NetworkSetsPlugin)
+            .add_server_event::<DummyEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let client_id = app.world.resource::<RenetClient>().client_id();
@@ -242,7 +230,8 @@ mod tests {
     #[test]
     fn mapping() {
         let mut app = App::new();
-        app.init_resource::<NetworkEntityMap>()
+        app.add_plugin(NetworkSetsPlugin)
+            .init_resource::<NetworkEntityMap>()
             .add_mapped_server_event::<MappedEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
@@ -273,7 +262,7 @@ mod tests {
     #[test]
     fn local_resending() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>()
+        app.add_plugin(NetworkSetsPlugin)
             .add_server_event::<DummyEvent>();
 
         const DUMMY_CLIENT_ID: u64 = 1;

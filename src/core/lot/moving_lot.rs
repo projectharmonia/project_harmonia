@@ -1,71 +1,34 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
-use iyes_loopless::prelude::*;
+use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
-    action::{self, Action},
+    action::Action,
     city::{ActiveCity, CityMode},
-    condition,
     game_state::GameState,
     ground::GroundPlugin,
 };
-
-#[derive(SystemLabel)]
-enum MovingLotPluginSystem {
-    Movement,
-}
 
 pub(super) struct MovingLotPlugin;
 
 impl Plugin for MovingLotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(
-            CoreStage::PostUpdate, // To flush spawning.
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::picking_system)
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(condition::any_component_exists::<MovingLot>())
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move),
-        )
-        .add_system(
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::movement_system)
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move)
-                .label(MovingLotPluginSystem::Movement),
-        )
-        .add_system(
-            Self::confirmation_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_if(action::just_pressed(Action::Delete))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move),
-        )
-        .add_system(
-            Self::cleanup_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move)
-                .after(MovingLotPluginSystem::Movement),
-        )
-        .add_system(
-            Self::cleanup_system
-                .run_on_event::<LotEventConfirmed>()
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Move)
-                .after(MovingLotPluginSystem::Movement),
+        app.add_systems(
+            (
+                GroundPlugin::cursor_to_ground_system
+                    .pipe(Self::picking_system)
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<MovingLot>())),
+                GroundPlugin::cursor_to_ground_system.pipe(Self::movement_system),
+                Self::confirmation_system.run_if(action_just_pressed(Action::Confirm)),
+                Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                Self::cleanup_system.after(Self::movement_system).run_if(
+                    action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
+                ),
+            )
+                .in_set(OnUpdate(GameState::City))
+                .in_set(OnUpdate(CityMode::Lots))
+                .in_set(OnUpdate(LotTool::Move)),
         );
     }
 }
@@ -82,7 +45,7 @@ impl MovingLotPlugin {
                 .iter_mut()
                 .find(|(.., vertices)| vertices.contains_point(position))
             {
-                visibility.is_visible = false;
+                *visibility = Visibility::Hidden;
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
@@ -136,7 +99,7 @@ impl MovingLotPlugin {
             commands.entity(entity).despawn();
             // Lot could be invalid in case of removal.
             if let Ok(mut visibility) = visibility.get_mut(moving_lot.entity) {
-                visibility.is_visible = true;
+                *visibility = Visibility::Visible;
             }
         }
     }

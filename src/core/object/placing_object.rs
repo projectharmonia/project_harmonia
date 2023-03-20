@@ -1,12 +1,12 @@
 use std::{f32::consts::FRAC_PI_4, fmt::Debug};
 
-use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*};
+use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_rapier3d::prelude::*;
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
-use iyes_loopless::prelude::*;
+use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
-    action::{self, Action},
+    action::Action,
     asset_metadata::{self, ObjectMetadata},
     city::CityMode,
     collision_groups::DollisGroups,
@@ -20,154 +20,58 @@ use crate::core::{
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
-#[derive(SystemLabel)]
-enum PlacingObjectSystem {
-    Rotation,
-    Movement,
-    Snapping,
-    Collision,
-}
+use super::ObjectPlugin;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+struct PlacingObjectSet;
 
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::picking_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects),
+        app.configure_set(
+            PlacingObjectSet.run_if(
+                in_state(GameState::City)
+                    .and_then(in_state(CityMode::Objects))
+                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
+            ),
         )
-        // Run in this stage to avoid visibility having effect earlier than spawning placing object.
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            Self::init_system
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects),
+        .add_systems(
+            (apply_system_buffers, Self::init_system)
+                .chain()
+                .after(ObjectPlugin::spawn_system)
+                .in_set(PlacingObjectSet),
         )
-        .add_system(
-            Self::rotation_system
-                .run_if(action::just_pressed(Action::RotateObject))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .label(PlacingObjectSystem::Rotation),
+        .add_systems(
+            (
+                Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
+                Self::movement_system,
+                Self::snapping_system,
+                Self::collision_system,
+                Self::material_system,
+            )
+                .chain()
+                .in_set(PlacingObjectSet),
         )
-        .add_system(
-            Self::movement_system
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .after(PlacingObjectSystem::Rotation)
-                .label(PlacingObjectSystem::Movement),
+        .add_systems(
+            (
+                Self::picking_system
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<PlacingObject>())),
+                Self::confirmation_system
+                    .after(Self::collision_system)
+                    .run_if(action_just_pressed(Action::Confirm)),
+                Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                Self::cleanup_system.run_if(
+                    action_just_pressed(Action::Cancel).or_else(on_event::<ObjectEventConfirmed>()),
+                ),
+            )
+                .in_set(PlacingObjectSet),
         )
-        .add_system(
-            Self::snapping_system
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .after(PlacingObjectSystem::Movement)
-                .label(PlacingObjectSystem::Snapping),
-        )
-        .add_system(
-            Self::collision_system
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .after(PlacingObjectSystem::Snapping)
-                .label(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::material_system
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .after(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::confirmation_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects)
-                .after(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_if(action::just_pressed(Action::Delete))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects),
-        )
-        .add_system(
-            Self::cleanup_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Objects),
-        )
-        .add_exit_system(CityMode::Objects, Self::cleanup_system)
-        // TODO 0.10: clone system set.
-        .add_system(
-            Self::picking_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
-        )
-        // Run in this stage to avoid visibility having effect earlier than spawning placing object.
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            Self::init_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
-        )
-        .add_system(
-            Self::rotation_system
-                .run_if(action::just_pressed(Action::RotateObject))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .label(PlacingObjectSystem::Rotation),
-        )
-        .add_system(
-            Self::movement_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .after(PlacingObjectSystem::Rotation)
-                .label(PlacingObjectSystem::Movement),
-        )
-        .add_system(
-            Self::snapping_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .after(PlacingObjectSystem::Movement)
-                .label(PlacingObjectSystem::Snapping),
-        )
-        .add_system(
-            Self::collision_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .after(PlacingObjectSystem::Snapping)
-                .label(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::material_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .after(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::confirmation_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .after(PlacingObjectSystem::Collision),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_if(action::just_pressed(Action::Delete))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
-        )
-        .add_system(
-            Self::cleanup_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
-        )
-        .add_exit_system(FamilyMode::Building, Self::cleanup_system)
-        .add_system(Self::cleanup_system.run_on_event::<ObjectEventConfirmed>());
+        .add_systems((
+            Self::cleanup_system.in_schedule(OnExit(CityMode::Objects)),
+            Self::cleanup_system.in_schedule(OnExit(FamilyMode::Building)),
+        ));
     }
 }
 
@@ -223,7 +127,7 @@ impl PlacingObjectPlugin {
                     let (transform, scene_handle, object_path, mut visibility) = objects
                         .get_mut(object_entity)
                         .expect("moving object should exist with these components");
-                    visibility.is_visible = false;
+                    *visibility = Visibility::Hidden;
                     let metadata_handle = asset_server.load(&*object_path.0);
                     let object_metadata =
                         object_metadata.get(&metadata_handle).unwrap_or_else(|| {
@@ -236,6 +140,7 @@ impl PlacingObjectPlugin {
 
             placing_entity
                 .insert((
+                    Name::new("Placing object"),
                     AsyncSceneCollider::default(),
                     UniqueAsset::<StandardMaterial>::default(),
                     HookedSceneBundle {
@@ -270,8 +175,8 @@ impl PlacingObjectPlugin {
 
     fn movement_system(
         mut commands: Commands,
-        windows: Res<Windows>,
         rapier_ctx: Res<RapierContext>,
+        windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         mut placing_objects: Query<
             (Entity, &mut Transform, Option<&CursorOffset>),
@@ -281,7 +186,7 @@ impl PlacingObjectPlugin {
         let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() else {
             return;
         };
-        let Some(cursor_pos) = windows.get_primary().and_then(|window| window.cursor_position()) else {
+        let Some(cursor_pos) = windows.single().cursor_position() else {
             return;
         };
 
@@ -468,7 +373,7 @@ impl PlacingObjectPlugin {
             if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
                 // Object could be invalid in case of removal.
                 if let Ok(mut visibility) = visibility.get_mut(object_entity) {
-                    visibility.is_visible = true;
+                    *visibility = Visibility::Visible;
                 }
 
                 // Restore object's collisions back.

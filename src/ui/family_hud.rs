@@ -3,9 +3,8 @@ mod life_hud;
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, RichText, Window},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 use strum::IntoEnumIterator;
 
 use crate::core::{family::FamilyMode, game_state::GameState};
@@ -16,15 +15,15 @@ pub(super) struct FamilyHudPlugin;
 impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(LifeHudPlugin)
-            .add_system(Self::mode_buttons_system.run_in_state(GameState::Family));
+            .add_system(Self::mode_buttons_system.in_set(OnUpdate(GameState::Family)));
     }
 }
 
 impl FamilyHudPlugin {
     fn mode_buttons_system(
-        mut commands: Commands,
-        family_mode: ResMut<CurrentState<FamilyMode>>,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
+        family_mode: Res<State<FamilyMode>>,
+        mut next_family_mode: ResMut<NextState<FamilyMode>>,
     ) {
         Window::new("Mode buttons")
             .resizable(false)
@@ -42,7 +41,7 @@ impl FamilyHudPlugin {
                         .on_hover_text(mode.to_string());
                     }
                     if current_mode != family_mode.0 {
-                        commands.insert_resource(NextState(current_mode))
+                        next_family_mode.set(current_mode);
                     }
                 });
             });

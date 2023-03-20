@@ -1,16 +1,14 @@
 use std::mem;
 
 use bevy::{app::AppExit, prelude::*};
-use bevy_egui::{egui::Button, EguiContext};
+use bevy_egui::{egui::Button, EguiContexts};
 use bevy_renet::renet::RenetClient;
-use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::{common_conditions::action_just_pressed, prelude::*};
 
 use crate::core::{
-    action::{self, Action},
-    condition,
+    action::Action,
     game_state::GameState,
-    game_world::{GameSave, GameWorld, GameWorldSystem},
+    game_world::{GameSave, GameWorldPlugin, WorldName},
     lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
     object::placing_object::PlacingObject,
 };
@@ -24,28 +22,24 @@ pub(super) struct InGameMenuPlugin;
 
 impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
+        app.add_systems((
             Self::open_ingame_menu_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_if_not(condition::any_component_exists::<CreatingLot>())
-                .run_if_not(condition::any_component_exists::<MovingLot>())
-                .run_if_not(condition::any_component_exists::<CreatingLot>())
-                .run_unless_resource_exists::<InGameMenu>()
-                .run_not_in_state(GameState::MainMenu),
-        )
-        .add_enter_system(GameState::MainMenu, Self::close_ingame_menu)
-        .add_system(Self::ingame_menu_system.run_if_resource_exists::<InGameMenu>())
-        .add_system(Self::save_as_system.run_if_resource_exists::<SaveAsDialog>())
-        .add_system(
-            Self::exit_to_main_menu_system
-                .run_if_resource_exists::<ExitToMainMenuDialog>()
-                .before(GameWorldSystem::Saving),
-        )
-        .add_system(
-            Self::exit_game_system
-                .run_if_resource_exists::<ExitGameDialog>()
-                .before(GameWorldSystem::Saving),
+                .run_if(action_just_pressed(Action::Cancel))
+                .run_if(not(resource_exists::<InGameMenu>()))
+                .run_if(not(any_with_component::<PlacingObject>()))
+                .run_if(not(any_with_component::<CreatingLot>()))
+                .run_if(not(any_with_component::<MovingLot>()))
+                .run_if(not(any_with_component::<CreatingLot>()))
+                .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
+            Self::ingame_menu_system.run_if(resource_exists::<InGameMenu>()),
+            Self::save_as_system.run_if(resource_exists::<SaveAsDialog>()),
+        ))
+        .add_systems(
+            (
+                Self::exit_game_system.run_if(resource_exists::<ExitGameDialog>()),
+                Self::exit_to_main_menu_system.run_if(resource_exists::<ExitToMainMenuDialog>()),
+            )
+                .before(GameWorldPlugin::saving_system),
         );
     }
 }
@@ -55,17 +49,14 @@ impl InGameMenuPlugin {
         commands.init_resource::<InGameMenu>();
     }
 
-    fn close_ingame_menu(mut commands: Commands) {
-        commands.remove_resource::<InGameMenu>();
-    }
-
     fn ingame_menu_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut save_events: EventWriter<GameSave>,
-        mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
+        mut game_state: ResMut<NextState<GameState>>,
         client: Option<Res<RenetClient>>,
-        state: Res<CurrentState<GameState>>,
+        state: Res<State<GameState>>,
     ) {
         let mut open = true;
         ModalWindow::new("Menu")
@@ -86,7 +77,7 @@ impl InGameMenuPlugin {
                         commands.init_resource::<SettingsMenu>();
                     }
                     if state.0 != GameState::World && ui.button("Manage world").clicked() {
-                        commands.insert_resource(NextState(GameState::World));
+                        game_state.set(GameState::World);
                         ui.close_modal();
                     }
                     if ui.button("Exit to main menu").clicked() {
@@ -105,10 +96,10 @@ impl InGameMenuPlugin {
 
     fn save_as_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut save_events: EventWriter<GameSave>,
-        mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
-        mut game_world: ResMut<GameWorld>,
+        mut world_name: ResMut<WorldName>,
         mut dialog: ResMut<SaveAsDialog>,
     ) {
         let mut open = true;
@@ -118,7 +109,7 @@ impl InGameMenuPlugin {
                 ui.text_edit_singleline(&mut dialog.world_name);
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() {
-                        game_world.world_name = mem::take(&mut dialog.world_name);
+                        world_name.0 = mem::take(&mut dialog.world_name);
                         save_events.send_default();
                         ui.close_modal();
                     }
@@ -135,9 +126,10 @@ impl InGameMenuPlugin {
 
     fn exit_to_main_menu_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut save_events: EventWriter<GameSave>,
-        mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
+        mut game_state: ResMut<NextState<GameState>>,
         client: Option<Res<RenetClient>>,
     ) {
         let mut open = true;
@@ -148,11 +140,13 @@ impl InGameMenuPlugin {
                 ui.horizontal(|ui| {
                     if client.is_none() && ui.button("Save and exit").clicked() {
                         save_events.send_default();
-                        commands.insert_resource(NextState(GameState::MainMenu));
+                        game_state.set(GameState::MainMenu);
+                        commands.remove_resource::<InGameMenu>();
                         ui.close_modal();
                     }
                     if ui.button("Exit to main menu").clicked() {
-                        commands.insert_resource(NextState(GameState::MainMenu));
+                        game_state.set(GameState::MainMenu);
+                        commands.remove_resource::<InGameMenu>();
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -168,9 +162,9 @@ impl InGameMenuPlugin {
 
     fn exit_game_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut save_events: EventWriter<GameSave>,
         mut exit_events: EventWriter<AppExit>,
-        mut egui: ResMut<EguiContext>,
         mut action_state: ResMut<ActionState<Action>>,
         client: Option<Res<RenetClient>>,
     ) {
@@ -210,7 +204,7 @@ struct SaveAsDialog {
 impl FromWorld for SaveAsDialog {
     fn from_world(world: &mut World) -> Self {
         SaveAsDialog {
-            world_name: world.resource::<GameWorld>().world_name.clone(),
+            world_name: world.resource::<WorldName>().0.clone(),
         }
     }
 }

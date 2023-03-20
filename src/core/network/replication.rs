@@ -9,19 +9,19 @@ use bevy::{
         archetype::ArchetypeId,
         component::{ComponentTicks, StorageType},
         system::Command,
+        world::EntityRef,
     },
     prelude::*,
     reflect::TypeRegistryInternal,
+    time::common_conditions::on_timer,
     utils::HashMap,
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
-use iyes_loopless::prelude::*;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-use super::server::ServerFixedTimestep;
-use super::{client, REPLICATION_CHANNEL_ID};
-use crate::core::{game_state::GameState, game_world::GameWorld};
+use super::{server::TICK_TIME, sets::NetworkSet, REPLICATION_CHANNEL_ID};
+use crate::core::{game_state::GameState, game_world::WorldName};
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
 use removal_tracker::{RemovalTracker, RemovalTrackerPlugin};
@@ -41,24 +41,32 @@ impl Plugin for ReplicationPlugin {
             .init_resource::<LastTick>()
             .init_resource::<AckedTicks>()
             .init_resource::<NetworkEntityMap>()
-            .add_system(Self::tick_ack_sending_system.run_if(client::connected))
-            .add_system(Self::world_diff_receiving_system.run_if(client::connected))
-            .add_system(Self::tick_acks_receiving_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::acked_ticks_cleanup_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::server_reset_system.run_if_resource_removed::<RenetServer>())
-            .add_system(Self::client_reset_system.run_if_resource_removed::<RenetClient>());
+            .add_systems(
+                (
+                    Self::tick_ack_sending_system,
+                    Self::world_diff_receiving_system,
+                )
+                    .in_set(NetworkSet::ClientConnected),
+            )
+            .add_systems(
+                (
+                    Self::tick_acks_receiving_system,
+                    Self::acked_ticks_cleanup_system,
+                )
+                    .in_set(NetworkSet::Server),
+            )
+            .add_systems((
+                Self::server_reset_system.run_if(resource_removed::<RenetServer>()),
+                Self::client_reset_system.run_if(resource_removed::<RenetClient>()),
+            ));
 
         let world_diffs_sending_system =
-            Self::world_diffs_sending_system.run_if_resource_exists::<RenetServer>();
+            Self::world_diffs_sending_system.in_set(NetworkSet::Server);
 
         if cfg!(test) {
             app.add_system(world_diffs_sending_system);
         } else {
-            app.add_fixed_timestep_system(
-                ServerFixedTimestep::Tick.into(),
-                0,
-                world_diffs_sending_system,
-            );
+            app.add_system(world_diffs_sending_system.run_if(on_timer(TICK_TIME)));
         }
     }
 }
@@ -96,8 +104,9 @@ impl ReplicationPlugin {
         mut commands: Commands,
         mut last_tick: ResMut<LastTick>,
         mut client: ResMut<RenetClient>,
+        mut game_state: ResMut<NextState<GameState>>,
         registry: Res<AppTypeRegistry>,
-        game_world: Option<Res<GameWorld>>,
+        world_name: Option<Res<WorldName>>,
     ) {
         let registry = registry.read();
         let mut received_diffs = Vec::<WorldDiff>::new();
@@ -116,9 +125,9 @@ impl ReplicationPlugin {
         {
             last_tick.0 = world_diff.tick;
             commands.apply_world_diff(world_diff);
-            if game_world.is_none() {
-                commands.insert_resource(GameWorld::default()); // TODO: Replicate this resource.
-                commands.insert_resource(NextState(GameState::World));
+            if world_name.is_none() {
+                commands.insert_resource(WorldName::default()); // TODO: Replicate this resource.
+                game_state.set(GameState::World);
             }
         }
     }
@@ -215,14 +224,11 @@ fn collect_changes(
 
                     for archetype_entity in archetype.entities() {
                         // Safe: the table row is obtained safely from the world's state
-                        let ticks = unsafe {
-                            &*column
-                                .get_ticks_unchecked(archetype_entity.table_row())
-                                .get()
-                        };
+                        let ticks =
+                            unsafe { column.get_ticks_unchecked(archetype_entity.table_row()) };
                         collect_if_changed(
                             client_diffs,
-                            archetype_entity.entity(),
+                            world.entity(archetype_entity.entity()),
                             world,
                             ticks,
                             reflect_component,
@@ -238,15 +244,12 @@ fn collect_changes(
                         .unwrap_or_else(|| panic!("{type_name} should exists in a sparse set"));
 
                     for archetype_entity in archetype.entities() {
-                        let ticks = unsafe {
-                            &*sparse_set
-                                .get_ticks(archetype_entity.entity())
-                                .expect("{type_name} should have ticks")
-                                .get()
-                        };
+                        let ticks = sparse_set
+                            .get_ticks(archetype_entity.entity())
+                            .expect("{type_name} should have ticks");
                         collect_if_changed(
                             client_diffs,
-                            archetype_entity.entity(),
+                            world.entity(archetype_entity.entity()),
                             world,
                             ticks,
                             reflect_component,
@@ -261,21 +264,21 @@ fn collect_changes(
 
 fn collect_if_changed(
     client_diffs: &mut HashMap<u64, WorldDiff>,
-    entity: Entity,
+    entity: EntityRef,
     world: &World,
-    ticks: &ComponentTicks,
+    ticks: ComponentTicks,
     reflect_component: &ReflectComponent,
     type_name: &str,
 ) {
     for world_diff in client_diffs.values_mut() {
         if ticks.is_changed(world_diff.tick, world.read_change_tick()) {
             let component = reflect_component
-                .reflect(world, entity)
+                .reflect(entity)
                 .unwrap_or_else(|| panic!("entity should have {type_name}"))
                 .clone_value();
             world_diff
                 .entities
-                .entry(entity)
+                .entry(entity.id())
                 .or_default()
                 .push(ComponentDiff::Changed(component));
         }
@@ -380,14 +383,14 @@ fn apply_component_diff(
 
     match component_diff {
         ComponentDiff::Changed(component) => {
-            reflect_component.apply_or_insert(world, client_entity, &**component);
+            reflect_component.apply_or_insert(&mut world.entity_mut(client_entity), &**component);
             if let Some(reflect_map_entities) = registration.data::<ReflectMapEntity>() {
                 reflect_map_entities
                     .map_entities(world, entity_map.to_client(), client_entity)
                     .unwrap_or_else(|e| panic!("entities in {type_name} should be mappable: {e}"));
             }
         }
-        ComponentDiff::Removed(_) => reflect_component.remove(world, client_entity),
+        ComponentDiff::Removed(_) => reflect_component.remove(&mut world.entity_mut(client_entity)),
     }
 }
 
@@ -411,12 +414,15 @@ mod tests {
     use crate::core::network::{
         network_preset::NetworkPresetPlugin,
         replication::{map_entity::NetworkEntityMap, replication_rules::Replication},
+        sets::NetworkSetsPlugin,
     };
 
     #[test]
     fn acked_ticks_cleanup() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         let mut client = app.world.resource_mut::<RenetClient>();
@@ -435,7 +441,9 @@ mod tests {
     #[test]
     fn tick_acks_receiving() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         for _ in 0..10 {
@@ -450,7 +458,9 @@ mod tests {
     #[test]
     fn spawn_replication() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<TableComponent>();
 
@@ -482,16 +492,15 @@ mod tests {
             mapped_entity, client_entity,
             "mapped entity should correspond to the replicated entity on client"
         );
-        assert_eq!(
-            app.world.resource::<NextState<GameState>>().0,
-            GameState::World
-        );
+        assert_eq!(app.world.resource::<State<GameState>>().0, GameState::World);
     }
 
     #[test]
     fn change_replicaiton() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<TableComponent>()
             .register_and_replicate::<SparseSetComponent>();
@@ -533,7 +542,9 @@ mod tests {
     #[test]
     fn entity_mapping() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<MappedComponent>();
 
@@ -561,8 +572,10 @@ mod tests {
     #[test]
     fn removal_replication() {
         let mut app = App::new();
-        app.register_type::<NonReflectedComponent>()
+        app.add_state::<GameState>()
+            .register_type::<NonReflectedComponent>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         app.update();
@@ -592,7 +605,9 @@ mod tests {
     #[test]
     fn despawn_replication() {
         let mut app = App::new();
-        app.add_plugin(NetworkPresetPlugin::client_and_server())
+        app.add_state::<GameState>()
+            .add_plugin(NetworkPresetPlugin::client_and_server())
+            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         app.update();

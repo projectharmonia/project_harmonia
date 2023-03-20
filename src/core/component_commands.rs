@@ -26,6 +26,7 @@ impl Command for InsertComponents {
     fn write(self, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
+        let mut entity = world.entity_mut(self.entity);
         for component in self.components {
             let type_name = component.type_name();
             let registration = registry
@@ -36,7 +37,7 @@ impl Command for InsertComponents {
                 .data::<ReflectComponent>()
                 .unwrap_or_else(|| panic!("{type_name} should have reflect(Component)"));
 
-            reflect_component.apply_or_insert(world, self.entity, &*component);
+            reflect_component.apply_or_insert(&mut entity, &*component);
         }
     }
 }

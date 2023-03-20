@@ -10,7 +10,6 @@ use bevy::{
     scene::{serde::SceneDeserializer, DynamicEntity},
 };
 use bevy_trait_query::imports::ComponentId;
-use iyes_loopless::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{
@@ -21,50 +20,52 @@ use super::{
 };
 use parent_sync::ParentSyncPlugin;
 
-#[derive(SystemLabel)]
-pub(crate) enum GameWorldSystem {
-    Saving,
-    Loading,
-}
-
-pub(super) struct GameWorldPlugin;
+pub(crate) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(ParentSyncPlugin)
+        app.add_state::<WorldState>()
+            .add_plugin(ParentSyncPlugin)
             .init_resource::<IgnoreSaving>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
-            .add_enter_system(GameState::MainMenu, Self::cleanup_system)
-            .add_system(
-                Self::saving_system
-                    .pipe(error::report)
-                    .run_on_event::<GameSave>()
-                    .label(GameWorldSystem::Saving),
+            .add_systems(
+                (
+                    Self::in_world_state_system.run_if(resource_added::<WorldName>()),
+                    Self::no_world_state_system.run_if(resource_removed::<WorldName>()),
+                )
+                    .in_base_set(CoreSet::PostUpdate),
             )
-            .add_system(
+            .add_systems((
                 Self::loading_system
                     .pipe(error::report)
-                    .label(GameWorldSystem::Loading),
-            );
+                    .run_if(on_event::<GameLoad>()),
+                Self::saving_system
+                    .pipe(error::report)
+                    .run_if(on_event::<GameSave>()),
+            ));
     }
 }
 
 impl GameWorldPlugin {
-    fn cleanup_system(mut commands: Commands) {
-        commands.remove_resource::<GameWorld>();
+    fn no_world_state_system(mut world_state: ResMut<NextState<WorldState>>) {
+        world_state.set(WorldState::NoWorld);
+    }
+
+    fn in_world_state_system(mut world_state: ResMut<NextState<WorldState>>) {
+        world_state.set(WorldState::InWorld);
     }
 
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    fn saving_system(
+    pub(crate) fn saving_system(
         world: &World,
-        game_world: Res<GameWorld>,
+        world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
         replication_rules: Res<ReplicationRules>,
         ignore_saving: Res<IgnoreSaving>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&game_world.world_name);
+        let world_path = game_paths.world_path(&world_name.0);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
@@ -79,19 +80,15 @@ impl GameWorldPlugin {
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
-    fn loading_system(
-        mut commands: Commands,
-        mut load_events: ResMut<Events<GameLoad>>,
+    pub(crate) fn loading_system(
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
+        mut game_state: ResMut<NextState<GameState>>,
+        world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let Some(load_event) = load_events.drain().last() else {
-            return Ok(());
-        };
-
-        let world_path = game_paths.world_path(&load_event.0);
+        let world_path = game_paths.world_path(&world_name.0);
         let bytes =
             fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
         let mut deserializer = ron::Deserializer::from_bytes(&bytes)
@@ -109,8 +106,7 @@ impl GameWorldPlugin {
         }
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
-
-        commands.insert_resource(GameWorld::new(load_event.0));
+        game_state.set(GameState::World);
 
         Ok(())
     }
@@ -155,7 +151,7 @@ fn save_to_scene(
 
             for (index, archetype_entity) in archetype.entities().iter().enumerate() {
                 let component = reflect_component
-                    .reflect(world, archetype_entity.entity())
+                    .reflect(world.entity(archetype_entity.entity()))
                     .unwrap_or_else(|| panic!("object should have {type_name}"));
 
                 scene.entities[entities_offset + index]
@@ -168,30 +164,33 @@ fn save_to_scene(
     scene
 }
 
+/// Represents state of the [`WorldName`] resource.
+///
+/// To conveniently use with `in_set`.
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+pub(super) enum WorldState {
+    #[default]
+    NoWorld,
+    InWorld,
+}
+
 /// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
 #[derive(Default)]
 pub(crate) struct GameSave;
 
-/// Event that indicates that game is about to be loaded based on the specified name.
+/// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
 ///
-/// Creates [`GameWorld`] resource on loading.
-pub(crate) struct GameLoad(pub(crate) String);
+/// Sets game state to [`GameState::World`].
+#[derive(Default)]
+pub(crate) struct GameLoad;
 
-/// Contains meta-information about the currently loaded world.
-#[derive(Default, Deref, Resource)]
-pub(crate) struct GameWorld {
-    pub(crate) world_name: String,
-}
-
-impl GameWorld {
-    pub(crate) fn new(world_name: String) -> Self {
-        Self { world_name }
-    }
-}
+/// Contains name of the currently loaded world.
+#[derive(Default, Resource)]
+pub(crate) struct WorldName(pub(crate) String);
 
 /// Contains component IDs that will be ignored on game world serialization.
 #[derive(Default, Deref, DerefMut, Resource)]
-struct IgnoreSaving(Vec<ComponentId>);
+pub(crate) struct IgnoreSaving(Vec<ComponentId>);
 
 pub(super) trait AppIgnoreSavingExt {
     /// Ignore specified component for game world serialization.
@@ -208,7 +207,7 @@ impl AppIgnoreSavingExt for App {
 
 #[cfg(test)]
 mod tests {
-    use bevy::{asset::AssetPlugin, core::CorePlugin, scene::ScenePlugin};
+    use bevy::{asset::AssetPlugin, scene::ScenePlugin};
 
     use super::*;
     use crate::core::{
@@ -222,15 +221,16 @@ mod tests {
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
-        app.add_loopless_state(GameState::World)
+        app.add_state::<GameState>()
             .add_plugin(ReplicationRulesPlugin)
             .register_type::<Camera>()
             .replicate::<Transform>()
             .register_and_replicate::<City>()
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<GamePaths>()
-            .insert_resource(GameWorld::new(WORLD_NAME.to_string()))
-            .add_plugin(CorePlugin::default())
+            .insert_resource(WorldName(WORLD_NAME.to_string()))
+            .add_plugin(TaskPoolPlugin::default())
+            .add_plugin(TypeRegistrationPlugin)
             .add_plugin(AssetPlugin::default())
             .add_plugin(ScenePlugin)
             .add_plugin(TransformPlugin)
@@ -244,19 +244,11 @@ mod tests {
 
         app.update();
 
-        app.insert_resource(NextState(GameState::MainMenu));
         app.world.clear_entities();
 
         app.update();
 
-        assert!(
-            app.world.get_resource::<GameWorld>().is_none(),
-            "game world should be removed after entering main menu"
-        );
-
-        app.world
-            .resource_mut::<Events<GameLoad>>()
-            .send(GameLoad(WORLD_NAME.to_string()));
+        app.world.send_event_default::<GameLoad>();
 
         app.update();
         app.update();

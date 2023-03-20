@@ -1,8 +1,7 @@
 use bevy::{pbr::wireframe::WireframeConfig, prelude::*};
 use bevy_rapier3d::prelude::*;
-use iyes_loopless::prelude::*;
 
-use super::settings::{Settings, SettingsApply};
+use super::settings::{Settings, SettingsApplySet};
 
 /// Propagates developer settings changes into resources.
 pub(super) struct DeveloperPlugin;
@@ -10,12 +9,19 @@ pub(super) struct DeveloperPlugin;
 impl Plugin for DeveloperPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameInspector>()
-            .add_startup_system(Self::game_inspector_toggle_system)
-            .add_startup_system(Self::debug_collisions_toggle_system)
-            .add_startup_system(Self::wireframe_toggle_system)
-            .add_system(Self::game_inspector_toggle_system.run_on_event::<SettingsApply>())
-            .add_system(Self::debug_collisions_toggle_system.run_on_event::<SettingsApply>())
-            .add_system(Self::wireframe_toggle_system.run_on_event::<SettingsApply>());
+            .add_startup_systems((
+                Self::game_inspector_toggle_system,
+                Self::debug_collisions_toggle_system,
+                Self::wireframe_toggle_system,
+            ))
+            .add_systems(
+                (
+                    Self::game_inspector_toggle_system,
+                    Self::debug_collisions_toggle_system,
+                    Self::wireframe_toggle_system,
+                )
+                    .in_set(SettingsApplySet),
+            );
     }
 }
 

@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-use bevy_renet::renet::RenetClient;
 use bevy_trait_query::RegisterExt;
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use tap::TapOptional;
 
@@ -10,7 +8,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
-    network::network_event::client_event::ClientEvent,
+    network::{network_event::client_event::ClientEvent, sets::NetworkSet},
     task::{Task, TaskActivation, TaskCancel, TaskList, TaskRequest, TaskRequestKind},
 };
 
@@ -21,11 +19,12 @@ impl Plugin for MovementPlugin {
         app.register_component_as::<dyn Task, Walk>()
             .add_system(
                 Self::tasks_system
-                    .run_in_state(GameState::Family)
-                    .run_in_state(FamilyMode::Life),
+                    .in_set(OnUpdate(GameState::Family))
+                    .in_set(OnUpdate(FamilyMode::Life)),
             )
-            .add_system(Self::activation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::cancellation_system.run_unless_resource_exists::<RenetClient>());
+            .add_systems(
+                (Self::activation_system, Self::cancellation_system).in_set(NetworkSet::Authoritve),
+            );
     }
 }
 

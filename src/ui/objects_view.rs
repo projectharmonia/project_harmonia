@@ -9,18 +9,18 @@ use crate::core::{
 };
 
 #[derive(Constructor)]
-pub(super) struct ObjectsView<'a, 'w, 's, 'wc, 'sc> {
+pub(super) struct ObjectsView<'a, 'w, 'wc, 'sc> {
     current_category: &'a mut Option<ObjectCategory>,
     categories: &'a [ObjectCategory],
     commands: &'a mut Commands<'wc, 'sc>,
     object_metadata: &'a Assets<ObjectMetadata>,
     previews: &'a Previews,
-    preview_events: &'a mut EventWriter<'w, 's, PreviewRequest>,
+    preview_events: &'a mut EventWriter<'w, PreviewRequest>,
     selected_id: Option<HandleId>,
     spawn_parent: Entity,
 }
 
-impl ObjectsView<'_, '_, '_, '_, '_> {
+impl ObjectsView<'_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
         ui.vertical(|ui| {
             if ui.selectable_label(self.current_category.is_none(), "🔠").on_hover_text("All objects").clicked() {

@@ -5,15 +5,14 @@ use bevy::{
     prelude::*,
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
-use iyes_loopless::prelude::*;
 use serde::{de::DeserializeOwned, Serialize};
 use tap::TapFallible;
 
 use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
-    game_world::GameWorld,
+    game_world::WorldState,
     network::{
-        client, replication::map_entity::NetworkEntityMap, server::SERVER_ID,
+        replication::map_entity::NetworkEntityMap, server::SERVER_ID, sets::NetworkSet,
         REPLICATION_CHANNEL_ID,
     },
 };
@@ -29,9 +28,9 @@ pub(crate) trait ClientEventAppExt {
     ) -> &mut Self;
 
     /// Same as [`add_client_event`], but uses the specified sending system.
-    fn add_client_event_with<T: Event + Serialize + DeserializeOwned + Debug, Params>(
+    fn add_client_event_with<T: Event + Serialize + DeserializeOwned + Debug, Marker>(
         &mut self,
-        sending_system: impl IntoConditionalSystem<Params>,
+        sending_system: impl IntoSystemConfig<Marker>,
     ) -> &mut Self;
 }
 
@@ -46,9 +45,9 @@ impl ClientEventAppExt for App {
         self.add_client_event_with::<T, _>(mapping_and_sending_system::<T>)
     }
 
-    fn add_client_event_with<T: Event + Serialize + DeserializeOwned + Debug, Params>(
+    fn add_client_event_with<T: Event + Serialize + DeserializeOwned + Debug, Marker>(
         &mut self,
-        sending_system: impl IntoConditionalSystem<Params>,
+        sending_system: impl IntoSystemConfig<Marker>,
     ) -> &mut Self {
         let mut event_counter = self
             .world
@@ -59,13 +58,13 @@ impl ClientEventAppExt for App {
         self.add_event::<T>()
             .add_event::<ClientEvent<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(sending_system.run_if(client::connected))
+            .add_system(sending_system.in_set(NetworkSet::ClientConnected))
             .add_system(
                 local_resending_system::<T>
-                    .run_if_resource_exists::<GameWorld>()
-                    .run_unless_resource_exists::<RenetClient>(),
+                    .in_set(OnUpdate(WorldState::InWorld))
+                    .in_set(NetworkSet::Authoritve),
             )
-            .add_system(receiving_system::<T>.run_if_resource_exists::<RenetServer>());
+            .add_system(receiving_system::<T>.in_set(NetworkSet::Server));
 
         self
     }
@@ -148,12 +147,13 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::network_preset::NetworkPresetPlugin;
+    use crate::core::network::{network_preset::NetworkPresetPlugin, sets::NetworkSetsPlugin};
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
-        app.add_client_event::<DummyEvent>()
+        app.add_plugin(NetworkSetsPlugin)
+            .add_client_event::<DummyEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
@@ -169,7 +169,8 @@ mod tests {
     #[test]
     fn mapping() {
         let mut app = App::new();
-        app.init_resource::<NetworkEntityMap>()
+        app.add_plugin(NetworkSetsPlugin)
+            .init_resource::<NetworkEntityMap>()
             .add_mapped_client_event::<MappedEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
@@ -197,9 +198,13 @@ mod tests {
     #[test]
     fn local_resending() {
         let mut app = App::new();
-        app.init_resource::<GameWorld>()
+        app.add_plugin(NetworkSetsPlugin)
+            .add_state::<WorldState>()
             .add_client_event::<DummyEvent>();
 
+        app.world
+            .resource_mut::<NextState<WorldState>>()
+            .set(WorldState::InWorld);
         let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
         dummy_events.send(DummyEvent);
 

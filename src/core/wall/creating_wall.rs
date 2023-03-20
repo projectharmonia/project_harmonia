@@ -1,10 +1,11 @@
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
+use leafwing_input_manager::common_conditions::{
+    action_just_pressed, action_just_released, action_pressed,
+};
 
 use super::{WallCreate, WallEdges, WallEventConfirmed};
 use crate::core::{
-    action::{self, Action},
-    condition,
+    action::Action,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     ground::GroundPlugin,
@@ -15,45 +16,25 @@ pub(super) struct CreatingWallPlugin;
 
 impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::spawn_system)
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(condition::any_component_exists::<CreatingWall>())
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .run_in_state(BuildingMode::Walls),
-        )
-        .add_system(
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::movement_system)
-                .run_if(action::pressed(Action::Confirm))
-                .run_if(condition::any_component_exists::<CreatingWall>())
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .run_in_state(BuildingMode::Walls),
-        )
-        .add_system(
-            Self::creation_system
-                .run_if(action::just_released(Action::Confirm))
-                .run_if(condition::any_component_exists::<CreatingWall>())
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .run_in_state(BuildingMode::Walls),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .run_in_state(BuildingMode::Walls),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_on_event::<WallEventConfirmed>()
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building)
-                .run_in_state(BuildingMode::Walls),
+        app.add_systems(
+            (
+                GroundPlugin::cursor_to_ground_system
+                    .pipe(Self::spawn_system)
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<CreatingWall>())),
+                GroundPlugin::cursor_to_ground_system
+                    .pipe(Self::movement_system)
+                    .run_if(action_pressed(Action::Confirm))
+                    .run_if(any_with_component::<CreatingWall>()),
+                Self::creation_system
+                    .run_if(action_just_released(Action::Confirm))
+                    .run_if(any_with_component::<CreatingWall>()),
+                Self::despawn_system.run_if(action_just_pressed(Action::Cancel)),
+                Self::despawn_system.run_if(on_event::<WallEventConfirmed>()),
+            )
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Building))
+                .in_set(OnUpdate(BuildingMode::Walls)),
         );
     }
 }

@@ -14,21 +14,7 @@ pub(super) struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(ConnectionSettings::default());
-    }
-}
-
-pub(crate) fn connecting(client: Option<Res<RenetClient>>) -> bool {
-    match client {
-        Some(client) => !client.is_connected(),
-        None => false,
-    }
-}
-
-pub(crate) fn connected(client: Option<Res<RenetClient>>) -> bool {
-    match client {
-        Some(client) => client.is_connected(),
-        None => false,
+        app.init_resource::<ConnectionSettings>();
     }
 }
 

@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, RichText, Window},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 use strum::IntoEnumIterator;
 
 use super::objects_view::ObjectsView;
@@ -22,8 +21,8 @@ impl Plugin for BuildingHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::bottom_panel_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Building),
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Building)),
         );
     }
 }
@@ -32,10 +31,11 @@ impl BuildingHudPlugin {
     fn bottom_panel_system(
         mut current_category: Local<Option<ObjectCategory>>,
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut preview_events: EventWriter<PreviewRequest>,
-        mut egui: ResMut<EguiContext>,
+        mut next_building_mode: ResMut<NextState<BuildingMode>>,
         previews: Res<Previews>,
-        building_mode: Res<CurrentState<BuildingMode>>,
+        building_mode: Res<State<BuildingMode>>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         placing_objects: Query<&PlacingObject>,
         active_cities: Query<Entity, With<ActiveCity>>,
@@ -57,7 +57,7 @@ impl BuildingHudPlugin {
                             .on_hover_text(mode.to_string());
                         }
                         if current_mode != building_mode.0 {
-                            commands.insert_resource(NextState(current_mode))
+                            next_building_mode.set(current_mode);
                         }
                     });
                     if building_mode.0 == BuildingMode::Objects {

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
 
 use super::{
     doll::{ActiveDoll, DollBundle},
@@ -13,14 +12,18 @@ pub(super) struct FamilyEditorPlugin;
 impl Plugin for FamilyEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
-            .add_enter_system(GameState::FamilyEditor, Self::spawn_system)
-            .add_exit_system(GameState::FamilyEditor, Self::cleanup_system)
-            .add_system(Self::selection_system.run_in_state(GameState::FamilyEditor))
-            .add_system(Self::reset_family_system.run_on_event::<FamilyReset>())
-            .add_system(Self::visibility_enable_system.run_in_state(GameState::FamilyEditor))
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::visibility_disable_system.run_in_state(GameState::FamilyEditor),
+            .add_systems(
+                (
+                    Self::selection_system,
+                    Self::visibility_enable_system,
+                    Self::visibility_disable_system,
+                    Self::reset_family_system.run_if(on_event::<FamilyReset>()),
+                )
+                    .in_set(OnUpdate(GameState::FamilyEditor)),
+            )
+            .add_systems(
+                (Self::spawn_system, Self::cleanup_system)
+                    .in_schedule(OnEnter(GameState::FamilyEditor)),
             );
     }
 }
@@ -48,18 +51,18 @@ impl FamilyEditorPlugin {
         mut new_selected_dolls: Query<&mut Visibility, Added<SelectedDoll>>,
     ) {
         for mut visibility in &mut new_selected_dolls {
-            visibility.is_visible = true;
+            *visibility = Visibility::Visible;
         }
     }
 
     fn visibility_disable_system(
-        removed_selected_dolls: RemovedComponents<SelectedDoll>,
+        mut removed_selected_dolls: RemovedComponents<SelectedDoll>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        for entity in removed_selected_dolls.iter() {
+        for entity in &mut removed_selected_dolls {
             // Entity could be despawned before.
             if let Ok(mut visibility) = visibility.get_mut(entity) {
-                visibility.is_visible = false;
+                *visibility = Visibility::Hidden;
             }
         }
     }
@@ -67,6 +70,7 @@ impl FamilyEditorPlugin {
     fn selection_system(
         mut commands: Commands,
         mut select_events: EventReader<SelectedFamilySpawned>,
+        mut game_state: ResMut<NextState<GameState>>,
         dolls: Query<&Dolls>,
     ) {
         for event in select_events.iter() {
@@ -77,7 +81,7 @@ impl FamilyEditorPlugin {
                 .first()
                 .expect("family should always have at least one member");
             commands.entity(doll_entity).insert(ActiveDoll);
-            commands.insert_resource(NextState(GameState::Family))
+            game_state.set(GameState::Family);
         }
     }
 

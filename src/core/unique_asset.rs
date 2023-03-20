@@ -1,14 +1,8 @@
 use std::{any, marker::PhantomData};
 
 use bevy::{asset::Asset, prelude::*, scene::SceneInstance};
-use iyes_loopless::prelude::IntoConditionalSystem;
 
-use super::game_world::GameWorld;
-
-#[derive(SystemLabel)]
-pub(super) enum UniqueAssetSystem {
-    Init,
-}
+use super::game_world::WorldState;
 
 /// Makes a deep copy of all assets `T` on entity's children with component [`UniqueAsset<T>`].
 ///
@@ -18,16 +12,12 @@ pub(super) struct UniqueAssetPlugin<T>(PhantomData<T>);
 
 impl<T: Asset + Clone> Plugin for UniqueAssetPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::init_system
-                .run_if_resource_exists::<GameWorld>()
-                .label(UniqueAssetSystem::Init),
-        );
+        app.add_system(Self::init_system.in_set(OnUpdate(WorldState::InWorld)));
     }
 }
 
 impl<T: Asset + Clone> UniqueAssetPlugin<T> {
-    fn init_system(
+    pub(super) fn init_system(
         mut commmands: Commands,
         mut assets: ResMut<Assets<T>>,
         scene_spawner: Res<SceneSpawner>,

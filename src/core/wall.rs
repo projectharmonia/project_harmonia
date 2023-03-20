@@ -8,20 +8,19 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
 use bevy_rapier3d::prelude::*;
-use bevy_renet::renet::RenetClient;
 use itertools::{Itertools, MinMaxResult};
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
     collision_groups::DollisGroups,
-    game_world::{parent_sync::ParentSync, GameWorld},
+    game_world::{parent_sync::ParentSync, WorldState},
     network::{
         network_event::{
             client_event::{ClientEvent, ClientEventAppExt},
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
+        sets::NetworkSet,
     },
 };
 use creating_wall::CreatingWallPlugin;
@@ -37,22 +36,16 @@ impl Plugin for WallPlugin {
             .register_and_replicate::<WallEdges>()
             .add_mapped_client_event::<WallCreate>()
             .add_server_event::<WallEventConfirmed>()
-            .add_system_to_stage(
-                CoreStage::PostUpdate, // Run after world loading in order to insert a mesh handle before vertices generation.
-                Self::init_system.run_if_resource_exists::<GameWorld>(),
+            .add_systems(
+                (Self::init_system, Self::mesh_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
-            .add_system(Self::wall_creation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                Self::mesh_update_system.run_if_resource_exists::<GameWorld>(),
-            );
+            .add_system(Self::wall_creation_system.in_set(NetworkSet::Authoritve));
     }
 }
 
 impl WallPlugin {
     fn init_system(
         mut commands: Commands,
-        mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
         spawned_walls: Query<Entity, Added<WallEdges>>,
     ) {
@@ -61,7 +54,6 @@ impl WallPlugin {
                 Name::new("Walls"),
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 PbrBundle {
-                    mesh: meshes.add(Mesh::new(PrimitiveTopology::TriangleList)),
                     material: materials.add(StandardMaterial::default()),
                     ..Default::default()
                 },
@@ -100,13 +92,9 @@ impl WallPlugin {
     fn mesh_update_system(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &WallEdges, &Handle<Mesh>), Changed<WallEdges>>,
+        walls: Query<(Entity, &WallEdges), Changed<WallEdges>>,
     ) {
-        for (entity, edges, mesh_handle) in &walls {
-            let mesh = meshes
-                .get_mut(mesh_handle)
-                .expect("associated mesh handle should be valid");
-
+        for (entity, edges) in &walls {
             let mut positions = Vec::new();
             let mut indices = Vec::new();
             for &(a, b) in edges.iter() {
@@ -198,12 +186,13 @@ impl WallPlugin {
                 }
             }
 
+            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
             mesh.set_indices(Some(Indices::U32(indices)));
 
-            let collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+            let collider = Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::TriMesh)
                 .expect("wall mesh should be in compatible format");
-            commands.entity(entity).insert(collider);
+            commands.entity(entity).insert((collider, meshes.add(mesh)));
         }
     }
 }

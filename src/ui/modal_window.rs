@@ -4,7 +4,7 @@ use bevy_egui::{
         Align2, Area, Color32, Context, Id, InnerResponse, LayerId, Pos2, Shape, Ui, WidgetText,
         Window,
     },
-    EguiContext,
+    EguiContexts,
 };
 use leafwing_input_manager::prelude::*;
 use smallvec::SmallVec;
@@ -15,17 +15,15 @@ pub(super) struct ModalWindowPlugin;
 
 impl Plugin for ModalWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::PostUpdate, Self::modal_area_system);
+        app.add_system(Self::modal_area_system.in_base_set(CoreSet::PostUpdate));
     }
 }
 
 impl ModalWindowPlugin {
-    fn modal_area_system(mut egui: ResMut<EguiContext>) {
+    fn modal_area_system(mut egui: EguiContexts) {
         let Some(layer) = egui
             .ctx_mut()
-            .data()
-            .get_temp_mut_or_default::<ModalIds>(Id::null())
-            .retain_registered()
+            .data_mut(|data| data.get_temp_mut_or_default::<ModalIds>(Id::null()).retain_registered())
         else {
             return
         };
@@ -34,7 +32,7 @@ impl ModalWindowPlugin {
         Area::new(Id::new(layer)) // Use layer of the widget as an id to avoid ordering issues.
             .fixed_pos(Pos2::ZERO)
             .show(egui.ctx_mut(), |ui| {
-                let screen = ui.ctx().input().screen_rect();
+                let screen = ui.ctx().input(|input| input.screen_rect());
                 ui.painter().add(Shape::rect_filled(
                     screen,
                     0.0,
@@ -95,22 +93,23 @@ impl ModalWindow<'_> {
         let inner_response = window.show(ctx, |ui| add_contents(ui));
 
         if let Some(inner_response) = &inner_response {
-            let mut data = ctx.data();
-            if data
-                .get_temp_mut_or_default::<ModalIds>(Id::null())
-                .register_modal(inner_response.response.layer_id)
-            {
-                if let Some(open_state) = self.open_state {
-                    if open_state.action_state.just_pressed(Action::Cancel) {
-                        open_state.action_state.consume(Action::Cancel);
-                        *open_state.open = false;
-                    }
-                    if data.get_temp::<ModalClosed>(Id::null()).is_some() {
-                        data.remove::<ModalClosed>(Id::null());
-                        *open_state.open = false;
+            ctx.data_mut(|data| {
+                if data
+                    .get_temp_mut_or_default::<ModalIds>(Id::null())
+                    .register_modal(inner_response.response.layer_id)
+                {
+                    if let Some(open_state) = self.open_state {
+                        if open_state.action_state.just_pressed(Action::Cancel) {
+                            open_state.action_state.consume(Action::Cancel);
+                            *open_state.open = false;
+                        }
+                        if data.get_temp::<ModalClosed>(Id::null()).is_some() {
+                            data.remove::<ModalClosed>(Id::null());
+                            *open_state.open = false;
+                        }
                     }
                 }
-            }
+            });
         }
 
         inner_response
@@ -170,7 +169,7 @@ pub(super) trait ModalUiExt {
 
 impl ModalUiExt for Ui {
     fn close_modal(&self) {
-        self.data().insert_temp(Id::null(), ModalClosed);
+        self.data_mut(|data| data.insert_temp(Id::null(), ModalClosed));
     }
 }
 

@@ -1,60 +1,36 @@
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{input::mouse::MouseMotion, prelude::*};
-use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::{common_conditions::action_pressed, prelude::ActionState};
 
-use super::{
-    action::{self, Action},
-    game_state::GameState,
-};
-
-#[derive(SystemLabel)]
-enum PlayerCameraSystem {
-    Rotation,
-    Position,
-    Arm,
-}
+use super::{action::Action, game_state::GameState};
 
 pub(super) struct PlayerCameraPlugin;
 
 impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
-        for state in [GameState::FamilyEditor, GameState::City, GameState::Family] {
-            app.add_system(
-                Self::rotation_system
-                    .run_if(action::pressed(Action::RotateCamera))
-                    .run_in_state(state)
-                    .label(PlayerCameraSystem::Rotation),
+        app.configure_set(
+            PlayerCameraSet.run_if(
+                in_state(GameState::FamilyEditor)
+                    .or_else(in_state(GameState::City))
+                    .or_else(in_state(GameState::Family)),
+            ),
+        )
+        .add_system(
+            Self::position_system
+                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
+        )
+        .add_systems(
+            (
+                Self::rotation_system.run_if(action_pressed(Action::RotateCamera)),
+                Self::arm_system,
+                Self::transform_system
+                    .after(Self::position_system)
+                    .after(Self::rotation_system)
+                    .after(Self::arm_system),
             )
-            .add_system(
-                Self::arm_system
-                    .run_in_state(state)
-                    .label(PlayerCameraSystem::Arm),
-            );
-
-            if state != GameState::FamilyEditor {
-                app.add_system(
-                    Self::position_system
-                        .run_in_state(state)
-                        .label(PlayerCameraSystem::Position),
-                )
-                .add_system(
-                    Self::transform_system
-                        .run_in_state(state)
-                        .after(PlayerCameraSystem::Rotation)
-                        .after(PlayerCameraSystem::Arm)
-                        .after(PlayerCameraSystem::Position),
-                );
-            } else {
-                app.add_system(
-                    Self::transform_system
-                        .run_in_state(state)
-                        .after(PlayerCameraSystem::Rotation)
-                        .after(PlayerCameraSystem::Arm),
-                );
-            }
-        }
+                .in_set(PlayerCameraSet),
+        );
     }
 }
 
@@ -137,6 +113,9 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
 
     direction.normalize_or_zero()
 }
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+struct PlayerCameraSet;
 
 #[derive(Bundle, Default)]
 pub(crate) struct PlayerCameraBundle {

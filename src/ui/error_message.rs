@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::EguiContext;
-use iyes_loopless::prelude::*;
+use bevy_egui::EguiContexts;
 use leafwing_input_manager::prelude::*;
 
 use super::modal_window::{ModalUiExt, ModalWindow};
@@ -10,14 +9,14 @@ pub(super) struct ErrorMessagePlugin;
 
 impl Plugin for ErrorMessagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::error_message_system.run_if_resource_exists::<LastError>());
+        app.add_system(Self::error_message_system.run_if(resource_exists::<LastError>()));
     }
 }
 
 impl ErrorMessagePlugin {
     fn error_message_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
         error_message: Res<LastError>,
     ) {

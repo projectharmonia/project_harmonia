@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, Area, ImageButton, TextureId},
-    EguiContext,
+    EguiContexts,
 };
 use bevy_inspector_egui::egui::Frame;
-use iyes_loopless::prelude::*;
 
 use crate::core::{
     doll::ActiveDoll,
@@ -19,15 +18,15 @@ impl Plugin for LifeHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::active_tasks_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Life),
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Life)),
         );
     }
 }
 
 impl LifeHudPlugin {
     fn active_tasks_system(
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut cancel_events: EventWriter<TaskCancel>,
         mut remove_events: EventWriter<TaskRequestRemove>,
         tasks: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveDoll>>,

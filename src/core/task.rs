@@ -1,13 +1,12 @@
 use bevy::{math::Vec3Swizzles, prelude::*, reflect::FromReflect};
-use bevy_renet::renet::RenetClient;
 use bevy_trait_query::queryable;
-use iyes_loopless::prelude::*;
+use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
 use tap::TapOptional;
 
 use super::{
-    action::{self, Action},
+    action::Action,
     cursor_hover::CursorHover,
     doll::DollPlayers,
     family::FamilyMode,
@@ -15,6 +14,7 @@ use super::{
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::replication_rules::AppReplicationExt,
+        sets::NetworkSet,
     },
 };
 
@@ -32,13 +32,18 @@ impl Plugin for TaskPlugin {
             .add_event::<TaskActivation>()
             .add_system(
                 Self::task_list_system
-                    .run_if(action::just_pressed(Action::Confirm))
-                    .run_in_state(GameState::Family)
-                    .run_in_state(FamilyMode::Life),
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .in_set(OnUpdate(GameState::Family))
+                    .in_set(OnUpdate(FamilyMode::Life)),
             )
-            .add_system(Self::queue_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::activation_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::cancellation_system.run_unless_resource_exists::<RenetClient>());
+            .add_systems(
+                (
+                    Self::queue_system,
+                    Self::activation_system,
+                    Self::cancellation_system,
+                )
+                    .in_set(NetworkSet::Authoritve),
+            );
     }
 }
 

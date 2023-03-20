@@ -9,9 +9,7 @@ use bevy::{
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 use bevy_rapier3d::prelude::*;
-use bevy_renet::renet::RenetClient;
 use bevy_scene_hook::SceneHook;
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -21,7 +19,7 @@ use super::{
     collision_groups::DollisGroups,
     component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
-    game_world::{parent_sync::ParentSync, GameWorld},
+    game_world::{parent_sync::ParentSync, WorldState},
     lot::LotVertices,
     network::{
         network_event::{
@@ -29,6 +27,7 @@ use super::{
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
+        sets::NetworkSet,
     },
 };
 use mirror::MirrorPlugin;
@@ -45,10 +44,15 @@ impl Plugin for ObjectPlugin {
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()
             .add_server_event::<ObjectEventConfirmed>()
-            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::movement_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>());
+            .add_system(Self::init_system.in_set(OnUpdate(WorldState::InWorld)))
+            .add_systems(
+                (
+                    Self::spawn_system,
+                    Self::movement_system,
+                    Self::despawn_system,
+                )
+                    .in_set(NetworkSet::Authoritve),
+            );
     }
 }
 

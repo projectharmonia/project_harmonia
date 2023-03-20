@@ -6,9 +6,8 @@ use std::mem;
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, Button, Window},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
@@ -26,8 +25,10 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::create_city_system.run_if_resource_exists::<CreateCityDialog>())
-            .add_system(Self::world_menu_system.run_in_state(GameState::World));
+        app.add_systems((
+            Self::create_city_system.run_if(resource_exists::<CreateCityDialog>()),
+            Self::world_menu_system.in_set(OnUpdate(GameState::World)),
+        ));
     }
 }
 
@@ -35,8 +36,9 @@ impl WorldMenuPlugin {
     fn world_menu_system(
         mut current_tab: Local<WorldMenuTab>,
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut despawn_events: EventWriter<FamilyDespawn>,
+        mut game_state: ResMut<NextState<GameState>>,
         families: Query<(Entity, &'static Name, &'static Dolls)>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
@@ -51,17 +53,23 @@ impl WorldMenuPlugin {
                     }
                 });
                 match *current_tab {
-                    WorldMenuTab::Families => {
-                        FamiliesTab::new(&mut commands, &mut despawn_events, &families).show(ui)
+                    WorldMenuTab::Families => FamiliesTab::new(
+                        &mut commands,
+                        &mut game_state,
+                        &mut despawn_events,
+                        &families,
+                    )
+                    .show(ui),
+                    WorldMenuTab::Cities => {
+                        CitiesTab::new(&mut commands, &mut game_state, &cities).show(ui)
                     }
-                    WorldMenuTab::Cities => CitiesTab::new(&mut commands, &cities).show(ui),
                 }
             });
     }
 
     fn create_city_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
         mut dialog: ResMut<CreateCityDialog>,
     ) {

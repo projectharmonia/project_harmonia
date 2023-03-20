@@ -1,36 +1,23 @@
-use std::time::Duration;
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use anyhow::Result;
 use bevy::prelude::*;
 use bevy_renet::renet::{RenetConnectionConfig, RenetServer, ServerAuthentication, ServerConfig};
 use clap::Args;
-use iyes_loopless::prelude::*;
-use strum::IntoStaticStr;
 
 use super::{network_event::NetworkEventCounter, DEFAULT_PORT, PROTOCOL_ID};
 
 pub(crate) const SERVER_ID: u64 = 0;
-
-#[derive(IntoStaticStr)]
-pub(super) enum ServerFixedTimestep {
-    Tick,
-}
+pub(super) const TICK_TIME: Duration = Duration::from_millis(100);
 
 pub(super) struct ServerPlugin;
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(ServerSettings::default());
-
-        // We do not use fixed timestep in tests for deterministic results.
-        if cfg!(not(test)) {
-            app.add_fixed_timestep(Duration::from_millis(100), ServerFixedTimestep::Tick.into());
-            app.add_fixed_timestep_child_stage(ServerFixedTimestep::Tick.into());
-        }
+        app.init_resource::<ServerSettings>();
     }
 }
 

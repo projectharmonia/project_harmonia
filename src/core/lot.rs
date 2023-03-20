@@ -7,10 +7,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_polyline::prelude::*;
-use bevy_renet::renet::RenetClient;
 use derive_more::Display;
 use itertools::Itertools;
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 use tap::TapFallible;
@@ -18,7 +16,7 @@ use tap::TapFallible;
 use super::{
     family::{Family, FamilyMode},
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, GameWorld},
+    game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
     network::{
         network_event::{
@@ -26,6 +24,7 @@ use super::{
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
+        sets::NetworkSet,
     },
     task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
@@ -36,7 +35,7 @@ pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(LotTool::Create)
+        app.add_state::<LotTool>()
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
             .register_type::<Vec<Vec2>>()
@@ -48,15 +47,22 @@ impl Plugin for LotPlugin {
             .add_server_event::<LotEventConfirmed>()
             .add_system(
                 Self::tasks_system
-                    .run_in_state(GameState::Family)
-                    .run_in_state(FamilyMode::Life),
+                    .in_set(OnUpdate(GameState::Family))
+                    .in_set(OnUpdate(FamilyMode::Life)),
             )
-            .add_system(Self::buying_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::vertices_update_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::movement_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>());
+            .add_systems(
+                (Self::vertices_update_system, Self::init_system)
+                    .in_set(OnUpdate(WorldState::InWorld)),
+            )
+            .add_systems(
+                (
+                    Self::buying_system,
+                    Self::spawn_system,
+                    Self::movement_system,
+                    Self::despawn_system,
+                )
+                    .in_set(NetworkSet::Authoritve),
+            );
     }
 }
 
@@ -115,10 +121,10 @@ impl LotPlugin {
 
     fn vertices_update_system(
         mut polylines: ResMut<Assets<Polyline>>,
-        changed_lots: Query<(&Handle<Polyline>, &LotVertices, ChangeTrackers<LotVertices>)>,
+        changed_lots: Query<(&Handle<Polyline>, Ref<LotVertices>)>,
     ) {
-        for (polyline_handle, vertices, changed_vertices) in &changed_lots {
-            if changed_vertices.is_changed() && !changed_vertices.is_added() {
+        for (polyline_handle, vertices) in &changed_lots {
+            if vertices.is_changed() && !vertices.is_added() {
                 let polyline = polylines
                     .get_mut(polyline_handle)
                     .expect("polyline should be spawned on init");
@@ -177,8 +183,9 @@ impl LotPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+#[derive(Clone, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States)]
 pub(crate) enum LotTool {
+    #[default]
     Create,
     Move,
 }

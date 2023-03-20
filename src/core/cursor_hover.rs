@@ -1,55 +1,36 @@
 use std::iter;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_mod_outline::OutlineVolume;
 use bevy_rapier3d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use super::{
     city::CityMode, collision_groups::DollisGroups, condition, game_state::GameState,
     object::placing_object::PlacingObject, player_camera::PlayerCamera,
 };
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+struct CursorHoverSet;
+
 pub(super) struct CursorHoverPlugin;
 
 impl Plugin for CursorHoverPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::cursor_hover_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::City)
-                .run_not_in_state(CityMode::Lots),
+        app.configure_set(
+            CursorHoverSet
+                .run_if(not(any_with_component::<PlacingObject>()))
+                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family)))
+                .run_if(not(in_state(CityMode::Lots))),
         )
-        .add_system(
-            Self::cursor_hover_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::Family),
-        )
-        .add_system(
-            Self::outline_enabling_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::City)
-                .run_not_in_state(CityMode::Lots),
-        )
-        .add_system(
-            Self::outline_enabling_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::Family),
-        )
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            Self::outline_disabling_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::City)
-                .run_not_in_state(CityMode::Lots),
-        )
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            Self::outline_disabling_system
-                .run_if_not(condition::any_component_exists::<PlacingObject>())
-                .run_in_state(GameState::Family),
-        )
-        .add_system(Self::cleanup_system.run_if(condition::any_component_added::<PlacingObject>()));
+        .add_systems(
+            (
+                Self::cursor_hover_system,
+                Self::outline_enabling_system,
+                Self::outline_disabling_system,
+                Self::cleanup_system.run_if(condition::any_component_added::<PlacingObject>()),
+            )
+                .in_set(CursorHoverSet),
+        );
     }
 }
 
@@ -57,17 +38,15 @@ impl CursorHoverPlugin {
     fn cursor_hover_system(
         mut commands: Commands,
         rapier_ctx: Res<RapierContext>,
-        windows: Res<Windows>,
+        windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
         hoverable: Query<(), With<Hoverable>>,
         hovered: Query<Entity, With<CursorHover>>,
     ) {
-        let Some(cursor_pos) = windows
-            .get_primary()
-            .and_then(|window| window.cursor_position()) else {
-                return;
-            };
+        let Some(cursor_pos) = windows.single().cursor_position() else {
+            return;
+        };
 
         let (&transform, camera) = cameras.single();
         let Some(ray) = camera.viewport_to_world(&transform, cursor_pos) else {
@@ -114,11 +93,11 @@ impl CursorHoverPlugin {
     }
 
     fn outline_disabling_system(
-        unhovered: RemovedComponents<CursorHover>,
+        mut unhovered: RemovedComponents<CursorHover>,
         mut outlines: Query<&mut OutlineVolume>,
         children: Query<&Children>,
     ) {
-        for parent_entity in unhovered.iter() {
+        for parent_entity in &mut unhovered {
             for child_entity in children.iter_descendants(parent_entity) {
                 if let Ok(mut outline) = outlines.get_mut(child_entity) {
                     outline.visible = false;

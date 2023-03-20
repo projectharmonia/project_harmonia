@@ -1,11 +1,10 @@
 use bevy::{ecs::component::ComponentId, prelude::*, utils::HashMap};
-use bevy_renet::renet::RenetServer;
-use iyes_loopless::prelude::*;
 
 use super::{
     replication_rules::{Replication, ReplicationRules},
     AckedTicks,
 };
+use crate::core::network::sets::NetworkSet;
 
 /// Stores component removals in [`RemovalTracker`] component to make them persistent across ticks.
 ///
@@ -14,11 +13,11 @@ pub(super) struct RemovalTrackerPlugin;
 
 impl Plugin for RemovalTrackerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::insertion_system.run_if_resource_exists::<RenetServer>())
-            .add_system(Self::cleanup_system.run_if_resource_exists::<RenetServer>())
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::detection_system.run_if_resource_exists::<RenetServer>(),
+        app.add_systems((Self::insertion_system, Self::cleanup_system).in_set(NetworkSet::Server))
+            .add_system(
+                Self::detection_system
+                    .in_base_set(CoreSet::PostUpdate)
+                    .in_set(NetworkSet::Server),
             );
     }
 }

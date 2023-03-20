@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, RichText, Window},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 use strum::IntoEnumIterator;
 
 use super::objects_view::ObjectsView;
@@ -20,7 +19,7 @@ pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::bottom_panel_system.run_in_state(GameState::City));
+        app.add_system(Self::bottom_panel_system.in_set(OnUpdate(GameState::City)));
     }
 }
 
@@ -28,11 +27,13 @@ impl CityHudPlugin {
     fn bottom_panel_system(
         mut current_category: Local<Option<ObjectCategory>>,
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut preview_events: EventWriter<PreviewRequest>,
-        mut egui: ResMut<EguiContext>,
+        mut next_city_mode: ResMut<NextState<CityMode>>,
+        mut next_lot_tool: ResMut<NextState<LotTool>>,
         previews: Res<Previews>,
-        city_mode: Res<CurrentState<CityMode>>,
-        lot_tool: Res<CurrentState<LotTool>>,
+        city_mode: Res<State<CityMode>>,
+        lot_tool: Res<State<LotTool>>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         placing_objects: Query<&PlacingObject>,
         active_cities: Query<Entity, With<ActiveCity>>,
@@ -54,7 +55,7 @@ impl CityHudPlugin {
                             .on_hover_text(mode.to_string());
                         }
                         if current_mode != city_mode.0 {
-                            commands.insert_resource(NextState(current_mode))
+                            next_city_mode.set(current_mode);
                         }
                     });
                     match city_mode.0 {
@@ -82,7 +83,7 @@ impl CityHudPlugin {
                                         .on_hover_text(tool.to_string());
                                 }
                                 if current_tool != lot_tool.0 {
-                                    commands.insert_resource(NextState(current_tool))
+                                    next_lot_tool.set(current_tool);
                                 }
                             });
                         }

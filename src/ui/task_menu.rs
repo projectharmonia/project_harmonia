@@ -1,10 +1,6 @@
-use bevy::prelude::*;
-use bevy_egui::{
-    egui::{Pos2, Window},
-    EguiContext,
-};
+use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_egui::{egui::Pos2, EguiContexts};
 use bevy_inspector_egui::egui::{Align, Layout};
-use iyes_loopless::prelude::*;
 
 use crate::core::{
     family::FamilyMode,
@@ -18,8 +14,8 @@ impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             Self::menu_system
-                .run_in_state(GameState::Family)
-                .run_in_state(FamilyMode::Life),
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Life)),
         );
     }
 }
@@ -28,27 +24,25 @@ impl TaskMenuPlugin {
     fn menu_system(
         mut position: Local<Pos2>,
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut task_events: EventWriter<TaskRequest>,
-        windows: Res<Windows>,
-        task_lists: Query<(Entity, &Name, &TaskList, ChangeTrackers<TaskList>)>,
+        windows: Query<&Window, With<PrimaryWindow>>,
+        task_lists: Query<(Entity, &Name, Ref<TaskList>)>,
     ) {
-        let Ok((entity, name, task_list, task_list_changes)) = task_lists.get_single() else {
+        let Ok((entity, name, task_list)) = task_lists.get_single() else {
             return;
         };
 
-        if task_list_changes.is_added() {
+        if task_list.is_added() {
             // Recalculate window position.
-            let primary_window = windows
-                .get_primary()
-                .expect("primary window should exist for UI");
+            let primary_window = windows.single();
             let cursor_position = primary_window.cursor_position().unwrap_or_default();
             position.x = cursor_position.x;
             position.y = primary_window.height() - cursor_position.y;
         }
 
         let mut open = true;
-        Window::new(name.as_str())
+        bevy_egui::egui::Window::new(name.as_str())
             .resizable(false)
             .collapsible(false)
             .fixed_pos(*position)

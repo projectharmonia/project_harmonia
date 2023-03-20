@@ -8,9 +8,8 @@ use bevy::{
     },
     utils::HashMap,
 };
-use bevy_egui::{egui::TextureId, EguiContext};
+use bevy_egui::{egui::TextureId, EguiContexts};
 use bevy_scene_hook::{HookedSceneBundle, SceneHook};
-use iyes_loopless::prelude::*;
 
 use super::asset_metadata::{self, ObjectMetadata};
 
@@ -18,14 +17,16 @@ pub(super) struct PreviewPlugin;
 
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(PreviewState::Inactive)
+        app.add_state::<PreviewState>()
             .add_event::<PreviewRequest>()
             .init_resource::<Previews>()
             .add_startup_system(Self::spawn_camera_system)
-            .add_enter_system(PreviewState::Inactive, Self::deactivation_system)
-            .add_system(Self::load_asset_system.run_in_state(PreviewState::Inactive))
-            .add_system(Self::wait_for_loading_system.run_in_state(PreviewState::LoadingAsset))
-            .add_enter_system(PreviewState::Rendering, Self::finish_rendering_system);
+            .add_systems((
+                Self::deactivation_system.in_schedule(OnEnter(PreviewState::Inactive)),
+                Self::load_asset_system.in_set(OnUpdate(PreviewState::Inactive)),
+                Self::wait_for_loading_system.in_set(OnUpdate(PreviewState::LoadingAsset)),
+                Self::finish_rendering_system.in_schedule(OnEnter(PreviewState::Rendering)),
+            ));
     }
 }
 
@@ -39,6 +40,7 @@ impl PreviewPlugin {
     fn load_asset_system(
         mut commands: Commands,
         mut preview_events: EventReader<PreviewRequest>,
+        mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
         previews: Res<Previews>,
         object_metadata: Res<Assets<ObjectMetadata>>,
@@ -72,16 +74,16 @@ impl PreviewPlugin {
                     ));
                 });
 
-            commands.insert_resource(NextState(PreviewState::LoadingAsset));
+            preview_state.set(PreviewState::LoadingAsset);
         }
         preview_events.clear();
     }
 
     fn wait_for_loading_system(
-        mut commands: Commands,
+        mut egui: EguiContexts,
         mut asset_events: EventWriter<AssetEvent<Image>>,
         mut previews: ResMut<Previews>,
-        mut egui: ResMut<EguiContext>,
+        mut preview_state: ResMut<NextState<PreviewState>>,
         mut images: ResMut<Assets<Image>>,
         asset_server: Res<AssetServer>,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
@@ -116,7 +118,7 @@ impl PreviewPlugin {
 
                 camera.is_active = true;
                 camera.target = RenderTarget::Image(image_handle);
-                commands.insert_resource(NextState(PreviewState::Rendering));
+                preview_state.set(PreviewState::Rendering);
             }
             LoadState::Failed => {
                 error!(
@@ -125,7 +127,7 @@ impl PreviewPlugin {
                 );
 
                 previews.insert(metadata_id.0, TextureId::Managed(0));
-                commands.insert_resource(NextState(PreviewState::Inactive));
+                preview_state.set(PreviewState::Inactive);
             }
             LoadState::Unloaded => {
                 unreachable!(
@@ -136,9 +138,9 @@ impl PreviewPlugin {
         }
     }
 
-    fn finish_rendering_system(mut commands: Commands) {
+    fn finish_rendering_system(mut preview_state: ResMut<NextState<PreviewState>>) {
         debug!("requested inactive state after rendering");
-        commands.insert_resource(NextState(PreviewState::Inactive));
+        preview_state.set(PreviewState::Inactive);
     }
 
     fn deactivation_system(
@@ -153,8 +155,9 @@ impl PreviewPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum PreviewState {
+    #[default]
     Inactive,
     LoadingAsset,
     Rendering,
@@ -191,7 +194,7 @@ impl Default for PreviewCameraBundle {
             render_layer: PREVIEW_RENDER_LAYER,
             camera_bundle: Camera3dBundle {
                 camera: Camera {
-                    priority: -1,
+                    order: -1,
                     is_active: false,
                     ..Default::default()
                 },

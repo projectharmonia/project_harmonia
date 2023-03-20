@@ -1,6 +1,9 @@
 use bevy::{
     ecs::system::SystemParam,
-    input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
+    input::{
+        gamepad::GamepadButtonChangedEvent, keyboard::KeyboardInput, mouse::MouseButtonInput,
+        ButtonState,
+    },
     prelude::*,
 };
 use leafwing_input_manager::user_input::InputKind;
@@ -10,7 +13,7 @@ use leafwing_input_manager::user_input::InputKind;
 pub(crate) struct InputEvents<'w, 's> {
     keys: EventReader<'w, 's, KeyboardInput>,
     mouse_buttons: EventReader<'w, 's, MouseButtonInput>,
-    gamepad_events: EventReader<'w, 's, GamepadEvent>,
+    gamepad_buttons: EventReader<'w, 's, GamepadButtonChangedEvent>,
 }
 
 impl InputEvents<'_, '_> {
@@ -32,14 +35,9 @@ impl InputEvents<'_, '_> {
             return Some(input.button.into());
         }
 
-        if let Some(GamepadEventType::ButtonChanged(button, strength)) = self
-            .gamepad_events
-            .iter()
-            .map(|event| event.event_type.to_owned())
-            .next()
-        {
-            if strength == 1.0 {
-                return Some(button.into());
+        if let Some(input) = self.gamepad_buttons.iter().next() {
+            if input.value == 1.0 {
+                return Some(input.button_type.into());
             }
         }
 

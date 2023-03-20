@@ -324,7 +324,7 @@ mod tests {
     fn component_diff_changed_ser() {
         let mut registry = TypeRegistryInternal::new();
         registry.register::<Visibility>();
-        let component_diff = ComponentDiff::Changed(Visibility::VISIBLE.clone_value());
+        let component_diff = ComponentDiff::Changed(Visibility::Visible.clone_value());
         let serializer = ComponentDiffSerializer::new(&component_diff, &registry);
 
         serde_test::assert_ser_tokens(
@@ -336,13 +336,10 @@ mod tests {
                 },
                 Token::Map { len: Some(1) },
                 Token::Str(any::type_name::<Visibility>()),
-                Token::Struct {
+                Token::UnitVariant {
                     name: "Visibility",
-                    len: 1,
+                    variant: "Visible",
                 },
-                Token::Str("is_visible"),
-                Token::Bool(true),
-                Token::StructEnd,
                 Token::MapEnd,
             ],
         );

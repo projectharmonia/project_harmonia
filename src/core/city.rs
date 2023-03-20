@@ -1,54 +1,40 @@
 use bevy::prelude::*;
 use bevy_atmosphere::prelude::*;
 use derive_more::Display;
-use iyes_loopless::prelude::*;
 use strum::EnumIter;
 
 use super::{
     doll::ActiveDoll,
     game_state::GameState,
-    game_world::GameWorld,
+    game_world::WorldState,
     network::replication::replication_rules::{AppReplicationExt, Replication},
     player_camera::{PlayerCamera, PlayerCameraBundle},
 };
-
-/// To flush activation / deactivation commands after [`CoreStage::PostUpdate`].
-#[derive(StageLabel)]
-struct CityVisiblilityStage;
 
 pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(CityMode::Objects)
+        app.add_state::<CityMode>()
             .register_and_replicate::<City>()
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<PlacedCities>()
-            .add_stage_after(
-                CoreStage::PostUpdate,
-                CityVisiblilityStage,
-                SystemStage::parallel(),
-            )
-            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::doll_activation_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::doll_deactivation_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_exit_system(GameState::City, Self::deactivation_system)
-            .add_system_to_stage(
-                CityVisiblilityStage,
-                Self::visibility_enable_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_system_to_stage(
-                CityVisiblilityStage,
-                Self::visibility_disable_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>())
-            .add_system(Self::placed_cities_reset_system.run_if_resource_removed::<GameWorld>());
+            .add_systems((
+                Self::activation_system.in_schedule(OnEnter(GameState::City)),
+                Self::deactivation_system.in_schedule(OnExit(GameState::City)),
+                Self::deactivation_system.in_schedule(OnExit(GameState::Family)),
+                Self::init_system.in_set(OnUpdate(WorldState::InWorld)),
+                Self::cleanup_system.in_schedule(OnExit(WorldState::InWorld)),
+            ))
+            .add_systems(
+                (
+                    Self::doll_activation_system,
+                    apply_system_buffers,
+                    Self::activation_system,
+                )
+                    .chain()
+                    .in_schedule(OnEnter(GameState::Family)),
+            );
     }
 }
 
@@ -69,7 +55,7 @@ impl CityPlugin {
             commands.entity(entity).insert((
                 TransformBundle::from_transform(transform),
                 VisibilityBundle {
-                    visibility: Visibility { is_visible: false },
+                    visibility: Visibility::Visible,
                     ..Default::default()
                 },
             ));
@@ -79,75 +65,51 @@ impl CityPlugin {
 
     fn doll_activation_system(
         mut commands: Commands,
-        new_active_dolls: Query<&Parent, Added<ActiveDoll>>,
+        activated_dolls: Query<&Parent, Added<ActiveDoll>>,
     ) {
-        if let Ok(parent) = new_active_dolls.get_single() {
-            commands.entity(parent.get()).insert(ActiveCity);
-        }
-    }
-
-    fn doll_deactivation_system(
-        mut commands: Commands,
-        deactivated_dolls: RemovedComponents<ActiveDoll>,
-        parents: Query<&Parent>,
-    ) {
-        if let Some(entity) = deactivated_dolls.iter().next() {
-            let parent = parents
-                .get(entity)
-                .expect("deactivated doll should have a family");
-            commands.entity(parent.get()).remove::<ActiveCity>();
-        }
-    }
-
-    fn deactivation_system(mut commands: Commands, active_cities: Query<Entity, With<ActiveCity>>) {
         commands
-            .entity(active_cities.single())
-            .remove::<ActiveCity>();
+            .entity(activated_dolls.single().get())
+            .insert(ActiveCity);
     }
 
-    fn visibility_enable_system(
+    pub(super) fn activation_system(
         mut commands: Commands,
-        mut active_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
+        mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
-        if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
-            visibility.is_visible = true;
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
-            });
-        }
+        let (entity, mut visibility) = activated_cities.single_mut();
+        *visibility = Visibility::Visible;
+        commands.entity(entity).with_children(|parent| {
+            parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
+        });
     }
 
-    fn visibility_disable_system(
+    fn deactivation_system(
         mut commands: Commands,
-        deactivated_cities: RemovedComponents<ActiveCity>,
-        mut visibility: Query<&mut Visibility>,
+        mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<PlayerCamera>>,
     ) {
-        if let Some(entity) = deactivated_cities.iter().next() {
-            let mut visibility = visibility
-                .get_mut(entity)
-                .expect("city should always have a visibility component");
-            visibility.is_visible = false;
-            commands.entity(entity).remove::<ActiveCity>();
-            commands.entity(cameras.single()).despawn();
-        }
+        let (entity, mut visibility) = active_cities.single_mut();
+        *visibility = Visibility::Hidden;
+        commands.entity(entity).remove::<ActiveCity>();
+        commands.entity(cameras.single()).despawn();
     }
 
-    /// Removes all cities and their children.
-    fn cleanup_system(mut commands: Commands, cities: Query<Entity, With<City>>) {
+    /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
+    fn cleanup_system(
+        mut commands: Commands,
+        mut placed_citites: ResMut<PlacedCities>,
+        cities: Query<Entity, With<City>>,
+    ) {
+        placed_citites.0 = 0;
         for entity in &cities {
             commands.entity(entity).despawn_recursive();
         }
     }
-
-    /// Resets [`PlacedCities`] counter to 0.
-    fn placed_cities_reset_system(mut placed_citites: ResMut<PlacedCities>) {
-        placed_citites.0 = 0;
-    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+#[derive(Clone, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States)]
 pub(crate) enum CityMode {
+    #[default]
     Objects,
     Lots,
 }

@@ -1,41 +1,46 @@
 use bevy::{
     math::Vec3Swizzles,
     prelude::{shape::Plane, *},
+    window::PrimaryWindow,
 };
 use bevy_rapier3d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use super::{
-    city::ActiveCity, collision_groups::DollisGroups, cursor_hover::Hoverable,
-    game_state::GameState, player_camera::PlayerCamera,
+    city::{ActiveCity, CityPlugin},
+    collision_groups::DollisGroups,
+    cursor_hover::Hoverable,
+    game_state::GameState,
+    player_camera::PlayerCamera,
 };
 
 pub(super) struct GroundPlugin;
 
 impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::City, Self::spawn_system)
-            .add_exit_system(GameState::City, Self::despawn_system)
-            .add_enter_system(GameState::Family, Self::spawn_system)
-            .add_exit_system(GameState::Family, Self::despawn_system);
+        app.add_systems((
+            Self::spawn_system.in_schedule(OnEnter(GameState::City)),
+            Self::despawn_system.in_schedule(OnExit(GameState::City)),
+            Self::spawn_system
+                .after(CityPlugin::activation_system)
+                .in_schedule(OnEnter(GameState::Family)),
+            Self::despawn_system.in_schedule(OnExit(GameState::Family)),
+        ));
     }
 }
 
 impl GroundPlugin {
     fn spawn_system(
-        active_cities: Query<Entity, With<ActiveCity>>,
+        activated_cities: Query<Entity, Added<ActiveCity>>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
     ) {
         commands
-            .entity(active_cities.single())
-            .add_children(|parent| {
+            .entity(activated_cities.single())
+            .with_children(|parent| {
                 parent.spawn(GroundBundle {
                     pbr_bundle: PbrBundle {
-                        mesh: meshes.add(Mesh::from(Plane {
-                            size: GroundBundle::SIZE,
-                        })),
+                        mesh: meshes.add(Mesh::from(Plane::from_size(GroundBundle::SIZE))),
                         material: materials.add(Color::rgb_u8(69, 108, 69).into()),
                         ..Default::default()
                     },
@@ -56,22 +61,31 @@ impl GroundPlugin {
     }
 
     fn despawn_system(
+        mut commands: Commands,
+        active_cities: Query<&Children, With<ActiveCity>>,
         direction_lights: Query<Entity, With<DirectionalLight>>,
         grounds: Query<Entity, With<Ground>>,
-        mut commands: Commands,
     ) {
-        commands.entity(direction_lights.single()).despawn();
-        commands.entity(grounds.single()).despawn();
+        let children = active_cities.single();
+        let light_entity = *children
+            .iter()
+            .find(|&&entity| direction_lights.get(entity).is_ok())
+            .expect("deactivated city should have a children light");
+        commands.entity(light_entity).despawn();
+
+        let ground_entity = *children
+            .iter()
+            .find(|&&entity| grounds.get(entity).is_ok())
+            .expect("deactivated city should have a children ground");
+        commands.entity(ground_entity).despawn();
     }
 
     /// Converts cursor position into position on the ground.
     pub(super) fn cursor_to_ground_system(
-        windows: Res<Windows>,
+        windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) -> Option<Vec2> {
-        let cursor_position = windows
-            .get_primary()
-            .and_then(|window| window.cursor_position())?;
+        let cursor_position = windows.single().cursor_position()?;
         let (&transform, camera) = cameras.single();
         let ray = camera
             .viewport_to_world(&transform, cursor_position)

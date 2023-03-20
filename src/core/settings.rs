@@ -2,7 +2,6 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -16,10 +15,11 @@ impl Plugin for SettingsPlugin {
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()
+            .configure_set(SettingsApplySet.run_if(on_event::<SettingsApply>()))
             .add_system(
                 Self::write_system
                     .pipe(error::report)
-                    .run_on_event::<SettingsApply>(),
+                    .in_set(SettingsApplySet),
             );
     }
 }
@@ -29,6 +29,10 @@ impl SettingsPlugin {
         settings.write(&game_paths.settings)
     }
 }
+
+/// Systems in this set will run on applying settings.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub(super) struct SettingsApplySet;
 
 /// An event that applies the specified settings in the [`Settings`] resource.
 #[derive(Default)]

@@ -1,9 +1,8 @@
 use bevy::{app::AppExit, prelude::*};
 use bevy_egui::{
     egui::{Align2, Area, Button, RichText, TextStyle},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 
 use super::{settings_menu::SettingsMenu, world_browser::WorldBrowser, UI_MARGIN};
 use crate::core::game_state::GameState;
@@ -12,15 +11,15 @@ pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::main_menu_system.run_in_state(GameState::MainMenu));
+        app.add_system(Self::main_menu_system.in_set(OnUpdate(GameState::MainMenu)));
     }
 }
 
 impl MainMenuPlugin {
     fn main_menu_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut exit_events: EventWriter<AppExit>,
-        mut egui: ResMut<EguiContext>,
     ) {
         Area::new("Main Menu")
             .anchor(Align2::LEFT_CENTER, (UI_MARGIN, 0.0))

@@ -7,11 +7,10 @@ use bevy::{
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
     },
 };
-use iyes_loopless::prelude::*;
 
 use crate::core::{
-    game_state::GameState, game_world::GameWorld, player_camera::PlayerCamera,
-    unique_asset::UniqueAssetSystem,
+    game_state::GameState, game_world::WorldState, player_camera::PlayerCamera,
+    unique_asset::UniqueAssetPlugin,
 };
 
 pub(super) struct MirrorPlugin;
@@ -20,13 +19,13 @@ impl Plugin for MirrorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<MirrorMaterial>::default())
             .register_type::<Mirror>()
-            .add_system(
+            .add_systems((
                 Self::init_system
-                    .run_if_resource_exists::<GameWorld>()
-                    .after(UniqueAssetSystem::Init),
-            )
-            .add_system(Self::rotation_system.run_in_state(GameState::City))
-            .add_system(Self::rotation_system.run_in_state(GameState::Family));
+                    .in_set(OnUpdate(WorldState::InWorld))
+                    .after(UniqueAssetPlugin::<StandardMaterial>::init_system),
+                Self::rotation_system
+                    .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
+            ));
     }
 }
 

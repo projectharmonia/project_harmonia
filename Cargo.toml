@@ -6,23 +6,22 @@ license = "AGPL-3.0-or-later"
 rust-version = "1.65"
 
 [dependencies]
-bevy = { version = "0.9", default-features = false, features = [
+bevy = { version = "0.10", default-features = false, features = [
   "bevy_gltf",
   "filesystem_watcher",
   "png",
   "x11",
 ] }
-bevy_atmosphere = "0.5"
-bevy_renet = "0.0.6"
-bevy_rapier3d = { git = "https://github.com/dollisgame/bevy_rapier", branch = "rework-async-colliders" }
-bevy_mod_outline = { version = "0.3", default-features = false }
-bevy_egui = "0.19"
-bevy_polyline = { git = "https://github.com/dollisgame/bevy_polyline", branch = "remove-render-feature-0.9" }
-bevy-inspector-egui = "0.17"
-bevy-scene-hook = "5.2"
-iyes_loopless = "0.9"
-bevy-trait-query = "0.1"
-leafwing-input-manager = { version = "0.8", default-features = false, features = [
+bevy_atmosphere = "0.6"
+bevy_renet = "0.0.7"
+bevy_rapier3d = "0.21"
+bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline", default-features = false }
+bevy_egui = "0.20"
+bevy_polyline = { git = "https://github.com/Aceeri/bevy_polyline" }
+bevy-inspector-egui = "0.18"
+bevy-scene-hook = "6.0"
+bevy-trait-query = "0.2"
+leafwing-input-manager = { git = "https://github.com/dollisgame/leafwing-input-manager", branch = "common-conditions", default-features = false, features = [
   "egui",
 ] }
 serde = "1.0"
@@ -33,7 +32,7 @@ derive_more = { version = "0.99", default-features = false, features = [
 standard_paths = "2.0"
 clap = { version = "4.1", features = ["derive"] }
 anyhow = "1.0"
-toml = "0.5"
+toml = "0.7"
 rmp-serde = "1.1"
 ron = "0.8"
 tap = "1.0"

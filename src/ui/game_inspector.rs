@@ -1,10 +1,9 @@
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_egui::{
     egui::{ScrollArea, Window},
-    EguiContext,
+    EguiContexts,
 };
 use bevy_inspector_egui::bevy_inspector;
-use iyes_loopless::prelude::*;
 
 use crate::core::developer::GameInspector;
 
@@ -17,7 +16,7 @@ impl Plugin for GameInspectorPlugin {
 }
 
 impl GameInspectorPlugin {
-    fn game_inspector_system(world: &mut World, state: &mut SystemState<ResMut<EguiContext>>) {
+    fn game_inspector_system(world: &mut World, state: &mut SystemState<EguiContexts>) {
         let egui_ctx = state.get_mut(world).ctx_mut().clone();
         Window::new("Game inspector")
             .default_size((320.0, 160.0))

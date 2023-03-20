@@ -6,16 +6,15 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_renet::renet::RenetClient;
 use derive_more::Display;
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
     doll::{ActiveDoll, DollBundle, PlayableDollBundle},
-    game_world::GameWorld,
+    game_state::GameState,
+    game_world::WorldState,
     network::{
         network_event::{
             client_event::{ClientEvent, ClientEventAppExt},
@@ -25,6 +24,7 @@ use super::{
             map_entity::ReflectMapEntity,
             replication_rules::{AppReplicationExt, Replication},
         },
+        sets::NetworkSet,
     },
 };
 
@@ -32,25 +32,20 @@ pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loopless_state(FamilyMode::Life)
-            .add_loopless_state(BuildingMode::Objects)
+        app.add_state::<FamilyMode>()
+            .add_state::<BuildingMode>()
             .register_and_replicate::<FamilySync>()
             .register_and_replicate::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()
-            .add_system(Self::family_sync_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::spawn_system.run_unless_resource_exists::<RenetClient>())
-            .add_system(Self::despawn_system.run_unless_resource_exists::<RenetClient>())
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::activation_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                Self::deactivation_system.run_if_resource_exists::<GameWorld>(),
-            )
-            .add_system(Self::cleanup_system.run_if_resource_removed::<GameWorld>());
+            .add_systems((Self::spawn_system, Self::despawn_system).in_set(NetworkSet::Authoritve))
+            .add_systems((
+                Self::activation_system.in_schedule(OnEnter(GameState::Family)),
+                Self::family_sync_system.in_set(OnUpdate(WorldState::InWorld)),
+                Self::deactivation_system.in_schedule(OnExit(GameState::Family)),
+                Self::cleanup_system.in_schedule(OnExit(WorldState::InWorld)),
+            ));
     }
 }
 
@@ -126,20 +121,17 @@ impl FamilyPlugin {
 
     fn activation_system(
         mut commands: Commands,
-        new_active_dolls: Query<&Family, Added<ActiveDoll>>,
+        activated_dolls: Query<&Family, Added<ActiveDoll>>,
     ) {
-        if let Ok(family) = new_active_dolls.get_single() {
-            commands.entity(family.0).insert(ActiveFamily);
-        }
+        commands
+            .entity(activated_dolls.single().0)
+            .insert(ActiveFamily);
     }
 
-    fn deactivation_system(
-        mut commands: Commands,
-        deactivated_dolls: RemovedComponents<ActiveDoll>,
-    ) {
-        if let Some(entity) = deactivated_dolls.iter().next() {
-            commands.entity(entity).remove::<ActiveFamily>();
-        }
+    fn deactivation_system(mut commands: Commands, active_dolls: Query<Entity, With<ActiveDoll>>) {
+        commands
+            .entity(active_dolls.single())
+            .remove::<ActiveFamily>();
     }
 
     fn cleanup_system(mut commands: Commands, dolls: Query<Entity, With<Dolls>>) {
@@ -183,8 +175,9 @@ impl FamilyBundle {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default)]
 pub(crate) enum FamilyMode {
+    #[default]
     Life,
     Building,
 }
@@ -198,8 +191,9 @@ impl FamilyMode {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter)]
+#[derive(Clone, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States)]
 pub(crate) enum BuildingMode {
+    #[default]
     Objects,
     Walls,
 }

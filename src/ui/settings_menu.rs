@@ -5,9 +5,8 @@ mod video_tab;
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align, Layout},
-    EguiContext,
+    EguiContexts,
 };
-use iyes_loopless::prelude::*;
 use leafwing_input_manager::{prelude::ActionState, user_input::InputKind};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
@@ -25,25 +24,23 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::settings_menu_system.run_if_resource_exists::<SettingsMenu>())
-            .add_system(
-                Self::binding_window_system
-                    .run_if_resource_exists::<ActiveBinding>()
-                    .run_unless_resource_exists::<BindingConflict>(),
-            )
-            .add_system(
-                Self::conflict_binding_window_system.run_if_resource_exists::<BindingConflict>(),
-            );
+        app.add_systems((
+            Self::settings_menu_system.run_if(resource_exists::<SettingsMenu>()),
+            Self::binding_window_system
+                .run_if(resource_exists::<ActiveBinding>())
+                .run_if(not(resource_exists::<BindingConflict>())),
+            Self::conflict_binding_window_system.run_if(resource_exists::<BindingConflict>()),
+        ));
     }
 }
 
 impl SettingsMenuPlugin {
     fn settings_menu_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut apply_events: EventWriter<SettingsApply>,
         mut action_state: ResMut<ActionState<Action>>,
         mut settings_menu: ResMut<SettingsMenu>,
-        mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
     ) {
         let mut open = true;
@@ -89,8 +86,8 @@ impl SettingsMenuPlugin {
 
     fn binding_window_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut input_events: InputEvents,
-        mut egui: ResMut<EguiContext>,
         mut settings: ResMut<Settings>,
         mut action_state: ResMut<ActionState<Action>>,
         active_binding: Res<ActiveBinding>,
@@ -134,7 +131,7 @@ impl SettingsMenuPlugin {
 
     fn conflict_binding_window_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut settings: ResMut<Settings>,
         mut action_state: ResMut<ActionState<Action>>,
         active_binding: Res<ActiveBinding>,

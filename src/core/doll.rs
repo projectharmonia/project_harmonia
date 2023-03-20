@@ -4,9 +4,7 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_renet::renet::RenetClient;
 use derive_more::Display;
-use iyes_loopless::prelude::*;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 use strum::EnumIter;
@@ -14,10 +12,11 @@ use strum::EnumIter;
 use super::{
     family::FamilySync,
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, GameWorld},
+    game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::replication_rules::{AppReplicationExt, Replication},
+        sets::NetworkSet,
     },
     task::TaskQueue,
 };
@@ -36,19 +35,21 @@ impl Plugin for DollPlugin {
             .ignore_saving::<DollPlayers>()
             .add_mapped_client_event::<DollSelect>()
             .add_client_event::<DollDeselect>()
-            .add_system(Self::init_system.run_if_resource_exists::<GameWorld>())
-            .add_system(Self::name_update_system.run_if_resource_exists::<GameWorld>())
-            .add_enter_system(
-                GameState::Family,
-                Self::activation_system.run_if_resource_exists::<GameWorld>(),
+            .add_systems(
+                (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
-            .add_system(
-                Self::activation_confirmation_system.run_unless_resource_exists::<RenetClient>(),
+            .add_systems(
+                (Self::selection_system, Self::deselection_system)
+                    .in_set(OnUpdate(GameState::Family)),
             )
-            .add_exit_system(GameState::Family, Self::deactivation_system)
-            .add_system(
-                Self::deactivation_confirmation_system.run_unless_resource_exists::<RenetClient>(),
-            );
+            .add_systems(
+                (
+                    Self::selection_update_system,
+                    Self::deselection_update_system,
+                )
+                    .in_set(NetworkSet::Authoritve),
+            )
+            .add_system(Self::deactivation_system.in_schedule(OnExit(GameState::Family)));
     }
 }
 
@@ -85,14 +86,16 @@ impl DollPlugin {
         }
     }
 
-    fn activation_system(
+    fn selection_system(
         mut select_events: EventWriter<DollSelect>,
-        new_active_dolls: Query<Entity, Added<ActiveDoll>>,
+        activated_dolls: Query<Entity, Added<ActiveDoll>>,
     ) {
-        select_events.send(DollSelect(new_active_dolls.single()));
+        if let Ok(entity) = activated_dolls.get_single() {
+            select_events.send(DollSelect(entity));
+        }
     }
 
-    fn activation_confirmation_system(
+    fn selection_update_system(
         mut commands: Commands,
         mut select_events: EventReader<ClientEvent<DollSelect>>,
         mut doll_players: Query<&mut DollPlayers>,
@@ -120,18 +123,16 @@ impl DollPlugin {
         }
     }
 
-    fn deactivation_system(
-        mut commands: Commands,
+    fn deselection_system(
         mut deselect_events: EventWriter<DollDeselect>,
-        active_dolls: Query<Entity, With<ActiveDoll>>,
+        mut deactivated_dolls: RemovedComponents<ActiveDoll>,
     ) {
-        commands
-            .entity(active_dolls.single())
-            .remove::<ActiveDoll>();
-        deselect_events.send(DollDeselect);
+        if deactivated_dolls.iter().count() != 0 {
+            deselect_events.send(DollDeselect);
+        }
     }
 
-    fn deactivation_confirmation_system(
+    fn deselection_update_system(
         mut commands: Commands,
         mut deselect_events: EventReader<ClientEvent<DollDeselect>>,
         mut doll_players: Query<(Entity, &mut DollPlayers)>,
@@ -148,6 +149,17 @@ impl DollPlugin {
                 }
             }
         }
+    }
+
+    fn deactivation_system(
+        mut commands: Commands,
+        mut deselect_events: EventWriter<DollDeselect>,
+        active_dolls: Query<Entity, With<ActiveDoll>>,
+    ) {
+        commands
+            .entity(active_dolls.single())
+            .remove::<ActiveDoll>();
+        deselect_events.send(DollDeselect);
     }
 }
 

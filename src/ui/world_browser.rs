@@ -4,10 +4,9 @@ use anyhow::{Context, Ok, Result};
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Button, DragValue, Grid, Image, Layout, TextureId},
-    EguiContext,
+    EguiContexts,
 };
 use derive_more::Constructor;
-use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use tap::TapFallible;
 
@@ -17,7 +16,7 @@ use crate::core::{
     error,
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoad, GameWorld, GameWorldSystem},
+    game_world::{GameLoad, GameWorldPlugin, WorldName},
     network::{
         client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
     },
@@ -27,28 +26,22 @@ pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_exit_system(GameState::MainMenu, Self::close_world_browser)
-            .add_system(
-                Self::world_browser_system
-                    .run_if_resource_exists::<WorldBrowser>()
-                    .after(GameWorldSystem::Loading),
-            )
-            .add_system(
-                Self::join_world_system
-                    .pipe(error::report)
-                    .run_if_resource_exists::<JoinWorldDialog>(),
-            )
-            .add_system(
-                Self::host_world_system
-                    .pipe(error::report)
-                    .run_if_resource_exists::<HostWorldDialog>(),
-            )
-            .add_system(Self::create_world_system.run_if_resource_exists::<CreateWorldDialog>())
-            .add_system(
-                Self::remove_world_system
-                    .pipe(error::report)
-                    .run_if_resource_exists::<RemoveWorldDialog>(),
-            );
+        app.add_systems((
+            Self::close_world_browser.in_schedule(OnExit(GameState::MainMenu)),
+            Self::world_browser_system
+                .run_if(resource_exists::<WorldBrowser>())
+                .after(GameWorldPlugin::loading_system),
+            Self::join_world_system
+                .pipe(error::report)
+                .run_if(resource_exists::<JoinWorldDialog>()),
+            Self::host_world_system
+                .pipe(error::report)
+                .run_if(resource_exists::<HostWorldDialog>()),
+            Self::create_world_system.run_if(resource_exists::<CreateWorldDialog>()),
+            Self::remove_world_system
+                .pipe(error::report)
+                .run_if(resource_exists::<RemoveWorldDialog>()),
+        ));
     }
 }
 
@@ -60,8 +53,8 @@ impl WorldBrowserPlugin {
     fn world_browser_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
-        mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
     ) {
         let mut open = true;
@@ -78,8 +71,8 @@ impl WorldBrowserPlugin {
                             ui.label(world_name.as_str());
                             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 if ui.button("⏵ Play").clicked() {
-                                    load_events.send(GameLoad(mem::take(world_name)));
-                                    commands.insert_resource(NextState(GameState::World));
+                                    commands.insert_resource(WorldName(mem::take(world_name)));
+                                    load_events.send_default();
                                 }
                                 if ui.button("👥 Host").clicked() {
                                     commands.insert_resource(HostWorldDialog::new(index));
@@ -110,8 +103,8 @@ impl WorldBrowserPlugin {
 
     fn join_world_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
-        mut egui: ResMut<EguiContext>,
         mut connection_settings: ResMut<ConnectionSettings>,
         event_counter: Res<NetworkEventCounter>,
     ) -> Result<()> {
@@ -153,8 +146,8 @@ impl WorldBrowserPlugin {
     fn host_world_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
-        mut egui: ResMut<EguiContext>,
         mut world_browser: ResMut<WorldBrowser>,
         mut server_settings: ResMut<ServerSettings>,
         dialog: Res<HostWorldDialog>,
@@ -186,8 +179,8 @@ impl WorldBrowserPlugin {
 
             if confirmed {
                 let world_name = world_browser.world_names.remove(dialog.world_index);
-                load_events.send(GameLoad(world_name));
-                commands.insert_resource(NextState(GameState::World));
+                commands.insert_resource(WorldName(world_name));
+                load_events.send_default();
                 let server = server_settings
                     .create_server(*event_counter)
                     .context("unable to create server")?;
@@ -200,9 +193,10 @@ impl WorldBrowserPlugin {
 
     fn create_world_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
         mut dialog: ResMut<CreateWorldDialog>,
+        mut game_state: ResMut<NextState<GameState>>,
     ) {
         let mut open = true;
         ModalWindow::new("Create world")
@@ -214,8 +208,8 @@ impl WorldBrowserPlugin {
                         .add_enabled(!dialog.world_name.is_empty(), Button::new("Create"))
                         .clicked()
                     {
-                        commands.insert_resource(GameWorld::new(mem::take(&mut dialog.world_name)));
-                        commands.insert_resource(NextState(GameState::World));
+                        commands.insert_resource(WorldName(mem::take(&mut dialog.world_name)));
+                        game_state.set(GameState::World);
                         ui.close_modal();
                     }
                     if ui.button("Cancel").clicked() {
@@ -231,7 +225,7 @@ impl WorldBrowserPlugin {
 
     fn remove_world_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
         mut world_browser: ResMut<WorldBrowser>,
         game_paths: Res<GamePaths>,

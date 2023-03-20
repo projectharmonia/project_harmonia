@@ -1,10 +1,9 @@
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
+use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
-    action::{self, Action},
+    action::Action,
     city::{ActiveCity, CityMode},
-    condition,
     game_state::GameState,
     ground::GroundPlugin,
 };
@@ -15,42 +14,21 @@ pub(super) struct CreatingLotPlugin;
 
 impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::spawn_system)
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_if_not(condition::any_component_exists::<CreatingLot>())
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Create),
-        )
-        .add_system(
-            GroundPlugin::cursor_to_ground_system
-                .pipe(Self::movement_system)
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Create),
-        )
-        .add_system(
-            Self::vertex_placement_system
-                .run_if(action::just_pressed(Action::Confirm))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Create),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_if(action::just_pressed(Action::Cancel))
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Create),
-        )
-        .add_system(
-            Self::despawn_system
-                .run_on_event::<LotEventConfirmed>()
-                .run_in_state(GameState::City)
-                .run_in_state(CityMode::Lots)
-                .run_in_state(LotTool::Create),
+        app.add_systems(
+            (
+                GroundPlugin::cursor_to_ground_system
+                    .pipe(Self::spawn_system)
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<CreatingLot>())),
+                GroundPlugin::cursor_to_ground_system.pipe(Self::movement_system),
+                Self::vertex_placement_system.run_if(action_just_pressed(Action::Confirm)),
+                Self::despawn_system.run_if(
+                    action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
+                ),
+            )
+                .in_set(OnUpdate(GameState::City))
+                .in_set(OnUpdate(CityMode::Lots))
+                .in_set(OnUpdate(LotTool::Create)),
         );
     }
 }

@@ -7,10 +7,9 @@ use bevy_egui::{
         epaint::WHITE_UV, Align, Align2, Area, Image, ImageButton, Layout, TextEdit, TextureId,
         Window,
     },
-    EguiContext,
+    EguiContexts,
 };
 use bevy_inspector_egui::egui::Button;
-use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 use strum::IntoEnumIterator;
 
@@ -33,27 +32,24 @@ pub(super) struct FamilyEditorMenuPlugin;
 
 impl Plugin for FamilyEditorMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::personality_window_system.run_in_state(GameState::FamilyEditor))
-            .add_system(Self::dolls_panel_system.run_in_state(GameState::FamilyEditor))
-            .add_system(
-                Self::buttons_system
-                    .pipe(error::report)
-                    .run_in_state(GameState::FamilyEditor),
-            )
-            .add_system(
+        app.add_systems(
+            (
+                Self::personality_window_system,
+                Self::dolls_panel_system,
+                Self::buttons_system.pipe(error::report),
                 Self::save_family_dialog_system
                     .pipe(error::report)
-                    .run_if_resource_exists::<SaveFamilyDialog>(),
+                    .run_if(resource_exists::<SaveFamilyDialog>()),
+                Self::place_family_dialog_system.run_if(resource_exists::<PlaceFamilyDialog>()),
             )
-            .add_system(
-                Self::place_family_dialog_system.run_if_resource_exists::<PlaceFamilyDialog>(),
-            );
+                .in_set(OnUpdate(GameState::FamilyEditor)),
+        );
     }
 }
 
 impl FamilyEditorMenuPlugin {
     fn personality_window_system(
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         mut selected_dolls: Query<(&mut FirstName, &mut LastName, &mut Sex), With<SelectedDoll>>,
     ) {
         let Ok((mut first_name, mut last_name, mut sex)) = selected_dolls.get_single_mut() else {
@@ -101,7 +97,7 @@ impl FamilyEditorMenuPlugin {
 
     fn dolls_panel_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
         editable_families: Query<Entity, With<EditableFamily>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
         selected_dolls: Query<Entity, With<SelectedDoll>>,
@@ -143,7 +139,8 @@ impl FamilyEditorMenuPlugin {
 
     fn buttons_system(
         mut commands: Commands,
-        mut egui: ResMut<EguiContext>,
+        mut egui: EguiContexts,
+        mut game_state: ResMut<NextState<GameState>>,
         editable_dolls: Query<Entity, With<EditableDoll>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
@@ -153,7 +150,7 @@ impl FamilyEditorMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
-                        commands.insert_resource(NextState(GameState::World));
+                        game_state.set(GameState::World);
                     }
                     confirmed = ui.button("Confirm").clicked();
                 });
@@ -181,9 +178,9 @@ impl FamilyEditorMenuPlugin {
 
     fn save_family_dialog_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut save_dialog: ResMut<SaveFamilyDialog>,
         mut action_state: ResMut<ActionState<Action>>,
-        mut egui: ResMut<EguiContext>,
         game_paths: Res<GamePaths>,
         editable_dolls: Query<(&FirstName, &LastName, &Sex), With<EditableDoll>>,
     ) -> Result<()> {
@@ -242,10 +239,10 @@ impl FamilyEditorMenuPlugin {
 
     fn place_family_dialog_system(
         mut commands: Commands,
+        mut egui: EguiContexts,
         mut reset_events: EventWriter<FamilyReset>,
-        mut egui: ResMut<EguiContext>,
-        mut action_state: ResMut<ActionState<Action>>,
         mut spawn_events: EventWriter<FamilySpawn>,
+        mut action_state: ResMut<ActionState<Action>>,
         mut place_dialog: ResMut<PlaceFamilyDialog>,
         cities: Query<(Entity, &Name), With<City>>,
     ) {

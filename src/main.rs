@@ -9,7 +9,10 @@ use bevy::{
     log::LogPlugin,
     pbr::wireframe::WireframePlugin,
     prelude::*,
-    render::settings::{WgpuFeatures, WgpuSettings},
+    render::{
+        settings::{WgpuFeatures, WgpuSettings},
+        RenderPlugin,
+    },
 };
 use bevy_atmosphere::prelude::*;
 use bevy_egui::EguiPlugin;
@@ -27,10 +30,6 @@ use ui::UiPlugins;
 fn main() {
     App::new()
         .init_resource::<Cli>()
-        .insert_resource(WgpuSettings {
-            features: WgpuFeatures::POLYGON_MODE_LINE,
-            ..Default::default()
-        })
         .add_plugins(
             DefaultPlugins
                 .set(LogPlugin {
@@ -40,6 +39,12 @@ fn main() {
                 .set(AssetPlugin {
                     watch_for_changes: true,
                     ..Default::default()
+                })
+                .set(RenderPlugin {
+                    wgpu_settings: WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..Default::default()
+                    },
                 }),
         )
         .add_plugin(WireframePlugin)
