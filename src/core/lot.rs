@@ -24,7 +24,7 @@ use super::{
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
-        server::AuthoritySet,
+        server::ServerSet,
     },
     task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
@@ -61,7 +61,7 @@ impl Plugin for LotPlugin {
                     Self::movement_system,
                     Self::despawn_system,
                 )
-                    .in_set(AuthoritySet),
+                    .in_set(ServerSet::Authority),
             );
     }
 }

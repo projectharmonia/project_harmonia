@@ -13,7 +13,6 @@ use bevy::{
     },
     prelude::*,
     reflect::TypeRegistryInternal,
-    time::common_conditions::on_timer,
     utils::HashMap,
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
@@ -23,7 +22,7 @@ use tap::TapFallible;
 
 use super::{
     client::ClientState,
-    server::{ServerState, TICK_TIME},
+    server::{ServerSet, ServerState},
     REPLICATION_CHANNEL_ID,
 };
 use crate::core::{game_state::GameState, game_world::WorldName};
@@ -61,18 +60,12 @@ impl Plugin for ReplicationPlugin {
                     .in_set(OnUpdate(ServerState::Hosting)),
             )
             .add_systems((
+                Self::world_diffs_sending_system
+                    .in_set(OnUpdate(ServerState::Hosting))
+                    .in_set(ServerSet::Tick),
                 Self::server_reset_system.in_schedule(OnExit(ServerState::Hosting)),
                 Self::client_reset_system.in_schedule(OnExit(ClientState::Connected)),
             ));
-
-        let world_diffs_sending_system =
-            Self::world_diffs_sending_system.in_set(OnUpdate(ServerState::Hosting));
-
-        if cfg!(test) {
-            app.add_system(world_diffs_sending_system);
-        } else {
-            app.add_system(world_diffs_sending_system.run_if(on_timer(TICK_TIME)));
-        }
     }
 }
 

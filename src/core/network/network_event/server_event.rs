@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use bevy::{
     ecs::{entity::MapEntities, event::Event},
     prelude::*,
-    time::common_conditions::on_timer,
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
 use serde::{de::DeserializeOwned, Serialize};
@@ -14,7 +13,7 @@ use crate::core::{
     network::{
         client::ClientState,
         replication::map_entity::NetworkEntityMap,
-        server::{AuthoritySet, ServerState, SERVER_ID, TICK_TIME},
+        server::{ServerSet, ServerState, SERVER_ID},
         REPLICATION_CHANNEL_ID,
     },
 };
@@ -60,21 +59,17 @@ impl ServerEventAppExt for App {
         self.add_event::<T>()
             .init_resource::<Events<ServerEvent<T>>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(receiving_system.in_set(OnUpdate(ClientState::Connected)));
-
-        let local_resending_system = local_resending_system::<T>
-            .after(sending_system::<T>)
-            .in_set(OnUpdate(WorldState::InWorld))
-            .in_set(AuthoritySet);
-        let sending_system = sending_system::<T>.in_set(OnUpdate(ServerState::Hosting));
-
-        if cfg!(test) {
-            self.add_system(sending_system)
-                .add_system(local_resending_system);
-        } else {
-            self.add_system(sending_system.run_if(on_timer(TICK_TIME)))
-                .add_system(local_resending_system.run_if(on_timer(TICK_TIME)));
-        }
+            .add_system(receiving_system.in_set(OnUpdate(ClientState::Connected)))
+            .add_systems(
+                (
+                    sending_system::<T>.in_set(OnUpdate(ServerState::Hosting)),
+                    local_resending_system::<T>
+                        .after(sending_system::<T>)
+                        .in_set(OnUpdate(WorldState::InWorld))
+                        .in_set(ServerSet::Authority),
+                )
+                    .in_set(ServerSet::Tick),
+            );
 
         self
     }

@@ -14,7 +14,7 @@ use crate::core::{
     network::{
         client::ClientState,
         replication::map_entity::NetworkEntityMap,
-        server::{AuthoritySet, ServerState, SERVER_ID},
+        server::{ServerSet, ServerState, SERVER_ID},
         REPLICATION_CHANNEL_ID,
     },
 };
@@ -64,7 +64,7 @@ impl ClientEventAppExt for App {
             .add_system(
                 local_resending_system::<T>
                     .in_set(OnUpdate(WorldState::InWorld))
-                    .in_set(AuthoritySet),
+                    .in_set(ServerSet::Authority),
             )
             .add_system(receiving_system::<T>.in_set(OnUpdate(ServerState::Hosting)));
 

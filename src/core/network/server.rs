@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
-use bevy::prelude::*;
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_renet::renet::{
     RenetClient, RenetConnectionConfig, RenetServer, ServerAuthentication, ServerConfig,
 };
@@ -13,13 +13,12 @@ use clap::Args;
 use super::{network_event::NetworkEventCounter, DEFAULT_PORT, PROTOCOL_ID};
 
 pub(crate) const SERVER_ID: u64 = 0;
-pub(super) const TICK_TIME: Duration = Duration::from_millis(100);
 
 pub(super) struct ServerPlugin;
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(AuthoritySet.run_if(not(resource_exists::<RenetClient>())))
+        app.configure_set(ServerSet::Authority.run_if(not(resource_exists::<RenetClient>())))
             .add_state::<ServerState>()
             .init_resource::<ServerSettings>()
             .add_systems((
@@ -30,6 +29,12 @@ impl Plugin for ServerPlugin {
                     .in_set(OnUpdate(ServerState::NoServer))
                     .run_if(resource_added::<RenetServer>()),
             ));
+
+        // Remove delay for tests.
+        if cfg!(not(test)) {
+            const TICK_TIME: Duration = Duration::from_millis(100);
+            app.configure_set(ServerSet::Tick.run_if(on_timer(TICK_TIME)));
+        }
     }
 }
 
@@ -43,9 +48,13 @@ impl ServerPlugin {
     }
 }
 
-/// Systems that runs with server or in singleplayer.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(crate) struct AuthoritySet;
+pub(crate) enum ServerSet {
+    /// Runs with server or in singleplayer.
+    Authority,
+    /// Runs on server tick.
+    Tick,
+}
 
 #[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
 pub(super) enum ServerState {

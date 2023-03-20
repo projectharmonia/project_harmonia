@@ -16,7 +16,7 @@ use super::{
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::replication_rules::{AppReplicationExt, Replication},
-        server::AuthoritySet,
+        server::ServerSet,
     },
     task::TaskQueue,
 };
@@ -47,7 +47,7 @@ impl Plugin for DollPlugin {
                     Self::selection_update_system,
                     Self::deselection_update_system,
                 )
-                    .in_set(AuthoritySet),
+                    .in_set(ServerSet::Authority),
             )
             .add_system(Self::deactivation_system.in_schedule(OnExit(GameState::Family)));
     }

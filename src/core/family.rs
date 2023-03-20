@@ -24,7 +24,7 @@ use super::{
             map_entity::ReflectMapEntity,
             replication_rules::{AppReplicationExt, Replication},
         },
-        server::AuthoritySet,
+        server::ServerSet,
     },
 };
 
@@ -39,7 +39,7 @@ impl Plugin for FamilyPlugin {
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()
-            .add_systems((Self::spawn_system, Self::despawn_system).in_set(AuthoritySet))
+            .add_systems((Self::spawn_system, Self::despawn_system).in_set(ServerSet::Authority))
             .add_systems((
                 Self::activation_system.in_schedule(OnEnter(GameState::Family)),
                 Self::family_sync_system.in_set(OnUpdate(WorldState::InWorld)),

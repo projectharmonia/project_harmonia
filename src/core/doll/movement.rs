@@ -8,7 +8,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
-    network::{network_event::client_event::ClientEvent, server::AuthoritySet},
+    network::{network_event::client_event::ClientEvent, server::ServerSet},
     task::{Task, TaskActivation, TaskCancel, TaskList, TaskRequest, TaskRequestKind},
 };
 
@@ -22,7 +22,9 @@ impl Plugin for MovementPlugin {
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
-            .add_systems((Self::activation_system, Self::cancellation_system).in_set(AuthoritySet));
+            .add_systems(
+                (Self::activation_system, Self::cancellation_system).in_set(ServerSet::Authority),
+            );
     }
 }
 
