@@ -6,14 +6,14 @@ use leafwing_input_manager::prelude::ActionState;
 use super::modal_window::ModalWindow;
 use crate::core::{
     action::Action,
-    network::{client::ConnectionSettings, sets::NetworkSet},
+    network::client::{ClientState, ConnectionSettings},
 };
 
 pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::connection_system.in_set(NetworkSet::ClientConnecting));
+        app.add_system(Self::connection_system.in_set(OnUpdate(ClientState::Connecting)));
     }
 }
 

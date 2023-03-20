@@ -14,7 +14,7 @@ use super::{
     network::{
         network_event::client_event::{ClientEvent, ClientEventAppExt},
         replication::replication_rules::AppReplicationExt,
-        sets::NetworkSet,
+        server::AuthoritySet,
     },
 };
 
@@ -42,7 +42,7 @@ impl Plugin for TaskPlugin {
                     Self::activation_system,
                     Self::cancellation_system,
                 )
-                    .in_set(NetworkSet::Authoritve),
+                    .in_set(AuthoritySet),
             );
     }
 }

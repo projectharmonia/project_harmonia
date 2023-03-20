@@ -12,7 +12,9 @@ use super::{EventChannel, NetworkEventCounter};
 use crate::core::{
     game_world::WorldState,
     network::{
-        replication::map_entity::NetworkEntityMap, server::SERVER_ID, sets::NetworkSet,
+        client::ClientState,
+        replication::map_entity::NetworkEntityMap,
+        server::{AuthoritySet, ServerState, SERVER_ID},
         REPLICATION_CHANNEL_ID,
     },
 };
@@ -58,13 +60,13 @@ impl ClientEventAppExt for App {
         self.add_event::<T>()
             .add_event::<ClientEvent<T>>()
             .insert_resource(EventChannel::<T>::new(current_channel_id))
-            .add_system(sending_system.in_set(NetworkSet::ClientConnected))
+            .add_system(sending_system.in_set(OnUpdate(ClientState::Connected)))
             .add_system(
                 local_resending_system::<T>
                     .in_set(OnUpdate(WorldState::InWorld))
-                    .in_set(NetworkSet::Authoritve),
+                    .in_set(AuthoritySet),
             )
-            .add_system(receiving_system::<T>.in_set(NetworkSet::Server));
+            .add_system(receiving_system::<T>.in_set(OnUpdate(ServerState::Hosting)));
 
         self
     }
@@ -147,13 +149,14 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::core::network::{network_preset::NetworkPresetPlugin, sets::NetworkSetsPlugin};
+    use crate::core::network::{
+        client::ClientPlugin, network_preset::NetworkPresetPlugin, server::ServerPlugin,
+    };
 
     #[test]
     fn sending_receiving() {
         let mut app = App::new();
-        app.add_plugin(NetworkSetsPlugin)
-            .add_client_event::<DummyEvent>()
+        app.add_client_event::<DummyEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
         let mut dummy_events = app.world.resource_mut::<Events<DummyEvent>>();
@@ -169,8 +172,7 @@ mod tests {
     #[test]
     fn mapping() {
         let mut app = App::new();
-        app.add_plugin(NetworkSetsPlugin)
-            .init_resource::<NetworkEntityMap>()
+        app.init_resource::<NetworkEntityMap>()
             .add_mapped_client_event::<MappedEvent>()
             .add_plugin(NetworkPresetPlugin::client_and_server());
 
@@ -198,7 +200,8 @@ mod tests {
     #[test]
     fn local_resending() {
         let mut app = App::new();
-        app.add_plugin(NetworkSetsPlugin)
+        app.add_plugin(ServerPlugin)
+            .add_plugin(ClientPlugin)
             .add_state::<WorldState>()
             .add_client_event::<DummyEvent>();
 

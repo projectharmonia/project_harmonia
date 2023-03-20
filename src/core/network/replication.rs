@@ -21,7 +21,11 @@ use bincode::{DefaultOptions, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
-use super::{server::TICK_TIME, sets::NetworkSet, REPLICATION_CHANNEL_ID};
+use super::{
+    client::ClientState,
+    server::{ServerState, TICK_TIME},
+    REPLICATION_CHANNEL_ID,
+};
 use crate::core::{game_state::GameState, game_world::WorldName};
 use despawn_tracker::{DespawnTracker, DespawnTrackerPlugin};
 use map_entity::{NetworkEntityMap, ReflectMapEntity};
@@ -47,22 +51,22 @@ impl Plugin for ReplicationPlugin {
                     Self::tick_ack_sending_system,
                     Self::world_diff_receiving_system,
                 )
-                    .in_set(NetworkSet::ClientConnected),
+                    .in_set(OnUpdate(ClientState::Connected)),
             )
             .add_systems(
                 (
                     Self::tick_acks_receiving_system,
                     Self::acked_ticks_cleanup_system,
                 )
-                    .in_set(NetworkSet::Server),
+                    .in_set(OnUpdate(ServerState::Hosting)),
             )
             .add_systems((
-                Self::server_reset_system.run_if(resource_removed::<RenetServer>()),
-                Self::client_reset_system.run_if(resource_removed::<RenetClient>()),
+                Self::server_reset_system.in_schedule(OnExit(ServerState::Hosting)),
+                Self::client_reset_system.in_schedule(OnExit(ClientState::Connected)),
             ));
 
         let world_diffs_sending_system =
-            Self::world_diffs_sending_system.in_set(NetworkSet::Server);
+            Self::world_diffs_sending_system.in_set(OnUpdate(ServerState::Hosting));
 
         if cfg!(test) {
             app.add_system(world_diffs_sending_system);
@@ -421,7 +425,6 @@ mod tests {
     use crate::core::network::{
         network_preset::NetworkPresetPlugin,
         replication::{map_entity::NetworkEntityMap, replication_rules::Replication},
-        sets::NetworkSetsPlugin,
     };
 
     #[test]
@@ -429,7 +432,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         let mut client = app.world.resource_mut::<RenetClient>();
@@ -450,7 +452,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         for _ in 0..10 {
@@ -467,7 +468,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<TableComponent>();
 
@@ -507,7 +507,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<TableComponent>()
             .register_and_replicate::<SparseSetComponent>();
@@ -551,7 +550,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin)
             .register_and_replicate::<MappedComponent>();
 
@@ -582,7 +580,6 @@ mod tests {
         app.add_state::<GameState>()
             .register_type::<NonReflectedComponent>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         app.update();
@@ -614,7 +611,6 @@ mod tests {
         let mut app = App::new();
         app.add_state::<GameState>()
             .add_plugin(NetworkPresetPlugin::client_and_server())
-            .add_plugin(NetworkSetsPlugin)
             .add_plugin(ReplicationPlugin);
 
         app.update();

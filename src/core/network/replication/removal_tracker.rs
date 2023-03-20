@@ -4,7 +4,7 @@ use super::{
     replication_rules::{Replication, ReplicationRules},
     AckedTicks,
 };
-use crate::core::network::sets::NetworkSet;
+use crate::core::network::server::ServerState;
 
 /// Stores component removals in [`RemovalTracker`] component to make them persistent across ticks.
 ///
@@ -13,12 +13,14 @@ pub(super) struct RemovalTrackerPlugin;
 
 impl Plugin for RemovalTrackerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((Self::insertion_system, Self::cleanup_system).in_set(NetworkSet::Server))
-            .add_system(
-                Self::detection_system
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(NetworkSet::Server),
-            );
+        app.add_systems(
+            (Self::insertion_system, Self::cleanup_system).in_set(OnUpdate(ServerState::Hosting)),
+        )
+        .add_system(
+            Self::detection_system
+                .in_base_set(CoreSet::PostUpdate)
+                .run_if(in_state(ServerState::Hosting)),
+        );
     }
 }
 
@@ -78,6 +80,8 @@ mod tests {
             .replicate::<Transform>()
             .add_plugin(NetworkPresetPlugin::server())
             .add_plugin(RemovalTrackerPlugin);
+
+        app.update();
 
         // To avoid cleanup.
         const DUMMY_CLIENT_ID: u64 = 0;

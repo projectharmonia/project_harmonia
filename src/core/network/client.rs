@@ -14,8 +14,40 @@ pub(super) struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ConnectionSettings>();
+        app.add_state::<ClientState>()
+            .init_resource::<ConnectionSettings>()
+            .add_systems((
+                Self::no_connection_state_system.run_if(resource_removed::<RenetClient>()),
+                Self::connecting_state_system
+                    .run_if(bevy_renet::client_connecting)
+                    .in_set(OnUpdate(ClientState::NoConnection)),
+                Self::connected_state_system
+                    .run_if(bevy_renet::client_connected)
+                    .in_set(OnUpdate(ClientState::Connecting)),
+            ));
     }
+}
+
+impl ClientPlugin {
+    fn no_connection_state_system(mut client_state: ResMut<NextState<ClientState>>) {
+        client_state.set(ClientState::NoConnection);
+    }
+
+    fn connecting_state_system(mut client_state: ResMut<NextState<ClientState>>) {
+        client_state.set(ClientState::Connecting);
+    }
+
+    fn connected_state_system(mut client_state: ResMut<NextState<ClientState>>) {
+        client_state.set(ClientState::Connected);
+    }
+}
+
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+pub(crate) enum ClientState {
+    #[default]
+    NoConnection,
+    Connecting,
+    Connected,
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Resource)]

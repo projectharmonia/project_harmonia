@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemChangeTick, prelude::*, utils::HashSet};
 
 use super::{replication_rules::Replication, AckedTicks};
-use crate::core::network::sets::NetworkSet;
+use crate::core::network::server::ServerState;
 
 /// Tracks entity despawns of entities with [`Replication`] component in [`DespawnTracker`] resource.
 ///
@@ -16,7 +16,7 @@ impl Plugin for DespawnTrackerPlugin {
                 Self::cleanup_system,
                 Self::detection_system,
             )
-                .in_set(NetworkSet::Server),
+                .in_set(OnUpdate(ServerState::Hosting)),
         );
     }
 }
@@ -80,6 +80,8 @@ mod tests {
         app.init_resource::<AckedTicks>()
             .add_plugin(NetworkPresetPlugin::server())
             .add_plugin(DespawnTrackerPlugin);
+
+        app.update();
 
         // To avoid cleanup.
         const DUMMY_CLIENT_ID: u64 = 0;

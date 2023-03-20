@@ -5,7 +5,9 @@ use std::{
 
 use anyhow::Result;
 use bevy::prelude::*;
-use bevy_renet::renet::{RenetConnectionConfig, RenetServer, ServerAuthentication, ServerConfig};
+use bevy_renet::renet::{
+    RenetClient, RenetConnectionConfig, RenetServer, ServerAuthentication, ServerConfig,
+};
 use clap::Args;
 
 use super::{network_event::NetworkEventCounter, DEFAULT_PORT, PROTOCOL_ID};
@@ -17,8 +19,39 @@ pub(super) struct ServerPlugin;
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ServerSettings>();
+        app.configure_set(AuthoritySet.run_if(not(resource_exists::<RenetClient>())))
+            .add_state::<ServerState>()
+            .init_resource::<ServerSettings>()
+            .add_systems((
+                Self::no_server_state_system
+                    .in_set(OnUpdate(ServerState::Hosting))
+                    .run_if(resource_removed::<RenetServer>()),
+                Self::hosting_state_system
+                    .in_set(OnUpdate(ServerState::NoServer))
+                    .run_if(resource_added::<RenetServer>()),
+            ));
     }
+}
+
+impl ServerPlugin {
+    fn no_server_state_system(mut server_state: ResMut<NextState<ServerState>>) {
+        server_state.set(ServerState::NoServer);
+    }
+
+    fn hosting_state_system(mut server_state: ResMut<NextState<ServerState>>) {
+        server_state.set(ServerState::Hosting);
+    }
+}
+
+/// Systems that runs with server or in singleplayer.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub(crate) struct AuthoritySet;
+
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+pub(super) enum ServerState {
+    #[default]
+    NoServer,
+    Hosting,
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Resource)]

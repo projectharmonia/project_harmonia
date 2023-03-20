@@ -20,7 +20,7 @@ use super::{
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
-        sets::NetworkSet,
+        server::AuthoritySet,
     },
 };
 use creating_wall::CreatingWallPlugin;
@@ -39,7 +39,7 @@ impl Plugin for WallPlugin {
             .add_systems(
                 (Self::init_system, Self::mesh_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
-            .add_system(Self::wall_creation_system.in_set(NetworkSet::Authoritve));
+            .add_system(Self::wall_creation_system.in_set(AuthoritySet));
     }
 }
 

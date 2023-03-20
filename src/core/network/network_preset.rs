@@ -1,9 +1,10 @@
+use bevy::prelude::*;
 use bevy_renet::{
     renet::{RenetClient, RenetServer},
     RenetClientPlugin, RenetServerPlugin,
 };
 
-use super::{network_event::NetworkEventCounter, *};
+use super::{client::ClientPlugin, network_event::NetworkEventCounter, server::ServerPlugin};
 use crate::core::network::{client::ConnectionSettings, server::ServerSettings};
 
 /// Automates server and / or client creation for unit tests.
@@ -41,7 +42,9 @@ impl NetworkPresetPlugin {
 
 impl Plugin for NetworkPresetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MinimalPlugins);
+        app.add_plugins(MinimalPlugins)
+            .add_plugin(ClientPlugin)
+            .add_plugin(ServerPlugin);
 
         let event_counter = *app
             .world

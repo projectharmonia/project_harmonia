@@ -27,7 +27,7 @@ use super::{
             server_event::{SendMode, ServerEvent, ServerEventAppExt},
         },
         replication::replication_rules::{AppReplicationExt, Replication},
-        sets::NetworkSet,
+        server::AuthoritySet,
     },
 };
 use mirror::MirrorPlugin;
@@ -51,7 +51,7 @@ impl Plugin for ObjectPlugin {
                     Self::movement_system,
                     Self::despawn_system,
                 )
-                    .in_set(NetworkSet::Authoritve),
+                    .in_set(AuthoritySet),
             );
     }
 }
