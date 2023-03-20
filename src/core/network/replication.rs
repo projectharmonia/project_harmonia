@@ -17,6 +17,7 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_renet::renet::{RenetClient, RenetServer, ServerEvent};
+use bincode::{DefaultOptions, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use tap::TapFallible;
 
@@ -94,7 +95,8 @@ impl ReplicationPlugin {
         for (client_id, mut world_diff) in client_diffs {
             world_diff.tick = current_tick; // Replace last acknowledged tick with the current.
             let serializer = WorldDiffSerializer::new(&world_diff, &registry);
-            let message = rmp_serde::to_vec(&serializer).expect("world diff should be serialized");
+            let message =
+                bincode::serialize(&serializer).expect("world diff should be serializable");
             set.p1()
                 .send_message(client_id, REPLICATION_CHANNEL_ID, message);
         }
@@ -111,7 +113,12 @@ impl ReplicationPlugin {
         let registry = registry.read();
         let mut received_diffs = Vec::<WorldDiff>::new();
         while let Some(message) = client.receive_message(REPLICATION_CHANNEL_ID) {
-            let mut deserializer = rmp_serde::Deserializer::from_read_ref(&message);
+            // Set options to match `bincode::serialize`.
+            // https://docs.rs/bincode/latest/bincode/config/index.html#options-struct-vs-bincode-functions
+            let options = DefaultOptions::new()
+                .with_fixint_encoding()
+                .allow_trailing_bytes();
+            let mut deserializer = bincode::Deserializer::from_slice(&message, options);
             let world_diff = WorldDiffDeserializer::new(&registry)
                 .deserialize(&mut deserializer)
                 .expect("server should send valid world diffs");
@@ -133,7 +140,7 @@ impl ReplicationPlugin {
     }
 
     fn tick_ack_sending_system(last_tick: Res<LastTick>, mut client: ResMut<RenetClient>) {
-        let message = rmp_serde::to_vec(&*last_tick)
+        let message = bincode::serialize(&*last_tick)
             .unwrap_or_else(|e| panic!("client ack should be serialized: {e}"));
         client.send_message(REPLICATION_CHANNEL_ID, message);
     }
@@ -145,7 +152,7 @@ impl ReplicationPlugin {
         for client_id in server.clients_id() {
             let mut received_ticks = Vec::<LastTick>::new();
             while let Some(message) = server.receive_message(client_id, REPLICATION_CHANNEL_ID) {
-                if let Ok(tick) = rmp_serde::from_slice(&message).tap_err(|e| {
+                if let Ok(tick) = bincode::deserialize(&message).tap_err(|e| {
                     error!("unable to deserialize a tick from client {client_id}: {e}")
                 }) {
                     received_ticks.push(tick);

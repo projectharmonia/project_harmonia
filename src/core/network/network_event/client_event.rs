@@ -76,7 +76,7 @@ fn sending_system<T: Event + Serialize + Debug>(
     channel: Res<EventChannel<T>>,
 ) {
     for event in events.iter() {
-        let message = rmp_serde::to_vec(&event).expect("unable to serialize client event");
+        let message = bincode::serialize(&event).expect("unable to serialize client event");
         client.send_message(channel.id, message);
         debug!("sent client event {event:?}");
     }
@@ -92,7 +92,7 @@ fn mapping_and_sending_system<T: Event + MapEntities + Serialize + Debug>(
         event
             .map_entities(entity_map.to_server())
             .unwrap_or_else(|e| panic!("unable to map entities for client event {event:?}: {e}"));
-        let message = rmp_serde::to_vec(&event).expect("unable to serialize mapped client event");
+        let message = bincode::serialize(&event).expect("unable to serialize mapped client event");
         client.send_message(channel.id, message);
         debug!("sent mapped client event {event:?}");
     }
@@ -120,7 +120,7 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
 ) {
     for client_id in server.clients_id() {
         while let Some(message) = server.receive_message(client_id, channel.id) {
-            if let Ok(event) = rmp_serde::from_slice(&message)
+            if let Ok(event) = bincode::deserialize(&message)
                 .tap_err(|e| error!("unable to deserialize event from client {client_id}: {e}"))
             {
                 debug!("received event {event:?} from client {client_id}");

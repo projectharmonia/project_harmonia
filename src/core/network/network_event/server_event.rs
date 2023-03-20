@@ -86,7 +86,7 @@ fn sending_system<T: Event + Serialize + Debug>(
     channel: Res<EventChannel<T>>,
 ) {
     for ServerEvent { event, mode } in server_events.iter() {
-        let message = rmp_serde::to_vec(&event).expect("unable serialize event for client(s)");
+        let message = bincode::serialize(&event).expect("event should be serializable");
 
         match *mode {
             SendMode::Broadcast => {
@@ -145,7 +145,7 @@ fn receiving_system<T: Event + DeserializeOwned + Debug>(
     channel: Res<EventChannel<T>>,
 ) {
     while let Some(message) = client.receive_message(channel.id) {
-        let event = rmp_serde::from_slice(&message).expect("server should send valid events");
+        let event = bincode::deserialize(&message).expect("server should send valid events");
         debug!("received event {event:?} from server");
         server_events.send(event);
     }
@@ -159,7 +159,7 @@ fn receiving_and_mapping_system<T: Event + MapEntities + DeserializeOwned + Debu
 ) {
     while let Some(message) = client.receive_message(channel.id) {
         let mut event: T =
-            rmp_serde::from_slice(&message).expect("server should send valid mapped events");
+            bincode::deserialize(&message).expect("server should send valid mapped events");
         debug!("received mapped event {event:?} from server");
         event
             .map_entities(entity_map.to_client())

@@ -1487,12 +1487,12 @@ dependencies = [
  "bevy_polyline",
  "bevy_rapier3d",
  "bevy_renet",
+ "bincode",
  "clap",
  "derive_more",
  "fastrand",
  "itertools",
  "leafwing-input-manager",
- "rmp-serde",
  "ron",
  "serde",
  "serde_test",
@@ -3073,28 +3073,6 @@ checksum = "b4330d94d7a880f7717fa78c30ef8e3f15e1cc165502a911da437ac89cb585a3"
 dependencies = [
  "chacha20poly1305",
  "log",
-]
-
-[[package]]
-name = "rmp"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44519172358fd6d58656c86ab8e7fbc9e1490c3e8f14d35ed78ca0dd07403c9f"
-dependencies = [
- "byteorder",
- "num-traits",
- "paste",
-]
-
-[[package]]
-name = "rmp-serde"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5b13be192e0220b8afb7222aa5813cb62cc269ebb5cac346ca6487681d2913e"
-dependencies = [
- "byteorder",
- "rmp",
- "serde",
 ]
 
 [[package]]
