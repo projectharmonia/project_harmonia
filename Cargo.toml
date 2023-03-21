@@ -21,7 +21,7 @@ bevy_polyline = { git = "https://github.com/Aceeri/bevy_polyline" }
 bevy-inspector-egui = "0.18"
 bevy-scene-hook = "6.0"
 bevy-trait-query = "0.2"
-leafwing-input-manager = { git = "https://github.com/dollisgame/leafwing-input-manager", branch = "common-conditions", default-features = false, features = [
+leafwing-input-manager = { version = "0.9", default-features = false, features = [
   "egui",
 ] }
 serde = "1.0"
