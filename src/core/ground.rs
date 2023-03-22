@@ -7,7 +7,7 @@ use bevy_rapier3d::prelude::*;
 
 use super::{
     city::{ActiveCity, CityPlugin},
-    collision_groups::DollisGroups,
+    collision_groups::LifescapeGroups,
     cursor_hover::Hoverable,
     game_state::GameState,
     player_camera::PlayerCamera,

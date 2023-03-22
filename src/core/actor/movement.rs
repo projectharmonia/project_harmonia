@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tap::TapOptional;
 
 use crate::core::{
-    doll::DollPlayers,
+    actor::Players,
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
@@ -49,10 +49,10 @@ impl MovementPlugin {
     fn cancellation_system(
         mut commands: Commands,
         mut cancel_events: EventReader<ClientEvent<TaskCancel>>,
-        dolls: Query<(Entity, &DollPlayers)>,
+        actors: Query<(Entity, &Players)>,
     ) {
         for ClientEvent { client_id, event } in cancel_events.iter().copied() {
-            if let Some(entity) = dolls
+            if let Some(entity) = actors
                 .iter()
                 .find(|(.., players)| players.contains(&client_id))
                 .map(|(entity, _)| entity)

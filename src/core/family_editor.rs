@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use super::{
-    doll::{ActiveDoll, DollBundle},
-    family::{Dolls, SelectedFamilySpawned},
+    actor::{ActiveActor, ActorBundle},
+    family::{Actors, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
@@ -47,19 +47,17 @@ impl FamilyEditorPlugin {
             });
     }
 
-    fn visibility_enable_system(
-        mut new_selected_dolls: Query<&mut Visibility, Added<SelectedDoll>>,
-    ) {
-        for mut visibility in &mut new_selected_dolls {
+    fn visibility_enable_system(mut selected_actors: Query<&mut Visibility, Added<SelectedActor>>) {
+        for mut visibility in &mut selected_actors {
             *visibility = Visibility::Visible;
         }
     }
 
     fn visibility_disable_system(
-        mut removed_selected_dolls: RemovedComponents<SelectedDoll>,
+        mut deselected_actors: RemovedComponents<SelectedActor>,
         mut visibility: Query<&mut Visibility>,
     ) {
-        for entity in &mut removed_selected_dolls {
+        for entity in &mut deselected_actors {
             // Entity could be despawned before.
             if let Ok(mut visibility) = visibility.get_mut(entity) {
                 *visibility = Visibility::Hidden;
@@ -71,25 +69,25 @@ impl FamilyEditorPlugin {
         mut commands: Commands,
         mut select_events: EventReader<SelectedFamilySpawned>,
         mut game_state: ResMut<NextState<GameState>>,
-        dolls: Query<&Dolls>,
+        actors: Query<&Actors>,
     ) {
         for event in select_events.iter() {
-            let dolls = dolls
+            let actors = actors
                 .get(event.0)
-                .expect("spawned family should have dolls");
-            let doll_entity = *dolls
+                .expect("spawned family should have actors");
+            let actor_entity = *actors
                 .first()
                 .expect("family should always have at least one member");
-            commands.entity(doll_entity).insert(ActiveDoll);
+            commands.entity(actor_entity).insert(ActiveActor);
             game_state.set(GameState::Family);
         }
     }
 
     fn reset_family_system(
         mut commands: Commands,
-        editable_dolls: Query<Entity, With<EditableDoll>>,
+        editable_actors: Query<Entity, With<EditableActor>>,
     ) {
-        for entity in &editable_dolls {
+        for entity in &editable_actors {
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -122,21 +120,21 @@ impl Default for EditableFamilyBundle {
 #[derive(Component, Default)]
 pub(crate) struct EditableFamily;
 
-/// Components for a doll inside the editor.
+/// Components for a actor inside the editor.
 #[derive(Bundle, Default)]
-pub(crate) struct EditableDollBundle {
-    editable_doll: EditableDoll,
+pub(crate) struct EditableActorBundle {
+    editable_actor: EditableActor,
     transform: Transform,
 
     #[bundle]
-    doll_bundle: DollBundle,
+    actor_bundle: ActorBundle,
 }
 
 #[derive(Component, Default)]
-pub(crate) struct EditableDoll;
+pub(crate) struct EditableActor;
 
 #[derive(Component)]
-pub(crate) struct SelectedDoll;
+pub(crate) struct SelectedActor;
 
 /// An event on which family will be reset.
 #[derive(Default)]

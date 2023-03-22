@@ -12,7 +12,7 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
-    doll::{ActiveDoll, DollBundle, PlayableDollBundle},
+    actor::{ActiveActor, ActorBundle, PlayableActorBundle},
     game_state::GameState,
     game_world::WorldState,
     network::{
@@ -52,26 +52,26 @@ impl Plugin for FamilyPlugin {
 impl FamilyPlugin {
     fn family_sync_system(
         mut commands: Commands,
-        dolls: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
-        mut families: Query<&mut Dolls>,
+        actors: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
+        mut families: Query<&mut Actors>,
     ) {
-        for (entity, family, family_sync) in &dolls {
+        for (entity, family, family_sync) in &actors {
             // Remove previous.
             if let Some(family) = family {
-                if let Ok(mut dolls) = families.get_mut(family.0) {
-                    let index = dolls
+                if let Ok(mut actors) = families.get_mut(family.0) {
+                    let index = actors
                         .iter()
-                        .position(|&doll_entity| doll_entity == entity)
-                        .expect("dolls should contain referenced entity");
-                    dolls.swap_remove(index);
+                        .position(|&actor_entity| actor_entity == entity)
+                        .expect("actors should contain referenced entity");
+                    actors.swap_remove(index);
                 }
             }
 
             commands.entity(entity).insert(Family(family_sync.0));
-            if let Ok(mut dolls) = families.get_mut(family_sync.0) {
-                dolls.push(entity);
+            if let Ok(mut actors) = families.get_mut(family_sync.0) {
+                actors.push(entity);
             } else {
-                commands.entity(family_sync.0).insert(Dolls(vec![entity]));
+                commands.entity(family_sync.0).insert(Actors(vec![entity]));
             }
         }
     }
@@ -85,9 +85,9 @@ impl FamilyPlugin {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            for doll_bundle in event.scene.doll_bundles {
-                commands.spawn(PlayableDollBundle::new(
-                    doll_bundle,
+            for actor_bundle in event.scene.actor_bundles {
+                commands.spawn(PlayableActorBundle::new(
+                    actor_bundle,
                     family_entity,
                     event.city_entity,
                 ));
@@ -104,16 +104,16 @@ impl FamilyPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<ClientEvent<FamilyDespawn>>,
-        families: Query<(Entity, &mut Dolls)>,
+        families: Query<(Entity, &mut Actors)>,
     ) {
         for event in despawn_events.iter().map(|event| event.event) {
-            if let Ok((family_entity, dolls)) = families
+            if let Ok((family_entity, actors)) = families
                 .get(event.0)
                 .tap_err(|e| error!("received an invalid family entity to despawn: {e}"))
             {
                 commands.entity(family_entity).despawn();
-                for &doll_entity in dolls.iter() {
-                    commands.entity(doll_entity).despawn_recursive();
+                for &entity in actors.iter() {
+                    commands.entity(entity).despawn_recursive();
                 }
             }
         }
@@ -121,21 +121,24 @@ impl FamilyPlugin {
 
     fn activation_system(
         mut commands: Commands,
-        activated_dolls: Query<&Family, Added<ActiveDoll>>,
+        activated_actors: Query<&Family, Added<ActiveActor>>,
     ) {
         commands
-            .entity(activated_dolls.single().0)
+            .entity(activated_actors.single().0)
             .insert(ActiveFamily);
     }
 
-    fn deactivation_system(mut commands: Commands, active_dolls: Query<Entity, With<ActiveDoll>>) {
+    fn deactivation_system(
+        mut commands: Commands,
+        active_actors: Query<Entity, With<ActiveActor>>,
+    ) {
         commands
-            .entity(active_dolls.single())
+            .entity(active_actors.single())
             .remove::<ActiveFamily>();
     }
 
-    fn cleanup_system(mut commands: Commands, dolls: Query<Entity, With<Dolls>>) {
-        for entity in &dolls {
+    fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<Actors>>) {
+        for entity in &actors {
             commands.entity(entity).despawn();
         }
     }
@@ -145,15 +148,15 @@ impl FamilyPlugin {
 pub(crate) struct FamilyScene {
     pub(crate) name: Name,
     pub(crate) budget: Budget,
-    pub(crate) doll_bundles: Vec<DollBundle>,
+    pub(crate) actor_bundles: Vec<ActorBundle>,
 }
 
 impl FamilyScene {
-    pub(crate) fn new(name: String, doll_bundles: Vec<DollBundle>) -> Self {
+    pub(crate) fn new(name: String, actor_bundles: Vec<ActorBundle>) -> Self {
         Self {
             name: Name::new(name),
             budget: Budget::default(),
-            doll_bundles,
+            actor_bundles,
         }
     }
 }
@@ -207,17 +210,17 @@ impl BuildingMode {
     }
 }
 
-/// Contains the family entity to which the doll belongs.
+/// Contains the family entity to which the actor belongs.
 #[derive(Component)]
 pub(crate) struct Family(pub(crate) Entity);
 
-/// Contains the entities of all the dolls that belong to the family.
+/// Contains the entities of all the actors that belong to the family.
 #[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct Dolls(Vec<Entity>);
+pub(crate) struct Actors(Vec<Entity>);
 
-/// Contains the family entity to which the doll belongs.
+/// Contains the family entity to which the actor belongs.
 ///
-/// Automatically updates [`Family`] and [`Dolls`] components after insertion.
+/// Automatically updates [`Family`] and [`Actors`] components after insertion.
 #[derive(Component, Reflect)]
 #[reflect(Component, MapEntities, MapEntity)]
 pub(crate) struct FamilySync(pub(crate) Entity);
@@ -239,7 +242,7 @@ impl MapEntities for FamilySync {
 
 /// Indicates locally controlled family.
 ///
-/// Inserted automatically on [`ActiveDoll`] insertion.
+/// Inserted automatically on [`ActiveActor`] insertion.
 #[derive(Component)]
 pub(crate) struct ActiveFamily;
 

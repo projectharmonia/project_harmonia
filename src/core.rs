@@ -1,4 +1,5 @@
 pub(super) mod action;
+pub(super) mod actor;
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
@@ -7,7 +8,6 @@ mod component_commands;
 pub(super) mod condition;
 mod cursor_hover;
 pub(super) mod developer;
-pub(super) mod doll;
 pub(super) mod error;
 pub(super) mod family;
 pub(super) mod family_editor;
@@ -29,12 +29,12 @@ pub(super) mod wall;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use action::ActionPlugin;
+use actor::ActorPlugin;
 use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
 use cli::CliPlugin;
 use cursor_hover::CursorHoverPlugin;
 use developer::DeveloperPlugin;
-use doll::DollPlugin;
 use family::FamilyPlugin;
 use family_editor::FamilyEditorPlugin;
 use game_paths::GamePathsPlugin;
@@ -62,7 +62,7 @@ impl PluginGroup for CorePlugins {
             .add(CityPlugin)
             .add(CliPlugin)
             .add(CursorHoverPlugin)
-            .add(DollPlugin)
+            .add(ActorPlugin)
             .add(LotPlugin)
             .add(GroundPlugin)
             .add(ActionPlugin)

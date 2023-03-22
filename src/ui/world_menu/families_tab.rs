@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
 
 use crate::core::{
-    doll::ActiveDoll,
-    family::{Dolls, FamilyDespawn},
+    actor::ActiveActor,
+    family::{Actors, FamilyDespawn},
     game_state::GameState,
 };
 
@@ -11,7 +11,7 @@ pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     game_state: &'a mut NextState<GameState>,
     despawn_events: &'a mut EventWriter<'we, FamilyDespawn>,
-    families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
+    families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Actors)>,
 }
 
 impl<'a, 'w, 's, 'we, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
@@ -20,7 +20,7 @@ impl<'a, 'w, 's, 'we, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
         commands: &'a mut Commands<'w, 's>,
         game_state: &'a mut NextState<GameState>,
         despawn_events: &'a mut EventWriter<'we, FamilyDespawn>,
-        families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Dolls)>,
+        families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Actors)>,
     ) -> Self {
         Self {
             commands,
@@ -33,7 +33,7 @@ impl<'a, 'w, 's, 'we, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
 
 impl FamiliesTab<'_, '_, '_, '_, '_, '_> {
     pub(super) fn show(self, ui: &mut Ui) {
-        for (family_entity, name, dolls) in self.families {
+        for (family_entity, name, actors) in self.families {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.add(
@@ -42,10 +42,10 @@ impl FamiliesTab<'_, '_, '_, '_, '_, '_> {
                     ui.label(name.as_str());
                     ui.with_layout(Layout::top_down(Align::Max), |ui| {
                         if ui.button("⏵ Play").clicked() {
-                            let doll_entity = *dolls
+                            let actor_entity = *actors
                                 .first()
                                 .expect("family always have at least one member");
-                            self.commands.entity(doll_entity).insert(ActiveDoll);
+                            self.commands.entity(actor_entity).insert(ActiveActor);
                             self.game_state.set(GameState::Family);
                         }
                         if ui.button("🗑 Delete").clicked() {

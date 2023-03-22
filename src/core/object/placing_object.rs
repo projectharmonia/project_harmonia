@@ -9,7 +9,7 @@ use crate::core::{
     action::Action,
     asset_metadata::{self, ObjectMetadata},
     city::CityMode,
-    collision_groups::DollisGroups,
+    collision_groups::LifescapeGroups,
     component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
     family::FamilyMode,

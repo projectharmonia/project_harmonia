@@ -86,11 +86,11 @@ impl LotPlugin {
         mut commands: Commands,
         mut activation_events: EventReader<TaskActivation>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
-        dolls: Query<&Family>,
+        actors: Query<&Family>,
     ) {
         for TaskActivation { entity, task } in activation_events.iter().copied() {
             if let TaskRequest::Buy(position) = task {
-                let family = dolls.get(entity).expect("doll should belong to a family");
+                let family = actors.get(entity).expect("actor should belong to a family");
                 if let Some(lot_entity) = lots
                     .iter()
                     .find(|(_, vertices)| vertices.contains_point(position))

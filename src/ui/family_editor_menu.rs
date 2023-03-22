@@ -19,11 +19,13 @@ use super::{
 };
 use crate::core::{
     action::Action,
+    actor::{ActorBundle, FirstName, LastName, Sex},
     city::City,
-    doll::{DollBundle, FirstName, LastName, Sex},
     error,
     family::{FamilyScene, FamilySpawn},
-    family_editor::{EditableDoll, EditableDollBundle, EditableFamily, FamilyReset, SelectedDoll},
+    family_editor::{
+        EditableActor, EditableActorBundle, EditableFamily, FamilyReset, SelectedActor,
+    },
     game_paths::GamePaths,
     game_state::GameState,
 };
@@ -35,7 +37,7 @@ impl Plugin for FamilyEditorMenuPlugin {
         app.add_systems(
             (
                 Self::personality_window_system,
-                Self::dolls_panel_system,
+                Self::actors_panel_system,
                 Self::buttons_system.pipe(error::report),
                 Self::save_family_dialog_system
                     .pipe(error::report)
@@ -50,9 +52,9 @@ impl Plugin for FamilyEditorMenuPlugin {
 impl FamilyEditorMenuPlugin {
     fn personality_window_system(
         mut egui: EguiContexts,
-        mut selected_dolls: Query<(&mut FirstName, &mut LastName, &mut Sex), With<SelectedDoll>>,
+        mut selected_actors: Query<(&mut FirstName, &mut LastName, &mut Sex), With<SelectedActor>>,
     ) {
-        let Ok((mut first_name, mut last_name, mut sex)) = selected_dolls.get_single_mut() else {
+        let Ok((mut first_name, mut last_name, mut sex)) = selected_actors.get_single_mut() else {
             return;
         };
 
@@ -95,42 +97,42 @@ impl FamilyEditorMenuPlugin {
             });
     }
 
-    fn dolls_panel_system(
+    fn actors_panel_system(
         mut commands: Commands,
         mut egui: EguiContexts,
         editable_families: Query<Entity, With<EditableFamily>>,
-        editable_dolls: Query<Entity, With<EditableDoll>>,
-        selected_dolls: Query<Entity, With<SelectedDoll>>,
+        editable_actors: Query<Entity, With<EditableActor>>,
+        selected_actors: Query<Entity, With<SelectedActor>>,
     ) {
-        Window::new("Dolls")
+        Window::new("Actors")
             .resizable(false)
             .title_bar(false)
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
                 ui.horizontal(|ui| {
-                    let mut editable_dolls = editable_dolls.iter().collect::<Vec<_>>();
-                    editable_dolls.sort(); // To preserve the order, it changes when we insert or remove `SelectedDoll`.
-                    let selected_entity = selected_dolls.get_single();
-                    for doll_entity in editable_dolls {
+                    let mut editable_actors = editable_actors.iter().collect::<Vec<_>>();
+                    editable_actors.sort(); // To preserve the order, it changes when we insert or remove `SelectedActor`.
+                    let selected_entity = selected_actors.get_single();
+                    for actor_entity in editable_actors {
                         if ui
                             .add(
                                 ImageButton::new(TextureId::Managed(0), (64.0, 64.0))
-                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(selected_entity, Ok(selected_entity) if selected_entity == doll_entity)),
+                                    .uv([WHITE_UV, WHITE_UV]).selected(matches!(selected_entity, Ok(selected_entity) if selected_entity == actor_entity)),
                             )
                             .clicked()
                         {
                             if let Ok(selected_entity) = selected_entity {
-                                commands.entity(selected_entity).remove::<SelectedDoll>();
+                                commands.entity(selected_entity).remove::<SelectedActor>();
                             }
-                            commands.entity(doll_entity).insert(SelectedDoll);
+                            commands.entity(actor_entity).insert(SelectedActor);
                         }
                     }
                     if ui.button("➕").clicked() {
                         if let Ok(current_entity) = selected_entity {
-                            commands.entity(current_entity).remove::<SelectedDoll>();
+                            commands.entity(current_entity).remove::<SelectedActor>();
                         }
                         commands.entity(editable_families.single()).with_children(|parent| {
-                            parent.spawn((EditableDollBundle::default(), SelectedDoll));
+                            parent.spawn((EditableActorBundle::default(), SelectedActor));
                         });
                     }
                 });
@@ -141,7 +143,7 @@ impl FamilyEditorMenuPlugin {
         mut commands: Commands,
         mut egui: EguiContexts,
         mut game_state: ResMut<NextState<GameState>>,
-        editable_dolls: Query<Entity, With<EditableDoll>>,
+        editable_actors: Query<Entity, With<EditableActor>>,
         names: Query<(&FirstName, &LastName)>,
     ) -> Result<()> {
         let mut confirmed = false;
@@ -157,17 +159,17 @@ impl FamilyEditorMenuPlugin {
             });
 
         if confirmed {
-            for (index, entity) in editable_dolls.iter().enumerate() {
+            for (index, entity) in editable_actors.iter().enumerate() {
                 let (first_name, last_name) = names
                     .get(entity)
-                    .expect("doll should have a first and a last name");
+                    .expect("actor should have a first and a last name");
                 ensure!(
                     !first_name.is_empty(),
-                    "doll {index} do not have a first name"
+                    "actor {index} do not have a first name"
                 );
                 ensure!(
                     !last_name.is_empty(),
-                    "doll {index} do not have a last name"
+                    "actor {index} do not have a last name"
                 );
             }
             commands.init_resource::<SaveFamilyDialog>();
@@ -182,7 +184,7 @@ impl FamilyEditorMenuPlugin {
         mut save_dialog: ResMut<SaveFamilyDialog>,
         mut action_state: ResMut<ActionState<Action>>,
         game_paths: Res<GamePaths>,
-        editable_dolls: Query<(&FirstName, &LastName, &Sex), With<EditableDoll>>,
+        editable_actors: Query<(&FirstName, &LastName, &Sex), With<EditableActor>>,
     ) -> Result<()> {
         let mut confirmed = false;
         let mut open = true;
@@ -211,16 +213,16 @@ impl FamilyEditorMenuPlugin {
             commands.remove_resource::<SaveFamilyDialog>();
 
             if confirmed {
-                let mut doll_bundle = Vec::new();
-                for (first_name, last_name, &sex) in &editable_dolls {
-                    doll_bundle.push(DollBundle {
+                let mut actor_bundles = Vec::new();
+                for (first_name, last_name, &sex) in &editable_actors {
+                    actor_bundles.push(ActorBundle {
                         first_name: first_name.clone(),
                         last_name: last_name.clone(),
                         sex,
                     })
                 }
                 let family_scene =
-                    FamilyScene::new(mem::take(&mut save_dialog.family_name), doll_bundle);
+                    FamilyScene::new(mem::take(&mut save_dialog.family_name), actor_bundles);
 
                 fs::create_dir_all(&game_paths.families)
                     .with_context(|| format!("unable to create {:?}", game_paths.families))?;
@@ -302,7 +304,7 @@ struct SaveFamilyDialog {
 impl FromWorld for SaveFamilyDialog {
     fn from_world(world: &mut World) -> Self {
         let last_name = world
-            .query_filtered::<&LastName, With<EditableDoll>>()
+            .query_filtered::<&LastName, With<EditableActor>>()
             .single(world);
 
         Self {

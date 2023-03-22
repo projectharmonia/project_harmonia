@@ -7,8 +7,8 @@ use tap::TapOptional;
 
 use super::{
     action::Action,
+    actor::Players,
     cursor_hover::CursorHover,
-    doll::DollPlayers,
     family::FamilyMode,
     game_state::GameState,
     network::{
@@ -66,10 +66,10 @@ impl TaskPlugin {
 
     fn queue_system(
         mut task_events: EventReader<ClientEvent<TaskRequest>>,
-        mut dolls: Query<(&mut TaskQueue, &DollPlayers)>,
+        mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
         for ClientEvent { client_id, event } in task_events.iter().copied() {
-            if let Some(mut task_queue) = dolls
+            if let Some(mut task_queue) = actors
                 .iter_mut()
                 .find(|(_, players)| players.contains(&client_id))
                 .map(|(task_queue, _)| task_queue)
@@ -82,9 +82,9 @@ impl TaskPlugin {
 
     fn activation_system(
         mut activation_events: EventWriter<TaskActivation>,
-        mut dolls: Query<(Entity, &mut TaskQueue)>,
+        mut actors: Query<(Entity, &mut TaskQueue)>,
     ) {
-        for (entity, mut task_queue) in &mut dolls {
+        for (entity, mut task_queue) in &mut actors {
             if let Some(task) = task_queue.pop() {
                 activation_events.send(TaskActivation { entity, task });
             }
@@ -93,10 +93,10 @@ impl TaskPlugin {
 
     fn cancellation_system(
         mut remove_events: EventReader<ClientEvent<TaskRequestRemove>>,
-        mut dolls: Query<(&mut TaskQueue, &DollPlayers)>,
+        mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
         for ClientEvent { client_id, event } in remove_events.iter().copied() {
-            if let Some(mut task_queue) = dolls
+            if let Some(mut task_queue) = actors
                 .iter_mut()
                 .find(|(.., players)| players.contains(&client_id))
                 .map(|(task_queue, _)| task_queue)
@@ -183,7 +183,7 @@ impl TaskQueue {
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub(crate) struct TaskCancel(pub(crate) TaskRequestKind);
 
-/// An event of removing a doll task from the queue.
+/// An event of removing a actor task from the queue.
 ///
 /// Emitted by players.
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]

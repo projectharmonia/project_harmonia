@@ -4,7 +4,7 @@ use derive_more::Display;
 use strum::EnumIter;
 
 use super::{
-    doll::ActiveDoll,
+    actor::ActiveActor,
     game_state::GameState,
     game_world::WorldState,
     network::replication::replication_rules::{AppReplicationExt, Replication},
@@ -28,7 +28,7 @@ impl Plugin for CityPlugin {
             ))
             .add_systems(
                 (
-                    Self::doll_activation_system,
+                    Self::actor_activation_system,
                     apply_system_buffers,
                     Self::activation_system,
                 )
@@ -63,12 +63,12 @@ impl CityPlugin {
         }
     }
 
-    fn doll_activation_system(
+    fn actor_activation_system(
         mut commands: Commands,
-        activated_dolls: Query<&Parent, Added<ActiveDoll>>,
+        activated_actors: Query<&Parent, Added<ActiveActor>>,
     ) {
         commands
-            .entity(activated_dolls.single().get())
+            .entity(activated_actors.single().get())
             .insert(ActiveCity);
     }
 

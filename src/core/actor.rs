@@ -22,19 +22,19 @@ use super::{
 };
 use movement::MovementPlugin;
 
-pub(super) struct DollPlugin;
+pub(super) struct ActorPlugin;
 
-impl Plugin for DollPlugin {
+impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MovementPlugin)
             .register_and_replicate::<FirstName>()
             .register_and_replicate::<Sex>()
             .register_and_replicate::<LastName>()
-            .register_and_replicate::<DollPlayers>()
+            .register_and_replicate::<Players>()
             .not_replicate_if_present::<Name, FirstName>()
-            .ignore_saving::<DollPlayers>()
-            .add_mapped_client_event::<DollSelect>()
-            .add_client_event::<DollDeselect>()
+            .ignore_saving::<Players>()
+            .add_mapped_client_event::<ActorSelect>()
+            .add_client_event::<ActorDeselect>()
             .add_systems(
                 (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
@@ -53,13 +53,13 @@ impl Plugin for DollPlugin {
     }
 }
 
-impl DollPlugin {
+impl ActorPlugin {
     fn init_system(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
-        new_dolls: Query<(Entity, &Sex), Changed<Sex>>,
+        actors: Query<(Entity, &Sex), Changed<Sex>>,
     ) {
-        for (entity, &sex) in &new_dolls {
+        for (entity, &sex) in &actors {
             let scene_handle: Handle<Scene> = asset_server.load(sex.model_path());
             commands
                 .entity(entity)
@@ -87,63 +87,63 @@ impl DollPlugin {
     }
 
     fn selection_system(
-        mut select_events: EventWriter<DollSelect>,
-        activated_dolls: Query<Entity, Added<ActiveDoll>>,
+        mut select_events: EventWriter<ActorSelect>,
+        activated_actors: Query<Entity, Added<ActiveActor>>,
     ) {
-        if let Ok(entity) = activated_dolls.get_single() {
-            select_events.send(DollSelect(entity));
+        if let Ok(entity) = activated_actors.get_single() {
+            select_events.send(ActorSelect(entity));
         }
     }
 
     fn selection_update_system(
         mut commands: Commands,
-        mut select_events: EventReader<ClientEvent<DollSelect>>,
-        mut doll_players: Query<&mut DollPlayers>,
+        mut select_events: EventReader<ClientEvent<ActorSelect>>,
+        mut actors: Query<&mut Players>,
     ) {
         for ClientEvent { client_id, event } in select_events.iter().copied() {
             // Remove previous.
-            for mut doll_players in &mut doll_players {
-                if let Some(index) = doll_players.iter().position(|&id| id == client_id) {
-                    if doll_players.len() == 1 {
-                        commands.entity(event.0).remove::<DollPlayers>();
+            for mut players in &mut actors {
+                if let Some(index) = players.iter().position(|&id| id == client_id) {
+                    if players.len() == 1 {
+                        commands.entity(event.0).remove::<Players>();
                     } else {
-                        doll_players.swap_remove(index);
+                        players.swap_remove(index);
                     }
                     break;
                 }
             }
 
-            if let Ok(mut doll_players) = doll_players.get_mut(event.0) {
-                doll_players.push(client_id);
+            if let Ok(mut players) = actors.get_mut(event.0) {
+                players.push(client_id);
             } else {
                 commands
                     .entity(event.0)
-                    .insert(DollPlayers(smallvec![client_id]));
+                    .insert(Players(smallvec![client_id]));
             }
         }
     }
 
     fn deselection_system(
-        mut deselect_events: EventWriter<DollDeselect>,
-        mut deactivated_dolls: RemovedComponents<ActiveDoll>,
+        mut deselect_events: EventWriter<ActorDeselect>,
+        mut deactivated_actors: RemovedComponents<ActiveActor>,
     ) {
-        if deactivated_dolls.iter().count() != 0 {
-            deselect_events.send(DollDeselect);
+        if deactivated_actors.iter().count() != 0 {
+            deselect_events.send(ActorDeselect);
         }
     }
 
     fn deselection_update_system(
         mut commands: Commands,
-        mut deselect_events: EventReader<ClientEvent<DollDeselect>>,
-        mut doll_players: Query<(Entity, &mut DollPlayers)>,
+        mut deselect_events: EventReader<ClientEvent<ActorDeselect>>,
+        mut actors: Query<(Entity, &mut Players)>,
     ) {
         for client_id in deselect_events.iter().map(|event| event.client_id) {
-            for (entity, mut doll_players) in &mut doll_players {
-                if let Some(index) = doll_players.iter().position(|&id| id == client_id) {
-                    if doll_players.len() == 1 {
-                        commands.entity(entity).remove::<DollPlayers>();
+            for (entity, mut players) in &mut actors {
+                if let Some(index) = players.iter().position(|&id| id == client_id) {
+                    if players.len() == 1 {
+                        commands.entity(entity).remove::<Players>();
                     } else {
-                        doll_players.swap_remove(index);
+                        players.swap_remove(index);
                     }
                     break;
                 }
@@ -153,13 +153,13 @@ impl DollPlugin {
 
     fn deactivation_system(
         mut commands: Commands,
-        mut deselect_events: EventWriter<DollDeselect>,
-        active_dolls: Query<Entity, With<ActiveDoll>>,
+        mut deselect_events: EventWriter<ActorDeselect>,
+        active_actors: Query<Entity, With<ActiveActor>>,
     ) {
         commands
-            .entity(active_dolls.single())
-            .remove::<ActiveDoll>();
-        deselect_events.send(DollDeselect);
+            .entity(active_actors.single())
+            .remove::<ActiveActor>();
+        deselect_events.send(ActorDeselect);
     }
 }
 
@@ -191,26 +191,26 @@ impl Sex {
 
     fn model_path(self) -> &'static str {
         match self {
-            Sex::Male => "base/dolls/bot/y_bot/y_bot.gltf#Scene0",
-            Sex::Female => "base/dolls/bot/x_bot/x_bot.gltf#Scene0",
+            Sex::Male => "base/actors/bot/y_bot/y_bot.gltf#Scene0",
+            Sex::Female => "base/actors/bot/x_bot/x_bot.gltf#Scene0",
         }
     }
 }
 
-/// Contains list of player IDs who controls this doll.
+/// Contains list of player IDs who controls this actor.
 #[derive(Component, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub(crate) struct DollPlayers(SmallVec<[u64; 2]>);
+pub(crate) struct Players(SmallVec<[u64; 2]>);
 
-/// Indicates locally controlled doll.
+/// Indicates locally controlled actor.
 #[derive(Component)]
-pub(crate) struct ActiveDoll;
+pub(crate) struct ActiveActor;
 
-/// Selects a doll entity to play.
+/// Selects a actor entity to play.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct DollSelect(pub(crate) Entity);
+pub(crate) struct ActorSelect(pub(crate) Entity);
 
-impl MapEntities for DollSelect {
+impl MapEntities for ActorSelect {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.0 = entity_map.get(self.0)?;
         Ok(())
@@ -218,21 +218,21 @@ impl MapEntities for DollSelect {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct DollDeselect;
+pub(crate) struct ActorDeselect;
 
-/// Minimal doll components.
+/// Minimal actor components.
 ///
-/// Used as a part of bigger bundles like [`PlayableDollBundle`] or [`EditableDollBundle`].
+/// Used as a part of bigger bundles like [`PlayableActorBundle`] or [`EditableActorBundle`].
 #[derive(Bundle, Debug, Deserialize, Serialize, Clone, Default)]
-pub(crate) struct DollBundle {
+pub(crate) struct ActorBundle {
     pub(crate) first_name: FirstName,
     pub(crate) last_name: LastName,
     pub(crate) sex: Sex,
 }
 
-/// Components for a doll inside the game.
+/// Components for a actor inside the game.
 #[derive(Bundle)]
-pub(super) struct PlayableDollBundle {
+pub(super) struct PlayableActorBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
@@ -240,18 +240,22 @@ pub(super) struct PlayableDollBundle {
     replication: Replication,
 
     #[bundle]
-    doll_bundle: DollBundle,
+    actor_bundle: ActorBundle,
 }
 
-impl PlayableDollBundle {
-    pub(super) fn new(doll_bundle: DollBundle, family_entity: Entity, city_entity: Entity) -> Self {
+impl PlayableActorBundle {
+    pub(super) fn new(
+        actor_bundle: ActorBundle,
+        family_entity: Entity,
+        city_entity: Entity,
+    ) -> Self {
         Self {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
             task_queue: Default::default(),
             replication: Replication,
-            doll_bundle,
+            actor_bundle,
         }
     }
 }

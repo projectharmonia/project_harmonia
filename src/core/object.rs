@@ -16,7 +16,7 @@ use tap::TapFallible;
 use super::{
     asset_metadata::{self, ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
-    collision_groups::DollisGroups,
+    collision_groups::LifescapeGroups,
     component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
     game_world::{parent_sync::ParentSync, WorldState},

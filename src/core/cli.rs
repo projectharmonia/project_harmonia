@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use clap::{Args, Parser, Subcommand};
 
 use super::{
+    actor::ActiveActor,
     city::{ActiveCity, City},
-    doll::ActiveDoll,
     error::{self, LastError},
-    family::Dolls,
+    family::Actors,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
     network::{
@@ -77,31 +77,31 @@ impl CliPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(&Dolls, &Name)>,
+        families: Query<(&Actors, &Name)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
                 QuickLoad::City { name } => {
-                    let city_entity = cities
+                    let entity = cities
                         .iter()
                         .find(|(_, city_name)| city_name.as_str() == name)
                         .map(|(city, _)| city)
                         .with_context(|| format!("unable to find city named {name}"))?;
 
-                    commands.entity(city_entity).insert(ActiveCity);
+                    commands.entity(entity).insert(ActiveCity);
                     game_state.set(GameState::City);
                 }
                 QuickLoad::Family { name } => {
-                    let dolls = families
+                    let actors = families
                         .iter()
                         .find(|(.., family_name)| family_name.as_str() == name)
-                        .map(|(dolls, _)| dolls)
+                        .map(|(actors, _)| actors)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
-                    let doll_entity = *dolls
+                    let entity = *actors
                         .first()
-                        .expect("family should contain at least one doll");
-                    commands.entity(doll_entity).insert(ActiveDoll);
+                        .expect("family should contain at least one actor");
+                    commands.entity(entity).insert(ActiveActor);
                     game_state.set(GameState::Family);
                 }
             }
@@ -111,11 +111,11 @@ impl CliPlugin {
     }
 }
 
-/// Returns `true` for the first full world load (including first update tick to apply components like [`Dolls`])
+/// Returns `true` for the first full world load (including first update tick to apply components like [`Actors`])
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_message: Option<Res<LastError>>,
-    added_scenes: Query<(), Added<Dolls>>,
+    added_scenes: Query<(), Added<Actors>>,
 ) -> bool {
     if *was_loaded {
         return false;

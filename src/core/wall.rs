@@ -12,7 +12,7 @@ use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    collision_groups::DollisGroups,
+    collision_groups::LifescapeGroups,
     game_world::{parent_sync::ParentSync, WorldState},
     network::{
         network_event::{

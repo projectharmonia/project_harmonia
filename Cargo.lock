@@ -1474,38 +1474,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd0c93bb4b0c6d9b77f4435b0ae98c24d17f1c45b2ff844c6151a07256ca923b"
 
 [[package]]
-name = "dollis"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bevy",
- "bevy-inspector-egui",
- "bevy-scene-hook",
- "bevy-trait-query",
- "bevy_atmosphere",
- "bevy_egui",
- "bevy_mod_outline",
- "bevy_polyline",
- "bevy_rapier3d",
- "bevy_renet",
- "bincode",
- "clap",
- "derive_more",
- "fastrand",
- "itertools",
- "leafwing-input-manager",
- "ron",
- "serde",
- "serde_test",
- "smallvec",
- "standard_paths",
- "strum",
- "tap",
- "toml",
- "walkdir",
-]
-
-[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2273,6 +2241,38 @@ checksum = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
 dependencies = [
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "lifescape"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "bevy-inspector-egui",
+ "bevy-scene-hook",
+ "bevy-trait-query",
+ "bevy_atmosphere",
+ "bevy_egui",
+ "bevy_mod_outline",
+ "bevy_polyline",
+ "bevy_rapier3d",
+ "bevy_renet",
+ "bincode",
+ "clap",
+ "derive_more",
+ "fastrand",
+ "itertools",
+ "leafwing-input-manager",
+ "ron",
+ "serde",
+ "serde_test",
+ "smallvec",
+ "standard_paths",
+ "strum",
+ "tap",
+ "toml",
+ "walkdir",
 ]
 
 [[package]]

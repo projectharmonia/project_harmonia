@@ -6,7 +6,7 @@ use bevy_egui::{
 use bevy_inspector_egui::egui::Frame;
 
 use crate::core::{
-    doll::ActiveDoll,
+    actor::ActiveActor,
     family::FamilyMode,
     game_state::GameState,
     task::{Task, TaskCancel, TaskQueue, TaskRequestKind, TaskRequestRemove},
@@ -29,7 +29,7 @@ impl LifeHudPlugin {
         mut egui: EguiContexts,
         mut cancel_events: EventWriter<TaskCancel>,
         mut remove_events: EventWriter<TaskRequestRemove>,
-        tasks: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveDoll>>,
+        tasks: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveActor>>,
     ) {
         const ICON_SIZE: f32 = 50.0;
         Area::new("Tasks")
