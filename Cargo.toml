@@ -15,7 +15,7 @@ bevy = { version = "0.10", default-features = false, features = [
 bevy_atmosphere = "0.6"
 bevy_renet = "0.0.7"
 bevy_rapier3d = "0.21"
-bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline", default-features = false }
+bevy_mod_outline = { version = "0.4", default-features = false }
 bevy_egui = "0.20"
 bevy_polyline = { git = "https://github.com/Aceeri/bevy_polyline" }
 bevy-inspector-egui = "0.18"
