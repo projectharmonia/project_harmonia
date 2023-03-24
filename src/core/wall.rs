@@ -7,6 +7,7 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
+use bevy_mod_replication::prelude::*;
 use bevy_rapier3d::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
@@ -14,14 +15,6 @@ use serde::{Deserialize, Serialize};
 use super::{
     collision_groups::LifescapeGroupsExt,
     game_world::{parent_sync::ParentSync, WorldState},
-    network::{
-        network_event::{
-            client_event::{ClientEvent, ClientEventAppExt},
-            server_event::{SendMode, ServerEvent, ServerEventAppExt},
-        },
-        replication::replication_rules::{AppReplicationExt, Replication},
-        server::ServerSet,
-    },
 };
 use creating_wall::CreatingWallPlugin;
 

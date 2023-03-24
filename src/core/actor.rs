@@ -4,6 +4,7 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
+use bevy_mod_replication::prelude::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
@@ -13,11 +14,6 @@ use super::{
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
-    network::{
-        network_event::client_event::{ClientEvent, ClientEventAppExt},
-        replication::replication_rules::{AppReplicationExt, Replication},
-        server::ServerSet,
-    },
     task::TaskQueue,
 };
 use movement::MovementPlugin;

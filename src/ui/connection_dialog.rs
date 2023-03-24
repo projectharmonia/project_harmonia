@@ -1,13 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use bevy_renet::renet::RenetClient;
-use leafwing_input_manager::prelude::ActionState;
+use bevy_mod_replication::prelude::*;
+use leafwing_input_manager::prelude::*;
 
 use super::modal_window::ModalWindow;
-use crate::core::{
-    action::Action,
-    network::client::{ClientState, ConnectionSettings},
-};
+use crate::core::{action::Action, network::ConnectionSettings};
 
 pub(super) struct ConnectionDialogPlugin;
 

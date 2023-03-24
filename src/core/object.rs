@@ -8,6 +8,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_replication::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_scene_hook::SceneHook;
 use serde::{Deserialize, Serialize};
@@ -21,14 +22,6 @@ use super::{
     cursor_hover::Hoverable,
     game_world::{parent_sync::ParentSync, WorldState},
     lot::LotVertices,
-    network::{
-        network_event::{
-            client_event::{ClientEvent, ClientEventAppExt},
-            server_event::{SendMode, ServerEvent, ServerEventAppExt},
-        },
-        replication::replication_rules::{AppReplicationExt, Replication},
-        server::ServerSet,
-    },
 };
 use mirror::MirrorPlugin;
 use placing_object::PlacingObjectPlugin;

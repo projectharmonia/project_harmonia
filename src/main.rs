@@ -18,9 +18,9 @@ use bevy_atmosphere::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
+use bevy_mod_replication::prelude::*;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
-use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 
@@ -47,14 +47,13 @@ fn main() {
                     },
                 }),
         )
+        .add_plugins(ReplicationPlugins)
         .add_plugin(WireframePlugin)
         .add_plugin(AtmospherePlugin)
         .add_plugin(HookPlugin)
         .add_plugin(InputManagerPlugin::<Action>::default())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(RenetServerPlugin::default())
-        .add_plugin(RenetClientPlugin::default())
         .add_plugin(OutlinePlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(EguiPlugin)

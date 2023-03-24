@@ -6,6 +6,7 @@ use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Button, DragValue, Grid, Image, Layout, TextureId},
     EguiContexts,
 };
+use bevy_mod_replication::prelude::*;
 use derive_more::Constructor;
 use leafwing_input_manager::prelude::ActionState;
 use tap::TapFallible;
@@ -17,9 +18,7 @@ use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorldPlugin, WorldName},
-    network::{
-        client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
-    },
+    network::{ConnectionSettings, ServerSettings},
 };
 
 pub(super) struct WorldBrowserPlugin;
@@ -106,7 +105,7 @@ impl WorldBrowserPlugin {
         mut egui: EguiContexts,
         mut action_state: ResMut<ActionState<Action>>,
         mut connection_settings: ResMut<ConnectionSettings>,
-        event_counter: Res<NetworkEventCounter>,
+        network_channels: Res<NetworkChannels>,
     ) -> Result<()> {
         let mut open = true;
         let mut confirmed = false;
@@ -134,7 +133,10 @@ impl WorldBrowserPlugin {
 
             if confirmed {
                 let client = connection_settings
-                    .create_client(*event_counter)
+                    .create_client(
+                        network_channels.client_channels(),
+                        network_channels.server_channels(),
+                    )
                     .context("unable to create connection")?;
                 commands.insert_resource(client);
             }
@@ -151,7 +153,7 @@ impl WorldBrowserPlugin {
         mut world_browser: ResMut<WorldBrowser>,
         mut server_settings: ResMut<ServerSettings>,
         dialog: Res<HostWorldDialog>,
-        event_counter: Res<NetworkEventCounter>,
+        network_channels: Res<NetworkChannels>,
     ) -> Result<()> {
         let mut open = true;
         let mut confirmed = false;
@@ -182,7 +184,10 @@ impl WorldBrowserPlugin {
                 commands.insert_resource(WorldName(world_name));
                 load_events.send_default();
                 let server = server_settings
-                    .create_server(*event_counter)
+                    .create_server(
+                        network_channels.server_channels(),
+                        network_channels.client_channels(),
+                    )
                     .context("unable to create server")?;
                 commands.insert_resource(server);
             }

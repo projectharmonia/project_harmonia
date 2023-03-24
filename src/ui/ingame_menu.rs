@@ -2,7 +2,7 @@ use std::mem;
 
 use bevy::{app::AppExit, prelude::*};
 use bevy_egui::{egui::Button, EguiContexts};
-use bevy_renet::renet::RenetClient;
+use bevy_mod_replication::prelude::ClientState;
 use leafwing_input_manager::{common_conditions::action_just_pressed, prelude::*};
 
 use crate::core::{
@@ -55,7 +55,7 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSave>,
         mut action_state: ResMut<ActionState<Action>>,
         mut game_state: ResMut<NextState<GameState>>,
-        client: Option<Res<RenetClient>>,
+        client_state: Res<State<ClientState>>,
         state: Res<State<GameState>>,
     ) {
         let mut open = true;
@@ -64,7 +64,10 @@ impl InGameMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.vertical_centered(|ui| {
                     if ui
-                        .add_enabled(client.is_none(), Button::new("Save"))
+                        .add_enabled(
+                            matches!(client_state.0, ClientState::NoConnection),
+                            Button::new("Save"),
+                        )
                         .clicked()
                     {
                         save_events.send_default();
@@ -130,7 +133,7 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSave>,
         mut action_state: ResMut<ActionState<Action>>,
         mut game_state: ResMut<NextState<GameState>>,
-        client: Option<Res<RenetClient>>,
+        client_state: Res<State<ClientState>>,
     ) {
         let mut open = true;
         ModalWindow::new("Exit to main menu")
@@ -138,7 +141,9 @@ impl InGameMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.label("Are you sure you want to exit to the main menu?");
                 ui.horizontal(|ui| {
-                    if client.is_none() && ui.button("Save and exit").clicked() {
+                    if matches!(client_state.0, ClientState::NoConnection)
+                        && ui.button("Save and exit").clicked()
+                    {
                         save_events.send_default();
                         game_state.set(GameState::MainMenu);
                         commands.remove_resource::<InGameMenu>();
@@ -166,7 +171,7 @@ impl InGameMenuPlugin {
         mut save_events: EventWriter<GameSave>,
         mut exit_events: EventWriter<AppExit>,
         mut action_state: ResMut<ActionState<Action>>,
-        client: Option<Res<RenetClient>>,
+        client_state: Res<State<ClientState>>,
     ) {
         let mut open = true;
         ModalWindow::new("Exit game")
@@ -174,7 +179,9 @@ impl InGameMenuPlugin {
             .show(egui.ctx_mut(), |ui| {
                 ui.label("Are you sure you want to exit the game?");
                 ui.horizontal(|ui| {
-                    if client.is_none() && ui.button("Save and exit").clicked() {
+                    if matches!(client_state.0, ClientState::NoConnection)
+                        && ui.button("Save and exit").clicked()
+                    {
                         save_events.send_default();
                         exit_events.send_default();
                     }

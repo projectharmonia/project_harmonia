@@ -6,11 +6,9 @@ use bevy::{
     prelude::*,
     scene,
 };
+use bevy_mod_replication::prelude::*;
 
 use super::WorldState;
-use crate::core::network::replication::{
-    map_entity::ReflectMapEntity, replication_rules::AppReplicationExt,
-};
 
 pub(super) struct ParentSyncPlugin;
 
@@ -62,16 +60,20 @@ mod tests {
     use bevy::{asset::AssetPlugin, scene::ScenePlugin};
 
     use super::*;
-    use crate::core::network::replication::replication_rules::ReplicationRulesPlugin;
 
     #[test]
     fn entity_mapping() {
         let mut app = App::new();
-        app.add_state::<WorldState>()
-            .add_plugin(AssetPlugin::default())
-            .add_plugin(ScenePlugin)
-            .add_plugin(ReplicationRulesPlugin)
-            .add_plugin(ParentSyncPlugin);
+        app.add_plugins(
+            ReplicationPlugins
+                .build()
+                .disable::<ClientPlugin>()
+                .disable::<ServerPlugin>(),
+        )
+        .add_plugin(AssetPlugin::default())
+        .add_plugin(ScenePlugin)
+        .add_plugin(ParentSyncPlugin)
+        .add_state::<WorldState>();
 
         app.world
             .resource_mut::<NextState<WorldState>>()

@@ -13,7 +13,7 @@ bevy = { version = "0.10", default-features = false, features = [
   "x11",
 ] }
 bevy_atmosphere = "0.6"
-bevy_renet = "0.0.7"
+bevy_mod_replication = { git = "https://github.com/lifescape-game/bevy_mod_replication" }
 bevy_rapier3d = "0.21"
 bevy_mod_outline = { version = "0.4", default-features = false }
 bevy_egui = "0.20"

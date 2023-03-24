@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
+use bevy_mod_replication::prelude::*;
 use clap::{Args, Parser, Subcommand};
 
 use super::{
@@ -9,9 +10,7 @@ use super::{
     family::Actors,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
-    network::{
-        client::ConnectionSettings, network_event::NetworkEventCounter, server::ServerSettings,
-    },
+    network::{ConnectionSettings, ServerSettings},
 };
 
 /// Logic for command line interface.
@@ -38,7 +37,7 @@ impl CliPlugin {
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         cli: Res<Cli>,
-        event_counter: Res<NetworkEventCounter>,
+        network_channels: Res<NetworkChannels>,
     ) -> Result<()> {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
@@ -51,7 +50,10 @@ impl CliPlugin {
                     server_settings,
                 } => {
                     let server = server_settings
-                        .create_server(*event_counter)
+                        .create_server(
+                            network_channels.server_channels(),
+                            network_channels.client_channels(),
+                        )
                         .context("unable to create server")?;
                     commands.insert_resource(server);
                     commands.insert_resource(server_settings.clone());
@@ -61,7 +63,10 @@ impl CliPlugin {
                 }
                 GameCommand::Join(connection_settings) => {
                     let client = connection_settings
-                        .create_client(*event_counter)
+                        .create_client(
+                            network_channels.client_channels(),
+                            network_channels.server_channels(),
+                        )
                         .context("unable to create client")?;
                     commands.insert_resource(client);
                     commands.insert_resource(connection_settings.clone());

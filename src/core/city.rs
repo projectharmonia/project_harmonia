@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_atmosphere::prelude::*;
+use bevy_mod_replication::prelude::*;
 use derive_more::Display;
 use strum::EnumIter;
 
@@ -7,7 +8,6 @@ use super::{
     actor::ActiveActor,
     game_state::GameState,
     game_world::WorldState,
-    network::replication::replication_rules::{AppReplicationExt, Replication},
     player_camera::{PlayerCamera, PlayerCameraBundle},
 };
 

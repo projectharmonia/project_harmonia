@@ -9,15 +9,11 @@ use bevy::{
     reflect::TypeRegistryArc,
     scene::{serde::SceneDeserializer, DynamicEntity},
 };
+use bevy_mod_replication::prelude::*;
 use bevy_trait_query::imports::ComponentId;
 use serde::de::DeserializeSeed;
 
-use super::{
-    error,
-    game_paths::GamePaths,
-    game_state::GameState,
-    network::replication::replication_rules::{Replication, ReplicationRules},
-};
+use super::{error, game_paths::GamePaths, game_state::GameState};
 use parent_sync::ParentSyncPlugin;
 
 pub(crate) struct GameWorldPlugin;
@@ -210,19 +206,19 @@ mod tests {
     use bevy::{asset::AssetPlugin, scene::ScenePlugin};
 
     use super::*;
-    use crate::core::{
-        city::City,
-        network::replication::replication_rules::{
-            AppReplicationExt, Replication, ReplicationRulesPlugin,
-        },
-    };
+    use crate::core::city::City;
 
     #[test]
     fn saving_and_loading() {
         const WORLD_NAME: &str = "Test world";
         let mut app = App::new();
         app.add_state::<GameState>()
-            .add_plugin(ReplicationRulesPlugin)
+            .add_plugins(
+                ReplicationPlugins
+                    .build()
+                    .disable::<ClientPlugin>()
+                    .disable::<ServerPlugin>(),
+            )
             .register_type::<Camera>()
             .replicate::<Transform>()
             .register_and_replicate::<City>()

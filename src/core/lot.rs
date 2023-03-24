@@ -6,6 +6,7 @@ use bevy::{
     math::Vec3Swizzles,
     prelude::*,
 };
+use bevy_mod_replication::prelude::*;
 use bevy_polyline::prelude::*;
 use derive_more::Display;
 use itertools::Itertools;
@@ -18,14 +19,6 @@ use super::{
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
-    network::{
-        network_event::{
-            client_event::{ClientEvent, ClientEventAppExt},
-            server_event::{SendMode, ServerEvent, ServerEventAppExt},
-        },
-        replication::replication_rules::{AppReplicationExt, Replication},
-        server::ServerSet,
-    },
     task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
 };
 use creating_lot::CreatingLotPlugin;

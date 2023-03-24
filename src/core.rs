@@ -56,7 +56,7 @@ pub(super) struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
-            .add(NetworkPlugin) // Should be built first to register server fixed timestep.
+            .add(NetworkPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
             .add(CityPlugin)
