@@ -730,7 +730,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_replication"
 version = "0.1.0"
-source = "git+https://github.com/lifescape-game/bevy_mod_replication#72c5d6760edfd1946d91332b5587a0bc2624d0f0"
+source = "git+https://github.com/lifescape-game/bevy_mod_replication#e1980e249c657dad371e340238300309fef0ea4a"
 dependencies = [
  "bevy",
  "bevy_renet",
