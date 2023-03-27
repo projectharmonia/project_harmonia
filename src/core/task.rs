@@ -58,10 +58,10 @@ impl TaskPlugin {
     }
 
     fn queue_system(
-        mut task_events: EventReader<ClientEvent<TaskRequest>>,
+        mut task_events: EventReader<FromClient<TaskRequest>>,
         mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
-        for ClientEvent { client_id, event } in task_events.iter().copied() {
+        for FromClient { client_id, event } in task_events.iter().copied() {
             if let Some(mut task_queue) = actors
                 .iter_mut()
                 .find(|(_, players)| players.contains(&client_id))
@@ -85,10 +85,10 @@ impl TaskPlugin {
     }
 
     fn cancellation_system(
-        mut remove_events: EventReader<ClientEvent<TaskRequestRemove>>,
+        mut remove_events: EventReader<FromClient<TaskRequestRemove>>,
         mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
-        for ClientEvent { client_id, event } in remove_events.iter().copied() {
+        for FromClient { client_id, event } in remove_events.iter().copied() {
             if let Some(mut task_queue) = actors
                 .iter_mut()
                 .find(|(.., players)| players.contains(&client_id))

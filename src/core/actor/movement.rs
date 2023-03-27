@@ -48,10 +48,10 @@ impl MovementPlugin {
 
     fn cancellation_system(
         mut commands: Commands,
-        mut cancel_events: EventReader<ClientEvent<TaskCancel>>,
+        mut cancel_events: EventReader<FromClient<TaskCancel>>,
         actors: Query<(Entity, &Players)>,
     ) {
-        for ClientEvent { client_id, event } in cancel_events.iter().copied() {
+        for FromClient { client_id, event } in cancel_events.iter().copied() {
             if let Some(entity) = actors
                 .iter()
                 .find(|(.., players)| players.contains(&client_id))

@@ -93,10 +93,10 @@ impl ActorPlugin {
 
     fn selection_update_system(
         mut commands: Commands,
-        mut select_events: EventReader<ClientEvent<ActorSelect>>,
+        mut select_events: EventReader<FromClient<ActorSelect>>,
         mut actors: Query<&mut Players>,
     ) {
-        for ClientEvent { client_id, event } in select_events.iter().copied() {
+        for FromClient { client_id, event } in select_events.iter().copied() {
             // Remove previous.
             for mut players in &mut actors {
                 if let Some(index) = players.iter().position(|&id| id == client_id) {
@@ -130,7 +130,7 @@ impl ActorPlugin {
 
     fn deselection_update_system(
         mut commands: Commands,
-        mut deselect_events: EventReader<ClientEvent<ActorDeselect>>,
+        mut deselect_events: EventReader<FromClient<ActorDeselect>>,
         mut actors: Query<(Entity, &mut Players)>,
     ) {
         for client_id in deselect_events.iter().map(|event| event.client_id) {

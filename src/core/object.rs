@@ -103,12 +103,12 @@ impl ObjectPlugin {
 
     fn spawn_system(
         mut commands: Commands,
-        mut spawn_events: EventReader<ClientEvent<ObjectSpawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        mut spawn_events: EventReader<FromClient<ObjectSpawn>>,
+        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
-        for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
+        for FromClient { client_id, event } in spawn_events.iter().cloned() {
             if event.position.y.abs() > HALF_CITY_SIZE {
                 error!(
                     "received object spawn position {} with 'y' outside of city size",
@@ -140,7 +140,7 @@ impl ObjectPlugin {
                 event.rotation,
                 parent_entity,
             ));
-            confirm_events.send(ServerEvent {
+            confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: ObjectEventConfirmed,
             });
@@ -148,18 +148,18 @@ impl ObjectPlugin {
     }
 
     fn movement_system(
-        mut move_events: EventReader<ClientEvent<ObjectMove>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        mut move_events: EventReader<FromClient<ObjectMove>>,
+        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
         mut transforms: Query<&mut Transform>,
     ) {
-        for ClientEvent { client_id, event } in move_events.iter().copied() {
+        for FromClient { client_id, event } in move_events.iter().copied() {
             if let Ok(mut transform) = transforms
                 .get_mut(event.entity)
                 .tap_err(|e| error!("unable to apply movement from client {client_id}: {e}"))
             {
                 transform.translation = event.translation;
                 transform.rotation = event.rotation;
-                confirm_events.send(ServerEvent {
+                confirm_events.send(ToClients {
                     mode: SendMode::Direct(client_id),
                     event: ObjectEventConfirmed,
                 });
@@ -169,12 +169,12 @@ impl ObjectPlugin {
 
     fn despawn_system(
         mut commands: Commands,
-        mut despawn_events: EventReader<ClientEvent<ObjectDespawn>>,
-        mut confirm_events: EventWriter<ServerEvent<ObjectEventConfirmed>>,
+        mut despawn_events: EventReader<FromClient<ObjectDespawn>>,
+        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
     ) {
-        for ClientEvent { client_id, event } in despawn_events.iter().copied() {
+        for FromClient { client_id, event } in despawn_events.iter().copied() {
             commands.entity(event.0).despawn_recursive();
-            confirm_events.send(ServerEvent {
+            confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: ObjectEventConfirmed,
             });

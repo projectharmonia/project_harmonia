@@ -56,13 +56,13 @@ impl WallPlugin {
 
     fn wall_creation_system(
         mut commands: Commands,
-        mut create_events: EventReader<ClientEvent<WallCreate>>,
-        mut confirm_events: EventWriter<ServerEvent<WallEventConfirmed>>,
+        mut create_events: EventReader<FromClient<WallCreate>>,
+        mut confirm_events: EventWriter<ToClients<WallEventConfirmed>>,
         children: Query<&Children>,
         mut walls: Query<&mut WallEdges, With<Replication>>,
     ) {
-        for ClientEvent { client_id, event } in create_events.iter().copied() {
-            confirm_events.send(ServerEvent {
+        for FromClient { client_id, event } in create_events.iter().copied() {
+            confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: WallEventConfirmed,
             });

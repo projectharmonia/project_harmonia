@@ -128,12 +128,12 @@ impl LotPlugin {
 
     fn spawn_system(
         mut commands: Commands,
-        mut spawn_events: EventReader<ClientEvent<LotSpawn>>,
-        mut confirm_events: EventWriter<ServerEvent<LotEventConfirmed>>,
+        mut spawn_events: EventReader<FromClient<LotSpawn>>,
+        mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for ClientEvent { client_id, event } in spawn_events.iter().cloned() {
+        for FromClient { client_id, event } in spawn_events.iter().cloned() {
             commands.spawn(LotBundle::new(event.vertices, event.city_entity));
-            confirm_events.send(ServerEvent {
+            confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
             });
@@ -141,11 +141,11 @@ impl LotPlugin {
     }
 
     fn movement_system(
-        mut move_events: EventReader<ClientEvent<LotMove>>,
-        mut confirm_events: EventWriter<ServerEvent<LotEventConfirmed>>,
+        mut move_events: EventReader<FromClient<LotMove>>,
+        mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
         mut lots: Query<&mut LotVertices>,
     ) {
-        for ClientEvent { client_id, event } in move_events.iter().copied() {
+        for FromClient { client_id, event } in move_events.iter().copied() {
             if let Ok(mut vertices) = lots
                 .get_mut(event.entity)
                 .tap_err(|e| error!("unable to apply lot movement from client {client_id}: {e}"))
@@ -153,7 +153,7 @@ impl LotPlugin {
                 for vertex in &mut vertices.0 {
                     *vertex += event.offset;
                 }
-                confirm_events.send(ServerEvent {
+                confirm_events.send(ToClients {
                     mode: SendMode::Direct(client_id),
                     event: LotEventConfirmed,
                 });
@@ -163,12 +163,12 @@ impl LotPlugin {
 
     fn despawn_system(
         mut commands: Commands,
-        mut despawn_events: EventReader<ClientEvent<LotDespawn>>,
-        mut confirm_events: EventWriter<ServerEvent<LotEventConfirmed>>,
+        mut despawn_events: EventReader<FromClient<LotDespawn>>,
+        mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for ClientEvent { client_id, event } in despawn_events.iter().copied() {
+        for FromClient { client_id, event } in despawn_events.iter().copied() {
             commands.entity(event.0).despawn();
-            confirm_events.send(ServerEvent {
+            confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
             });

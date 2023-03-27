@@ -68,10 +68,10 @@ impl FamilyPlugin {
 
     fn spawn_system(
         mut commands: Commands,
-        mut spawn_events: ResMut<Events<ClientEvent<FamilySpawn>>>,
-        mut select_events: EventWriter<ServerEvent<SelectedFamilySpawned>>,
+        mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
+        mut select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
     ) {
-        for ClientEvent { client_id, event } in spawn_events.drain() {
+        for FromClient { client_id, event } in spawn_events.drain() {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
@@ -83,7 +83,7 @@ impl FamilyPlugin {
                 ));
             }
             if event.select {
-                select_events.send(ServerEvent {
+                select_events.send(ToClients {
                     mode: SendMode::Direct(client_id),
                     event: SelectedFamilySpawned(family_entity),
                 });
@@ -93,7 +93,7 @@ impl FamilyPlugin {
 
     fn despawn_system(
         mut commands: Commands,
-        mut despawn_events: EventReader<ClientEvent<FamilyDespawn>>,
+        mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
         families: Query<(Entity, &mut Actors)>,
     ) {
         for event in despawn_events.iter().map(|event| event.event) {
