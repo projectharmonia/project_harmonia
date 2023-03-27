@@ -19,6 +19,7 @@ license-files = []
 multiple-versions = "deny"
 wildcards = "allow"
 skip = [
+  { name = "syn", version = "1.0" },           # from bevy_derive v0.10.0
   { name = "ahash", version = "0.7.6" },       # from bevy_utils v0.10.0
   { name = "memoffset", version = "0.6.5" },   # from nix v0.24.3
   { name = "nix", version = "0.24" },          # from x11rb v0.10.1
