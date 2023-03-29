@@ -4,7 +4,7 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
@@ -23,10 +23,10 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MovementPlugin)
-            .register_and_replicate::<FirstName>()
-            .register_and_replicate::<Sex>()
-            .register_and_replicate::<LastName>()
-            .register_and_replicate::<Players>()
+            .replicate::<FirstName>()
+            .replicate::<Sex>()
+            .replicate::<LastName>()
+            .replicate::<Players>()
             .not_replicate_if_present::<Name, FirstName>()
             .ignore_saving::<Players>()
             .add_mapped_client_event::<ActorSelect>()

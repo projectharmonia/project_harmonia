@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_atmosphere::prelude::*;
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Display;
 use strum::EnumIter;
 
@@ -16,7 +16,7 @@ pub(super) struct CityPlugin;
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<CityMode>()
-            .register_and_replicate::<City>()
+            .replicate::<City>()
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<PlacedCities>()
             .add_systems((

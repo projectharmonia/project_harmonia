@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
     scene,
 };
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 
 use super::WorldState;
 
@@ -17,7 +17,7 @@ pub(super) struct ParentSyncPlugin;
 /// This allows to save / replicate hierarchy using only [`SyncParent`] component.
 impl Plugin for ParentSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.register_and_replicate::<ParentSync>().add_system(
+        app.replicate::<ParentSync>().add_system(
             Self::parent_sync_system
                 .after(scene::scene_spawner_system)
                 .in_set(OnUpdate(WorldState::InWorld)),

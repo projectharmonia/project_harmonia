@@ -6,8 +6,8 @@ use bevy::{
     math::Vec3Swizzles,
     prelude::*,
 };
-use bevy_mod_replication::prelude::*;
 use bevy_polyline::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ impl Plugin for LotPlugin {
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
             .register_type::<Vec<Vec2>>()
-            .register_and_replicate::<LotVertices>()
+            .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
             .add_mapped_client_event::<LotSpawn>()
             .add_mapped_client_event::<LotMove>()

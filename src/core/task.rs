@@ -1,5 +1,5 @@
 use bevy::{math::Vec3Swizzles, prelude::*, reflect::FromReflect};
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_trait_query::queryable;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.register_and_replicate::<TaskQueue>()
+        app.replicate::<TaskQueue>()
             .register_type::<TaskRequest>()
             .register_type::<(u8, TaskRequest)>()
             .register_type::<Vec<(u8, TaskRequest)>>()

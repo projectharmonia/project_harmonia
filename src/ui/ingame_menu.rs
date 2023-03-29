@@ -2,7 +2,7 @@ use std::mem;
 
 use bevy::{app::AppExit, prelude::*};
 use bevy_egui::{egui::Button, EguiContexts};
-use bevy_mod_replication::prelude::ClientState;
+use bevy_replicon::prelude::ClientState;
 use leafwing_input_manager::{common_conditions::action_just_pressed, prelude::*};
 
 use crate::core::{

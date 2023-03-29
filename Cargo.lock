@@ -728,20 +728,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_mod_replication"
-version = "0.1.0"
-source = "git+https://github.com/lifescape-game/bevy_mod_replication#f29ff50d8d0d3338328718d772ba189945902338"
-dependencies = [
- "bevy",
- "bevy_renet",
- "bincode",
- "derive_more",
- "serde",
- "strum",
- "tap",
-]
-
-[[package]]
 name = "bevy_pbr"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -890,6 +876,21 @@ checksum = "e65ed3107954a2ee08513461618147d1c6a31527f1e390a414496b35c388af9e"
 dependencies = [
  "bevy",
  "renet",
+]
+
+[[package]]
+name = "bevy_replicon"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c64cbd774df05cfdd891646e02e62c93b2ecdf0043cbea0d640117f5687e9fc7"
+dependencies = [
+ "bevy",
+ "bevy_renet",
+ "bincode",
+ "derive_more",
+ "serde",
+ "strum",
+ "tap",
 ]
 
 [[package]]
@@ -2268,9 +2269,9 @@ dependencies = [
  "bevy_atmosphere",
  "bevy_egui",
  "bevy_mod_outline",
- "bevy_mod_replication",
  "bevy_polyline",
  "bevy_rapier3d",
+ "bevy_replicon",
  "bincode",
  "clap",
  "derive_more",

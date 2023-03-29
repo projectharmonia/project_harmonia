@@ -6,7 +6,7 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -24,8 +24,8 @@ impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<FamilyMode>()
             .add_state::<BuildingMode>()
-            .register_and_replicate::<FamilySync>()
-            .register_and_replicate::<Budget>()
+            .replicate::<FamilySync>()
+            .replicate::<Budget>()
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()

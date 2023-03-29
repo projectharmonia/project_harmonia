@@ -9,7 +9,7 @@ use bevy::{
     reflect::TypeRegistryArc,
     scene::{serde::SceneDeserializer, DynamicEntity},
 };
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_trait_query::imports::ComponentId;
 use serde::de::DeserializeSeed;
 
@@ -221,7 +221,7 @@ mod tests {
             )
             .register_type::<Camera>()
             .replicate::<Transform>()
-            .register_and_replicate::<City>()
+            .replicate::<City>()
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<GamePaths>()
             .insert_resource(WorldName(WORLD_NAME.to_string()))

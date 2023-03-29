@@ -18,9 +18,9 @@ use bevy_atmosphere::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
-use bevy_mod_replication::prelude::*;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 

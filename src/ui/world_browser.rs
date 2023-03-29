@@ -6,7 +6,7 @@ use bevy_egui::{
     egui::{epaint::WHITE_UV, Align, Button, DragValue, Grid, Image, Layout, TextureId},
     EguiContexts,
 };
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Constructor;
 use leafwing_input_manager::prelude::ActionState;
 use tap::TapFallible;

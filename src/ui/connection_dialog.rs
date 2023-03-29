@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 use super::modal_window::ModalWindow;

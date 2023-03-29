@@ -8,8 +8,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
-use bevy_mod_replication::prelude::*;
 use bevy_rapier3d::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_scene_hook::SceneHook;
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
@@ -32,7 +32,7 @@ impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(PlacingObjectPlugin)
             .add_plugin(MirrorPlugin)
-            .register_and_replicate::<ObjectPath>()
+            .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>()
             .add_mapped_client_event::<ObjectMove>()
             .add_mapped_client_event::<ObjectDespawn>()

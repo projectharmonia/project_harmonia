@@ -7,8 +7,8 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
-use bevy_mod_replication::prelude::*;
 use bevy_rapier3d::prelude::*;
+use bevy_replicon::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ impl Plugin for WallPlugin {
             .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
-            .register_and_replicate::<WallEdges>()
+            .replicate::<WallEdges>()
             .add_mapped_client_event::<WallCreate>()
             .add_server_event::<WallEventConfirmed>()
             .add_systems(

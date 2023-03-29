@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_trait_query::RegisterExt;
 use serde::{Deserialize, Serialize};
 use tap::TapOptional;

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use bevy_mod_replication::prelude::*;
+use bevy_replicon::prelude::*;
 use clap::{Args, Parser, Subcommand};
 
 use super::{
