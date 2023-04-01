@@ -37,7 +37,7 @@ impl ParentSyncPlugin {
 }
 
 #[derive(Component, Reflect, Clone, Copy)]
-#[reflect(Component, MapEntities, MapEntity)]
+#[reflect(Component, MapEntities)]
 pub(crate) struct ParentSync(pub(crate) Entity);
 
 // We need to impl either [`FromWorld`] or [`Default`] so [`SyncParent`] can be registered as [`Reflect`].

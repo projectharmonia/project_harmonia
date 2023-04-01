@@ -212,7 +212,7 @@ pub(crate) struct Actors(Vec<Entity>);
 ///
 /// Automatically updates [`Family`] and [`Actors`] components after insertion.
 #[derive(Component, Reflect)]
-#[reflect(Component, MapEntities, MapEntity)]
+#[reflect(Component, MapEntities)]
 pub(crate) struct FamilySync(pub(crate) Entity);
 
 // We need to impl either [`FromWorld`] or [`Default`] so [`FamilySync`] can be registered as [`Reflect`].
