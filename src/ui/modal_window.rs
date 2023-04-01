@@ -4,7 +4,7 @@ use bevy_egui::{
         Align2, Area, Color32, Context, Id, InnerResponse, LayerId, Pos2, Shape, Ui, WidgetText,
         Window,
     },
-    EguiContexts,
+    EguiContext,
 };
 use leafwing_input_manager::prelude::*;
 use smallvec::SmallVec;
@@ -20,9 +20,12 @@ impl Plugin for ModalWindowPlugin {
 }
 
 impl ModalWindowPlugin {
-    fn modal_area_system(mut egui: EguiContexts) {
+    fn modal_area_system(mut egui: Query<&mut EguiContext>) {
+        let Ok(mut egui) = egui.get_single_mut() else {
+            return;
+        };
         let Some(layer) = egui
-            .ctx_mut()
+            .get_mut()
             .data_mut(|data| data.get_temp_mut_or_default::<ModalIds>(Id::null()).retain_registered())
         else {
             return
@@ -31,7 +34,7 @@ impl ModalWindowPlugin {
         const BACKGROUND_ALPHA: u8 = 150;
         Area::new(Id::new(layer)) // Use layer of the widget as an id to avoid ordering issues.
             .fixed_pos(Pos2::ZERO)
-            .show(egui.ctx_mut(), |ui| {
+            .show(egui.get_mut(), |ui| {
                 let screen = ui.ctx().input(|input| input.screen_rect());
                 ui.painter().add(Shape::rect_filled(
                     screen,
@@ -41,7 +44,7 @@ impl ModalWindowPlugin {
                 ui.allocate_space(screen.size());
             });
 
-        egui.ctx_mut().move_to_top(layer);
+        egui.get_mut().move_to_top(layer);
     }
 }
 
