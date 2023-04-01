@@ -48,13 +48,11 @@ impl GroundPlugin {
                 });
                 parent.spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
-                        illuminance: 10000.0,
+                        illuminance: 6000.0,
                         shadows_enabled: true,
-                        shadow_depth_bias: 0.25,
                         ..Default::default()
                     },
-                    transform: Transform::from_xyz(4.0, 8.0, 4.0)
-                        .with_rotation(Quat::from_rotation_x(-1.4)),
+                    transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..Default::default()
                 });
             });
