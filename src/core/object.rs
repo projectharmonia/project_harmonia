@@ -117,11 +117,10 @@ impl ObjectPlugin {
                 continue;
             }
 
-            let Some(city_entity) = cities
+            let Some((city_entity, _)) = cities
                 .iter()
                 .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
                 .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
-                .map(|(entity, _)| entity)
             else {
                 error!("unable to find a city for object spawn position {}", event.position);
                 continue;

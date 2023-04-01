@@ -52,10 +52,9 @@ impl MovementPlugin {
         actors: Query<(Entity, &Players)>,
     ) {
         for FromClient { client_id, event } in cancel_events.iter().copied() {
-            if let Some(entity) = actors
+            if let Some((entity, _)) = actors
                 .iter()
                 .find(|(.., players)| players.contains(&client_id))
-                .map(|(entity, _)| entity)
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let TaskRequestKind::Walk = event.0 {

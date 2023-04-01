@@ -62,10 +62,9 @@ impl TaskPlugin {
         mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
         for FromClient { client_id, event } in task_events.iter().copied() {
-            if let Some(mut task_queue) = actors
+            if let Some((mut task_queue, _)) = actors
                 .iter_mut()
                 .find(|(_, players)| players.contains(&client_id))
-                .map(|(task_queue, _)| task_queue)
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 task_queue.push_task(event);
@@ -89,10 +88,9 @@ impl TaskPlugin {
         mut actors: Query<(&mut TaskQueue, &Players)>,
     ) {
         for FromClient { client_id, event } in remove_events.iter().copied() {
-            if let Some(mut task_queue) = actors
+            if let Some((mut task_queue, _)) = actors
                 .iter_mut()
                 .find(|(.., players)| players.contains(&client_id))
-                .map(|(task_queue, _)| task_queue)
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let Some(index) = task_queue.queue.iter().position(|(id, _)| *id == event.0) {

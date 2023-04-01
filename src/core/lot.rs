@@ -84,10 +84,9 @@ impl LotPlugin {
         for TaskActivation { entity, task } in activation_events.iter().copied() {
             if let TaskRequest::Buy(position) = task {
                 let family = actors.get(entity).expect("actor should belong to a family");
-                if let Some(lot_entity) = lots
+                if let Some((lot_entity, _)) = lots
                     .iter()
                     .find(|(_, vertices)| vertices.contains_point(position))
-                    .map(|(lot_entity, _)| lot_entity)
                 {
                     commands.entity(lot_entity).insert(LotFamily(family.0));
                 }

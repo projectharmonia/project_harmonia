@@ -87,10 +87,9 @@ impl CliPlugin {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
                 QuickLoad::City { name } => {
-                    let entity = cities
+                    let (entity, _) = cities
                         .iter()
                         .find(|(_, city_name)| city_name.as_str() == name)
-                        .map(|(city, _)| city)
                         .with_context(|| format!("unable to find city named {name}"))?;
 
                     commands.entity(entity).insert(ActiveCity);

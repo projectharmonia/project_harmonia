@@ -49,10 +49,9 @@ impl CreatingWallPlugin {
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
     ) {
         if let Some(position) = position {
-            if let Some((entity, children)) = lots
+            if let Some((entity, children, _)) = lots
                 .iter()
                 .find(|(.., vertices)| vertices.contains_point(position))
-                .map(|(entity, children, _)| (entity, children))
             {
                 // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
                 let vertex = walls
