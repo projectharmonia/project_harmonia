@@ -90,7 +90,7 @@ impl TaskPlugin {
         for FromClient { client_id, event } in remove_events.iter().copied() {
             if let Some((mut task_queue, _)) = actors
                 .iter_mut()
-                .find(|(.., players)| players.contains(&client_id))
+                .find(|(_, players)| players.contains(&client_id))
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let Some(index) = task_queue.queue.iter().position(|(id, _)| *id == event.0) {

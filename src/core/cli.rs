@@ -98,7 +98,7 @@ impl CliPlugin {
                 QuickLoad::Family { name } => {
                     let (family_entity, _) = families
                         .iter()
-                        .find(|(.., family_name)| family_name.as_str() == name)
+                        .find(|(_, family_name)| family_name.as_str() == name)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
                     // Search using `FamilySync` because `Actors` component inserted to family on update.

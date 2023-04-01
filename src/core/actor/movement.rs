@@ -54,7 +54,7 @@ impl MovementPlugin {
         for FromClient { client_id, event } in cancel_events.iter().copied() {
             if let Some((entity, _)) = actors
                 .iter()
-                .find(|(.., players)| players.contains(&client_id))
+                .find(|(_, players)| players.contains(&client_id))
                 .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let TaskRequestKind::Walk = event.0 {
