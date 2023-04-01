@@ -7,7 +7,7 @@ use super::{
     actor::ActiveActor,
     city::{ActiveCity, City},
     error::{self, LastError},
-    family::Actors,
+    family::FamilySync,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
     network::{ConnectionSettings, ServerSettings},
@@ -25,7 +25,6 @@ impl Plugin for CliPlugin {
             .add_system(
                 Self::quick_loading_system
                     .pipe(error::report)
-                    .after(apply_state_transition::<GameState>)
                     .in_set(OnUpdate(WorldState::InWorld))
                     .run_if(first_world_load),
             );
@@ -82,7 +81,8 @@ impl CliPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(&Actors, &Name)>,
+        families: Query<(Entity, &Name)>,
+        actors: Query<(Entity, &FamilySync)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
@@ -97,16 +97,17 @@ impl CliPlugin {
                     game_state.set(GameState::City);
                 }
                 QuickLoad::Family { name } => {
-                    let actors = families
+                    let (family_entity, _) = families
                         .iter()
                         .find(|(.., family_name)| family_name.as_str() == name)
-                        .map(|(actors, _)| actors)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
-                    let entity = *actors
-                        .first()
+                    // Search using `FamilySync` because `Actors` component inserted to family on update.
+                    let (actor_entity, _) = actors
+                        .iter()
+                        .find(|(_, family_sync)| family_sync.0 == family_entity)
                         .expect("family should contain at least one actor");
-                    commands.entity(entity).insert(ActiveActor);
+                    commands.entity(actor_entity).insert(ActiveActor);
                     game_state.set(GameState::Family);
                 }
             }
@@ -120,7 +121,7 @@ impl CliPlugin {
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_message: Option<Res<LastError>>,
-    added_scenes: Query<(), Added<Actors>>,
+    world_state: Res<State<WorldState>>,
 ) -> bool {
     if *was_loaded {
         return false;
@@ -132,7 +133,7 @@ fn first_world_load(
         return false;
     }
 
-    if added_scenes.is_empty() {
+    if world_state.0 == WorldState::NoWorld {
         false
     } else {
         *was_loaded = true;
