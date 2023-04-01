@@ -21,10 +21,8 @@ impl Plugin for FamilyEditorPlugin {
                 )
                     .in_set(OnUpdate(GameState::FamilyEditor)),
             )
-            .add_systems(
-                (Self::spawn_system, Self::cleanup_system)
-                    .in_schedule(OnEnter(GameState::FamilyEditor)),
-            );
+            .add_system(Self::spawn_system.in_schedule(OnEnter(GameState::FamilyEditor)))
+            .add_system(Self::cleanup_system.in_schedule(OnExit(GameState::FamilyEditor)));
     }
 }
 
