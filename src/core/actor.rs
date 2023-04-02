@@ -8,7 +8,7 @@ use bevy_replicon::prelude::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
-use strum::EnumIter;
+use strum::{EnumIter, IntoEnumIterator};
 
 use super::{
     family::FamilySync,
@@ -31,6 +31,7 @@ impl Plugin for ActorPlugin {
             .ignore_saving::<Players>()
             .add_mapped_client_event::<ActorSelect>()
             .add_client_event::<ActorDeselect>()
+            .init_resource::<HumanModelHandles>()
             .add_systems(
                 (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
@@ -52,17 +53,16 @@ impl Plugin for ActorPlugin {
 impl ActorPlugin {
     fn init_system(
         mut commands: Commands,
-        asset_server: Res<AssetServer>,
+        human_models: Res<HumanModelHandles>,
         actors: Query<(Entity, &Sex), Changed<Sex>>,
     ) {
         for (entity, &sex) in &actors {
-            let scene_handle: Handle<Scene> = asset_server.load(sex.model_path());
             commands
                 .entity(entity)
                 .insert((
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
-                    scene_handle,
+                    human_models[sex as usize].clone(),
                 ))
                 .despawn_descendants();
         }
@@ -156,6 +156,19 @@ impl ActorPlugin {
             .entity(active_actors.single())
             .remove::<ActiveActor>();
         deselect_events.send(ActorDeselect);
+    }
+}
+
+#[derive(Resource, Deref)]
+struct HumanModelHandles(Vec<Handle<Scene>>);
+
+impl FromWorld for HumanModelHandles {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        let handles = Sex::iter()
+            .map(|value| asset_server.load(value.model_path()))
+            .collect();
+        Self(handles)
     }
 }
 
