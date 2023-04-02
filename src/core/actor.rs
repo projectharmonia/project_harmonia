@@ -1,3 +1,4 @@
+mod human_animation;
 mod movement;
 
 use bevy::{
@@ -16,13 +17,15 @@ use super::{
     game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
     task::TaskQueue,
 };
+use human_animation::{HumanAnimation, HumanAnimationPlugin};
 use movement::MovementPlugin;
 
 pub(super) struct ActorPlugin;
 
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MovementPlugin)
+        app.add_plugin(HumanAnimationPlugin)
+            .add_plugin(MovementPlugin)
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
@@ -63,6 +66,7 @@ impl ActorPlugin {
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     human_models[sex as usize].clone(),
+                    HumanAnimation::Idle,
                 ))
                 .despawn_descendants();
         }
