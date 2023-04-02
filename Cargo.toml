@@ -17,7 +17,7 @@ bevy_replicon = "0.2"
 bevy_rapier3d = "0.21"
 bevy_mod_outline = { version = "0.4", default-features = false }
 bevy_egui = "0.20"
-bevy_polyline = { git = "https://github.com/Aceeri/bevy_polyline" }
+bevy_polyline = "0.6"
 bevy-inspector-egui = "0.18"
 bevy-scene-hook = "6.0"
 bevy-trait-query = "0.2"
