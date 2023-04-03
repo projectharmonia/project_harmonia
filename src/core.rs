@@ -1,5 +1,6 @@
 pub(super) mod action;
 pub(super) mod actor;
+mod asset_handles;
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;

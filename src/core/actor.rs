@@ -7,11 +7,13 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use derive_more::Display;
+use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
-use strum::{EnumIter, IntoEnumIterator};
+use strum::EnumIter;
 
 use super::{
+    asset_handles::{AssetCollection, AssetHandles},
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
@@ -34,7 +36,7 @@ impl Plugin for ActorPlugin {
             .ignore_saving::<Players>()
             .add_mapped_client_event::<ActorSelect>()
             .add_client_event::<ActorDeselect>()
-            .init_resource::<HumanModelHandles>()
+            .init_resource::<AssetHandles<Sex>>()
             .add_systems(
                 (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
@@ -56,7 +58,7 @@ impl Plugin for ActorPlugin {
 impl ActorPlugin {
     fn init_system(
         mut commands: Commands,
-        human_models: Res<HumanModelHandles>,
+        human_models: Res<AssetHandles<Sex>>,
         actors: Query<(Entity, &Sex), Changed<Sex>>,
     ) {
         for (entity, &sex) in &actors {
@@ -65,7 +67,7 @@ impl ActorPlugin {
                 .insert((
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
-                    human_models[sex as usize].clone(),
+                    human_models.handle(sex),
                     HumanAnimation::Idle,
                 ))
                 .despawn_descendants();
@@ -163,19 +165,6 @@ impl ActorPlugin {
     }
 }
 
-#[derive(Resource, Deref)]
-struct HumanModelHandles(Vec<Handle<Scene>>);
-
-impl FromWorld for HumanModelHandles {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server = world.resource::<AssetServer>();
-        let handles = Sex::iter()
-            .map(|value| asset_server.load(value.model_path()))
-            .collect();
-        Self(handles)
-    }
-}
-
 #[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct FirstName(pub(crate) String);
@@ -185,9 +174,20 @@ pub(crate) struct FirstName(pub(crate) String);
 pub(crate) struct LastName(pub(crate) String);
 
 #[derive(
-    Clone, Component, Copy, Debug, Default, Deserialize, EnumIter, PartialEq, Reflect, Serialize,
+    Clone,
+    Component,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    EnumIter,
+    PartialEq,
+    Reflect,
+    Serialize,
+    IntoPrimitive,
 )]
 #[reflect(Component)]
+#[repr(usize)]
 pub(crate) enum Sex {
     #[default]
     Male,
@@ -201,8 +201,12 @@ impl Sex {
             Sex::Female => "♀",
         }
     }
+}
 
-    fn model_path(self) -> &'static str {
+impl AssetCollection for Sex {
+    type AssetType = Scene;
+
+    fn asset_path(&self) -> &'static str {
         match self {
             Sex::Male => "base/actors/bot/y_bot/y_bot.gltf#Scene0",
             Sex::Female => "base/actors/bot/x_bot/x_bot.gltf#Scene0",

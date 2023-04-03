@@ -2357,6 +2357,7 @@ dependencies = [
  "fastrand",
  "itertools",
  "leafwing-input-manager",
+ "num_enum",
  "ron",
  "serde",
  "serde_test",

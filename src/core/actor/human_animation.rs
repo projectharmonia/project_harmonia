@@ -1,13 +1,17 @@
 use bevy::prelude::*;
-use strum::{EnumIter, IntoEnumIterator};
+use num_enum::IntoPrimitive;
+use strum::EnumIter;
 
-use crate::core::game_world::WorldState;
+use crate::core::{
+    asset_handles::{AssetCollection, AssetHandles},
+    game_world::WorldState,
+};
 
 pub(super) struct HumanAnimationPlugin;
 
 impl Plugin for HumanAnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<HumanAnimationHandles>()
+        app.init_resource::<AssetHandles<HumanAnimation>>()
             .add_system(Self::play_animation_system.in_set(OnUpdate(WorldState::InWorld)));
     }
 }
@@ -15,7 +19,7 @@ impl Plugin for HumanAnimationPlugin {
 impl HumanAnimationPlugin {
     /// Plays animation after changing [`HumanAnimation`] or after [`Children`] initialization (to handle scene spawn delay).
     fn play_animation_system(
-        human_animations: Res<HumanAnimationHandles>,
+        human_animations: Res<AssetHandles<HumanAnimation>>,
         actors: Query<(Entity, &HumanAnimation), Or<(Changed<HumanAnimation>, Added<Children>)>>,
         children: Query<&Children>,
         mut animaption_players: Query<&mut AnimationPlayer>,
@@ -26,35 +30,26 @@ impl HumanAnimationPlugin {
                 let mut animation_player = animaption_players
                     .get_mut(model_entity)
                     .expect("human model should have animation player attached");
-                let handle = human_animations[animation as usize].clone();
-                animation_player.play(handle).repeat();
+                animation_player
+                    .play(human_animations.handle(animation))
+                    .repeat();
             }
         }
     }
 }
 
-#[derive(Component, Clone, Copy, EnumIter)]
+#[derive(Component, Clone, Copy, EnumIter, IntoPrimitive)]
+#[repr(usize)]
 pub(super) enum HumanAnimation {
     Idle,
 }
 
-impl HumanAnimation {
-    fn asset_path(self) -> &'static str {
+impl AssetCollection for HumanAnimation {
+    type AssetType = AnimationClip;
+
+    fn asset_path(&self) -> &'static str {
         match self {
             HumanAnimation::Idle => "base/actors/animations/idle/idle.gltf#Animation0",
         }
-    }
-}
-
-#[derive(Resource, Deref)]
-struct HumanAnimationHandles(Vec<Handle<AnimationClip>>);
-
-impl FromWorld for HumanAnimationHandles {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server = world.resource::<AssetServer>();
-        let handles = HumanAnimation::iter()
-            .map(|value| asset_server.load(value.asset_path()))
-            .collect();
-        Self(handles)
     }
 }
