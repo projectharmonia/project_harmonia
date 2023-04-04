@@ -1,11 +1,11 @@
-use bevy::prelude::*;
+use bevy::{math::Vec3Swizzles, prelude::*};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
     action::Action,
     city::{ActiveCity, CityMode},
+    cursor_hover::CursorHover,
     game_state::GameState,
-    ground::GroundPlugin,
 };
 
 use super::{LotEventConfirmed, LotSpawn, LotTool, LotVertices};
@@ -16,11 +16,10 @@ impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                GroundPlugin::cursor_to_ground_system
-                    .pipe(Self::spawn_system)
+                Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<CreatingLot>())),
-                GroundPlugin::cursor_to_ground_system.pipe(Self::movement_system),
+                Self::movement_system,
                 Self::vertex_placement_system.run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
@@ -34,27 +33,21 @@ impl Plugin for CreatingLotPlugin {
 }
 
 impl CreatingLotPlugin {
-    fn spawn_system(
-        In(position): In<Option<Vec2>>,
-        mut commands: Commands,
-        active_cities: Query<Entity, With<ActiveCity>>,
-    ) {
-        if let Some(position) = position {
+    fn spawn_system(mut commands: Commands, ground: Query<(&Parent, &CursorHover)>) {
+        if let Ok((parent, hover)) = ground.get_single() {
             // Spawn with two the same vertices because we edit the last one on cursor movement.
-            commands
-                .entity(active_cities.single())
-                .with_children(|parent| {
-                    parent.spawn((LotVertices(vec![position; 2]), CreatingLot));
-                });
+            commands.entity(parent.get()).with_children(|parent| {
+                parent.spawn((LotVertices(vec![hover.xz(); 2]), CreatingLot));
+            });
         }
     }
 
     fn movement_system(
-        In(new_position): In<Option<Vec2>>,
         mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
+        ground: Query<&CursorHover>,
     ) {
         if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
-            if let Some(new_position) = new_position {
+            if let Ok(new_position) = ground.get_single().map(|hover| hover.xz()) {
                 let first_position = *lot_vertices
                     .first()
                     .expect("vertices should have at least initial position");

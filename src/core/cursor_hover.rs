@@ -5,8 +5,8 @@ use bevy_mod_outline::OutlineVolume;
 use bevy_rapier3d::prelude::*;
 
 use super::{
-    city::CityMode, collision_groups::LifescapeGroupsExt, condition, game_state::GameState,
-    object::placing_object::PlacingObject, player_camera::PlayerCamera,
+    city::CityMode, collision_groups::LifescapeGroupsExt, condition, family::BuildingMode,
+    game_state::GameState, object::placing_object::PlacingObject, player_camera::PlayerCamera,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -17,14 +17,11 @@ pub(super) struct CursorHoverPlugin;
 impl Plugin for CursorHoverPlugin {
     fn build(&self, app: &mut App) {
         app.configure_set(
-            CursorHoverSet
-                .run_if(not(any_with_component::<PlacingObject>()))
-                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family)))
-                .run_if(not(in_state(CityMode::Lots))),
+            CursorHoverSet.run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
         )
         .add_systems(
             (
-                Self::cursor_hover_system,
+                Self::raycast_system,
                 Self::outline_enabling_system,
                 Self::outline_disabling_system,
                 Self::cleanup_system.run_if(condition::any_component_added::<PlacingObject>()),
@@ -35,9 +32,11 @@ impl Plugin for CursorHoverPlugin {
 }
 
 impl CursorHoverPlugin {
-    fn cursor_hover_system(
+    fn raycast_system(
         mut commands: Commands,
         rapier_ctx: Res<RapierContext>,
+        building_mode: Res<State<BuildingMode>>,
+        city_mode: Res<State<CityMode>>,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
@@ -53,12 +52,17 @@ impl CursorHoverPlugin {
             return;
         };
 
+        let mut groups = Group::GROUND;
+        if building_mode.0 != BuildingMode::Walls || city_mode.0 != CityMode::Lots {
+            groups |= Group::OBJECT;
+        }
+
         if let Some((child_entity, toi)) = rapier_ctx.cast_ray(
             ray.origin,
             ray.direction,
             f32::MAX,
             false,
-            CollisionGroups::new(Group::ALL, Group::OBJECT).into(),
+            CollisionGroups::new(Group::ALL, groups).into(),
         ) {
             let hovered_entity = iter::once(child_entity)
                 .chain(parents.iter_ancestors(child_entity))
@@ -126,5 +130,5 @@ impl CursorHoverPlugin {
 #[derive(Component)]
 pub(super) struct Hoverable;
 
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub(super) struct CursorHover(pub(super) Vec3);

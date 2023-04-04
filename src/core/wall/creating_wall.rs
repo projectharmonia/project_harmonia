@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::Vec3Swizzles, prelude::*};
 use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
 };
@@ -6,9 +6,9 @@ use leafwing_input_manager::common_conditions::{
 use super::{WallCreate, WallEdges, WallEventConfirmed};
 use crate::core::{
     action::Action,
+    cursor_hover::CursorHover,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
-    ground::GroundPlugin,
     lot::LotVertices,
 };
 
@@ -18,12 +18,10 @@ impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                GroundPlugin::cursor_to_ground_system
-                    .pipe(Self::spawn_system)
+                Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<CreatingWall>())),
-                GroundPlugin::cursor_to_ground_system
-                    .pipe(Self::movement_system)
+                Self::movement_system
                     .run_if(action_pressed(Action::Confirm))
                     .run_if(any_with_component::<CreatingWall>()),
                 Self::creation_system
@@ -43,12 +41,12 @@ const SNAP_DELTA: f32 = 0.5;
 
 impl CreatingWallPlugin {
     fn spawn_system(
-        In(position): In<Option<Vec2>>,
         mut commands: Commands,
         walls: Query<&WallEdges>,
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
+        hovered: Query<&CursorHover>,
     ) {
-        if let Some(position) = position {
+        if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
             if let Some((entity, children, _)) = lots
                 .iter()
                 .find(|(.., vertices)| vertices.contains_point(position))
@@ -69,12 +67,12 @@ impl CreatingWallPlugin {
     }
 
     fn movement_system(
-        In(position): In<Option<Vec2>>,
         mut creating_walls: Query<(&mut WallEdges, &Parent), With<CreatingWall>>,
         walls: Query<&WallEdges, Without<CreatingWall>>,
         children: Query<&Children>,
+        hovered: Query<&CursorHover>,
     ) {
-        if let Some(position) = position {
+        if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
             let (mut edges, parent) = creating_walls.single_mut();
             let children = children.get(parent.get()).unwrap();
             let mut edge = edges

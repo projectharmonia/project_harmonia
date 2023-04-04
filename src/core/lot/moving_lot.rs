@@ -5,8 +5,8 @@ use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
     action::Action,
     city::{ActiveCity, CityMode},
+    cursor_hover::CursorHover,
     game_state::GameState,
-    ground::GroundPlugin,
 };
 
 pub(super) struct MovingLotPlugin;
@@ -15,11 +15,10 @@ impl Plugin for MovingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                GroundPlugin::cursor_to_ground_system
-                    .pipe(Self::picking_system)
+                Self::picking_system
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<MovingLot>())),
-                GroundPlugin::cursor_to_ground_system.pipe(Self::movement_system),
+                Self::movement_system,
                 Self::confirmation_system.run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
                 Self::cleanup_system.after(Self::movement_system).run_if(
@@ -35,12 +34,13 @@ impl Plugin for MovingLotPlugin {
 
 impl MovingLotPlugin {
     fn picking_system(
-        In(position): In<Option<Vec2>>,
         mut commands: Commands,
         mut lots: Query<(Entity, &mut Visibility, &LotVertices)>,
         active_cities: Query<Entity, With<ActiveCity>>,
+        hovered: Query<&CursorHover>,
     ) {
-        if let Some(position) = position {
+        if let Ok(hover) = hovered.get_single() {
+            let position = hover.0.xz();
             if let Some((entity, mut visibility, vertices)) = lots
                 .iter_mut()
                 .find(|(.., vertices)| vertices.contains_point(position))
@@ -53,7 +53,7 @@ impl MovingLotPlugin {
                             vertices.clone(),
                             MovingLot {
                                 entity,
-                                offset: Vec3::new(position.x, 0.0, position.y),
+                                offset: hover.0,
                             },
                         ));
                     });
@@ -62,12 +62,12 @@ impl MovingLotPlugin {
     }
 
     fn movement_system(
-        In(position): In<Option<Vec2>>,
         mut moving_lots: Query<(&mut Transform, &MovingLot)>,
+        hovered: Query<&CursorHover>,
     ) {
         if let Ok((mut transform, moving_lot)) = moving_lots.get_single_mut() {
-            if let Some(position) = position {
-                transform.translation = Vec3::new(position.x, 0.0, position.y) - moving_lot.offset;
+            if let Ok(hover) = hovered.get_single() {
+                transform.translation = hover.0 - moving_lot.offset;
             }
         }
     }

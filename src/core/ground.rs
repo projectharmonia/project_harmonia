@@ -1,8 +1,4 @@
-use bevy::{
-    math::Vec3Swizzles,
-    prelude::{shape::Plane, *},
-    window::PrimaryWindow,
-};
+use bevy::prelude::{shape::Plane, *};
 use bevy_rapier3d::prelude::*;
 
 use super::{
@@ -10,7 +6,6 @@ use super::{
     collision_groups::LifescapeGroupsExt,
     cursor_hover::Hoverable,
     game_state::GameState,
-    player_camera::PlayerCamera,
 };
 
 pub(super) struct GroundPlugin;
@@ -76,21 +71,6 @@ impl GroundPlugin {
             .find(|&&entity| grounds.get(entity).is_ok())
             .expect("deactivated city should have a children ground");
         commands.entity(ground_entity).despawn();
-    }
-
-    /// Converts cursor position into position on the ground.
-    pub(super) fn cursor_to_ground_system(
-        windows: Query<&Window, With<PrimaryWindow>>,
-        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
-    ) -> Option<Vec2> {
-        let cursor_position = windows.single().cursor_position()?;
-        let (&transform, camera) = cameras.single();
-        let ray = camera
-            .viewport_to_world(&transform, cursor_position)
-            .expect("ray should be created from screen coordinates");
-        let length = -ray.origin.y / ray.direction.y; // The length to intersect the ground.
-        let intersection = ray.origin + ray.direction * length;
-        Some(intersection.xz()) // y is always 0.
     }
 }
 
