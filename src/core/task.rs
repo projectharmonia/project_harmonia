@@ -101,33 +101,16 @@ impl TaskPlugin {
     }
 }
 
-/// Task request event.
-#[derive(Clone, Copy, Debug, Deserialize, EnumDiscriminants, FromReflect, Reflect, Serialize)]
-#[strum_discriminants(name(TaskRequestKind))]
-#[strum_discriminants(derive(Display, Serialize, Deserialize))]
-pub(crate) enum TaskRequest {
-    Walk(Vec3),
-    Buy(Vec2),
-}
-
-impl TaskRequest {
-    #[must_use]
-    pub(crate) fn new(task: TaskRequestKind, position: Vec3) -> Self {
-        match task {
-            TaskRequestKind::Walk => TaskRequest::Walk(position),
-            TaskRequestKind::Buy => TaskRequest::Buy(position.xz()),
-        }
-    }
-}
-
 /// List of possible tasks for the entity.
 ///
-/// The component is added after [`ObjectPicked`] event.
+/// The component is added after clicking on object.
 #[derive(Component)]
 pub(crate) struct TaskList {
     /// The position on the entity at which the list was requested.
     pub(crate) position: Vec3,
     /// List of possible tasks for the assigned entity.
+    ///
+    /// Discriminants of [`TaskRequest`]
     pub(crate) tasks: Vec<TaskRequestKind>,
 }
 
@@ -141,11 +124,35 @@ impl TaskList {
     }
 }
 
+/// Event with requested task and it's data.
+#[derive(Clone, Copy, Debug, Deserialize, EnumDiscriminants, FromReflect, Reflect, Serialize)]
+#[strum_discriminants(name(TaskRequestKind))]
+#[strum_discriminants(derive(Display, Serialize, Deserialize))]
+pub(crate) enum TaskRequest {
+    Walk(Vec3),
+    Buy(Vec2),
+}
+
+impl TaskRequest {
+    /// Creates a new task from the discriminant.
+    #[must_use]
+    pub(crate) fn new(task: TaskRequestKind, position: Vec3) -> Self {
+        match task {
+            TaskRequestKind::Walk => TaskRequest::Walk(position),
+            TaskRequestKind::Buy => TaskRequest::Buy(position.xz()),
+        }
+    }
+}
+
+/// A trait to mark component as task.
+///
+/// Will be counted as an ongoing task when exists on an actor.
 #[queryable]
 pub(crate) trait Task: Reflect {
     fn kind(&self) -> TaskRequestKind;
 }
 
+/// List of pending tasks for an actor.
 #[derive(Clone, Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct TaskQueue {
