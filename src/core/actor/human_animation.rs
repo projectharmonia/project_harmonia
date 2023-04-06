@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
@@ -31,7 +33,10 @@ impl HumanAnimationPlugin {
                     .get_mut(model_entity)
                     .expect("human model should have animation player attached");
                 animation_player
-                    .play(human_animations.handle(animation))
+                    .play_with_transition(
+                        human_animations.handle(animation),
+                        Duration::from_millis(200),
+                    )
                     .repeat();
             }
         }
@@ -42,6 +47,8 @@ impl HumanAnimationPlugin {
 #[repr(usize)]
 pub(super) enum HumanAnimation {
     Idle,
+    MaleWalk,
+    FemaleWalk,
 }
 
 impl AssetCollection for HumanAnimation {
@@ -50,6 +57,12 @@ impl AssetCollection for HumanAnimation {
     fn asset_path(&self) -> &'static str {
         match self {
             HumanAnimation::Idle => "base/actors/animations/idle/idle.gltf#Animation0",
+            HumanAnimation::MaleWalk => {
+                "base/actors/animations/male_walk/male_walk.gltf#Animation0"
+            }
+            HumanAnimation::FemaleWalk => {
+                "base/actors/animations/female_walk/female_walk.gltf#Animation0"
+            }
         }
     }
 }
