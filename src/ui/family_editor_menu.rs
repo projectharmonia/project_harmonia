@@ -10,6 +10,7 @@ use bevy_egui::{
     EguiContexts,
 };
 use bevy_inspector_egui::egui::Button;
+use derive_more::Constructor;
 use leafwing_input_manager::prelude::ActionState;
 use strum::IntoEnumIterator;
 
@@ -145,6 +146,7 @@ impl FamilyEditorMenuPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         editable_actors: Query<Entity, With<EditableActor>>,
         names: Query<(&FirstName, &LastName)>,
+        selected_actors: Query<&LastName, With<SelectedActor>>,
     ) -> Result<()> {
         let mut confirmed = false;
         Area::new("Confrirm cancel")
@@ -172,7 +174,7 @@ impl FamilyEditorMenuPlugin {
                     "actor {index} do not have a last name"
                 );
             }
-            commands.init_resource::<SaveFamilyDialog>();
+            commands.insert_resource(SaveFamilyDialog::new(selected_actors.single().to_string()));
         }
 
         Ok(())
@@ -296,21 +298,9 @@ impl FamilyEditorMenuPlugin {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Constructor)]
 struct SaveFamilyDialog {
     family_name: String,
-}
-
-impl FromWorld for SaveFamilyDialog {
-    fn from_world(world: &mut World) -> Self {
-        let last_name = world
-            .query_filtered::<&LastName, With<EditableActor>>()
-            .single(world);
-
-        Self {
-            family_name: last_name.to_string(),
-        }
-    }
 }
 
 #[derive(Resource)]
