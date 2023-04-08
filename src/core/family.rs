@@ -120,10 +120,10 @@ impl FamilyPlugin {
 
     fn deactivation_system(
         mut commands: Commands,
-        active_actors: Query<Entity, With<ActiveActor>>,
+        active_actors: Query<&Family, With<ActiveActor>>,
     ) {
         commands
-            .entity(active_actors.single())
+            .entity(active_actors.single().0)
             .remove::<ActiveFamily>();
     }
 
