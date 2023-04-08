@@ -5,6 +5,7 @@ use bevy::{
         reflect::ReflectMapEntities,
     },
     prelude::*,
+    utils::HashMap,
 };
 use bevy_replicon::prelude::*;
 use derive_more::Display;
@@ -45,6 +46,7 @@ impl FamilyPlugin {
         actors: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
         mut families: Query<&mut Actors>,
     ) {
+        let mut new_actors = HashMap::<_, Vec<_>>::new();
         for (entity, family, family_sync) in &actors {
             // Remove previous.
             if let Some(family) = family {
@@ -61,8 +63,14 @@ impl FamilyPlugin {
             if let Ok(mut actors) = families.get_mut(family_sync.0) {
                 actors.push(entity);
             } else {
-                commands.entity(family_sync.0).insert(Actors(vec![entity]));
+                new_actors.entry(family_sync.0).or_default().push(entity);
             }
+        }
+
+        // Apply accumulated `Actors` at once in case there was no such component otherwise
+        // multiple `Actors` insertion with a single entity will overwrite each other.
+        for (family, actors) in new_actors {
+            commands.entity(family).insert(Actors(actors));
         }
     }
 
