@@ -1,13 +1,12 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{Align2, Area, ImageButton, TextureId},
+    egui::{Align2, Area, Frame, ImageButton, TextureId},
     EguiContexts,
 };
-use bevy_inspector_egui::egui::Frame;
 
 use crate::core::{
     actor::ActiveActor,
-    family::FamilyMode,
+    family::{ActiveFamily, Budget, FamilyMode},
     game_state::GameState,
     task::{Task, TaskCancel, TaskQueue, TaskRequestKind, TaskRequestRemove},
 };
@@ -16,26 +15,27 @@ pub(super) struct LifeHudPlugin;
 
 impl Plugin for LifeHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::active_tasks_system
+        app.add_systems(
+            (Self::active_tasks_system, Self::portrait_system)
                 .in_set(OnUpdate(GameState::Family))
                 .in_set(OnUpdate(FamilyMode::Life)),
         );
     }
 }
 
+const ICON_SIZE: f32 = 50.0;
+
 impl LifeHudPlugin {
     fn active_tasks_system(
         mut egui: EguiContexts,
         mut cancel_events: EventWriter<TaskCancel>,
         mut remove_events: EventWriter<TaskRequestRemove>,
-        tasks: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveActor>>,
+        active_actors: Query<(&TaskQueue, Option<&dyn Task>), With<ActiveActor>>,
     ) {
-        const ICON_SIZE: f32 = 50.0;
         Area::new("Tasks")
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
-                let (task_queue, active_tasks) = tasks.single();
+                let (task_queue, active_tasks) = active_actors.single();
                 // Show frame with window spacing, but without visuals.
                 let queued_frame = Frame {
                     inner_margin: ui.spacing().window_margin,
@@ -55,7 +55,7 @@ impl LifeHudPlugin {
                         }
                     }
                 });
-                Frame::window(ui.style()).show(ui, |ui| {
+                Frame::canvas(ui.style()).show(ui, |ui| {
                     let mut task_count = 0;
                     for task in active_tasks.into_iter().flatten() {
                         let button =
@@ -76,6 +76,28 @@ impl LifeHudPlugin {
                     size.x += ICON_SIZE + 2.0;
                     size.y += (ICON_SIZE + ui.spacing().item_spacing.y * 4.0) * tasks_left as f32;
                     ui.allocate_space(size);
+                });
+            });
+    }
+
+    fn portrait_system(
+        mut egui: EguiContexts,
+        active_families: Query<&Budget, With<ActiveFamily>>,
+    ) {
+        let ctx = egui.ctx_mut();
+        let button_padding = ctx.style().spacing.button_padding;
+        let item_spacing = ctx.style().spacing.item_spacing;
+        let left_offset = ICON_SIZE + button_padding.x + item_spacing.x;
+
+        Area::new("Portrait")
+            .anchor(Align2::LEFT_BOTTOM, (left_offset, 0.0))
+            .show(ctx, |ui| {
+                Frame::canvas(ui.style()).show(ui, |ui| {
+                    let budget = active_families.single();
+                    ui.label(budget.to_string() + " 💳");
+
+                    const PORTRAIT_WIDTH: f32 = 150.0;
+                    ui.allocate_space((PORTRAIT_WIDTH, 0.0).into());
                 });
             });
     }

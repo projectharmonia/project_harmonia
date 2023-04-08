@@ -236,7 +236,7 @@ impl MapEntities for FamilySync {
 #[derive(Component)]
 pub(crate) struct ActiveFamily;
 
-#[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
 
