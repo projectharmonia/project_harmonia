@@ -40,18 +40,17 @@ impl Plugin for ActorPlugin {
             .add_systems(
                 (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
-            .add_systems(
-                (Self::selection_system, Self::deselection_system)
-                    .in_set(OnUpdate(GameState::Family)),
-            )
+            .add_systems((
+                Self::selection_system.in_set(OnUpdate(GameState::Family)),
+                Self::deselection_system.in_schedule(OnExit(GameState::Family)),
+            ))
             .add_systems(
                 (
                     Self::selection_update_system,
                     Self::deselection_update_system,
                 )
                     .in_set(ServerSet::Authority),
-            )
-            .add_system(Self::deactivation_system.in_schedule(OnExit(GameState::Family)));
+            );
     }
 }
 
@@ -126,12 +125,14 @@ impl ActorPlugin {
     }
 
     fn deselection_system(
+        mut commands: Commands,
         mut deselect_events: EventWriter<ActorDeselect>,
-        mut deactivated_actors: RemovedComponents<ActiveActor>,
+        active_actors: Query<Entity, With<ActiveActor>>,
     ) {
-        if deactivated_actors.iter().count() != 0 {
-            deselect_events.send(ActorDeselect);
-        }
+        commands
+            .entity(active_actors.single())
+            .remove::<ActiveActor>();
+        deselect_events.send(ActorDeselect);
     }
 
     fn deselection_update_system(
@@ -151,17 +152,6 @@ impl ActorPlugin {
                 }
             }
         }
-    }
-
-    fn deactivation_system(
-        mut commands: Commands,
-        mut deselect_events: EventWriter<ActorDeselect>,
-        active_actors: Query<Entity, With<ActiveActor>>,
-    ) {
-        commands
-            .entity(active_actors.single())
-            .remove::<ActiveActor>();
-        deselect_events.send(ActorDeselect);
     }
 }
 
