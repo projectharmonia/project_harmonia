@@ -1,5 +1,3 @@
-mod life_hud;
-
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{Align2, RichText, Window},
@@ -8,18 +6,16 @@ use bevy_egui::{
 use strum::IntoEnumIterator;
 
 use crate::core::{family::FamilyMode, game_state::GameState};
-use life_hud::LifeHudPlugin;
 
-pub(super) struct FamilyHudPlugin;
+pub(super) struct ModeButtonsPlugin;
 
-impl Plugin for FamilyHudPlugin {
+impl Plugin for ModeButtonsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(LifeHudPlugin)
-            .add_system(Self::mode_buttons_system.in_set(OnUpdate(GameState::Family)));
+        app.add_system(Self::mode_buttons_system.in_set(OnUpdate(GameState::Family)));
     }
 }
 
-impl FamilyHudPlugin {
+impl ModeButtonsPlugin {
     fn mode_buttons_system(
         mut egui: EguiContexts,
         family_mode: Res<State<FamilyMode>>,

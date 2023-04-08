@@ -3,11 +3,12 @@ mod city_hud;
 mod connection_dialog;
 mod error_message;
 mod family_editor_menu;
-mod family_hud;
 mod game_inspector;
 mod ingame_menu;
+mod life_hud;
 mod main_menu;
 mod modal_window;
+mod mode_buttons;
 mod objects_view;
 mod settings_menu;
 mod task_menu;
@@ -21,11 +22,12 @@ use city_hud::CityHudPlugin;
 use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
 use family_editor_menu::FamilyEditorMenuPlugin;
-use family_hud::FamilyHudPlugin;
 use game_inspector::GameInspectorPlugin;
 use ingame_menu::InGameMenuPlugin;
+use life_hud::LifeHudPlugin;
 use main_menu::MainMenuPlugin;
 use modal_window::ModalWindowPlugin;
+use mode_buttons::ModeButtonsPlugin;
 use settings_menu::SettingsMenuPlugin;
 use task_menu::TaskMenuPlugin;
 use world_browser::WorldBrowserPlugin;
@@ -43,11 +45,12 @@ impl PluginGroup for UiPlugins {
             .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
             .add(FamilyEditorMenuPlugin)
-            .add(FamilyHudPlugin)
             .add(GameInspectorPlugin)
             .add(InGameMenuPlugin)
+            .add(LifeHudPlugin)
             .add(MainMenuPlugin)
             .add(ModalWindowPlugin)
+            .add(ModeButtonsPlugin)
             .add(SettingsMenuPlugin)
             .add(TaskMenuPlugin)
             .add(WorldBrowserPlugin)
