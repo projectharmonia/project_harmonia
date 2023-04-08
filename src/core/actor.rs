@@ -99,14 +99,14 @@ impl ActorPlugin {
     fn selection_update_system(
         mut commands: Commands,
         mut select_events: EventReader<FromClient<ActorSelect>>,
-        mut actors: Query<&mut Players>,
+        mut actors: Query<(Entity, &mut Players)>,
     ) {
         for FromClient { client_id, event } in select_events.iter().copied() {
             // Remove previous.
-            for mut players in &mut actors {
+            for (entity, mut players) in &mut actors {
                 if let Some(index) = players.iter().position(|&id| id == client_id) {
                     if players.len() == 1 {
-                        commands.entity(event.0).remove::<Players>();
+                        commands.entity(entity).remove::<Players>();
                     } else {
                         players.swap_remove(index);
                     }
@@ -114,7 +114,7 @@ impl ActorPlugin {
                 }
             }
 
-            if let Ok(mut players) = actors.get_mut(event.0) {
+            if let Ok((_, mut players)) = actors.get_mut(event.0) {
                 players.push(client_id);
             } else {
                 commands
