@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
+use derive_more::Constructor;
 
 use super::CreateCityDialog;
 use crate::core::{
@@ -7,25 +8,11 @@ use crate::core::{
     game_state::GameState,
 };
 
+#[derive(Constructor)]
 pub(super) struct CitiesTab<'a, 'w, 's, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     game_state: &'a mut NextState<GameState>,
     cities: &'a Query<'wq, 'sq, (Entity, &'static Name), With<City>>,
-}
-
-impl<'a, 'w, 's, 'wq, 'sq> CitiesTab<'a, 'w, 's, 'wq, 'sq> {
-    #[must_use]
-    pub(super) fn new(
-        commands: &'a mut Commands<'w, 's>,
-        game_state: &'a mut NextState<GameState>,
-        cities: &'a Query<'wq, 'sq, (Entity, &'static Name), With<City>>,
-    ) -> Self {
-        Self {
-            commands,
-            game_state,
-            cities,
-        }
-    }
 }
 
 impl CitiesTab<'_, '_, '_, '_, '_> {

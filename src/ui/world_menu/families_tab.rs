@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{epaint::WHITE_UV, Align, Image, Layout, TextureId, Ui};
+use derive_more::Constructor;
 
 use crate::core::{
     actor::ActiveActor,
@@ -7,28 +8,12 @@ use crate::core::{
     game_state::GameState,
 };
 
+#[derive(Constructor)]
 pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     game_state: &'a mut NextState<GameState>,
     despawn_events: &'a mut EventWriter<'we, FamilyDespawn>,
     families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Actors)>,
-}
-
-impl<'a, 'w, 's, 'we, 'wq, 'sq> FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
-    #[must_use]
-    pub(super) fn new(
-        commands: &'a mut Commands<'w, 's>,
-        game_state: &'a mut NextState<GameState>,
-        despawn_events: &'a mut EventWriter<'we, FamilyDespawn>,
-        families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Actors)>,
-    ) -> Self {
-        Self {
-            commands,
-            game_state,
-            despawn_events,
-            families,
-        }
-    }
 }
 
 impl FamiliesTab<'_, '_, '_, '_, '_, '_> {
