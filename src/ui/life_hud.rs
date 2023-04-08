@@ -70,12 +70,13 @@ impl LifeHudPlugin {
                         task_count += 1;
                     }
 
+                    ui.set_visible(false);
                     const MAX_ACTIVE_TASKS: u8 = 3;
-                    let tasks_left = MAX_ACTIVE_TASKS - task_count;
-                    let mut size = ui.spacing().window_margin.left_top();
-                    size.x += ICON_SIZE + 2.0;
-                    size.y += (ICON_SIZE + ui.spacing().item_spacing.y * 4.0) * tasks_left as f32;
-                    ui.allocate_space(size);
+                    for _ in task_count..MAX_ACTIVE_TASKS {
+                        let button =
+                            ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
+                        ui.add(button);
+                    }
                 });
             });
     }
