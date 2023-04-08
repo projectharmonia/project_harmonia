@@ -216,7 +216,7 @@ pub(crate) struct Actors(Vec<Entity>);
 pub(crate) struct FamilySync(pub(crate) Entity);
 
 // We need to impl either [`FromWorld`] or [`Default`] so [`FamilySync`] can be registered as [`Reflect`].
-// Same technicue is used in Bevy for [`Parent`]
+// Same technique is used in Bevy for [`Parent`]
 impl FromWorld for FamilySync {
     fn from_world(_world: &mut World) -> Self {
         Self(Entity::from_raw(u32::MAX))
