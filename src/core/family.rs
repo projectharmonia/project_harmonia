@@ -119,7 +119,7 @@ impl FamilyPlugin {
 
     fn activation_system(
         mut commands: Commands,
-        activated_actors: Query<&Family, Added<ActiveActor>>,
+        activated_actors: Query<&Family, With<ActiveActor>>,
     ) {
         commands
             .entity(activated_actors.single().0)

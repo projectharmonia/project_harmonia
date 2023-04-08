@@ -65,7 +65,7 @@ impl CityPlugin {
 
     fn actor_activation_system(
         mut commands: Commands,
-        activated_actors: Query<&Parent, Added<ActiveActor>>,
+        activated_actors: Query<&Parent, With<ActiveActor>>,
     ) {
         commands
             .entity(activated_actors.single().get())
