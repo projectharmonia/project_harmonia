@@ -77,7 +77,7 @@ impl FamilyPlugin {
     fn spawn_system(
         mut commands: Commands,
         mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
-        mut select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
+        mut spawn_select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
     ) {
         for FromClient { client_id, event } in spawn_events.drain() {
             let family_entity = commands
@@ -91,7 +91,7 @@ impl FamilyPlugin {
                 ));
             }
             if event.select {
-                select_events.send(ToClients {
+                spawn_select_events.send(ToClients {
                     mode: SendMode::Direct(client_id),
                     event: SelectedFamilySpawned(family_entity),
                 });

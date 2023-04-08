@@ -65,11 +65,11 @@ impl FamilyEditorPlugin {
 
     fn selection_system(
         mut commands: Commands,
-        mut select_events: EventReader<SelectedFamilySpawned>,
+        mut spawn_select_events: EventReader<SelectedFamilySpawned>,
         mut game_state: ResMut<NextState<GameState>>,
         actors: Query<&Actors>,
     ) {
-        for event in select_events.iter() {
+        for event in &mut spawn_select_events {
             let actors = actors
                 .get(event.0)
                 .expect("spawned family should have actors");
