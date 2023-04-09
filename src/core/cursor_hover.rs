@@ -131,4 +131,4 @@ impl CursorHoverPlugin {
 pub(super) struct Hoverable;
 
 #[derive(Component, Deref)]
-pub(super) struct CursorHover(pub(super) Vec3);
+pub(crate) struct CursorHover(pub(crate) Vec3);

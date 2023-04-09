@@ -43,17 +43,15 @@ impl Plugin for TaskPlugin {
 impl TaskPlugin {
     fn task_list_system(
         mut commands: Commands,
-        hovered: Query<(Entity, &CursorHover)>,
+        hovered: Query<Entity, With<CursorHover>>,
         task_lists: Query<Entity, With<TaskList>>,
     ) {
-        if let Ok((hovered_entity, hover)) = hovered.get_single() {
+        if let Ok(hovered_entity) = hovered.get_single() {
             if let Ok(previous_entity) = task_lists.get_single() {
                 commands.entity(previous_entity).remove::<TaskList>();
             }
 
-            commands
-                .entity(hovered_entity)
-                .insert(TaskList::new(hover.0));
+            commands.entity(hovered_entity).insert(TaskList::default());
         }
     }
 
@@ -104,24 +102,12 @@ impl TaskPlugin {
 /// List of possible tasks for the entity.
 ///
 /// The component is added after clicking on object.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub(crate) struct TaskList {
-    /// The position on the entity at which the list was requested.
-    pub(crate) position: Vec3,
     /// List of possible tasks for the assigned entity.
     ///
     /// Discriminants of [`TaskRequest`]
     pub(crate) tasks: Vec<TaskRequestKind>,
-}
-
-impl TaskList {
-    #[must_use]
-    fn new(position: Vec3) -> Self {
-        Self {
-            position,
-            tasks: Default::default(),
-        }
-    }
 }
 
 /// Event with requested task and it's data.

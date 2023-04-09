@@ -7,7 +7,7 @@ pub(super) mod cli;
 mod collision_groups;
 mod component_commands;
 pub(super) mod condition;
-mod cursor_hover;
+pub(super) mod cursor_hover;
 pub(super) mod developer;
 pub(super) mod error;
 pub(super) mod family;

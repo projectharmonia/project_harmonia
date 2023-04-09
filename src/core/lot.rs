@@ -15,6 +15,7 @@ use strum::EnumIter;
 use tap::TapFallible;
 
 use super::{
+    cursor_hover::CursorHover,
     family::{Family, FamilyMode},
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
@@ -61,11 +62,11 @@ impl Plugin for LotPlugin {
 
 impl LotPlugin {
     fn tasks_system(
-        mut ground: Query<&mut TaskList, (With<Ground>, Added<TaskList>)>,
+        mut ground: Query<(&mut TaskList, &CursorHover), (With<Ground>, Added<TaskList>)>,
         lots: Query<&LotVertices, Without<LotFamily>>,
     ) {
-        if let Ok(mut task_list) = ground.get_single_mut() {
-            let position = task_list.position.xz();
+        if let Ok((mut task_list, hover)) = ground.get_single_mut() {
+            let position = hover.xz();
             if lots
                 .iter()
                 .any(|vertices| vertices.contains_point(position))

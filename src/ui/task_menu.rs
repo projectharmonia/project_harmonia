@@ -3,6 +3,7 @@ use bevy_egui::{egui::Pos2, EguiContexts};
 use bevy_inspector_egui::egui::{Align, Layout};
 
 use crate::core::{
+    cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
     task::{TaskList, TaskRequest},
@@ -27,9 +28,9 @@ impl TaskMenuPlugin {
         mut egui: EguiContexts,
         mut task_events: EventWriter<TaskRequest>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        task_lists: Query<(Entity, &Name, Ref<TaskList>)>,
+        task_lists: Query<(Entity, &Name, &CursorHover, Ref<TaskList>)>,
     ) {
-        let Ok((entity, name, task_list)) = task_lists.get_single() else {
+        let Ok((entity, name, hover, task_list)) = task_lists.get_single() else {
             return;
         };
 
@@ -52,7 +53,7 @@ impl TaskMenuPlugin {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                     for &task in &task_list.tasks {
                         if ui.button(task.to_string()).clicked() {
-                            task_events.send(TaskRequest::new(task, task_list.position));
+                            task_events.send(TaskRequest::new(task, hover.0));
                             commands.entity(entity).remove::<TaskList>();
                         }
                     }
