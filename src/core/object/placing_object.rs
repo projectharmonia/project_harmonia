@@ -83,7 +83,7 @@ impl PlacingObjectPlugin {
         mut groups: Query<&mut CollisionGroups>,
     ) {
         if let Ok((entity, parent)) = hovered_objects.get_single() {
-            commands.entity(parent.get()).with_children(|parent| {
+            commands.entity(**parent).with_children(|parent| {
                 parent.spawn(PlacingObject::moving(entity));
             });
 

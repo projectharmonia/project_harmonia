@@ -36,7 +36,7 @@ impl CreatingLotPlugin {
     fn spawn_system(mut commands: Commands, ground: Query<(&Parent, &CursorHover)>) {
         if let Ok((parent, hover)) = ground.get_single() {
             // Spawn with two the same vertices because we edit the last one on cursor movement.
-            commands.entity(parent.get()).with_children(|parent| {
+            commands.entity(**parent).with_children(|parent| {
                 parent.spawn((LotVertices(vec![hover.xz(); 2]), CreatingLot));
             });
         }

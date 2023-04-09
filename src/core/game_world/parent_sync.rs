@@ -98,6 +98,6 @@ mod tests {
             .world
             .query::<(&Parent, &ParentSync)>()
             .single(&app.world);
-        assert_eq!(child_parent.get(), parent_sync.0);
+        assert_eq!(**child_parent, parent_sync.0);
     }
 }
