@@ -27,11 +27,10 @@ impl HumanAnimationPlugin {
         mut animaption_players: Query<&mut AnimationPlayer>,
     ) {
         for (human_entity, &animation) in &actors {
-            const MODEL_INDEX: usize = 1; // We assume that model spawns at second child (from 0).
-            if let Some(model_entity) = children.iter_descendants(human_entity).nth(MODEL_INDEX) {
-                let mut animation_player = animaption_players
-                    .get_mut(model_entity)
-                    .expect("human model should have animation player attached");
+            if let Some(mut animation_player) = animaption_players
+                .iter_many_mut(children.iter_descendants(human_entity))
+                .fetch_next()
+            {
                 animation_player
                     .play_with_transition(
                         human_animations.handle(animation),
