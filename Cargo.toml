@@ -27,7 +27,7 @@ leafwing-input-manager = { version = "0.9", default-features = false, features =
 ] }
 serde = "1.0"
 strum = { version = "0.24", features = ["derive"] }
-num_enum = "0.5"
+num_enum = "0.6"
 derive_more = { version = "0.99", default-features = false, features = [
   "constructor",
 ] }
