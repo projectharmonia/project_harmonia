@@ -2364,7 +2364,6 @@ dependencies = [
  "smallvec",
  "standard_paths",
  "strum",
- "tap",
  "toml",
  "walkdir",
 ]

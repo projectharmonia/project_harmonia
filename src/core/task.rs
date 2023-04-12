@@ -4,7 +4,6 @@ use bevy_trait_query::queryable;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumDiscriminants};
-use tap::TapOptional;
 
 use super::{
     action::Action, actor::Players, cursor_hover::CursorHover, family::FamilyMode,
@@ -63,9 +62,10 @@ impl TaskPlugin {
             if let Some((mut task_queue, _)) = actors
                 .iter_mut()
                 .find(|(_, players)| players.contains(&client_id))
-                .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 task_queue.push_task(event);
+            } else {
+                error!("no controlled entity for {event:?} for client {client_id}");
             }
         }
     }
@@ -89,11 +89,12 @@ impl TaskPlugin {
             if let Some((mut task_queue, _)) = actors
                 .iter_mut()
                 .find(|(_, players)| players.contains(&client_id))
-                .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let Some(index) = task_queue.queue.iter().position(|(id, _)| *id == event.0) {
                     task_queue.queue.remove(index);
                 }
+            } else {
+                error!("no controlled entity for {event:?} for client {client_id}");
             }
         }
     }

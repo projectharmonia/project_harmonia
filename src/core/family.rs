@@ -11,7 +11,6 @@ use bevy_replicon::prelude::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
-use tap::TapFallible;
 
 use super::{
     actor::{ActiveActor, ActorBundle, PlayableActorBundle},
@@ -105,14 +104,14 @@ impl FamilyPlugin {
         families: Query<(Entity, &mut Actors)>,
     ) {
         for event in despawn_events.iter().map(|event| event.event) {
-            if let Ok((family_entity, actors)) = families
-                .get(event.0)
-                .tap_err(|e| error!("received an invalid family entity to despawn: {e}"))
-            {
-                commands.entity(family_entity).despawn();
-                for &entity in actors.iter() {
-                    commands.entity(entity).despawn_recursive();
+            match families.get(event.0) {
+                Ok((family_entity, actors)) => {
+                    commands.entity(family_entity).despawn();
+                    for &entity in actors.iter() {
+                        commands.entity(entity).despawn_recursive();
+                    }
                 }
+                Err(e) => error!("received an invalid family entity to despawn: {e}"),
             }
         }
     }

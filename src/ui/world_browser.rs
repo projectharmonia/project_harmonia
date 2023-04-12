@@ -9,7 +9,6 @@ use bevy_egui::{
 use bevy_replicon::prelude::*;
 use derive_more::Constructor;
 use leafwing_input_manager::prelude::ActionState;
-use tap::TapFallible;
 
 use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
@@ -281,7 +280,7 @@ impl FromWorld for WorldBrowser {
             world_names: world
                 .resource::<GamePaths>()
                 .get_world_names()
-                .tap_err(|e| error!("unable to get world names: {e}"))
+                .map_err(|e| error!("unable to get world names: {e}"))
                 .unwrap_or_default(),
         }
     }

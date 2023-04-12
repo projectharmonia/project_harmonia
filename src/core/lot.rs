@@ -12,7 +12,6 @@ use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
-use tap::TapFallible;
 
 use super::{
     cursor_hover::CursorHover,
@@ -146,17 +145,17 @@ impl LotPlugin {
         mut lots: Query<&mut LotVertices>,
     ) {
         for FromClient { client_id, event } in move_events.iter().copied() {
-            if let Ok(mut vertices) = lots
-                .get_mut(event.entity)
-                .tap_err(|e| error!("unable to apply lot movement from client {client_id}: {e}"))
-            {
-                for vertex in &mut vertices.0 {
-                    *vertex += event.offset;
+            match lots.get_mut(event.entity) {
+                Ok(mut vertices) => {
+                    for vertex in &mut vertices.0 {
+                        *vertex += event.offset;
+                    }
+                    confirm_events.send(ToClients {
+                        mode: SendMode::Direct(client_id),
+                        event: LotEventConfirmed,
+                    });
                 }
-                confirm_events.send(ToClients {
-                    mode: SendMode::Direct(client_id),
-                    event: LotEventConfirmed,
-                });
+                Err(e) => error!("unable to apply lot movement from client {client_id}: {e}"),
             }
         }
     }

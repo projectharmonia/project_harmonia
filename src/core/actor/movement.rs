@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_trait_query::RegisterExt;
 use serde::{Deserialize, Serialize};
-use tap::TapOptional;
 
 use super::{human_animation::HumanAnimation, Sex};
 use crate::core::{
@@ -70,11 +69,12 @@ impl MovementPlugin {
             if let Some((entity, _)) = actors
                 .iter()
                 .find(|(_, players)| players.contains(&client_id))
-                .tap_none(|| error!("no controlled entity for {event:?} for client {client_id}"))
             {
                 if let TaskRequestKind::Walk = event.0 {
                     commands.entity(entity).remove::<Walk>();
                 }
+            } else {
+                error!("no controlled entity for {event:?} for client {client_id}");
             }
         }
     }

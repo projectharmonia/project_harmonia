@@ -12,7 +12,6 @@ use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_scene_hook::SceneHook;
 use serde::{Deserialize, Serialize};
-use tap::TapFallible;
 
 use super::{
     asset_metadata::{self, ObjectMetadata},
@@ -152,16 +151,16 @@ impl ObjectPlugin {
         mut transforms: Query<&mut Transform>,
     ) {
         for FromClient { client_id, event } in move_events.iter().copied() {
-            if let Ok(mut transform) = transforms
-                .get_mut(event.entity)
-                .tap_err(|e| error!("unable to apply movement from client {client_id}: {e}"))
-            {
-                transform.translation = event.translation;
-                transform.rotation = event.rotation;
-                confirm_events.send(ToClients {
-                    mode: SendMode::Direct(client_id),
-                    event: ObjectEventConfirmed,
-                });
+            match transforms.get_mut(event.entity) {
+                Ok(mut transform) => {
+                    transform.translation = event.translation;
+                    transform.rotation = event.rotation;
+                    confirm_events.send(ToClients {
+                        mode: SendMode::Direct(client_id),
+                        event: ObjectEventConfirmed,
+                    });
+                }
+                Err(e) => error!("unable to apply movement from client {client_id}: {e}"),
             }
         }
     }
