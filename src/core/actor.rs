@@ -1,5 +1,5 @@
 mod human_animation;
-mod movement;
+pub(super) mod movement;
 
 use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
@@ -17,7 +17,6 @@ use super::{
     family::FamilySync,
     game_state::GameState,
     game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
-    task::TaskQueue,
 };
 use human_animation::{HumanAnimation, HumanAnimationPlugin};
 use movement::MovementPlugin;
@@ -243,7 +242,6 @@ pub(super) struct PlayableActorBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
-    task_queue: TaskQueue,
     replication: Replication,
 
     #[bundle]
@@ -260,7 +258,6 @@ impl PlayableActorBundle {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
-            task_queue: Default::default(),
             replication: Replication,
             actor_bundle,
         }

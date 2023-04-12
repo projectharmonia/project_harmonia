@@ -8,6 +8,7 @@ use bevy::{
 };
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_trait_query::RegisterExt;
 use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ use super::{
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
-    task::{TaskActivation, TaskList, TaskRequest, TaskRequestKind},
+    task::{Task, TaskList, TaskRequest, TaskRequestKind},
 };
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
@@ -28,9 +29,12 @@ pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<LotTool>()
+        app.register_type::<BuyLot>()
+            .register_component_as::<dyn Task, BuyLot>()
+            .add_state::<LotTool>()
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
+            .register_component_as::<dyn Task, BuyLot>()
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
@@ -61,36 +65,35 @@ impl Plugin for LotPlugin {
 
 impl LotPlugin {
     fn tasks_system(
-        mut ground: Query<(&mut TaskList, &CursorHover), (With<Ground>, Added<TaskList>)>,
-        lots: Query<&LotVertices, Without<LotFamily>>,
+        mut commands: Commands,
+        grounds: Query<(Entity, &CursorHover), (With<Ground>, Added<TaskList>)>,
+        lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok((mut task_list, hover)) = ground.get_single_mut() {
+        if let Ok((ground_entity, hover)) = grounds.get_single() {
             let position = hover.xz();
-            if lots
+            if let Some((lot_entity, _)) = lots
                 .iter()
-                .any(|vertices| vertices.contains_point(position))
+                .find(|(_, vertices)| vertices.contains_point(position))
             {
-                task_list.tasks.push(TaskRequestKind::Buy);
+                commands.entity(ground_entity).with_children(|parent| {
+                    parent.spawn(BuyLot(lot_entity));
+                });
             }
         }
     }
 
     fn buying_system(
         mut commands: Commands,
-        mut activation_events: EventReader<TaskActivation>,
-        lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
-        actors: Query<&Family>,
+        lots: Query<(), Without<LotFamily>>,
+        actors: Query<(Entity, &Family, &BuyLot), Added<BuyLot>>,
     ) {
-        for TaskActivation { entity, task } in activation_events.iter().copied() {
-            if let TaskRequest::Buy(position) = task {
-                let family = actors.get(entity).expect("actor should belong to a family");
-                if let Some((lot_entity, _)) = lots
-                    .iter()
-                    .find(|(_, vertices)| vertices.contains_point(position))
-                {
-                    commands.entity(lot_entity).insert(LotFamily(family.0));
-                }
+        for (entity, family, buy) in &actors {
+            if lots.get(buy.0).is_ok() {
+                commands.entity(buy.0).insert(LotFamily(family.0));
+            } else {
+                error!("{buy:?} from actor {entity:?} points to not a lot");
             }
+            commands.entity(entity).remove::<BuyLot>();
         }
     }
 
@@ -238,6 +241,37 @@ impl LotVertices {
         }
 
         inside
+    }
+}
+
+#[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
+#[reflect(Component)]
+pub(crate) struct BuyLot(Entity);
+
+impl Task for BuyLot {
+    fn name(&self) -> &'static str {
+        "Buy lot"
+    }
+
+    fn to_request(&self) -> TaskRequest {
+        TaskRequest::BuyLot(*self)
+    }
+
+    fn to_request_kind(&self) -> TaskRequestKind {
+        TaskRequestKind::BuyLot
+    }
+}
+
+impl FromWorld for BuyLot {
+    fn from_world(_world: &mut World) -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
+
+impl MapEntities for BuyLot {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
     }
 }
 

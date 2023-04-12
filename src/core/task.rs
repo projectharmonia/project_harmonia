@@ -1,27 +1,31 @@
-use bevy::{math::Vec3Swizzles, prelude::*, reflect::FromReflect};
+use bevy::{
+    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    prelude::*,
+};
 use bevy_replicon::prelude::*;
-use bevy_trait_query::queryable;
+use bevy_trait_query::{queryable, One};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumDiscriminants};
+use strum::EnumDiscriminants;
 
 use super::{
-    action::Action, actor::Players, cursor_hover::CursorHover, family::FamilyMode,
+    action::Action,
+    actor::{movement::Walk, FirstName, Players},
+    component_commands::ComponentCommandsExt,
+    cursor_hover::CursorHover,
+    family::FamilyMode,
     game_state::GameState,
+    lot::BuyLot,
 };
 
 pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<TaskQueue>()
-            .register_type::<TaskRequest>()
-            .register_type::<(u8, TaskRequest)>()
-            .register_type::<Vec<(u8, TaskRequest)>>()
+        app.replicate::<QueuedTask>()
             .add_client_event::<TaskRequest>()
-            .add_client_event::<TaskCancel>()
-            .add_client_event::<TaskRequestRemove>()
-            .add_event::<TaskActivation>()
+            .add_client_event::<ActiveTaskCancel>()
+            .add_client_event::<QueuedTaskCancel>()
             .add_system(
                 Self::task_list_system
                     .run_if(action_just_pressed(Action::Confirm))
@@ -30,9 +34,10 @@ impl Plugin for TaskPlugin {
             )
             .add_systems(
                 (
-                    Self::queue_system,
                     Self::activation_system,
-                    Self::cancellation_system,
+                    Self::queue_system,
+                    Self::queued_cancelation_system,
+                    Self::active_cancelation_system,
                 )
                     .in_set(ServerSet::Authority),
             );
@@ -50,20 +55,27 @@ impl TaskPlugin {
                 commands.entity(previous_entity).remove::<TaskList>();
             }
 
-            commands.entity(hovered_entity).insert(TaskList::default());
+            commands.entity(hovered_entity).insert(TaskList);
         }
     }
 
     fn queue_system(
+        mut commands: Commands,
         mut task_events: EventReader<FromClient<TaskRequest>>,
-        mut actors: Query<(&mut TaskQueue, &Players)>,
+        mut actors: Query<(Entity, &Players)>,
     ) {
-        for FromClient { client_id, event } in task_events.iter().copied() {
-            if let Some((mut task_queue, _)) = actors
+        for FromClient { client_id, event } in &mut task_events {
+            if let Some((entity, _)) = actors
                 .iter_mut()
-                .find(|(_, players)| players.contains(&client_id))
+                .find(|(_, players)| players.contains(client_id))
             {
-                task_queue.push_task(event);
+                commands.entity(entity).with_children(|parent| {
+                    let mut task_entity = parent.spawn((QueuedTask, Replication));
+                    match event {
+                        TaskRequest::Walk(walk) => task_entity.insert(*walk),
+                        TaskRequest::BuyLot(buy) => task_entity.insert(*buy),
+                    };
+                });
             } else {
                 error!("no controlled entity for {event:?} for client {client_id}");
             }
@@ -71,28 +83,49 @@ impl TaskPlugin {
     }
 
     fn activation_system(
-        mut activation_events: EventWriter<TaskActivation>,
-        mut actors: Query<(Entity, &mut TaskQueue)>,
+        mut commands: Commands,
+        queued_tasks: Query<(Entity, One<&dyn Task>), With<QueuedTask>>,
+        actors: Query<(Entity, &Children), With<FirstName>>,
     ) {
-        for (entity, mut task_queue) in &mut actors {
-            if let Some(task) = task_queue.pop() {
-                activation_events.send(TaskActivation { entity, task });
+        for (actor_entity, children) in &actors {
+            if let Some((task_entity, task)) = queued_tasks.iter_many(children).next() {
+                commands
+                    .entity(actor_entity)
+                    .insert_components(vec![task.clone_value()]);
+                commands.entity(task_entity).despawn();
             }
         }
     }
 
-    fn cancellation_system(
-        mut remove_events: EventReader<FromClient<TaskRequestRemove>>,
-        mut actors: Query<(&mut TaskQueue, &Players)>,
+    fn queued_cancelation_system(
+        mut commands: Commands,
+        mut cancel_events: EventReader<FromClient<QueuedTaskCancel>>,
+        queued_tasks: Query<(), With<QueuedTask>>,
     ) {
-        for FromClient { client_id, event } in remove_events.iter().copied() {
-            if let Some((mut task_queue, _)) = actors
-                .iter_mut()
-                .find(|(_, players)| players.contains(&client_id))
+        for FromClient { client_id, event } in &mut cancel_events {
+            if queued_tasks.get(event.0).is_ok() {
+                commands.entity(event.0).despawn();
+            } else {
+                error!("{event:?} from client {client_id} points to not a queued task");
+            }
+        }
+    }
+
+    fn active_cancelation_system(
+        mut commands: Commands,
+        mut cancel_events: EventReader<FromClient<ActiveTaskCancel>>,
+        actors: Query<(Entity, &Players)>,
+    ) {
+        for FromClient { client_id, event } in &mut cancel_events {
+            if let Some((entity, _)) = actors
+                .iter()
+                .find(|(_, players)| players.contains(client_id))
             {
-                if let Some(index) = task_queue.queue.iter().position(|(id, _)| *id == event.0) {
-                    task_queue.queue.remove(index);
-                }
+                let mut entity = commands.entity(entity);
+                match event.0 {
+                    TaskRequestKind::Walk => entity.remove::<Walk>(),
+                    TaskRequestKind::BuyLot => entity.remove::<BuyLot>(),
+                };
             } else {
                 error!("no controlled entity for {event:?} for client {client_id}");
             }
@@ -100,34 +133,44 @@ impl TaskPlugin {
     }
 }
 
-/// List of possible tasks for the entity.
+/// Marker that indicates that the entity contains list of possible tasks as children.
 ///
-/// The component is added after clicking on object.
-#[derive(Component, Default)]
-pub(crate) struct TaskList {
-    /// List of possible tasks for the assigned entity.
-    ///
-    /// Discriminants of [`TaskRequest`]
-    pub(crate) tasks: Vec<TaskRequestKind>,
-}
+/// Added when clicking on objects.
+#[derive(Component)]
+pub(crate) struct TaskList;
 
-/// Event with requested task and it's data.
-#[derive(Clone, Copy, Debug, Deserialize, EnumDiscriminants, FromReflect, Reflect, Serialize)]
+/// Marker that indicates that the entity represents a queued task.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub(super) struct QueuedTask;
+
+/// Event with requested task to put in queue.
+///
+/// Emitted by players.
+#[derive(Serialize, Deserialize, Debug, EnumDiscriminants)]
 #[strum_discriminants(name(TaskRequestKind))]
-#[strum_discriminants(derive(Display, Serialize, Deserialize))]
+#[strum_discriminants(derive(Serialize, Deserialize))]
 pub(crate) enum TaskRequest {
-    Walk(Vec3),
-    Buy(Vec2),
+    Walk(Walk),
+    BuyLot(BuyLot),
 }
 
-impl TaskRequest {
-    /// Creates a new task from the discriminant.
-    #[must_use]
-    pub(crate) fn new(task: TaskRequestKind, position: Vec3) -> Self {
-        match task {
-            TaskRequestKind::Walk => TaskRequest::Walk(position),
-            TaskRequestKind::Buy => TaskRequest::Buy(position.xz()),
-        }
+/// An event of canceling an active task from the currently active player.
+///
+/// Emitted by players.
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ActiveTaskCancel(pub(crate) TaskRequestKind);
+
+/// An event of canceling a queued actor task.
+///
+/// Emitted by players.
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct QueuedTaskCancel(pub(crate) Entity);
+
+impl MapEntities for QueuedTaskCancel {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
     }
 }
 
@@ -136,49 +179,12 @@ impl TaskRequest {
 /// Will be counted as an ongoing task when exists on an actor.
 #[queryable]
 pub(crate) trait Task: Reflect {
-    fn kind(&self) -> TaskRequestKind;
-}
+    /// Task name to display.
+    fn name(&self) -> &'static str;
 
-/// List of pending tasks for an actor.
-#[derive(Clone, Component, Default, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
-pub(crate) struct TaskQueue {
-    queue: Vec<(u8, TaskRequest)>,
-    next_id: u8,
-}
+    /// Converts itself to the request event.
+    fn to_request(&self) -> TaskRequest;
 
-impl TaskQueue {
-    fn push_task(&mut self, task: TaskRequest) {
-        self.queue.push((self.next_id, task));
-        self.next_id += 1;
-    }
-
-    fn pop(&mut self) -> Option<TaskRequest> {
-        self.queue.pop().map(|(_, task)| task)
-    }
-
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (u8, TaskRequest)> + '_ {
-        self.queue.iter().copied()
-    }
-}
-
-/// An event of removing the active task from the player
-///
-/// Emitted by players.
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-pub(crate) struct TaskCancel(pub(crate) TaskRequestKind);
-
-/// An event of removing a actor task from the queue.
-///
-/// Emitted by players.
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-pub(crate) struct TaskRequestRemove(pub(crate) u8);
-
-/// Task activation event.
-///
-/// Emitted only on server to react on event activation in multiple systems.
-#[derive(Clone, Copy)]
-pub(crate) struct TaskActivation {
-    pub(crate) entity: Entity,
-    pub(crate) task: TaskRequest,
+    /// Returns the corresponding request discriminant.
+    fn to_request_kind(&self) -> TaskRequestKind;
 }

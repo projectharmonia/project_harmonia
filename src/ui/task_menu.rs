@@ -1,12 +1,12 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui::Pos2, EguiContexts};
 use bevy_inspector_egui::egui::{Align, Layout};
+use bevy_trait_query::One;
 
 use crate::core::{
-    cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
-    task::{TaskList, TaskRequest},
+    task::{Task, TaskList, TaskRequest},
 };
 
 pub(super) struct TaskMenuPlugin;
@@ -28,9 +28,10 @@ impl TaskMenuPlugin {
         mut egui: EguiContexts,
         mut task_events: EventWriter<TaskRequest>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        task_lists: Query<(Entity, &Name, &CursorHover, Ref<TaskList>)>,
+        task_lists: Query<(Entity, &Name, Ref<TaskList>, Option<&Children>)>,
+        tasks: Query<(Entity, One<&dyn Task>)>,
     ) {
-        let Ok((entity, name, hover, task_list)) = task_lists.get_single() else {
+        let Ok((entity, name, task_list, children)) = task_lists.get_single() else {
             return;
         };
 
@@ -42,6 +43,7 @@ impl TaskMenuPlugin {
             position.y = primary_window.height() - cursor_position.y;
         }
 
+        let mut task_activated = false;
         let mut open = true;
         bevy_egui::egui::Window::new(name.as_str())
             .resizable(false)
@@ -51,17 +53,24 @@ impl TaskMenuPlugin {
             .open(&mut open)
             .show(egui.ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    for &task in &task_list.tasks {
-                        if ui.button(task.to_string()).clicked() {
-                            task_events.send(TaskRequest::new(task, hover.0));
-                            commands.entity(entity).remove::<TaskList>();
+                    for (_, task) in
+                        tasks.iter_many(children.iter().flat_map(|children| children.iter()))
+                    {
+                        if ui.button(task.name()).clicked() {
+                            task_events.send(task.to_request());
+                            task_activated = true;
                         }
                     }
                 });
             });
 
-        if !open {
+        if !open || task_activated {
             commands.entity(entity).remove::<TaskList>();
+            for (task_entity, _) in
+                tasks.iter_many(children.iter().flat_map(|children| children.iter()))
+            {
+                commands.entity(task_entity).despawn();
+            }
         }
     }
 }
