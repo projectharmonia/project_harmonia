@@ -4,6 +4,7 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use bevy_trait_query::{queryable, One};
+use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
@@ -23,6 +24,7 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
+            .replicate::<TaskGroups>()
             .add_client_event::<TaskRequest>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
@@ -85,10 +87,20 @@ impl TaskPlugin {
     fn activation_system(
         mut commands: Commands,
         queued_tasks: Query<(Entity, One<&dyn Task>), With<QueuedTask>>,
-        actors: Query<(Entity, &Children), With<FirstName>>,
+        actors: Query<(Entity, &Children, Option<&dyn Task>), With<FirstName>>,
     ) {
-        for (actor_entity, children) in &actors {
-            if let Some((task_entity, task)) = queued_tasks.iter_many(children).next() {
+        for (actor_entity, children, tasks) in &actors {
+            let current_groups = tasks
+                .iter()
+                .flatten()
+                .map(|task| task.groups())
+                .reduce(|acc, e| acc & e)
+                .unwrap_or_default();
+
+            for (task_entity, task) in queued_tasks
+                .iter_many(children)
+                .filter(|(_, task)| !task.groups().intersects(current_groups))
+            {
                 commands
                     .entity(actor_entity)
                     .insert_components(vec![task.clone_value()]);
@@ -187,4 +199,20 @@ pub(crate) trait Task: Reflect {
 
     /// Returns the corresponding request discriminant.
     fn to_request_kind(&self) -> TaskRequestKind;
+
+    /// Returns task constraints.
+    fn groups(&self) -> TaskGroups {
+        TaskGroups::default()
+    }
+}
+
+bitflags! {
+    #[derive(Component, Reflect, Default)]
+    #[reflect(Component)]
+    pub(crate) struct TaskGroups: u8 {
+        const LEFT_HAND = 0b00000001;
+        const RIGHT_HAND = 0b00000010;
+        const BOTH_HANDS = Self::LEFT_HAND.bits() | Self::RIGHT_HAND.bits();
+        const LEGS = 0b00000100;
+    }
 }

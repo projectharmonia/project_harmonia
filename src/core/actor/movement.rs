@@ -9,7 +9,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
-    task::{Task, TaskList, TaskRequest, TaskRequestKind},
+    task::{Task, TaskGroups, TaskList, TaskRequest, TaskRequestKind},
 };
 
 pub(super) struct MovementPlugin;
@@ -108,5 +108,9 @@ impl Task for Walk {
 
     fn to_request_kind(&self) -> TaskRequestKind {
         TaskRequestKind::Walk
+    }
+
+    fn groups(&self) -> TaskGroups {
+        TaskGroups::LEGS
     }
 }

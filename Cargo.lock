@@ -2352,6 +2352,7 @@ dependencies = [
  "bevy_rapier3d",
  "bevy_replicon",
  "bincode",
+ "bitflags",
  "clap",
  "derive_more",
  "fastrand",
