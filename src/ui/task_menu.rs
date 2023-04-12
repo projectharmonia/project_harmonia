@@ -53,9 +53,7 @@ impl TaskMenuPlugin {
             .open(&mut open)
             .show(egui.ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    for (_, task) in
-                        tasks.iter_many(children.iter().flat_map(|children| children.iter()))
-                    {
+                    for (_, task) in tasks.iter_many(children.into_iter().flatten()) {
                         if ui.button(task.name()).clicked() {
                             task_events.send(task.to_request());
                             task_activated = true;
@@ -66,9 +64,7 @@ impl TaskMenuPlugin {
 
         if !open || task_activated {
             commands.entity(entity).remove::<TaskList>();
-            for (task_entity, _) in
-                tasks.iter_many(children.iter().flat_map(|children| children.iter()))
-            {
+            for (task_entity, _) in tasks.iter_many(children.into_iter().flatten()) {
                 commands.entity(task_entity).despawn();
             }
         }

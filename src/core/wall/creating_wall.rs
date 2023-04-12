@@ -53,7 +53,7 @@ impl CreatingWallPlugin {
             {
                 // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
                 let vertex = walls
-                    .iter_many(children.iter().flat_map(|children| children.iter()))
+                    .iter_many(children.into_iter().flatten())
                     .flat_map(|edges| edges.iter())
                     .flat_map(|edge| [edge.0, edge.1])
                     .find(|vertex| vertex.distance(position) < SNAP_DELTA)
