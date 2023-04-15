@@ -3,8 +3,9 @@ use bevy_replicon::prelude::*;
 use bevy_trait_query::RegisterExt;
 use serde::{Deserialize, Serialize};
 
-use super::{human_animation::HumanAnimation, Sex};
+use super::{animation::HumanAnimation, Sex};
 use crate::core::{
+    asset_handles::AssetHandles,
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
@@ -46,27 +47,31 @@ impl MovementPlugin {
         }
     }
 
-    fn init_system(mut actors: Query<(&mut HumanAnimation, &Sex), Added<Walk>>) {
-        for (mut animation, sex) in &mut actors {
-            let walk_animation = match sex {
+    fn init_system(
+        human_animations: Res<AssetHandles<HumanAnimation>>,
+        mut actors: Query<(&mut Handle<AnimationClip>, &Sex), Added<Walk>>,
+    ) {
+        for (mut anim_handle, sex) in &mut actors {
+            let walk_anim = match sex {
                 Sex::Male => HumanAnimation::MaleWalk,
                 Sex::Female => HumanAnimation::FemaleWalk,
             };
-            *animation = walk_animation;
+            *anim_handle = human_animations.handle(walk_anim);
         }
     }
 
     fn movement_system(
         mut commands: Commands,
         time: Res<Time>,
-        mut actors: Query<(Entity, &mut Transform, &mut HumanAnimation, &Walk)>,
+        human_animations: Res<AssetHandles<HumanAnimation>>,
+        mut actors: Query<(Entity, &mut Transform, &mut Handle<AnimationClip>, &Walk)>,
     ) {
-        for (entity, mut transform, mut animation, walk) in &mut actors {
+        for (entity, mut transform, mut anim_handle, walk) in &mut actors {
             let direction = walk.0 - transform.translation;
 
             if direction.length() < 0.1 {
                 commands.entity(entity).remove::<Walk>();
-                *animation = HumanAnimation::Idle;
+                *anim_handle = human_animations.handle(HumanAnimation::Idle);
             } else {
                 const ROTATION_SPEED: f32 = 10.0;
                 const WALK_SPEED: f32 = 2.0;
@@ -83,11 +88,12 @@ impl MovementPlugin {
 
     fn cleanup_system(
         mut stopped_walking: RemovedComponents<Walk>,
-        mut actors: Query<&mut HumanAnimation>,
+        human_animations: Res<AssetHandles<HumanAnimation>>,
+        mut actors: Query<&mut Handle<AnimationClip>>,
     ) {
         for entity in &mut stopped_walking {
-            if let Ok(mut animation) = actors.get_mut(entity) {
-                *animation = HumanAnimation::Idle;
+            if let Ok(mut anim_handle) = actors.get_mut(entity) {
+                *anim_handle = human_animations.handle(HumanAnimation::Idle);
             }
         }
     }

@@ -9,40 +9,41 @@ use crate::core::{
     game_world::WorldState,
 };
 
-pub(super) struct HumanAnimationPlugin;
+pub(super) struct AnimationPlugin;
 
-impl Plugin for HumanAnimationPlugin {
+impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<HumanAnimation>>()
-            .add_system(Self::play_animation_system.in_set(OnUpdate(WorldState::InWorld)));
+            .add_system(Self::playing_system.in_set(OnUpdate(WorldState::InWorld)));
     }
 }
 
-impl HumanAnimationPlugin {
-    /// Plays animation after changing [`HumanAnimation`] or after [`Children`] initialization (to handle scene spawn delay).
-    fn play_animation_system(
-        human_animations: Res<AssetHandles<HumanAnimation>>,
-        actors: Query<(Entity, &HumanAnimation), Or<(Changed<HumanAnimation>, Added<Children>)>>,
+impl AnimationPlugin {
+    /// Plays animation after changing [`Handle<AnimationClip>`] or after [`Children`] initialization (to handle scene spawn delay).
+    ///
+    /// Makes the behavior similar to adding [`Handle<Scene>`].
+    fn playing_system(
+        actors: Query<
+            (Entity, &Handle<AnimationClip>),
+            Or<(Changed<Handle<AnimationClip>>, Added<Children>)>,
+        >,
         children: Query<&Children>,
         mut animaption_players: Query<&mut AnimationPlayer>,
     ) {
-        for (human_entity, &animation) in &actors {
+        for (human_entity, handle) in &actors {
             if let Some(mut animation_player) = animaption_players
                 .iter_many_mut(children.iter_descendants(human_entity))
                 .fetch_next()
             {
                 animation_player
-                    .play_with_transition(
-                        human_animations.handle(animation),
-                        Duration::from_millis(200),
-                    )
+                    .play_with_transition(handle.clone(), Duration::from_millis(200))
                     .repeat();
             }
         }
     }
 }
 
-#[derive(Component, Clone, Copy, EnumIter, IntoPrimitive)]
+#[derive(Clone, Copy, EnumIter, IntoPrimitive)]
 #[repr(usize)]
 pub(super) enum HumanAnimation {
     Idle,
