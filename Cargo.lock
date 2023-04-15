@@ -941,9 +941,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc05c1d3879e4521ca31d6abbfaf3adb1298c7c5a44b376f80de910025d3b76e"
+checksum = "2cc0cd772d8159eb222534439bbaac718c71326a109c3c74353f5cd6a5abb78c"
 dependencies = [
  "bevy",
  "bevy_renet",
@@ -951,7 +951,6 @@ dependencies = [
  "derive_more",
  "serde",
  "strum",
- "tap",
 ]
 
 [[package]]
@@ -3433,12 +3432,6 @@ dependencies = [
  "once_cell",
  "winapi",
 ]
-
-[[package]]
-name = "tap"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "termcolor"
