@@ -4,6 +4,7 @@ use bevy_inspector_egui::egui::{Align, Layout};
 use bevy_trait_query::One;
 
 use crate::core::{
+    actor::ActiveActor,
     family::FamilyMode,
     game_state::GameState,
     task::{Task, TaskList, TaskRequest},
@@ -30,6 +31,7 @@ impl TaskMenuPlugin {
         windows: Query<&Window, With<PrimaryWindow>>,
         task_lists: Query<(Entity, &Name, Ref<TaskList>, Option<&Children>)>,
         tasks: Query<(Entity, One<&dyn Task>)>,
+        active_actors: Query<Entity, With<ActiveActor>>,
     ) {
         let Ok((entity, name, task_list, children)) = task_lists.get_single() else {
             return;
@@ -56,7 +58,7 @@ impl TaskMenuPlugin {
                     for (_, task) in tasks.iter_many(children.into_iter().flatten()) {
                         if ui.button(task.name()).clicked() {
                             task_events.send(TaskRequest {
-                                entity,
+                                entity: active_actors.single(),
                                 task: task.clone_value(),
                             });
                             task_activated = true;

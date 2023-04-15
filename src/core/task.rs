@@ -24,10 +24,10 @@ use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use super::{
     action::Action,
-    actor::{FirstName, Players},
+    actor::FirstName,
     component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
-    family::FamilyMode,
+    family::{Family, FamilyMode},
     game_state::GameState,
 };
 
@@ -76,20 +76,17 @@ impl TaskPlugin {
     fn queue_system(
         mut commands: Commands,
         mut task_events: EventReader<FromClient<TaskRequest>>,
-        mut actors: Query<(Entity, &Players)>,
+        actors: Query<(), With<Family>>,
     ) {
         for FromClient { client_id, event } in &mut task_events {
-            if let Some((entity, _)) = actors
-                .iter_mut()
-                .find(|(_, players)| players.contains(client_id))
-            {
-                commands.entity(entity).with_children(|parent| {
+            if actors.get(event.entity).is_ok() {
+                commands.entity(event.entity).with_children(|parent| {
                     parent
                         .spawn((QueuedTask, Replication))
                         .insert_reflect([event.task.clone_value()]);
                 });
             } else {
-                error!("no controlled entity for {event:?} for client {client_id}");
+                error!("received a task request {event:?} with non-actor entity from client {client_id}");
             }
         }
     }
