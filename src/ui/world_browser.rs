@@ -7,7 +7,6 @@ use bevy_egui::{
     EguiContexts,
 };
 use bevy_replicon::prelude::*;
-use derive_more::Constructor;
 use leafwing_input_manager::prelude::ActionState;
 
 use super::modal_window::{ModalUiExt, ModalWindow};
@@ -59,7 +58,7 @@ impl WorldBrowserPlugin {
         ModalWindow::new("World browser")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                for (index, world_name) in world_browser.world_names.iter_mut().enumerate() {
+                for (world_index, world_name) in world_browser.world_names.iter_mut().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.add(
@@ -73,10 +72,10 @@ impl WorldBrowserPlugin {
                                     load_events.send_default();
                                 }
                                 if ui.button("👥 Host").clicked() {
-                                    commands.insert_resource(HostWorldDialog::new(index));
+                                    commands.insert_resource(HostWorldDialog { world_index });
                                 }
                                 if ui.button("🗑 Delete").clicked() {
-                                    commands.insert_resource(RemoveWorldDialog::new(index));
+                                    commands.insert_resource(RemoveWorldDialog { world_index });
                                 }
                             })
                         });
@@ -289,7 +288,7 @@ impl FromWorld for WorldBrowser {
 #[derive(Default, Resource)]
 struct JoinWorldDialog;
 
-#[derive(Constructor, Resource)]
+#[derive(Resource)]
 struct HostWorldDialog {
     world_index: usize,
 }
@@ -299,7 +298,7 @@ struct CreateWorldDialog {
     world_name: String,
 }
 
-#[derive(Constructor, Resource)]
+#[derive(Resource)]
 struct RemoveWorldDialog {
     world_index: usize,
 }

@@ -2,7 +2,6 @@ use bevy::{
     ecs::system::{Command, EntityCommands},
     prelude::*,
 };
-use derive_more::Constructor;
 
 pub(super) trait ComponentCommandsExt {
     fn insert_reflect<T>(&mut self, components: T) -> &mut Self
@@ -15,13 +14,15 @@ impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
     where
         T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
     {
-        let command = InsertReflect::new(self.id(), components);
+        let command = InsertReflect {
+            entity: self.id(),
+            components,
+        };
         self.commands().add(command);
         self
     }
 }
 
-#[derive(Constructor)]
 struct InsertReflect<T: IntoIterator<Item = Box<dyn Reflect>>> {
     entity: Entity,
     components: T,
