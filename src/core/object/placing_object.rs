@@ -161,7 +161,7 @@ impl PlacingObjectPlugin {
                         .components
                         .iter()
                         .map(|component| component.clone_value())
-                        .collect(),
+                        .collect::<Vec<_>>(),
                 );
         }
     }

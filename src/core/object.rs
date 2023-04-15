@@ -94,7 +94,7 @@ impl ObjectPlugin {
                         .components
                         .iter()
                         .map(|component| component.clone_value())
-                        .collect(),
+                        .collect::<Vec<_>>(),
                 );
             debug!("spawned object {scene_path:?}");
         }

@@ -5,11 +5,16 @@ use bevy::{
 use derive_more::Constructor;
 
 pub(super) trait ComponentCommandsExt {
-    fn insert_components(&mut self, components: Vec<Box<dyn Reflect>>) -> &mut Self;
+    fn insert_components<T>(&mut self, components: T) -> &mut Self
+    where
+        T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static;
 }
 
 impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
-    fn insert_components(&mut self, components: Vec<Box<dyn Reflect>>) -> &mut Self {
+    fn insert_components<T>(&mut self, components: T) -> &mut Self
+    where
+        T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
+    {
         let command = InsertComponents::new(self.id(), components);
         self.commands().add(command);
         self
@@ -17,12 +22,15 @@ impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
 }
 
 #[derive(Constructor)]
-struct InsertComponents {
+struct InsertComponents<T: IntoIterator<Item = Box<dyn Reflect>>> {
     entity: Entity,
-    components: Vec<Box<dyn Reflect>>,
+    components: T,
 }
 
-impl Command for InsertComponents {
+impl<T> Command for InsertComponents<T>
+where
+    T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
+{
     fn write(self, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
@@ -62,7 +70,7 @@ mod tests {
         let mut commands = Commands::new(&mut queue, &world);
         commands
             .entity(entity)
-            .insert_components(vec![DummyComponent.clone_value()]);
+            .insert_components([DummyComponent.clone_value()]);
 
         queue.apply(&mut world);
 
