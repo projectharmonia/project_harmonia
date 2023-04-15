@@ -20,7 +20,7 @@ use super::{
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
-    task::{Task, TaskList, TaskRequest, TaskRequestKind},
+    task::{ReflectTask, Task, TaskList},
 };
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
@@ -245,20 +245,12 @@ impl LotVertices {
 }
 
 #[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
+#[reflect(Component, Task)]
 pub(crate) struct BuyLot(Entity);
 
 impl Task for BuyLot {
     fn name(&self) -> &'static str {
         "Buy lot"
-    }
-
-    fn to_request(&self) -> TaskRequest {
-        TaskRequest::BuyLot(*self)
-    }
-
-    fn to_request_kind(&self) -> TaskRequestKind {
-        TaskRequestKind::BuyLot
     }
 }
 

@@ -9,7 +9,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
-    task::{Task, TaskGroups, TaskList, TaskRequest, TaskRequestKind},
+    task::{ReflectTask, Task, TaskGroups, TaskList},
 };
 
 pub(super) struct MovementPlugin;
@@ -94,20 +94,12 @@ impl MovementPlugin {
 }
 
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
+#[reflect(Component, Task)]
 pub(crate) struct Walk(pub(crate) Vec3);
 
 impl Task for Walk {
     fn name(&self) -> &'static str {
         "Walk"
-    }
-
-    fn to_request(&self) -> TaskRequest {
-        TaskRequest::Walk(*self)
-    }
-
-    fn to_request_kind(&self) -> TaskRequestKind {
-        TaskRequestKind::Walk
     }
 
     fn groups(&self) -> TaskGroups {

@@ -36,13 +36,13 @@ impl LifeHudPlugin {
         mut egui: EguiContexts,
         mut active_cancel_events: EventWriter<ActiveTaskCancel>,
         mut queued_cancel_events: EventWriter<QueuedTaskCancel>,
-        active_actors: Query<(Option<&Children>, Option<&dyn Task>), With<ActiveActor>>,
+        active_actors: Query<(Entity, Option<&Children>, Option<&dyn Task>), With<ActiveActor>>,
         queued_tasks: Query<(Entity, One<&dyn Task>)>,
     ) {
         Area::new("Tasks")
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
-                let (children, active_tasks) = active_actors.single();
+                let (actor_entity, children, active_tasks) = active_actors.single();
                 // Show frame with window spacing, but without visuals.
                 let queued_frame = Frame {
                     inner_margin: ui.spacing().window_margin,
@@ -50,13 +50,13 @@ impl LifeHudPlugin {
                     ..Frame::none()
                 };
                 queued_frame.show(ui, |ui| {
-                    for (entity, task) in
+                    for (task_entity, task) in
                         queued_tasks.iter_many(children.iter().flat_map(|&children| children))
                     {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
                         if ui.add(button).on_hover_text(task.name()).clicked() {
-                            queued_cancel_events.send(QueuedTaskCancel(entity));
+                            queued_cancel_events.send(QueuedTaskCancel(task_entity));
                         }
                     }
                 });
@@ -66,7 +66,10 @@ impl LifeHudPlugin {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
                         if ui.add(button).on_hover_text(task.name()).clicked() {
-                            active_cancel_events.send(ActiveTaskCancel(task.to_request_kind()))
+                            active_cancel_events.send(ActiveTaskCancel {
+                                entity: actor_entity,
+                                task_name: task.type_name().to_string(),
+                            });
                         }
                         task_count += 1;
                     }

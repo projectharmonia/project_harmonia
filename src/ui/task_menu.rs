@@ -55,7 +55,10 @@ impl TaskMenuPlugin {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                     for (_, task) in tasks.iter_many(children.into_iter().flatten()) {
                         if ui.button(task.name()).clicked() {
-                            task_events.send(task.to_request());
+                            task_events.send(TaskRequest {
+                                entity,
+                                task: task.clone_value(),
+                            });
                             task_activated = true;
                         }
                     }

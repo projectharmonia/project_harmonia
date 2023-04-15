@@ -1,22 +1,34 @@
+use std::{
+    any,
+    fmt::{self, Formatter},
+};
+
 use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
+    reflect::{
+        serde::{ReflectSerializer, UntypedReflectDeserializer},
+        FromType, TypeRegistryInternal,
+    },
 };
 use bevy_replicon::prelude::*;
 use bevy_trait_query::{queryable, One};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
-use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
+use serde::{
+    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use super::{
     action::Action,
-    actor::{movement::Walk, FirstName, Players},
+    actor::{FirstName, Players},
     component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
-    lot::BuyLot,
 };
 
 pub(super) struct TaskPlugin;
@@ -25,7 +37,7 @@ impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
             .replicate::<TaskGroups>()
-            .add_client_event::<TaskRequest>()
+            .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
             .add_system(
@@ -72,11 +84,9 @@ impl TaskPlugin {
                 .find(|(_, players)| players.contains(client_id))
             {
                 commands.entity(entity).with_children(|parent| {
-                    let mut task_entity = parent.spawn((QueuedTask, Replication));
-                    match event {
-                        TaskRequest::Walk(walk) => task_entity.insert(*walk),
-                        TaskRequest::BuyLot(buy) => task_entity.insert(*buy),
-                    };
+                    parent
+                        .spawn((QueuedTask, Replication))
+                        .insert_reflect([event.task.clone_value()]);
                 });
             } else {
                 error!("no controlled entity for {event:?} for client {client_id}");
@@ -103,7 +113,7 @@ impl TaskPlugin {
             {
                 commands
                     .entity(actor_entity)
-                    .insert_reflect(vec![task.clone_value()]);
+                    .insert_reflect([task.clone_value()]);
                 commands.entity(task_entity).despawn();
             }
         }
@@ -126,20 +136,24 @@ impl TaskPlugin {
     fn active_cancelation_system(
         mut commands: Commands,
         mut cancel_events: EventReader<FromClient<ActiveTaskCancel>>,
-        actors: Query<(Entity, &Players)>,
+        registry: Res<AppTypeRegistry>,
     ) {
         for FromClient { client_id, event } in &mut cancel_events {
-            if let Some((entity, _)) = actors
-                .iter()
-                .find(|(_, players)| players.contains(client_id))
-            {
-                let mut entity = commands.entity(entity);
-                match event.0 {
-                    TaskRequestKind::Walk => entity.remove::<Walk>(),
-                    TaskRequestKind::BuyLot => entity.remove::<BuyLot>(),
-                };
+            let registry = registry.read();
+            let Some(registration) = registry.get_with_name(&event.task_name) else {
+                error!(
+                    "received unknown type {} for task from client {client_id}",
+                    event.task_name
+                );
+                continue;
+            };
+
+            if registration.data::<ReflectTask>().is_some() {
+                commands
+                    .entity(event.entity)
+                    .remove_by_name(event.task_name.clone());
             } else {
-                error!("no controlled entity for {event:?} for client {client_id}");
+                error!("type {:?} does not have reflect(Task)", &event.task_name);
             }
         }
     }
@@ -156,22 +170,14 @@ pub(crate) struct TaskList;
 #[reflect(Component)]
 pub(super) struct QueuedTask;
 
-/// Event with requested task to put in queue.
-///
-/// Emitted by players.
-#[derive(Serialize, Deserialize, Debug, EnumDiscriminants)]
-#[strum_discriminants(name(TaskRequestKind))]
-#[strum_discriminants(derive(Serialize, Deserialize))]
-pub(crate) enum TaskRequest {
-    Walk(Walk),
-    BuyLot(BuyLot),
-}
-
 /// An event of canceling an active task from the currently active player.
 ///
 /// Emitted by players.
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ActiveTaskCancel(pub(crate) TaskRequestKind);
+pub(crate) struct ActiveTaskCancel {
+    pub(crate) entity: Entity,
+    pub(crate) task_name: String,
+}
 
 /// An event of canceling a queued actor task.
 ///
@@ -189,16 +195,11 @@ impl MapEntities for QueuedTaskCancel {
 /// A trait to mark component as task.
 ///
 /// Will be counted as an ongoing task when exists on an actor.
+/// Will be counted as a queued task when exists on actor's children with component [`QueuedTask`].
 #[queryable]
 pub(crate) trait Task: Reflect {
     /// Task name to display.
     fn name(&self) -> &'static str;
-
-    /// Converts itself to the request event.
-    fn to_request(&self) -> TaskRequest;
-
-    /// Returns the corresponding request discriminant.
-    fn to_request_kind(&self) -> TaskRequestKind;
 
     /// Returns task constraints.
     fn groups(&self) -> TaskGroups {
@@ -214,5 +215,103 @@ bitflags! {
         const RIGHT_HAND = 0b00000010;
         const BOTH_HANDS = Self::LEFT_HAND.bits() | Self::RIGHT_HAND.bits();
         const LEGS = 0b00000100;
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TaskRequest {
+    pub(crate) entity: Entity,
+    pub(crate) task: Box<dyn Reflect>,
+}
+
+impl MapEntities for TaskRequest {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.entity = entity_map.get(self.entity)?;
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
+enum ReflectEventField {
+    Entity,
+    Component,
+}
+
+struct TaskRequestSerializer<'a> {
+    registry: &'a TypeRegistryInternal,
+    event: &'a TaskRequest,
+}
+
+impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
+    type EventSerializer<'a> = TaskRequestSerializer<'a>;
+
+    fn new<'a>(
+        registry: &'a TypeRegistryInternal,
+        event: &'a TaskRequest,
+    ) -> Self::EventSerializer<'a> {
+        Self::EventSerializer { registry, event }
+    }
+}
+
+impl Serialize for TaskRequestSerializer<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer
+            .serialize_struct(any::type_name::<Self>(), ReflectEventField::VARIANTS.len())?;
+        state.serialize_field(ReflectEventField::Entity.into(), &self.event.entity)?;
+        state.serialize_field(
+            ReflectEventField::Entity.into(),
+            &ReflectSerializer::new(&*self.event.task, self.registry),
+        )?;
+        state.end()
+    }
+}
+
+struct TaskRequestDeserializer<'a> {
+    registry: &'a TypeRegistryInternal,
+}
+
+impl BuildEventDeserializer for TaskRequestDeserializer<'_> {
+    type EventDeserializer<'a> = TaskRequestDeserializer<'a>;
+
+    fn new(registry: &TypeRegistryInternal) -> Self::EventDeserializer<'_> {
+        Self::EventDeserializer { registry }
+    }
+}
+
+impl<'de> DeserializeSeed<'de> for TaskRequestDeserializer<'_> {
+    type Value = TaskRequest;
+
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_struct(any::type_name::<Self>(), ReflectEventField::VARIANTS, self)
+    }
+}
+
+impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
+    type Value = TaskRequest;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(any::type_name::<Self::Value>())
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        let entity = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::invalid_length(ReflectEventField::Entity as usize, &self))?;
+        let task = seq
+            .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
+            .ok_or_else(|| {
+                de::Error::invalid_length(ReflectEventField::Component as usize, &self)
+            })?;
+        Ok(TaskRequest { entity, task })
+    }
+}
+
+/// Used to check if `dyn Reflect` implements [`Task`].
+#[derive(Clone)]
+pub(super) struct ReflectTask;
+
+impl<C: Component + Task> FromType<C> for ReflectTask {
+    fn from_type() -> Self {
+        Self
     }
 }
