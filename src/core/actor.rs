@@ -1,22 +1,17 @@
 mod animation;
 pub(super) mod movement;
 
-use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
 use strum::EnumIter;
 
 use super::{
     asset_handles::{AssetCollection, AssetHandles},
     family::FamilySync,
-    game_state::GameState,
-    game_world::{parent_sync::ParentSync, AppIgnoreSavingExt, WorldState},
+    game_world::{parent_sync::ParentSync, WorldState},
     task::TaskGroups,
 };
 use animation::{AnimationPlugin, HumanAnimation};
@@ -31,25 +26,10 @@ impl Plugin for ActorPlugin {
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
-            .replicate::<Players>()
             .not_replicate_if_present::<Name, FirstName>()
-            .ignore_saving::<Players>()
-            .add_mapped_client_event::<ActorSelect>()
-            .add_client_event::<ActorDeselect>()
             .init_resource::<AssetHandles<Sex>>()
             .add_systems(
                 (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
-            )
-            .add_systems((
-                Self::selection_system.in_set(OnUpdate(GameState::Family)),
-                Self::deselection_system.in_schedule(OnExit(GameState::Family)),
-            ))
-            .add_systems(
-                (
-                    Self::selection_update_system,
-                    Self::deselection_update_system,
-                )
-                    .in_set(ServerSet::Authority),
             );
     }
 }
@@ -85,73 +65,6 @@ impl ActorPlugin {
             commands
                 .entity(entity)
                 .insert(Name::new(format!("{first_name} {last_name}")));
-        }
-    }
-
-    fn selection_system(
-        mut select_events: EventWriter<ActorSelect>,
-        activated_actors: Query<Entity, Added<ActiveActor>>,
-    ) {
-        if let Ok(entity) = activated_actors.get_single() {
-            select_events.send(ActorSelect(entity));
-        }
-    }
-
-    fn selection_update_system(
-        mut commands: Commands,
-        mut select_events: EventReader<FromClient<ActorSelect>>,
-        mut actors: Query<(Entity, &mut Players)>,
-    ) {
-        for FromClient { client_id, event } in select_events.iter().copied() {
-            // Remove previous.
-            for (entity, mut players) in &mut actors {
-                if let Some(index) = players.iter().position(|&id| id == client_id) {
-                    if players.len() == 1 {
-                        commands.entity(entity).remove::<Players>();
-                    } else {
-                        players.swap_remove(index);
-                    }
-                    break;
-                }
-            }
-
-            if let Ok((_, mut players)) = actors.get_mut(event.0) {
-                players.push(client_id);
-            } else {
-                commands
-                    .entity(event.0)
-                    .insert(Players(smallvec![client_id]));
-            }
-        }
-    }
-
-    fn deselection_system(
-        mut commands: Commands,
-        mut deselect_events: EventWriter<ActorDeselect>,
-        active_actors: Query<Entity, With<ActiveActor>>,
-    ) {
-        commands
-            .entity(active_actors.single())
-            .remove::<ActiveActor>();
-        deselect_events.send(ActorDeselect);
-    }
-
-    fn deselection_update_system(
-        mut commands: Commands,
-        mut deselect_events: EventReader<FromClient<ActorDeselect>>,
-        mut actors: Query<(Entity, &mut Players)>,
-    ) {
-        for client_id in deselect_events.iter().map(|event| event.client_id) {
-            for (entity, mut players) in &mut actors {
-                if let Some(index) = players.iter().position(|&id| id == client_id) {
-                    if players.len() == 1 {
-                        commands.entity(entity).remove::<Players>();
-                    } else {
-                        players.swap_remove(index);
-                    }
-                    break;
-                }
-            }
         }
     }
 }
@@ -205,28 +118,9 @@ impl AssetCollection for Sex {
     }
 }
 
-/// Contains list of player IDs who controls this actor.
-#[derive(Component, Default, Deref, DerefMut, Reflect)]
-#[reflect(Component)]
-pub(crate) struct Players(SmallVec<[u64; 2]>);
-
 /// Indicates locally controlled actor.
 #[derive(Component)]
 pub(crate) struct ActiveActor;
-
-/// Selects a actor entity to play.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct ActorSelect(pub(crate) Entity);
-
-impl MapEntities for ActorSelect {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub(crate) struct ActorDeselect;
 
 /// Minimal actor components.
 ///
