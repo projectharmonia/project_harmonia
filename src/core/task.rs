@@ -103,7 +103,7 @@ impl TaskPlugin {
             {
                 commands
                     .entity(actor_entity)
-                    .insert_components(vec![task.clone_value()]);
+                    .insert_reflect(vec![task.clone_value()]);
                 commands.entity(task_entity).despawn();
             }
         }

@@ -5,29 +5,29 @@ use bevy::{
 use derive_more::Constructor;
 
 pub(super) trait ComponentCommandsExt {
-    fn insert_components<T>(&mut self, components: T) -> &mut Self
+    fn insert_reflect<T>(&mut self, components: T) -> &mut Self
     where
         T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static;
 }
 
 impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
-    fn insert_components<T>(&mut self, components: T) -> &mut Self
+    fn insert_reflect<T>(&mut self, components: T) -> &mut Self
     where
         T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
     {
-        let command = InsertComponents::new(self.id(), components);
+        let command = InsertReflect::new(self.id(), components);
         self.commands().add(command);
         self
     }
 }
 
 #[derive(Constructor)]
-struct InsertComponents<T: IntoIterator<Item = Box<dyn Reflect>>> {
+struct InsertReflect<T: IntoIterator<Item = Box<dyn Reflect>>> {
     entity: Entity,
     components: T,
 }
 
-impl<T> Command for InsertComponents<T>
+impl<T> Command for InsertReflect<T>
 where
     T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
 {
@@ -70,7 +70,7 @@ mod tests {
         let mut commands = Commands::new(&mut queue, &world);
         commands
             .entity(entity)
-            .insert_components([DummyComponent.clone_value()]);
+            .insert_reflect([DummyComponent.clone_value()]);
 
         queue.apply(&mut world);
 

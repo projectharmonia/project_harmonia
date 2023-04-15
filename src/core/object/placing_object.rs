@@ -156,7 +156,7 @@ impl PlacingObjectPlugin {
                         }),
                     },
                 ))
-                .insert_components(
+                .insert_reflect(
                     object_metadata
                         .components
                         .iter()
