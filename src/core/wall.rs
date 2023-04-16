@@ -16,7 +16,7 @@ use super::{
     collision_groups::LifescapeGroupsExt,
     game_world::{parent_sync::ParentSync, WorldState},
 };
-use creating_wall::CreatingWallPlugin;
+use creating_wall::{CreatingWall, CreatingWallPlugin};
 
 pub(super) struct WallPlugin;
 
@@ -59,7 +59,7 @@ impl WallPlugin {
         mut create_events: EventReader<FromClient<WallCreate>>,
         mut confirm_events: EventWriter<ToClients<WallEventConfirmed>>,
         children: Query<&Children>,
-        mut walls: Query<&mut WallEdges, With<Replication>>,
+        mut walls: Query<&mut WallEdges, Without<CreatingWall>>,
     ) {
         for FromClient { client_id, event } in create_events.iter().copied() {
             confirm_events.send(ToClients {
