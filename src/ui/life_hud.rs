@@ -7,7 +7,7 @@ use bevy_trait_query::One;
 
 use crate::core::{
     actor::ActiveActor,
-    family::{ActiveFamily, Actors, Budget, FamilyMode},
+    family::{ActiveFamily, Budget, FamilyActors, FamilyMode},
     game_state::GameState,
     task::{ActiveTaskCancel, QueuedTaskCancel, Task},
 };
@@ -109,7 +109,7 @@ impl LifeHudPlugin {
     fn family_members_system(
         mut commands: Commands,
         mut egui: EguiContexts,
-        active_families: Query<&Actors, With<ActiveFamily>>,
+        active_families: Query<&FamilyActors, With<ActiveFamily>>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
         let ctx = egui.ctx_mut();

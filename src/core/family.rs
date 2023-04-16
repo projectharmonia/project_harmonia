@@ -42,8 +42,8 @@ impl Plugin for FamilyPlugin {
 impl FamilyPlugin {
     fn family_sync_system(
         mut commands: Commands,
-        actors: Query<(Entity, Option<&Family>, &FamilySync), Changed<FamilySync>>,
-        mut families: Query<&mut Actors>,
+        actors: Query<(Entity, Option<&ActorFamily>, &FamilySync), Changed<FamilySync>>,
+        mut families: Query<&mut FamilyActors>,
     ) {
         let mut new_actors = HashMap::<_, Vec<_>>::new();
         for (entity, family, family_sync) in &actors {
@@ -58,7 +58,7 @@ impl FamilyPlugin {
                 }
             }
 
-            commands.entity(entity).insert(Family(family_sync.0));
+            commands.entity(entity).insert(ActorFamily(family_sync.0));
             if let Ok(mut actors) = families.get_mut(family_sync.0) {
                 actors.push(entity);
             } else {
@@ -66,10 +66,10 @@ impl FamilyPlugin {
             }
         }
 
-        // Apply accumulated `Actors` at once in case there was no such component otherwise
-        // multiple `Actors` insertion with a single entity will overwrite each other.
+        // Apply accumulated `FamilyActors` at once in case there was no such component otherwise
+        // multiple `FamilyActors` insertion with a single entity will overwrite each other.
         for (family, actors) in new_actors {
-            commands.entity(family).insert(Actors(actors));
+            commands.entity(family).insert(FamilyActors(actors));
         }
     }
 
@@ -101,7 +101,7 @@ impl FamilyPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
-        families: Query<(Entity, &mut Actors)>,
+        families: Query<(Entity, &mut FamilyActors)>,
     ) {
         for event in despawn_events.iter().map(|event| event.event) {
             match families.get(event.0) {
@@ -118,7 +118,7 @@ impl FamilyPlugin {
 
     fn activation_system(
         mut commands: Commands,
-        activated_actors: Query<&Family, With<ActiveActor>>,
+        activated_actors: Query<&ActorFamily, With<ActiveActor>>,
     ) {
         commands
             .entity(activated_actors.single().0)
@@ -127,14 +127,14 @@ impl FamilyPlugin {
 
     fn deactivation_system(
         mut commands: Commands,
-        active_actors: Query<&Family, With<ActiveActor>>,
+        active_actors: Query<&ActorFamily, With<ActiveActor>>,
     ) {
         commands
             .entity(active_actors.single().0)
             .remove::<ActiveFamily>();
     }
 
-    fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<Actors>>) {
+    fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<FamilyActors>>) {
         for entity in &actors {
             commands.entity(entity).despawn();
         }
@@ -209,15 +209,15 @@ impl BuildingMode {
 
 /// Contains the family entity to which the actor belongs.
 #[derive(Component)]
-pub(crate) struct Family(pub(crate) Entity);
+pub(crate) struct ActorFamily(pub(crate) Entity);
 
 /// Contains the entities of all the actors that belong to the family.
 #[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct Actors(Vec<Entity>);
+pub(crate) struct FamilyActors(Vec<Entity>);
 
 /// Contains the family entity to which the actor belongs.
 ///
-/// Automatically updates [`Family`] and [`Actors`] components after insertion.
+/// Automatically updates [`ActorFamily`] and [`FamilyActors`] components after insertion.
 #[derive(Component, Reflect)]
 #[reflect(Component, MapEntities)]
 pub(crate) struct FamilySync(pub(crate) Entity);

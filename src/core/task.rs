@@ -27,7 +27,7 @@ use super::{
     actor::FirstName,
     component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
-    family::{Family, FamilyMode},
+    family::{ActorFamily, FamilyMode},
     game_state::GameState,
 };
 
@@ -75,7 +75,7 @@ impl TaskPlugin {
     fn queue_system(
         mut commands: Commands,
         mut task_events: EventReader<FromClient<TaskRequest>>,
-        actors: Query<(), With<Family>>,
+        actors: Query<(), With<ActorFamily>>,
     ) {
         for FromClient { client_id, event } in &mut task_events {
             if actors.get(event.entity).is_ok() {

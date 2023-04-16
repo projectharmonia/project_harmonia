@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     actor::{ActiveActor, ActorBundle},
-    family::{Actors, SelectedFamilySpawned},
+    family::{FamilyActors, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
@@ -67,7 +67,7 @@ impl FamilyEditorPlugin {
         mut commands: Commands,
         mut spawn_select_events: EventReader<SelectedFamilySpawned>,
         mut game_state: ResMut<NextState<GameState>>,
-        actors: Query<&Actors>,
+        actors: Query<&FamilyActors>,
     ) {
         for event in &mut spawn_select_events {
             let actors = actors

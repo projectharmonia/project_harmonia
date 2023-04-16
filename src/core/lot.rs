@@ -16,7 +16,7 @@ use strum::EnumIter;
 
 use super::{
     cursor_hover::CursorHover,
-    family::{Family, FamilyMode},
+    family::{ActorFamily, FamilyMode},
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
@@ -85,7 +85,7 @@ impl LotPlugin {
     fn buying_system(
         mut commands: Commands,
         lots: Query<(), Without<LotFamily>>,
-        actors: Query<(Entity, &Family, &BuyLot), Added<BuyLot>>,
+        actors: Query<(Entity, &ActorFamily, &BuyLot), Added<BuyLot>>,
     ) {
         for (entity, family, buy) in &actors {
             if lots.get(buy.0).is_ok() {

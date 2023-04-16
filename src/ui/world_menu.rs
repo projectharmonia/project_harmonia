@@ -15,7 +15,7 @@ use super::modal_window::{ModalUiExt, ModalWindow};
 use crate::core::{
     action::Action,
     city::{City, CityBundle},
-    family::{Actors, FamilyDespawn},
+    family::{FamilyActors, FamilyDespawn},
     game_state::GameState,
 };
 use cities_tab::CitiesTab;
@@ -39,7 +39,7 @@ impl WorldMenuPlugin {
         mut egui: EguiContexts,
         mut despawn_events: EventWriter<FamilyDespawn>,
         mut game_state: ResMut<NextState<GameState>>,
-        families: Query<(Entity, &'static Name, &'static Actors)>,
+        families: Query<(Entity, &'static Name, &'static FamilyActors)>,
         cities: Query<(Entity, &'static Name), With<City>>,
     ) {
         Window::new("World menu")

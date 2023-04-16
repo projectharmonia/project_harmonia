@@ -116,7 +116,7 @@ impl CliPlugin {
     }
 }
 
-/// Returns `true` for the first full world load (including first update tick to apply components like [`Actors`])
+/// Returns `true` for the first full world load (including first update tick to apply components like [`FamilyActors`])
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_message: Option<Res<LastError>>,

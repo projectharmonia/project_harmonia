@@ -4,7 +4,7 @@ use derive_more::Constructor;
 
 use crate::core::{
     actor::ActiveActor,
-    family::{Actors, FamilyDespawn},
+    family::{FamilyActors, FamilyDespawn},
     game_state::GameState,
 };
 
@@ -13,7 +13,7 @@ pub(super) struct FamiliesTab<'a, 'w, 's, 'we, 'wq, 'sq> {
     commands: &'a mut Commands<'w, 's>,
     game_state: &'a mut NextState<GameState>,
     despawn_events: &'a mut EventWriter<'we, FamilyDespawn>,
-    families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static Actors)>,
+    families: &'a Query<'wq, 'sq, (Entity, &'static Name, &'static FamilyActors)>,
 }
 
 impl FamiliesTab<'_, '_, '_, '_, '_, '_> {
