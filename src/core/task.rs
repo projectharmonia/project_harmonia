@@ -222,10 +222,11 @@ impl MapEntities for TaskRequest {
     }
 }
 
-#[derive(Deserialize, IntoStaticStr, EnumVariantNames)]
-enum ReflectEventField {
+#[derive(IntoStaticStr, EnumVariantNames)]
+#[strum(serialize_all = "snake_case")]
+enum TaskRequestField {
     Entity,
-    Component,
+    Task,
 }
 
 struct TaskRequestSerializer<'a> {
@@ -246,11 +247,13 @@ impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
 
 impl Serialize for TaskRequestSerializer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer
-            .serialize_struct(any::type_name::<Self>(), ReflectEventField::VARIANTS.len())?;
-        state.serialize_field(ReflectEventField::Entity.into(), &self.event.entity)?;
+        let mut state = serializer.serialize_struct(
+            any::type_name::<TaskRequest>(),
+            TaskRequestField::VARIANTS.len(),
+        )?;
+        state.serialize_field(TaskRequestField::Entity.into(), &self.event.entity)?;
         state.serialize_field(
-            ReflectEventField::Entity.into(),
+            TaskRequestField::Task.into(),
             &ReflectSerializer::new(&*self.event.task, self.registry),
         )?;
         state.end()
@@ -273,7 +276,11 @@ impl<'de> DeserializeSeed<'de> for TaskRequestDeserializer<'_> {
     type Value = TaskRequest;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_struct(any::type_name::<Self>(), ReflectEventField::VARIANTS, self)
+        deserializer.deserialize_struct(
+            any::type_name::<Self::Value>(),
+            TaskRequestField::VARIANTS,
+            self,
+        )
     }
 }
 
@@ -287,12 +294,10 @@ impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
         let entity = seq
             .next_element()?
-            .ok_or_else(|| de::Error::invalid_length(ReflectEventField::Entity as usize, &self))?;
+            .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Entity as usize, &self))?;
         let task = seq
             .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
-            .ok_or_else(|| {
-                de::Error::invalid_length(ReflectEventField::Component as usize, &self)
-            })?;
+            .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Task as usize, &self))?;
         Ok(TaskRequest { entity, task })
     }
 }
@@ -304,5 +309,63 @@ pub(super) struct ReflectTask;
 impl<C: Component + Task> FromType<C> for ReflectTask {
     fn from_type() -> Self {
         Self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_test::Token;
+
+    use super::*;
+
+    #[test]
+    fn task_request_ser() {
+        const ENTITY_INDEX: u32 = 0;
+        let mut registry = TypeRegistryInternal::new();
+        registry.register::<DummyTask>();
+        let task_request = TaskRequest {
+            entity: Entity::from_raw(ENTITY_INDEX),
+            task: DummyTask.clone_value(),
+        };
+        let serializer = TaskRequestSerializer::new(&registry, &task_request);
+
+        serde_test::assert_ser_tokens(
+            &serializer,
+            &[
+                Token::Struct {
+                    name: any::type_name::<TaskRequest>(),
+                    len: TaskRequestField::VARIANTS.len(),
+                },
+                Token::Str(TaskRequestField::Entity.into()),
+                Token::Struct {
+                    name: "Entity",
+                    len: 2,
+                },
+                Token::Str("generation"),
+                Token::U32(0),
+                Token::Str("index"),
+                Token::U32(ENTITY_INDEX),
+                Token::StructEnd,
+                Token::Str(TaskRequestField::Task.into()),
+                Token::Map { len: Some(1) },
+                Token::Str(any::type_name::<DummyTask>()),
+                Token::Struct {
+                    name: "DummyTask",
+                    len: 0,
+                },
+                Token::StructEnd,
+                Token::MapEnd,
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    #[derive(Reflect)]
+    struct DummyTask;
+
+    impl Task for DummyTask {
+        fn name(&self) -> &'static str {
+            "Dummy"
+        }
     }
 }
