@@ -78,7 +78,7 @@ impl MirrorPlugin {
     }
 
     fn rotation_system(
-        player_cameras: Query<&GlobalTransform, (With<PlayerCamera>,)>,
+        player_cameras: Query<&GlobalTransform, With<PlayerCamera>>,
         mut mirror_cameras: Query<(&mut Transform, &GlobalTransform), With<MirrorCamera>>,
     ) {
         let player_translation = player_cameras.single().translation();
