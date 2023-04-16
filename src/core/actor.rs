@@ -22,13 +22,19 @@ impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(AnimationPlugin)
             .add_plugin(MovementPlugin)
+            .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
             .not_replicate_if_present::<Name, FirstName>()
             .init_resource::<AssetHandles<Sex>>()
             .add_systems(
-                (Self::init_system, Self::name_update_system).in_set(OnUpdate(WorldState::InWorld)),
+                (
+                    Self::init_system,
+                    Self::init_mesh_system,
+                    Self::name_update_system,
+                )
+                    .in_set(OnUpdate(WorldState::InWorld)),
             );
     }
 }
@@ -36,19 +42,27 @@ impl Plugin for ActorPlugin {
 impl ActorPlugin {
     fn init_system(
         mut commands: Commands,
-        human_models: Res<AssetHandles<Sex>>,
         human_animations: Res<AssetHandles<HumanAnimation>>,
+        actors: Query<Entity, Added<Actor>>,
+    ) {
+        for entity in &actors {
+            commands.entity(entity).insert((
+                VisibilityBundle::default(),
+                GlobalTransform::default(),
+                human_animations.handle(HumanAnimation::Idle),
+            ));
+        }
+    }
+
+    fn init_mesh_system(
+        mut commands: Commands,
+        human_models: Res<AssetHandles<Sex>>,
         actors: Query<(Entity, &Sex), Changed<Sex>>,
     ) {
         for (entity, &sex) in &actors {
             commands
                 .entity(entity)
-                .insert((
-                    VisibilityBundle::default(),
-                    GlobalTransform::default(),
-                    human_models.handle(sex),
-                    human_animations.handle(HumanAnimation::Idle),
-                ))
+                .insert(human_models.handle(sex))
                 .despawn_descendants();
         }
     }
@@ -137,6 +151,7 @@ pub(super) struct PlayableActorBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
+    actor: Actor,
     replication: Replication,
 
     #[bundle]
@@ -153,8 +168,14 @@ impl PlayableActorBundle {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
+            actor: Actor,
             replication: Replication,
             actor_bundle,
         }
     }
 }
+
+/// Marks entity as an actor.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub(crate) struct Actor;

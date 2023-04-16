@@ -23,12 +23,8 @@ use serde::{
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use super::{
-    action::Action,
-    actor::FirstName,
-    component_commands::ComponentCommandsExt,
-    cursor_hover::CursorHover,
-    family::{ActorFamily, FamilyMode},
-    game_state::GameState,
+    action::Action, actor::Actor, component_commands::ComponentCommandsExt,
+    cursor_hover::CursorHover, family::FamilyMode, game_state::GameState,
 };
 
 pub(super) struct TaskPlugin;
@@ -75,7 +71,7 @@ impl TaskPlugin {
     fn queue_system(
         mut commands: Commands,
         mut task_events: EventReader<FromClient<TaskRequest>>,
-        actors: Query<(), With<ActorFamily>>,
+        actors: Query<(), With<Actor>>,
     ) {
         for FromClient { client_id, event } in &mut task_events {
             if actors.get(event.entity).is_ok() {
@@ -93,7 +89,7 @@ impl TaskPlugin {
     fn activation_system(
         mut commands: Commands,
         queued_tasks: Query<(Entity, One<&dyn Task>), With<QueuedTask>>,
-        actors: Query<(Entity, &Children, Option<&dyn Task>), With<FirstName>>,
+        actors: Query<(Entity, &Children, Option<&dyn Task>), With<Actor>>,
     ) {
         for (actor_entity, children, tasks) in &actors {
             let current_groups = tasks
