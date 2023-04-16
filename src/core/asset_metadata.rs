@@ -135,7 +135,6 @@ pub(crate) struct GeneralMetadata {
 pub(crate) struct ObjectMetadata {
     pub(crate) general: GeneralMetadata,
     pub(crate) category: ObjectCategory,
-    #[allow(dead_code)]
     pub(crate) components: Vec<Box<dyn Reflect>>,
 }
 
