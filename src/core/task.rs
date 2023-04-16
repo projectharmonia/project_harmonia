@@ -36,7 +36,6 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
-            .replicate::<TaskGroups>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
@@ -205,8 +204,7 @@ pub(crate) trait Task: Reflect {
 }
 
 bitflags! {
-    #[derive(Component, Reflect, Default)]
-    #[reflect(Component)]
+    #[derive(Default)]
     pub(crate) struct TaskGroups: u8 {
         const LEFT_HAND = 0b00000001;
         const RIGHT_HAND = 0b00000010;

@@ -12,7 +12,6 @@ use super::{
     asset_handles::{AssetCollection, AssetHandles},
     family::FamilySync,
     game_world::{parent_sync::ParentSync, WorldState},
-    task::TaskGroups,
 };
 use animation::{AnimationPlugin, HumanAnimation};
 use movement::MovementPlugin;
@@ -138,7 +137,6 @@ pub(super) struct PlayableActorBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
-    task_groups: TaskGroups,
     replication: Replication,
 
     #[bundle]
@@ -155,7 +153,6 @@ impl PlayableActorBundle {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
-            task_groups: TaskGroups::default(),
             replication: Replication,
             actor_bundle,
         }
