@@ -320,11 +320,10 @@ mod tests {
 
     #[test]
     fn task_request_ser() {
-        const ENTITY_INDEX: u32 = 0;
         let mut registry = TypeRegistryInternal::new();
         registry.register::<DummyTask>();
         let task_request = TaskRequest {
-            entity: Entity::from_raw(ENTITY_INDEX),
+            entity: Entity::PLACEHOLDER,
             task: DummyTask.clone_value(),
         };
         let serializer = TaskRequestSerializer::new(&registry, &task_request);
@@ -342,9 +341,9 @@ mod tests {
                     len: 2,
                 },
                 Token::Str("generation"),
-                Token::U32(0),
+                Token::U32(task_request.entity.generation()),
                 Token::Str("index"),
-                Token::U32(ENTITY_INDEX),
+                Token::U32(task_request.entity.index()),
                 Token::StructEnd,
                 Token::Str(TaskRequestField::Task.into()),
                 Token::Map { len: Some(1) },
