@@ -137,18 +137,23 @@ fn save_to_scene(
             replication_rules.is_replicated_component(archetype, component_id)
                 && !ignore_saving.contains(&component_id)
         }) {
+            // SAFE: `component_info` obtained from the world.
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
             let type_name = component_info.name();
-            let reflect_component = component_info
+            let type_id = component_info
                 .type_id()
-                .and_then(|type_id| registry.get(type_id))
-                .and_then(|registration| registration.data::<ReflectComponent>())
-                .unwrap_or_else(|| panic!("non-ignored component {type_name} should be registered and have reflect(Component)"));
+                .unwrap_or_else(|| panic!("{type_name} should have registered TypeId"));
+            let registration = registry
+                .get(type_id)
+                .unwrap_or_else(|| panic!("{type_name} should be registered"));
+            let reflect_component = registration
+                .data::<ReflectComponent>()
+                .unwrap_or_else(|| panic!("{type_name} should have reflect(Component)"));
 
             for (index, archetype_entity) in archetype.entities().iter().enumerate() {
                 let component = reflect_component
                     .reflect(world.entity(archetype_entity.entity()))
-                    .unwrap_or_else(|| panic!("object should have {type_name}"));
+                    .unwrap_or_else(|| panic!("entity should have {type_name}"));
 
                 scene.entities[entities_offset + index]
                     .components

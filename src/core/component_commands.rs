@@ -72,7 +72,6 @@ where
             let registration = registry
                 .get_with_name(type_name)
                 .unwrap_or_else(|| panic!("{type_name} should be registered"));
-
             let reflect_component = registration
                 .data::<ReflectComponent>()
                 .unwrap_or_else(|| panic!("{type_name} should have reflect(Component)"));
