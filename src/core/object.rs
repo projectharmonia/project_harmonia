@@ -160,7 +160,7 @@ impl ObjectPlugin {
                         event: ObjectEventConfirmed,
                     });
                 }
-                Err(e) => error!("unable to apply movement from client {client_id}: {e}"),
+                Err(e) => error!("unable to apply object movement: {e}",),
             }
         }
     }

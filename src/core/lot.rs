@@ -155,7 +155,7 @@ impl LotPlugin {
                         event: LotEventConfirmed,
                     });
                 }
-                Err(e) => error!("unable to apply lot movement from client {client_id}: {e}"),
+                Err(e) => error!("unable to apply lot movement: {e}"),
             }
         }
     }
