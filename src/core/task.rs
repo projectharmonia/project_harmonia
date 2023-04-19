@@ -1,5 +1,5 @@
 use std::{
-    any,
+    any::{self, TypeId},
     fmt::{self, Formatter},
 };
 
@@ -8,11 +8,11 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        FromType, TypeRegistryInternal,
+        GetTypeRegistration, TypeRegistryInternal,
     },
 };
 use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, One};
+use bevy_trait_query::{queryable, One, RegisterExt};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{
@@ -32,6 +32,7 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
+            .init_resource::<TaskComponents>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
@@ -71,9 +72,24 @@ impl TaskPlugin {
     fn queue_system(
         mut commands: Commands,
         mut task_events: EventReader<FromClient<TaskRequest>>,
+        task_components: Res<TaskComponents>,
+        registry: Res<AppTypeRegistry>,
         actors: Query<(), With<Actor>>,
     ) {
-        for FromClient { client_id, event } in &mut task_events {
+        let registry = registry.read();
+        for event in task_events.iter().map(|event| &event.event) {
+            let Some(registration) = registry.get_with_name(event.task.type_name()) else {
+                error!("type {:?} is not registered", event.task.type_name());
+                continue;
+            };
+            if !task_components.contains(&registration.type_id()) {
+                error!(
+                    "type {:?} is not registered as a task",
+                    &event.task.type_name()
+                );
+                continue;
+            }
+
             if actors.get(event.entity).is_ok() {
                 commands.entity(event.entity).with_children(|parent| {
                     parent
@@ -81,7 +97,7 @@ impl TaskPlugin {
                         .insert_reflect([event.task.clone_value()]);
                 });
             } else {
-                error!("received a task request {event:?} with non-actor entity from client {client_id}");
+                error!("entity {:?} is not an actor", event.entity);
             }
         }
     }
@@ -116,36 +132,34 @@ impl TaskPlugin {
         mut cancel_events: EventReader<FromClient<QueuedTaskCancel>>,
         queued_tasks: Query<(), With<QueuedTask>>,
     ) {
-        for FromClient { client_id, event } in &mut cancel_events {
+        for event in cancel_events.iter().map(|event| &event.event) {
             if queued_tasks.get(event.0).is_ok() {
                 commands.entity(event.0).despawn();
             } else {
-                error!("{event:?} from client {client_id} points to not a queued task");
+                error!("entity {:?} is not a task", event.0);
             }
         }
     }
 
     fn active_cancelation_system(
         mut commands: Commands,
-        mut cancel_events: EventReader<FromClient<ActiveTaskCancel>>,
+        mut cancel_events: ResMut<Events<FromClient<ActiveTaskCancel>>>,
+        task_components: Res<TaskComponents>,
         registry: Res<AppTypeRegistry>,
     ) {
-        for FromClient { client_id, event } in &mut cancel_events {
-            let registry = registry.read();
+        let registry = registry.read();
+        for event in cancel_events.drain().map(|event| event.event) {
             let Some(registration) = registry.get_with_name(&event.task_name) else {
-                error!(
-                    "received unknown type {} for task from client {client_id}",
-                    event.task_name
-                );
+                error!("type {:?} is not registered", event.task_name);
                 continue;
             };
 
-            if registration.data::<ReflectTask>().is_some() {
+            if task_components.contains(&registration.type_id()) {
                 commands
                     .entity(event.entity)
-                    .remove_by_name(event.task_name.clone());
+                    .remove_by_name(event.task_name);
             } else {
-                error!("type {:?} does not have reflect(Task)", &event.task_name);
+                error!("type {:?} is not registered as a task", &event.task_name);
             }
         }
     }
@@ -302,15 +316,22 @@ impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
     }
 }
 
-/// Used to check if `dyn Reflect` implements [`Task`].
-#[derive(Clone)]
-pub(super) struct ReflectTask;
+pub(super) trait TaskComponentsExt {
+    fn add_task<T: Task + GetTypeRegistration + Component>(&mut self) -> &mut Self;
+}
 
-impl<C: Component + Task> FromType<C> for ReflectTask {
-    fn from_type() -> Self {
-        Self
+impl TaskComponentsExt for App {
+    fn add_task<T: Task + GetTypeRegistration + Component>(&mut self) -> &mut Self {
+        self.replicate::<T>().register_component_as::<dyn Task, T>();
+        self.world
+            .resource_mut::<TaskComponents>()
+            .push(TypeId::of::<T>());
+        self
     }
 }
+
+#[derive(Deref, DerefMut, Resource, Default)]
+struct TaskComponents(Vec<TypeId>);
 
 #[cfg(test)]
 mod tests {

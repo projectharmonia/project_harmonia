@@ -8,7 +8,6 @@ use bevy::{
 };
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_trait_query::RegisterExt;
 use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,7 @@ use super::{
     game_state::GameState,
     game_world::{parent_sync::ParentSync, WorldState},
     ground::Ground,
-    task::{ReflectTask, Task, TaskList},
+    task::{Task, TaskComponentsExt, TaskList},
 };
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
@@ -29,15 +28,13 @@ pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<BuyLot>()
-            .register_component_as::<dyn Task, BuyLot>()
-            .add_state::<LotTool>()
+        app.add_state::<LotTool>()
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
-            .register_component_as::<dyn Task, BuyLot>()
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
+            .add_task::<BuyLot>()
             .add_mapped_client_event::<LotSpawn>()
             .add_mapped_client_event::<LotMove>()
             .add_mapped_client_event::<LotDespawn>()
@@ -245,7 +242,7 @@ impl LotVertices {
 }
 
 #[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
-#[reflect(Component, Task)]
+#[reflect(Component)]
 pub(crate) struct BuyLot(Entity);
 
 impl Task for BuyLot {

@@ -58,6 +58,7 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(NetworkPlugin)
+            .add(TaskPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
             .add(CityPlugin)
@@ -74,7 +75,6 @@ impl PluginGroup for CorePlugins {
             .add(PreviewPlugin)
             .add(PlayerCameraPlugin)
             .add(SettingsPlugin)
-            .add(TaskPlugin)
             .add(ObjectPlugin)
             .add(UniqueAssetPlugin::<StandardMaterial>::default())
             .add(WallPlugin)

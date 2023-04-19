@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_trait_query::RegisterExt;
 use serde::{Deserialize, Serialize};
 
 use super::{animation::HumanAnimation, Sex};
@@ -10,15 +9,14 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     ground::Ground,
-    task::{ReflectTask, Task, TaskGroups, TaskList},
+    task::{Task, TaskComponentsExt, TaskGroups, TaskList},
 };
 
 pub(super) struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Walk>()
-            .register_component_as::<dyn Task, Walk>()
+        app.add_task::<Walk>()
             .add_system(
                 Self::tasks_system
                     .in_set(OnUpdate(GameState::Family))
@@ -100,7 +98,7 @@ impl MovementPlugin {
 }
 
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
-#[reflect(Component, Task)]
+#[reflect(Component)]
 pub(crate) struct Walk(pub(crate) Vec3);
 
 impl Task for Walk {
