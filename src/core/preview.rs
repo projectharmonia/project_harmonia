@@ -46,18 +46,18 @@ impl PreviewPlugin {
         object_metadata: Res<Assets<ObjectMetadata>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
-        if let Some(preview_event) = preview_events
+        if let Some(event) = preview_events
             .iter()
-            .find(|preview_event| !previews.contains_key(&preview_event.0))
+            .find(|event| !previews.contains_key(&event.0))
         {
-            let metadata_handle = object_metadata.get_handle(preview_event.0);
+            let metadata_handle = object_metadata.get_handle(event.0);
             let preview_translation = object_metadata
                 .get(&metadata_handle)
                 .map(|metadata| metadata.general.preview_translation)
                 .expect("preview event handle should be a metadata handle");
 
             let metadata_path = asset_server
-                .get_handle_path(preview_event.0)
+                .get_handle_path(event.0)
                 .expect("metadata handle should have a path");
             let scene_path = asset_metadata::scene_path(metadata_path.path());
             debug!("loading {scene_path:?} to generate preview");
@@ -69,7 +69,7 @@ impl PreviewPlugin {
                     parent.spawn(PreviewTargetBundle::new(
                         preview_translation,
                         scene_handle,
-                        preview_event.0,
+                        event.0,
                     ));
                 });
 
@@ -212,13 +212,13 @@ struct PreviewTargetBundle {
 }
 
 impl PreviewTargetBundle {
-    fn new(translation: Vec3, preview_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
+    fn new(translation: Vec3, scene_handle: Handle<Scene>, metadata_id: HandleId) -> Self {
         Self {
             name: "Preview target".into(),
             metadata_id: PreviewMetadataId(metadata_id),
             scene: HookedSceneBundle {
                 scene: SceneBundle {
-                    scene: preview_handle,
+                    scene: scene_handle,
                     // Keep object a little far from the camera
                     transform: Transform::from_translation(translation),
                     ..Default::default()
