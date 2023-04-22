@@ -62,8 +62,9 @@ impl ObjectPlugin {
             });
 
             let scene_path = asset_metadata::scene_path(&object_path.0);
-            let scene_handle: Handle<Scene> = asset_server.load(&scene_path);
+            debug!("spawning object {scene_path:?}");
 
+            let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             commands
                 .entity(entity)
                 .insert((
@@ -96,7 +97,6 @@ impl ObjectPlugin {
                         .map(|component| component.clone_value())
                         .collect::<Vec<_>>(),
                 );
-            debug!("spawned object {scene_path:?}");
         }
     }
 

@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use bevy::{
-    asset::{AssetLoader, LoadContext, LoadedAsset},
+    asset::{AssetLoader, AssetPath, LoadContext, LoadedAsset},
     prelude::*,
     reflect::{serde::TypedReflectDeserializer, TypeRegistry, TypeRegistryInternal, TypeUuid},
     utils::BoxedFuture,
@@ -72,16 +72,15 @@ impl AssetLoader for AssetMetadataLoader {
 /// # Panics
 ///
 /// Panics if path is an invalid UTF-8 string.
-pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> String {
-    let mut scene_path = metadata_path
+pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> AssetPath<'static> {
+    let scene_path = metadata_path
         .as_ref()
         .with_extension("gltf")
         .into_os_string()
         .into_string()
         .expect("resource metadata path should be a UTF-8 string");
 
-    scene_path += "#Scene0";
-    scene_path
+    AssetPath::new(scene_path.into(), Some("Scene0".to_string()))
 }
 
 #[derive(Deref, DerefMut, Resource)]

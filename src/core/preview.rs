@@ -60,10 +60,9 @@ impl PreviewPlugin {
                 .get_handle_path(preview_event.0)
                 .expect("metadata handle should have a path");
             let scene_path = asset_metadata::scene_path(metadata_path.path());
-            let scene_handle = asset_server.load(&scene_path);
+            debug!("loading {scene_path:?} to generate preview");
 
-            debug!("loading {scene_path} to generate preview");
-
+            let scene_handle = asset_server.load(scene_path);
             commands
                 .entity(preview_cameras.single())
                 .with_children(|parent| {
