@@ -93,10 +93,7 @@ impl PreviewPlugin {
         match asset_server.get_load_state(scene_handle) {
             LoadState::NotLoaded | LoadState::Loading => (),
             LoadState::Loaded => {
-                debug!(
-                    "asset {:?} was sucessfully loaded to generate preview",
-                    asset_server.get_handle_path(metadata_id.0)
-                );
+                debug!("asset for preview was sucessfully loaded");
 
                 let mut image = Image::default();
                 image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
@@ -120,19 +117,13 @@ impl PreviewPlugin {
                 preview_state.set(PreviewState::Rendering);
             }
             LoadState::Failed => {
-                error!(
-                    "unable to load preview for {:?}",
-                    asset_server.get_handle_path(metadata_id.0)
-                );
+                error!("unable to load asset for preview");
 
                 previews.insert(metadata_id.0, TextureId::Managed(0));
                 preview_state.set(PreviewState::Inactive);
             }
             LoadState::Unloaded => {
-                unreachable!(
-                    "asset {:?} shouldn't be unloaded during the generating preview",
-                    asset_server.get_handle_path(metadata_id.0)
-                );
+                unreachable!("asset for preview shouldn't be unloaded");
             }
         }
     }

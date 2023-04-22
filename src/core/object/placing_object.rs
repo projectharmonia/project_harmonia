@@ -114,9 +114,10 @@ impl PlacingObjectPlugin {
                         .get_handle_path(id)
                         .expect("spawning object metadata should have a path");
                     let metadata_handle = asset_server.get_handle(id);
-                    let object_metadata = object_metadata
-                        .get(&metadata_handle)
-                        .unwrap_or_else(|| panic!("object metadata {metadata_path:?} is invalid"));
+                    let object_metadata =
+                        object_metadata.get(&metadata_handle).unwrap_or_else(|| {
+                            panic!("{metadata_path:?} should correspond to metadata")
+                        });
                     let scene_handle =
                         asset_server.load(asset_metadata::scene_path(metadata_path.path()));
                     placing_entity.insert(CursorOffset::default());
@@ -129,10 +130,9 @@ impl PlacingObjectPlugin {
                         .expect("moving object should exist with these components");
                     *visibility = Visibility::Hidden;
                     let metadata_handle = asset_server.load(&*object_path.0);
-                    let object_metadata =
-                        object_metadata.get(&metadata_handle).unwrap_or_else(|| {
-                            panic!("path {:?} should correspond to metadata", object_path.0)
-                        });
+                    let object_metadata = object_metadata
+                        .get(&metadata_handle)
+                        .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
                     (*transform, scene_handle.clone(), object_metadata)
                 }

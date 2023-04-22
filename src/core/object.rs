@@ -57,9 +57,9 @@ impl ObjectPlugin {
     ) {
         for (entity, object_path) in &spawned_objects {
             let metadata_handle = asset_server.load(&*object_path.0);
-            let object_metadata = object_metadata.get(&metadata_handle).unwrap_or_else(|| {
-                panic!("path {:?} should correspond to metadata", object_path.0)
-            });
+            let object_metadata = object_metadata
+                .get(&metadata_handle)
+                .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
             let scene_path = asset_metadata::scene_path(&object_path.0);
             debug!("spawning object {scene_path:?}");
