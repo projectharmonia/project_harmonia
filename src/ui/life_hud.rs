@@ -9,6 +9,7 @@ use crate::core::{
     actor::ActiveActor,
     family::{ActiveFamily, Budget, FamilyActors, FamilyMode},
     game_state::GameState,
+    preview::{Preview, PreviewKind, Previews},
     task::{ActiveTaskCancel, QueuedTaskCancel, Task},
 };
 
@@ -109,6 +110,7 @@ impl LifeHudPlugin {
     fn family_members_system(
         mut commands: Commands,
         mut egui: EguiContexts,
+        mut previews: ResMut<Previews>,
         active_families: Query<&FamilyActors, With<ActiveFamily>>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
@@ -124,9 +126,12 @@ impl LifeHudPlugin {
                     ui.horizontal(|ui| {
                         let mut members_count = 0;
                         for &entity in active_families.single().iter() {
-                            let button =
-                                ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE))
-                                    .selected(active_actors.get(entity).is_ok());
+                            let texture_id = previews.get(Preview {
+                                kind: PreviewKind::Actor(entity),
+                                size: ICON_SIZE as u32,
+                            });
+                            let button = ImageButton::new(texture_id, (ICON_SIZE, ICON_SIZE))
+                                .selected(active_actors.get(entity).is_ok());
                             if ui.add(button).clicked() {
                                 commands.entity(entity).insert(ActiveActor);
                                 commands

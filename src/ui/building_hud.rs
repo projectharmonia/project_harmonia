@@ -12,7 +12,7 @@ use crate::core::{
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     object::placing_object::PlacingObject,
-    preview::{PreviewRequest, Previews},
+    preview::Previews,
 };
 
 pub(super) struct BuildingHudPlugin;
@@ -32,9 +32,8 @@ impl BuildingHudPlugin {
         mut current_category: Local<Option<ObjectCategory>>,
         mut commands: Commands,
         mut egui: EguiContexts,
-        mut preview_events: EventWriter<PreviewRequest>,
         mut next_building_mode: ResMut<NextState<BuildingMode>>,
-        previews: Res<Previews>,
+        mut previews: ResMut<Previews>,
         building_mode: Res<State<BuildingMode>>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         placing_objects: Query<&PlacingObject>,
@@ -66,8 +65,7 @@ impl BuildingHudPlugin {
                             ObjectCategory::FAMILY_CATEGORIES,
                             &mut commands,
                             &object_metadata,
-                            &previews,
-                            &mut preview_events,
+                            &mut previews,
                             placing_objects
                                 .get_single()
                                 .ok()

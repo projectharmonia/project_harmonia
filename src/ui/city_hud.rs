@@ -12,7 +12,7 @@ use crate::core::{
     game_state::GameState,
     lot::LotTool,
     object::placing_object::PlacingObject,
-    preview::{PreviewRequest, Previews},
+    preview::Previews,
 };
 
 pub(super) struct CityHudPlugin;
@@ -28,10 +28,9 @@ impl CityHudPlugin {
         mut current_category: Local<Option<ObjectCategory>>,
         mut commands: Commands,
         mut egui: EguiContexts,
-        mut preview_events: EventWriter<PreviewRequest>,
         mut next_city_mode: ResMut<NextState<CityMode>>,
         mut next_lot_tool: ResMut<NextState<LotTool>>,
-        previews: Res<Previews>,
+        mut previews: ResMut<Previews>,
         city_mode: Res<State<CityMode>>,
         lot_tool: Res<State<LotTool>>,
         object_metadata: Res<Assets<ObjectMetadata>>,
@@ -65,8 +64,7 @@ impl CityHudPlugin {
                                 ObjectCategory::CITY_CATEGORIES,
                                 &mut commands,
                                 &object_metadata,
-                                &previews,
-                                &mut preview_events,
+                                &mut previews,
                                 placing_objects
                                     .get_single()
                                     .ok()
