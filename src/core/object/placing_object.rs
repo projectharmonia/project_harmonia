@@ -1,4 +1,7 @@
-use std::{f32::consts::FRAC_PI_4, fmt::Debug};
+use std::{
+    f32::consts::{FRAC_PI_4, PI},
+    fmt::Debug,
+};
 
 use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_rapier3d::prelude::*;
@@ -120,8 +123,8 @@ impl PlacingObjectPlugin {
                         });
                     let scene_handle = asset_server.load(asset_metadata::scene_path(metadata_path));
                     placing_entity.insert(CursorOffset::default());
-
-                    (Transform::default(), scene_handle, object_metadata)
+                    let transform = Transform::from_rotation(Quat::from_rotation_y(PI)); // Rotate towards camera.
+                    (transform, scene_handle, object_metadata)
                 }
                 PlacingObjectKind::Moving(object_entity) => {
                     let (transform, scene_handle, object_path, mut visibility) = objects
