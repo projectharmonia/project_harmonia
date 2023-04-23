@@ -63,8 +63,7 @@ impl PreviewPlugin {
                         .expect("metadata handle should have a path");
                     debug!("generating preview for {metadata_path:?}");
 
-                    let scene_handle =
-                        asset_server.load(asset_metadata::scene_path(metadata_path.path()));
+                    let scene_handle = asset_server.load(asset_metadata::scene_path(metadata_path));
                     (object_metadata.general.preview_translation, scene_handle)
                 }
             };

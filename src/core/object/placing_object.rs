@@ -118,8 +118,7 @@ impl PlacingObjectPlugin {
                         object_metadata.get(&metadata_handle).unwrap_or_else(|| {
                             panic!("{metadata_path:?} should correspond to metadata")
                         });
-                    let scene_handle =
-                        asset_server.load(asset_metadata::scene_path(metadata_path.path()));
+                    let scene_handle = asset_server.load(asset_metadata::scene_path(metadata_path));
                     placing_entity.insert(CursorOffset::default());
 
                     (Transform::default(), scene_handle, object_metadata)

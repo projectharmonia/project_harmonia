@@ -1,7 +1,7 @@
 use std::{
     any, env,
     fmt::{self, Formatter},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str,
 };
 
@@ -72,15 +72,9 @@ impl AssetLoader for AssetMetadataLoader {
 /// # Panics
 ///
 /// Panics if path is an invalid UTF-8 string.
-pub(crate) fn scene_path<P: AsRef<Path>>(metadata_path: P) -> AssetPath<'static> {
-    let scene_path = metadata_path
-        .as_ref()
-        .with_extension("gltf")
-        .into_os_string()
-        .into_string()
-        .expect("resource metadata path should be a UTF-8 string");
-
-    AssetPath::new(scene_path.into(), Some("Scene0".to_string()))
+pub(crate) fn scene_path<'a, P: Into<AssetPath<'a>>>(metadata_path: P) -> AssetPath<'static> {
+    let scene_path = metadata_path.into().path().with_extension("gltf");
+    AssetPath::new(scene_path, Some("Scene0".to_string()))
 }
 
 #[derive(Deref, DerefMut, Resource)]
