@@ -19,13 +19,22 @@ license-files = []
 multiple-versions = "deny"
 wildcards = "allow"
 skip = [
-  { name = "syn", version = "1.0" },           # from bevy_derive v0.10.0
-  { name = "ahash", version = "0.7.6" },       # from bevy_utils v0.10.0
-  { name = "memoffset", version = "0.6.5" },   # from nix v0.24.3
-  { name = "nix", version = "0.24" },          # from x11rb v0.10.1
-  { name = "redox_syscall", version = "0.2" }, # from notify v5.1.0
-  { name = "windows-sys", version = "0.42" },  # from notify v5.1.0
-  { name = "windows", version = "0.43" },      # from gilrs v0.10.1
+  { name = "syn", version = "1.0" },
+  { name = "ahash", version = "0.7.6" },
+  { name = "memoffset", version = "0.6.5" },
+  { name = "nix", version = "0.24" },
+  { name = "redox_syscall", version = "0.2" },
+  { name = "windows-sys", version = "0.42" },
+  { name = "windows-sys", version = "0.45" },
+  { name = "windows", version = "0.43" },
+  { name = "windows_x86_64_msvc", version = "0.42" },
+  { name = "windows_x86_64_gnullvm", version = "0.42" },
+  { name = "windows_x86_64_gnu", version = "0.42" },
+  { name = "windows_i686_msvc", version = "0.42" },
+  { name = "windows_i686_gnu", version = "0.42" },
+  { name = "windows_aarch64_msvc", version = "0.42" },
+  { name = "windows_aarch64_gnullvm", version = "0.42" },
+  { name = "windows-targets", version = "0.42" },
 ]
 
 [sources]
