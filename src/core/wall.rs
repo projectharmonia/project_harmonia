@@ -10,6 +10,7 @@ use bevy::{
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use itertools::{Itertools, MinMaxResult};
+use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -40,10 +41,11 @@ impl WallPlugin {
     fn init_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
-        spawned_walls: Query<Entity, Added<WallEdges>>,
+        spawned_walls: Query<(Entity, Option<&CreatingWall>), Added<WallEdges>>,
     ) {
-        for entity in &spawned_walls {
-            commands.entity(entity).insert((
+        for (entity, creating_wall) in &spawned_walls {
+            let mut entity = commands.entity(entity);
+            entity.insert((
                 Name::new("Walls"),
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 PbrBundle {
@@ -51,6 +53,11 @@ impl WallPlugin {
                     ..Default::default()
                 },
             ));
+
+            // Creating walls shouldn't affect navigation.
+            if creating_wall.is_none() {
+                entity.insert(NavMeshAffector);
+            }
         }
     }
 

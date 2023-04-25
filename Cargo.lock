@@ -2355,9 +2355,11 @@ dependencies = [
  "clap",
  "derive_more",
  "fastrand",
+ "futures-lite",
  "itertools",
  "leafwing-input-manager",
  "num_enum",
+ "oxidized_navigation",
  "ron",
  "serde",
  "serde_test",
@@ -2823,6 +2825,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a5f3c7ca08b6879e7965fb25e24d1f5eeb32ea73f9ad99b3854778a38c57e93"
 dependencies = [
  "ttf-parser",
+]
+
+[[package]]
+name = "oxidized_navigation"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1eceefa71438e972accd771c1c77c2840bcb6d6a3761b9fbb0f80ac1a2c06f6"
+dependencies = [
+ "bevy",
+ "bevy_rapier3d",
+ "smallvec",
 ]
 
 [[package]]

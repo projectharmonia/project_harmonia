@@ -1,5 +1,6 @@
 use bevy::prelude::{shape::Plane, *};
 use bevy_rapier3d::prelude::*;
+use oxidized_navigation::NavMeshAffector;
 
 use super::{
     city::{ActiveCity, CityPlugin},
@@ -81,6 +82,7 @@ struct GroundBundle {
     collision_groups: CollisionGroups,
     ground: Ground,
     hoverable: Hoverable,
+    nav_mesh_affector: NavMeshAffector,
 
     #[bundle]
     pbr_bundle: PbrBundle,
@@ -98,6 +100,7 @@ impl Default for GroundBundle {
             collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
             ground: Ground,
             hoverable: Hoverable,
+            nav_mesh_affector: NavMeshAffector,
             pbr_bundle: Default::default(),
         }
     }
