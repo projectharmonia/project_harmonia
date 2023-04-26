@@ -5,13 +5,16 @@ use bevy_egui::{
 };
 use bevy_inspector_egui::bevy_inspector;
 
-use crate::core::developer::GameInspector;
+use crate::core::settings::Settings;
 
 pub(super) struct GameInspectorPlugin;
 
 impl Plugin for GameInspectorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::game_inspector_system.run_if(game_inspector_enabled));
+        app.add_system(
+            Self::game_inspector_system
+                .run_if(|settings: Res<Settings>| settings.developer.game_inspector),
+        );
     }
 }
 
@@ -27,8 +30,4 @@ impl GameInspectorPlugin {
                 });
             });
     }
-}
-
-fn game_inspector_enabled(game_inspector: Res<GameInspector>) -> bool {
-    game_inspector.enabled
 }

@@ -8,31 +8,21 @@ pub(super) struct DeveloperPlugin;
 
 impl Plugin for DeveloperPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GameInspector>()
-            .add_startup_systems((
-                Self::game_inspector_toggle_system,
+        app.add_startup_systems((
+            Self::debug_collisions_toggle_system,
+            Self::wireframe_toggle_system,
+        ))
+        .add_systems(
+            (
                 Self::debug_collisions_toggle_system,
                 Self::wireframe_toggle_system,
-            ))
-            .add_systems(
-                (
-                    Self::game_inspector_toggle_system,
-                    Self::debug_collisions_toggle_system,
-                    Self::wireframe_toggle_system,
-                )
-                    .in_set(SettingsApplySet),
-            );
+            )
+                .in_set(SettingsApplySet),
+        );
     }
 }
 
 impl DeveloperPlugin {
-    fn game_inspector_toggle_system(
-        settings: Res<Settings>,
-        mut game_inspector: ResMut<GameInspector>,
-    ) {
-        game_inspector.enabled = settings.developer.game_inspector;
-    }
-
     fn debug_collisions_toggle_system(
         settings: Res<Settings>,
         mut debug_render_ctx: ResMut<DebugRenderContext>,
@@ -46,9 +36,4 @@ impl DeveloperPlugin {
     ) {
         wireframe_config.global = settings.developer.wireframe;
     }
-}
-
-#[derive(Default, Resource)]
-pub(crate) struct GameInspector {
-    pub(crate) enabled: bool,
 }
