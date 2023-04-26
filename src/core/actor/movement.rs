@@ -81,7 +81,7 @@ impl MovementPlugin {
                 path.reverse();
                 commands
                     .entity(entity)
-                    .insert(NavPath(path))
+                    .insert(MovePath(path))
                     .remove::<ComputePath>();
             }
         }
@@ -90,13 +90,13 @@ impl MovementPlugin {
     fn movement_system(
         mut commands: Commands,
         time: Res<Time>,
-        mut actors: Query<(Entity, &mut Transform, &mut NavPath)>,
+        mut actors: Query<(Entity, &mut Transform, &mut MovePath)>,
     ) {
-        for (entity, mut transform, mut nav_path) in &mut actors {
-            if let Some(&waypoint) = nav_path.last() {
+        for (entity, mut transform, mut move_path) in &mut actors {
+            if let Some(&waypoint) = move_path.last() {
                 let direction = waypoint - transform.translation;
                 if direction.length() < 0.1 {
-                    nav_path.pop();
+                    move_path.pop();
                 } else {
                     const ROTATION_SPEED: f32 = 10.0;
                     const WALK_SPEED: f32 = 2.0;
@@ -109,18 +109,18 @@ impl MovementPlugin {
                         .slerp(target_rotation, ROTATION_SPEED * delta_secs);
                 }
             } else {
-                commands.entity(entity).remove::<NavPath>();
+                commands.entity(entity).remove::<MovePath>();
             }
         }
     }
 
     fn cleanup_system(
         mut commands: Commands,
-        mut removed_nav_paths: RemovedComponents<NavPath>,
+        mut removed_paths: RemovedComponents<MovePath>,
         human_animations: Res<AssetHandles<HumanAnimation>>,
         mut actors: Query<&mut Handle<AnimationClip>>,
     ) {
-        for entity in &mut removed_nav_paths {
+        for entity in &mut removed_paths {
             if let Ok(mut anim_handle) = actors.get_mut(entity) {
                 commands.entity(entity).remove::<Walk>();
                 *anim_handle = human_animations.handle(HumanAnimation::Idle);
@@ -168,4 +168,4 @@ impl ComputePath {
 }
 
 #[derive(Component, Deref, DerefMut)]
-struct NavPath(Vec<Vec3>);
+struct MovePath(Vec<Vec3>);
