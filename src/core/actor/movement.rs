@@ -79,6 +79,7 @@ impl MovementPlugin {
                 };
                 *anim_handle = human_animations.handle(walk_anim);
                 path.reverse();
+                path.pop(); // Drop current position.
                 commands
                     .entity(entity)
                     .insert(MovePath(path))
@@ -94,19 +95,19 @@ impl MovementPlugin {
     ) {
         for (entity, mut transform, mut move_path) in &mut actors {
             if let Some(&waypoint) = move_path.last() {
+                const ROTATION_SPEED: f32 = 10.0;
+                const WALK_SPEED: f32 = 2.0;
                 let direction = waypoint - transform.translation;
+                let delta_secs = time.delta_seconds();
+                let target_rotation = transform.looking_to(direction, Vec3::Y).rotation;
+
+                transform.translation += direction.normalize() * WALK_SPEED * delta_secs;
+                transform.rotation = transform
+                    .rotation
+                    .slerp(target_rotation, ROTATION_SPEED * delta_secs);
+
                 if direction.length() < 0.1 {
                     move_path.pop();
-                } else {
-                    const ROTATION_SPEED: f32 = 10.0;
-                    const WALK_SPEED: f32 = 2.0;
-                    let delta_secs = time.delta_seconds();
-                    let target_rotation = transform.looking_to(direction, Vec3::Y).rotation;
-
-                    transform.translation += direction.normalize() * WALK_SPEED * delta_secs;
-                    transform.rotation = transform
-                        .rotation
-                        .slerp(target_rotation, ROTATION_SPEED * delta_secs);
                 }
             } else {
                 commands.entity(entity).remove::<MovePath>();
