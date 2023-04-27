@@ -169,4 +169,4 @@ impl ComputePath {
 }
 
 #[derive(Component, Deref, DerefMut)]
-struct MovePath(Vec<Vec3>);
+pub(crate) struct MovePath(pub(crate) Vec<Vec3>);
