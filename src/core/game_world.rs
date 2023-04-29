@@ -1,5 +1,3 @@
-pub(crate) mod parent_sync;
-
 use std::fs;
 
 use anyhow::{Context, Result};
@@ -14,14 +12,12 @@ use bevy_trait_query::imports::ComponentId;
 use serde::de::DeserializeSeed;
 
 use super::{error, game_paths::GamePaths, game_state::GameState};
-use parent_sync::ParentSyncPlugin;
 
 pub(crate) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<WorldState>()
-            .add_plugin(ParentSyncPlugin)
             .init_resource::<IgnoreSaving>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()

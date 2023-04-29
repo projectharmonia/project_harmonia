@@ -17,7 +17,7 @@ use super::{
     cursor_hover::CursorHover,
     family::{ActorFamily, FamilyMode},
     game_state::GameState,
-    game_world::{parent_sync::ParentSync, WorldState},
+    game_world::WorldState,
     ground::Ground,
     task::{Task, TaskComponentsExt, TaskList},
 };

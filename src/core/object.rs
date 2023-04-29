@@ -19,7 +19,7 @@ use super::{
     collision_groups::LifescapeGroupsExt,
     component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
-    game_world::{parent_sync::ParentSync, WorldState},
+    game_world::WorldState,
     lot::LotVertices,
 };
 use mirror::MirrorPlugin;

@@ -12,7 +12,7 @@ use strum::EnumIter;
 use super::{
     asset_handles::{AssetCollection, AssetHandles},
     family::FamilySync,
-    game_world::{parent_sync::ParentSync, WorldState},
+    game_world::WorldState,
 };
 use animation::{AnimationPlugin, HumanAnimation};
 use movement::MovementPlugin;

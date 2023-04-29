@@ -13,10 +13,7 @@ use itertools::{Itertools, MinMaxResult};
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::{
-    collision_groups::LifescapeGroupsExt,
-    game_world::{parent_sync::ParentSync, WorldState},
-};
+use super::{collision_groups::LifescapeGroupsExt, game_world::WorldState};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
 
 pub(super) struct WallPlugin;
