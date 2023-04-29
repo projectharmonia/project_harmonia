@@ -1,5 +1,6 @@
 mod animation;
 pub(super) mod movement;
+pub(crate) mod needs;
 
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -15,6 +16,7 @@ use super::{
 };
 use animation::{AnimationPlugin, HumanAnimation};
 use movement::MovementPlugin;
+use needs::{Bladder, Energy, Fun, Hunger, Hygiene, NeedsPlugin, Social};
 
 pub(super) struct ActorPlugin;
 
@@ -22,6 +24,7 @@ impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(AnimationPlugin)
             .add_plugin(MovementPlugin)
+            .add_plugin(NeedsPlugin)
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
@@ -151,6 +154,12 @@ pub(super) struct PlayableActorBundle {
     family_sync: FamilySync,
     parent_sync: ParentSync,
     transform: Transform,
+    hunger: Hunger,
+    social: Social,
+    hygiene: Hygiene,
+    fun: Fun,
+    energy: Energy,
+    bladder: Bladder,
     actor: Actor,
     replication: Replication,
 
@@ -168,6 +177,12 @@ impl PlayableActorBundle {
             family_sync: FamilySync(family_entity),
             parent_sync: ParentSync(city_entity),
             transform: Default::default(),
+            hunger: Default::default(),
+            social: Default::default(),
+            hygiene: Default::default(),
+            fun: Default::default(),
+            energy: Default::default(),
+            bladder: Default::default(),
             actor: Actor,
             replication: Replication,
             actor_bundle,
