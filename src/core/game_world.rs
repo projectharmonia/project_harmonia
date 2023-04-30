@@ -124,7 +124,7 @@ fn save_to_scene(
         let entities_offset = scene.entities.len();
         for archetype_entity in archetype.entities() {
             scene.entities.push(DynamicEntity {
-                entity: archetype_entity.entity().index(),
+                entity: archetype_entity.entity(),
                 components: Vec::new(),
             });
         }

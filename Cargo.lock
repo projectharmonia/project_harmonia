@@ -421,8 +421,7 @@ dependencies = [
 [[package]]
 name = "bevy_a11y"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "037c4063f7dac1a5d596eb47f40782a04ca5838dc4274dbbadc90eb81efe5169"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "accesskit",
  "bevy_app",
@@ -433,8 +432,7 @@ dependencies = [
 [[package]]
 name = "bevy_animation"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0dc19f21846ebf8ba4d96617c2517b5119038774aa5dbbaf1bff122332b359c"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -451,8 +449,7 @@ dependencies = [
 [[package]]
 name = "bevy_app"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01db46963eb9486f7884121527ec69751d0e448f9e1d5329e80ea3424118a31a"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -466,8 +463,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98609b4b0694a23bde0628aed626644967991f167aad9db2afb68dacb0017540"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -518,8 +514,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ee53d7b4691b57207d72e996992c995a53f3e8d21ca7151ca3956d9ce7d232e"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -534,8 +529,7 @@ dependencies = [
 [[package]]
 name = "bevy_core_pipeline"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "093ae5ced77251602ad6e43521e2acc1a5570bf85b80f232f1a7fdd43b50f8d8"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -554,8 +548,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dff0add5ab4a6b2b7e86e18f9043bb48b6386faa3b56abaa0ed97a3d669a1992"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -565,8 +558,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64c778422643b0adee9e82abbd07e1e906eb9947c274a9b18e0f7fbf137d4c34"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -580,8 +572,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bed2f74687ccf13046c0f8e3b00dc61d7e656877b4a1380cf04635bb74d8e586"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "async-channel",
  "bevy_ecs_macros",
@@ -600,8 +591,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a97fd126a0db7b30fb1833614b3a657b44ac88485741c33b2780e25de0f96d78"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -625,8 +615,7 @@ dependencies = [
 [[package]]
 name = "bevy_encase_derive"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c086ebdc1f5522787d63772943277cc74a279445fb65db4d58c2c5330654648e"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
@@ -635,8 +624,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f32eb07e8c9ea4be7195ccec10d8f9ad70200f3ae2e13adc4b84df9f50bb1c6"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -648,8 +636,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2707632208617c3660ea7a1d2ef2ccc84b59f217c2f01a1d0abe81db4ae7bbde"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "anyhow",
  "base64",
@@ -677,8 +664,7 @@ dependencies = [
 [[package]]
 name = "bevy_hierarchy"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d04099865a13d1fd8bf3c044a80148cb3d23bfe8c3d5f082dda2ce091d85532"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -692,8 +678,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a15d40aa636bb656967ac16ca36066ab7a7bb9179e1b0390c5705e54208e8fd7"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -707,8 +692,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "862b11931c5874cb00778ffb715fc526ee49e52a493d3bcf50e8010f301858b3"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_a11y",
  "bevy_animation",
@@ -741,8 +725,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25980c90ceaad34d09a53291e72ca56fcc754a974cd4654fffcf5b68b283b7a7"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "android_log-sys",
  "bevy_app",
@@ -757,8 +740,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b2fee53b2497cdc3bffff2ddf52afa751242424a5fd0d51d227d4dab081d0d9"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "quote",
  "syn 1.0.107",
@@ -768,8 +750,7 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da6a1109d06fe947990db032e719e162414cf9bf7a478dcc52742f1c7136c42a"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "glam",
  "serde",
@@ -778,8 +759,7 @@ dependencies = [
 [[package]]
 name = "bevy_mikktspace"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39106bc2ee21fce9496d2e15e0ba7925dff63e3eae10f7c1fc0094b56ad9f2bb"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "glam",
 ]
@@ -799,8 +779,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f507cef55812aa70c2ec2b30fb996eb285fa7497d974cf03f76ec49c77fbe27"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -832,8 +811,7 @@ dependencies = [
 [[package]]
 name = "bevy_ptr"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c4b88451d4c5a353bff67dbaa937b6886efd26ae114769c17f2b35099c7a4de"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 
 [[package]]
 name = "bevy_rapier3d"
@@ -851,8 +829,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fc3979471890e336f3ba87961ef3ecd45c331cf2cb2f582c885e541af228b48"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_math",
  "bevy_ptr",
@@ -871,8 +848,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bc7ea7c9bc2c531eb29ba5619976613d6680453ff5dd4a7fcd08848e8bec5ad"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_macro_utils",
  "bit-set",
@@ -885,8 +861,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee1e126226f0a4d439bf82fe07c1104f894a6a365888e3eba7356f9647e77a83"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -929,8 +904,7 @@ dependencies = [
 [[package]]
 name = "bevy_render_macros"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "652f8c4d9577c6e6a8b3dfd8a4ce331e8b6ecdbb99636a4b2701dec50104d6bc"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -965,8 +939,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1de59637d27726251091120ce6f63917328ffd60aaccbda4d65a615873aff631"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -987,8 +960,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3de86364316e151aeb0897eaaa917c3ad5ee5ef1471a939023cf7f2d5ab76955"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "async-channel",
  "async-executor",
@@ -1002,8 +974,7 @@ dependencies = [
 [[package]]
 name = "bevy_time"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3edbd605df1bced312eb9888d6be3d5a5fcac3d4140038bbe3233d218399eef"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1017,8 +988,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24383dfb97d8a14b17721ecfdf58556eff5ea9a4b2a3d91accf2b472783880b0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1031,8 +1001,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a88ebbca55d360d72e9fe78df0d22e25cd419933c9559e79dae2757f7c4d066"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "ahash 0.7.6",
  "bevy_utils_proc_macros",
@@ -1048,8 +1017,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils_proc_macros"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "630b92e32fa5cd7917c7d4fdbf63a90af958b01e096239f71bc4f8f3cf40c0d2"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1059,8 +1027,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad31234754268fbe12050290b0496e2296252a16995a38f94bfb9680a4f09fda"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1075,8 +1042,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf17bd6330f7e633b7c56754c776511a8f52cde4bf54c0278f34d7527548f253"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
 dependencies = [
  "accesskit_winit",
  "approx",

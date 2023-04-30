@@ -47,3 +47,35 @@ futures-lite = "1.12"
 [dev-dependencies]
 fastrand = "1.9.0"
 serde_test = "1.0"
+
+[patch.crates-io]
+bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_animation = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_app = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_asset = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_core = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_core_pipeline = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_derive = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_diagnostic = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_ecs = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_encase_derive = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_gilrs = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_gltf = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_hierarchy = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_input = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_internal = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_log = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_macro_utils = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_math = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_mikktspace = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_pbr = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_ptr = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_reflect = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_render = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_scene = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_tasks = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_time = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_transform = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_utils = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_winit = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
