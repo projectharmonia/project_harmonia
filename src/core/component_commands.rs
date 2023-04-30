@@ -88,7 +88,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn insertion() {
+    fn reflect_insertion() {
         let mut world = World::new();
         world.init_resource::<AppTypeRegistry>();
         world
@@ -109,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn remove_by_name() {
+    fn removal_by_name() {
         let mut world = World::new();
         world.init_resource::<AppTypeRegistry>();
         world
