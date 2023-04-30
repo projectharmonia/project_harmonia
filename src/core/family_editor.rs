@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 
 use super::{
@@ -119,7 +121,7 @@ impl Default for EditableFamilyBundle {
 pub(crate) struct EditableFamily;
 
 /// Components for a actor inside the editor.
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct EditableActorBundle {
     human: Human, // TODO: Select race
     first_name: FirstName,
@@ -129,6 +131,22 @@ pub(crate) struct EditableActorBundle {
 
     #[bundle]
     spatial_bundle: SpatialBundle,
+}
+
+impl Default for EditableActorBundle {
+    fn default() -> Self {
+        Self {
+            human: Human,
+            first_name: Default::default(),
+            last_name: Default::default(),
+            sex: Default::default(),
+            editable_actor: EditableActor,
+            spatial_bundle: SpatialBundle {
+                transform: Transform::from_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
+                ..Default::default()
+            },
+        }
+    }
 }
 
 #[derive(Component, Default)]
