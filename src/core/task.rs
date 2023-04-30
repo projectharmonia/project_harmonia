@@ -32,7 +32,6 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
-            .init_resource::<TaskComponents>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
@@ -322,11 +321,10 @@ pub(super) trait TaskComponentsExt {
 
 impl TaskComponentsExt for App {
     fn add_task<T: Task + GetTypeRegistration + Component>(&mut self) -> &mut Self {
-        self.replicate::<T>().register_component_as::<dyn Task, T>();
         self.world
-            .resource_mut::<TaskComponents>()
+            .get_resource_or_insert_with::<TaskComponents>(Default::default)
             .push(TypeId::of::<T>());
-        self
+        self.replicate::<T>().register_component_as::<dyn Task, T>()
     }
 }
 
