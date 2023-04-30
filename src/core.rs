@@ -22,6 +22,7 @@ pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
 pub(super) mod preview;
+mod reflect_bundle;
 pub(super) mod settings;
 pub(super) mod task;
 mod unique_asset;

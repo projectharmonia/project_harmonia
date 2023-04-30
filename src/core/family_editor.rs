@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::{
-    actor::{ActiveActor, ActorBundle},
+    actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
     family::{FamilyActors, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
@@ -121,11 +121,14 @@ pub(crate) struct EditableFamily;
 /// Components for a actor inside the editor.
 #[derive(Bundle, Default)]
 pub(crate) struct EditableActorBundle {
+    human: Human, // TODO: Select race
+    first_name: FirstName,
+    last_name: LastName,
+    sex: Sex,
     editable_actor: EditableActor,
-    transform: Transform,
 
     #[bundle]
-    actor_bundle: ActorBundle,
+    spatial_bundle: SpatialBundle,
 }
 
 #[derive(Component, Default)]
@@ -134,6 +137,6 @@ pub(crate) struct EditableActor;
 #[derive(Component)]
 pub(crate) struct SelectedActor;
 
-/// An event on which family will be reset.
+/// Event that resets currently editing family.
 #[derive(Default)]
 pub(crate) struct FamilyReset;

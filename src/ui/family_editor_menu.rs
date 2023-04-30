@@ -10,7 +10,7 @@ use bevy_egui::{
     EguiContexts,
 };
 use bevy_inspector_egui::egui::Button;
-use derive_more::Constructor;
+use bevy_trait_query::One;
 use leafwing_input_manager::prelude::ActionState;
 use strum::IntoEnumIterator;
 
@@ -20,7 +20,7 @@ use super::{
 };
 use crate::core::{
     action::Action,
-    actor::{ActorBundle, FirstName, LastName, Sex},
+    actor::{race::Race, ActorScene, FirstName, LastName, Sex},
     city::City,
     error,
     family::{FamilyScene, FamilySpawn},
@@ -146,7 +146,6 @@ impl FamilyEditorMenuPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         editable_actors: Query<Entity, With<EditableActor>>,
         names: Query<(&FirstName, &LastName)>,
-        selected_actors: Query<&LastName, With<SelectedActor>>,
     ) -> Result<()> {
         let mut confirmed = false;
         Area::new("Confrirm cancel")
@@ -174,7 +173,7 @@ impl FamilyEditorMenuPlugin {
                     "actor {index} do not have a last name"
                 );
             }
-            commands.insert_resource(SaveFamilyDialog::new(selected_actors.single().to_string()));
+            commands.init_resource::<SaveFamilyDialog>();
         }
 
         Ok(())
@@ -183,23 +182,26 @@ impl FamilyEditorMenuPlugin {
     fn save_family_dialog_system(
         mut commands: Commands,
         mut egui: EguiContexts,
-        mut save_dialog: ResMut<SaveFamilyDialog>,
         mut action_state: ResMut<ActionState<Action>>,
         game_paths: Res<GamePaths>,
-        editable_actors: Query<(&FirstName, &LastName, &Sex), With<EditableActor>>,
+        mut editable_actors: Query<
+            (&mut FirstName, &mut LastName, &Sex, One<&dyn Race>),
+            With<EditableActor>,
+        >,
+        mut editable_families: Query<&mut Name, With<EditableFamily>>,
     ) -> Result<()> {
         let mut confirmed = false;
         let mut open = true;
         ModalWindow::new("Save family")
             .open(&mut open, &mut action_state)
             .show(egui.ctx_mut(), |ui| {
-                ui.text_edit_singleline(&mut save_dialog.family_name);
+                let mut name = editable_families.single_mut();
+                name.mutate(|name| {
+                    ui.text_edit_singleline(name);
+                });
                 ui.horizontal(|ui| {
                     if ui
-                        .add_enabled(
-                            !save_dialog.family_name.is_empty(),
-                            Button::new("Save to library"),
-                        )
+                        .add_enabled(!name.is_empty(), Button::new("Save to library"))
                         .clicked()
                     {
                         confirmed = true;
@@ -215,16 +217,19 @@ impl FamilyEditorMenuPlugin {
             commands.remove_resource::<SaveFamilyDialog>();
 
             if confirmed {
-                let mut actor_bundles = Vec::new();
-                for (first_name, last_name, &sex) in &editable_actors {
-                    actor_bundles.push(ActorBundle {
-                        first_name: first_name.clone(),
-                        last_name: last_name.clone(),
+                let mut actor_scenes = Vec::new();
+                for (mut first_name, mut last_name, &sex, race) in &mut editable_actors {
+                    actor_scenes.push(ActorScene {
+                        first_name: mem::take(&mut first_name),
+                        last_name: mem::take(&mut last_name),
                         sex,
+                        race_name: race.type_name().to_string(),
                     })
                 }
-                let family_scene =
-                    FamilyScene::new(mem::take(&mut save_dialog.family_name), actor_bundles);
+                let family_scene = FamilyScene::new(
+                    mem::take(&mut *editable_families.single_mut()),
+                    actor_scenes,
+                );
 
                 fs::create_dir_all(&game_paths.families)
                     .with_context(|| format!("unable to create {:?}", game_paths.families))?;
@@ -298,10 +303,8 @@ impl FamilyEditorMenuPlugin {
     }
 }
 
-#[derive(Resource, Constructor)]
-struct SaveFamilyDialog {
-    family_name: String,
-}
+#[derive(Resource, Default)]
+struct SaveFamilyDialog;
 
 #[derive(Resource)]
 struct PlaceFamilyDialog(FamilyScene);

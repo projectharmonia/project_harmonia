@@ -1,10 +1,16 @@
+use std::any::TypeId;
+
 use bevy::{
     ecs::system::{Command, EntityCommands},
     prelude::*,
 };
 
+use super::reflect_bundle::ReflectBundle;
+
 pub(super) trait ComponentCommandsExt {
     fn remove_by_name(&mut self, name: String) -> &mut Self;
+
+    fn insert_default_with_id(&mut self, type_id: TypeId) -> &mut Self;
 
     fn insert_reflect<T>(&mut self, components: T) -> &mut Self
     where
@@ -16,6 +22,15 @@ impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
         let command = RemoveByName {
             entity: self.id(),
             name,
+        };
+        self.commands().add(command);
+        self
+    }
+
+    fn insert_default_with_id(&mut self, type_id: TypeId) -> &mut Self {
+        let command = InsertDefaultWithId {
+            entity: self.id(),
+            type_id,
         };
         self.commands().add(command);
         self
@@ -54,6 +69,25 @@ impl Command for RemoveByName {
     }
 }
 
+struct InsertDefaultWithId {
+    entity: Entity,
+    type_id: TypeId,
+}
+
+impl Command for InsertDefaultWithId {
+    fn write(self, world: &mut World) {
+        let registry = world.resource::<AppTypeRegistry>().clone();
+        let registry = registry.read();
+        let registration = registry
+            .get(self.type_id)
+            .unwrap_or_else(|| panic!("{:?} should be registered", self.type_id));
+        let reflect_bundle = registration
+            .data::<ReflectBundle>()
+            .unwrap_or_else(|| panic!("{} should have reflect(Bundle)", registration.type_name()));
+        let mut entity = world.entity_mut(self.entity);
+        reflect_bundle.insert_default(&mut entity);
+    }
+}
 struct InsertReflect<T: IntoIterator<Item = Box<dyn Reflect>>> {
     entity: Entity,
     components: T,
@@ -109,6 +143,27 @@ mod tests {
     }
 
     #[test]
+    fn default_bundle_insertion() {
+        let mut world = World::new();
+        world.init_resource::<AppTypeRegistry>();
+        world
+            .resource::<AppTypeRegistry>()
+            .write()
+            .register::<DummyComponent>();
+
+        let entity = world.spawn_empty().id();
+        let mut queue = CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, &world);
+        commands
+            .entity(entity)
+            .insert_default_with_id(TypeId::of::<DummyComponent>());
+
+        queue.apply(&mut world);
+
+        assert!(world.entity(entity).contains::<DummyComponent>());
+    }
+
+    #[test]
     fn removal_by_name() {
         let mut world = World::new();
         world.init_resource::<AppTypeRegistry>();
@@ -130,6 +185,6 @@ mod tests {
     }
 
     #[derive(Component, Default, Reflect)]
-    #[reflect(Component)]
+    #[reflect(Component, Bundle)]
     struct DummyComponent;
 }

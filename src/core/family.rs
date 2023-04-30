@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    actor::{ActiveActor, ActorBundle, PlayableActorBundle},
+    actor::{race::RaceComponents, ActiveActor, ActorBundle, ActorScene},
+    component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldState,
 };
@@ -75,19 +76,36 @@ impl FamilyPlugin {
 
     fn spawn_system(
         mut commands: Commands,
-        mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
         mut spawn_select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
+        mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
+        race_components: Res<RaceComponents>,
+        registry: Res<AppTypeRegistry>,
     ) {
+        let registry = registry.read();
         for FromClient { client_id, event } in spawn_events.drain() {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            for actor_bundle in event.scene.actor_bundles {
-                commands.spawn(PlayableActorBundle::new(
-                    actor_bundle,
-                    family_entity,
-                    event.city_entity,
-                ));
+            for actor_scene in event.scene.actor_scenes {
+                let Some(registration) = registry.get_with_name(&actor_scene.race_name) else {
+                    error!("type {:?} is not registered", actor_scene.race_name);
+                    continue;
+                };
+                let Some(&bundle_id) = race_components.get(&registration.type_id()) else {
+                    error!(
+                        "type {:?} is not registered as a race",
+                        actor_scene.race_name
+                    );
+                    continue;
+                };
+
+                commands
+                    .spawn(ActorBundle::new(
+                        actor_scene,
+                        family_entity,
+                        event.city_entity,
+                    ))
+                    .insert_default_with_id(bundle_id);
             }
             if event.select {
                 spawn_select_events.send(ToClients {
@@ -137,23 +155,6 @@ impl FamilyPlugin {
     fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<FamilyActors>>) {
         for entity in &actors {
             commands.entity(entity).despawn();
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub(crate) struct FamilyScene {
-    pub(crate) name: Name,
-    pub(crate) budget: Budget,
-    pub(crate) actor_bundles: Vec<ActorBundle>,
-}
-
-impl FamilyScene {
-    pub(crate) fn new(name: String, actor_bundles: Vec<ActorBundle>) -> Self {
-        Self {
-            name: Name::new(name),
-            budget: Budget::default(),
-            actor_bundles,
         }
     }
 }
@@ -247,7 +248,8 @@ pub(crate) struct ActiveFamily;
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Event that spawns a family.
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct FamilySpawn {
     pub(crate) city_entity: Entity,
     pub(crate) scene: FamilyScene,
@@ -258,6 +260,24 @@ impl MapEntities for FamilySpawn {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
         self.city_entity = entity_map.get(self.city_entity)?;
         Ok(())
+    }
+}
+
+/// Serializable family scene for gallery.
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub(crate) struct FamilyScene {
+    pub(crate) name: Name,
+    budget: Budget,
+    actor_scenes: Vec<ActorScene>,
+}
+
+impl FamilyScene {
+    pub(crate) fn new(name: Name, actor_scenes: Vec<ActorScene>) -> Self {
+        Self {
+            name,
+            budget: Default::default(),
+            actor_scenes,
+        }
     }
 }
 
