@@ -84,7 +84,7 @@ impl TaskPlugin {
             if !task_components.contains(&registration.type_id()) {
                 error!(
                     "type {:?} is not registered as a task",
-                    &event.task.type_name()
+                    event.task.type_name()
                 );
                 continue;
             }
