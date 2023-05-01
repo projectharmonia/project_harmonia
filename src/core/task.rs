@@ -35,9 +35,11 @@ impl Plugin for TaskPlugin {
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
-            .add_system(
-                Self::task_list_system
-                    .run_if(action_just_pressed(Action::Confirm))
+            .add_systems(
+                (
+                    Self::task_list_system.run_if(action_just_pressed(Action::Confirm)),
+                    Self::cleanup_system
+                )
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
@@ -159,6 +161,21 @@ impl TaskPlugin {
                     .remove_by_name(event.task_name);
             } else {
                 error!("type {:?} is not registered as a task", &event.task_name);
+            }
+        }
+    }
+
+    fn cleanup_system(
+        mut commands: Commands,
+        mut removed_task_lits: RemovedComponents<TaskList>,
+        children: Query<&Children>,
+        tasks: Query<(Entity, One<&dyn Task>)>, // TODO: use filter.
+    ) {
+        for entity in &mut removed_task_lits {
+            if let Ok(children) = children.get(entity) {
+                for (task_entity, _) in tasks.iter_many(children) {
+                    commands.entity(task_entity).despawn();
+                }
             }
         }
     }

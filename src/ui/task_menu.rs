@@ -30,7 +30,7 @@ impl TaskMenuPlugin {
         mut task_events: EventWriter<TaskRequest>,
         windows: Query<&Window, With<PrimaryWindow>>,
         task_lists: Query<(Entity, &Name, Ref<TaskList>, Option<&Children>)>,
-        tasks: Query<(Entity, One<&dyn Task>)>,
+        tasks: Query<One<&dyn Task>>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
         let Ok((entity, name, task_list, children)) = task_lists.get_single() else {
@@ -45,7 +45,6 @@ impl TaskMenuPlugin {
             position.y = primary_window.height() - cursor_position.y;
         }
 
-        let mut task_activated = false;
         let mut open = true;
         bevy_egui::egui::Window::new(name.as_str())
             .resizable(false)
@@ -55,23 +54,20 @@ impl TaskMenuPlugin {
             .open(&mut open)
             .show(egui.ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    for (_, task) in tasks.iter_many(children.into_iter().flatten()) {
+                    for task in tasks.iter_many(children.into_iter().flatten()) {
                         if ui.button(task.name()).clicked() {
                             task_events.send(TaskRequest {
                                 entity: active_actors.single(),
                                 task: task.clone_value(),
                             });
-                            task_activated = true;
+                            commands.entity(entity).remove::<TaskList>();
                         }
                     }
                 });
             });
 
-        if !open || task_activated {
+        if !open {
             commands.entity(entity).remove::<TaskList>();
-            for (task_entity, _) in tasks.iter_many(children.into_iter().flatten()) {
-                commands.entity(task_entity).despawn();
-            }
         }
     }
 }
