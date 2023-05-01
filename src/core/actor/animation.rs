@@ -13,7 +13,7 @@ pub(super) struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AssetHandles<HumanAnimation>>()
+        app.init_resource::<AssetHandles<ActorAnimation>>()
             .add_system(Self::playing_system.in_set(OnUpdate(WorldState::InWorld)));
     }
 }
@@ -45,22 +45,22 @@ impl AnimationPlugin {
 
 #[derive(Clone, Copy, EnumIter, IntoPrimitive)]
 #[repr(usize)]
-pub(super) enum HumanAnimation {
+pub(super) enum ActorAnimation {
     Idle,
     MaleWalk,
     FemaleWalk,
 }
 
-impl AssetCollection for HumanAnimation {
+impl AssetCollection for ActorAnimation {
     type AssetType = AnimationClip;
 
     fn asset_path(&self) -> &'static str {
         match self {
-            HumanAnimation::Idle => "base/actors/animations/idle/idle.gltf#Animation0",
-            HumanAnimation::MaleWalk => {
+            ActorAnimation::Idle => "base/actors/animations/idle/idle.gltf#Animation0",
+            ActorAnimation::MaleWalk => {
                 "base/actors/animations/male_walk/male_walk.gltf#Animation0"
             }
-            HumanAnimation::FemaleWalk => {
+            ActorAnimation::FemaleWalk => {
                 "base/actors/animations/female_walk/female_walk.gltf#Animation0"
             }
         }

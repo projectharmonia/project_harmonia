@@ -5,7 +5,7 @@ use strum::EnumIter;
 use super::{Race, RaceExt};
 use crate::core::{
     actor::{
-        animation::HumanAnimation,
+        animation::ActorAnimation,
         needs::{Bladder, Energy, Fun, Hunger, Hygiene, Social},
         Actor, Sex,
     },
@@ -29,12 +29,12 @@ impl Plugin for HumanPlugin {
 impl HumanPlugin {
     fn init_system(
         mut commands: Commands,
-        human_animations: Res<AssetHandles<HumanAnimation>>,
+        actor_animations: Res<AssetHandles<ActorAnimation>>,
         actors: Query<Entity, (Added<Human>, With<Actor>)>,
     ) {
         for entity in &actors {
             commands.entity(entity).insert((
-                human_animations.handle(HumanAnimation::Idle),
+                actor_animations.handle(ActorAnimation::Idle),
                 VisibilityBundle::default(),
                 GlobalTransform::default(),
             ));

@@ -5,7 +5,7 @@ use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
-use super::{animation::HumanAnimation, Sex};
+use super::{animation::ActorAnimation, Sex};
 use crate::core::{
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
@@ -68,16 +68,16 @@ impl MovementPlugin {
 
     fn poll_system(
         mut commands: Commands,
-        human_animations: Res<AssetHandles<HumanAnimation>>,
+        actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<(Entity, &Sex, &mut ComputePath, &mut Handle<AnimationClip>)>,
     ) {
         for (entity, sex, mut compute_path, mut anim_handle) in &mut actors {
             if let Some(mut path) = future::block_on(future::poll_once(&mut compute_path.0)) {
                 let walk_anim = match sex {
-                    Sex::Male => HumanAnimation::MaleWalk,
-                    Sex::Female => HumanAnimation::FemaleWalk,
+                    Sex::Male => ActorAnimation::MaleWalk,
+                    Sex::Female => ActorAnimation::FemaleWalk,
                 };
-                *anim_handle = human_animations.handle(walk_anim);
+                *anim_handle = actor_animations.handle(walk_anim);
                 path.reverse();
                 path.pop(); // Drop current position.
                 commands
@@ -118,13 +118,13 @@ impl MovementPlugin {
     fn cleanup_system(
         mut commands: Commands,
         mut removed_paths: RemovedComponents<MovePath>,
-        human_animations: Res<AssetHandles<HumanAnimation>>,
+        actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<&mut Handle<AnimationClip>>,
     ) {
         for entity in &mut removed_paths {
             if let Ok(mut anim_handle) = actors.get_mut(entity) {
                 commands.entity(entity).remove::<Walk>();
-                *anim_handle = human_animations.handle(HumanAnimation::Idle);
+                *anim_handle = actor_animations.handle(ActorAnimation::Idle);
             }
         }
     }
