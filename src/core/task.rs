@@ -1,6 +1,6 @@
 use std::{
-    any::{self, TypeId},
-    fmt::{self, Formatter},
+    any,
+    fmt::{self, Debug, Formatter},
 };
 
 use bevy::{
@@ -8,11 +8,11 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        GetTypeRegistration, TypeRegistryInternal,
+        TypeRegistryInternal,
     },
 };
 use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, One, RegisterExt};
+use bevy_trait_query::{queryable, One};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{
@@ -69,30 +69,15 @@ impl TaskPlugin {
 
     fn queue_system(
         mut commands: Commands,
-        mut task_events: EventReader<FromClient<TaskRequest>>,
-        task_components: Res<TaskComponents>,
-        registry: Res<AppTypeRegistry>,
+        mut task_events: ResMut<Events<FromClient<TaskRequest>>>,
         actors: Query<(), With<Actor>>,
     ) {
-        let registry = registry.read();
-        for event in task_events.iter().map(|event| &event.event) {
-            let Some(registration) = registry.get_with_name(event.task.type_name()) else {
-                error!("type {:?} is not registered", event.task.type_name());
-                continue;
-            };
-            if !task_components.contains(&registration.type_id()) {
-                error!(
-                    "type {:?} is not registered as a task",
-                    event.task.type_name()
-                );
-                continue;
-            }
-
+        for event in task_events.drain().map(|event| event.event) {
             if actors.get(event.entity).is_ok() {
                 commands.entity(event.entity).with_children(|parent| {
                     parent
                         .spawn((QueuedTask, Replication))
-                        .insert_reflect([event.task.clone_value()]);
+                        .insert_reflect([event.task.into_reflect()]);
                 });
             } else {
                 error!("entity {:?} is not an actor", event.entity);
@@ -142,22 +127,21 @@ impl TaskPlugin {
     fn active_cancelation_system(
         mut commands: Commands,
         mut cancel_events: ResMut<Events<FromClient<ActiveTaskCancel>>>,
-        task_components: Res<TaskComponents>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
         for event in cancel_events.drain().map(|event| event.event) {
             let Some(registration) = registry.get_with_name(&event.task_name) else {
-                error!("type {:?} is not registered", event.task_name);
+                error!("{:?} is not registered", event.task_name);
                 continue;
             };
 
-            if task_components.contains(&registration.type_id()) {
+            if registration.data::<ReflectTask>().is_some() {
                 commands
                     .entity(event.entity)
                     .remove_by_name(event.task_name);
             } else {
-                error!("type {:?} is not registered as a task", &event.task_name);
+                error!("{:?} doesn't have reflect(Task)", &event.task_name);
             }
         }
     }
@@ -201,7 +185,8 @@ impl MapEntities for QueuedTaskCancel {
 /// Will be counted as an ongoing task when exists on an actor.
 /// Will be counted as a queued task when exists on actor's children with component [`QueuedTask`].
 #[queryable]
-pub(crate) trait Task: Reflect {
+#[reflect_trait]
+pub(crate) trait Task: Reflect + Debug {
     /// Task name to display.
     fn name(&self) -> &'static str;
 
@@ -224,7 +209,7 @@ bitflags! {
 #[derive(Debug)]
 pub(crate) struct TaskRequest {
     pub(crate) entity: Entity,
-    pub(crate) task: Box<dyn Reflect>,
+    pub(crate) task: Box<dyn Task>,
 }
 
 impl MapEntities for TaskRequest {
@@ -266,7 +251,7 @@ impl Serialize for TaskRequestSerializer<'_> {
         state.serialize_field(TaskRequestField::Entity.into(), &self.event.entity)?;
         state.serialize_field(
             TaskRequestField::Task.into(),
-            &ReflectSerializer::new(&*self.event.task, self.registry),
+            &ReflectSerializer::new(self.event.task.as_reflect(), self.registry),
         )?;
         state.end()
     }
@@ -307,28 +292,24 @@ impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
         let entity = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Entity as usize, &self))?;
-        let task = seq
+        let reflect = seq
             .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Task as usize, &self))?;
+        let type_name = reflect.type_name();
+        let registration = self
+            .registry
+            .get(reflect.type_id())
+            .ok_or_else(|| de::Error::custom(format!("{type_name} is not registered")))?;
+        let reflect_task = registration
+            .data::<ReflectTask>()
+            .ok_or_else(|| de::Error::custom(format!("{type_name} doesn't have reflect(Task)")))?;
+        let task = reflect_task.get_boxed(reflect).map_err(|reflect| {
+            de::Error::custom(format!("unable to cast {} to Task", reflect.type_name()))
+        })?;
+
         Ok(TaskRequest { entity, task })
     }
 }
-
-pub(super) trait TaskComponentsExt {
-    fn add_task<T: Task + GetTypeRegistration + Component>(&mut self) -> &mut Self;
-}
-
-impl TaskComponentsExt for App {
-    fn add_task<T: Task + GetTypeRegistration + Component>(&mut self) -> &mut Self {
-        self.world
-            .get_resource_or_insert_with::<TaskComponents>(Default::default)
-            .push(TypeId::of::<T>());
-        self.replicate::<T>().register_component_as::<dyn Task, T>()
-    }
-}
-
-#[derive(Deref, DerefMut, Resource, Default)]
-struct TaskComponents(Vec<TypeId>);
 
 #[cfg(test)]
 mod tests {
@@ -342,7 +323,7 @@ mod tests {
         registry.register::<DummyTask>();
         let task_request = TaskRequest {
             entity: Entity::PLACEHOLDER,
-            task: DummyTask.clone_value(),
+            task: Box::new(DummyTask),
         };
         let serializer = TaskRequestSerializer::new(&registry, &task_request);
 
@@ -369,7 +350,7 @@ mod tests {
         );
     }
 
-    #[derive(Reflect)]
+    #[derive(Reflect, Debug)]
     struct DummyTask;
 
     impl Task for DummyTask {

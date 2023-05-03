@@ -28,10 +28,10 @@ impl TaskMenuPlugin {
         mut egui: EguiContexts,
         mut task_events: EventWriter<TaskRequest>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        task_lists: Query<(Entity, &Name, Ref<TaskList>)>,
+        mut task_lists: Query<(Entity, &Name, &mut TaskList)>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
-        let Ok((entity, name, task_list)) = task_lists.get_single() else {
+        let Ok((entity, name, mut task_list)) = task_lists.get_single_mut() else {
             return;
         };
 
@@ -52,14 +52,19 @@ impl TaskMenuPlugin {
             .open(&mut open)
             .show(egui.ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    for task in task_list.iter() {
+                    let mut clicked_index = None;
+                    for (index, task) in task_list.iter().enumerate() {
                         if ui.button(task.name()).clicked() {
-                            task_events.send(TaskRequest {
-                                entity: active_actors.single(),
-                                task: task.clone_value(),
-                            });
-                            commands.entity(entity).remove::<TaskList>();
+                            clicked_index = Some(index);
                         }
+                    }
+                    if let Some(index) = clicked_index {
+                        let task = task_list.swap_remove(index);
+                        task_events.send(TaskRequest {
+                            entity: active_actors.single(),
+                            task,
+                        });
+                        commands.entity(entity).remove::<TaskList>();
                     }
                 });
             });

@@ -1,6 +1,8 @@
 use std::sync::{Arc, RwLock};
 
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
+use bevy_replicon::prelude::*;
+use bevy_trait_query::RegisterExt;
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
@@ -13,14 +15,15 @@ use crate::core::{
     game_state::GameState,
     game_world::WorldState,
     ground::Ground,
-    task::{Task, TaskComponentsExt, TaskGroups, TaskList},
+    task::{Task, TaskGroups, TaskList, ReflectTask},
 };
 
 pub(super) struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_task::<Walk>()
+        app.replicate::<Walk>()
+            .register_component_as::<dyn Task, Walk>()
             .add_system(
                 Self::tasks_system
                     .in_set(OnUpdate(GameState::Family))
@@ -128,7 +131,7 @@ impl MovementPlugin {
 }
 
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
+#[reflect(Component, Task)]
 struct Walk(Vec3);
 
 impl Task for Walk {
