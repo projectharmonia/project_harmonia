@@ -358,7 +358,7 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
         let registration = self
             .registry
             .get_with_short_name(&type_name)
-            .ok_or_else(|| de::Error::custom(format!("no registration found for {type_name}")))?;
+            .ok_or_else(|| de::Error::custom(format!("{type_name} is not registered")))?;
         let value =
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
         Ok(value)
@@ -368,10 +368,10 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
         let registration = self
             .registry
             .get_with_short_name(v)
-            .ok_or_else(|| de::Error::custom(format!("no registration found for {v}")))?;
+            .ok_or_else(|| de::Error::custom(format!("{v} is not registered")))?;
         let reflect_default = registration
             .data::<ReflectDefault>()
-            .ok_or_else(|| de::Error::custom(format!("reflect(Default) is missing for {v}")))?;
+            .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Default)")))?;
         Ok(reflect_default.default())
     }
 }
