@@ -7,7 +7,7 @@ use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
-use super::{animation::ActorAnimation, Sex};
+use super::{animation::ActorAnimation, Actor, Sex};
 use crate::core::{
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
@@ -34,6 +34,7 @@ impl Plugin for MovementPlugin {
                     Self::init_system,
                     Self::poll_system,
                     Self::movement_system,
+                    Self::cancellation_system,
                     Self::cleanup_system,
                 )
                     .in_set(OnUpdate(WorldState::InWorld)),
@@ -111,6 +112,21 @@ impl MovementPlugin {
                 }
             } else {
                 commands.entity(entity).remove::<MovePath>();
+            }
+        }
+    }
+
+    fn cancellation_system(
+        mut commands: Commands,
+        mut removed_walks: RemovedComponents<Walk>,
+        actors: Query<(), With<Actor>>,
+    ) {
+        for entity in &mut removed_walks {
+            if actors.get(entity).is_ok() {
+                commands
+                    .entity(entity)
+                    .remove::<ComputePath>()
+                    .remove::<MovePath>();
             }
         }
     }
