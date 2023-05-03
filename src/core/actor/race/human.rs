@@ -1,8 +1,10 @@
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
+use bevy_trait_query::RegisterExt;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
 
-use super::{Race, RaceExt};
+use super::{Race, ReflectRace};
 use crate::core::{
     actor::{
         animation::ActorAnimation,
@@ -11,14 +13,14 @@ use crate::core::{
     },
     asset_handles::{AssetCollection, AssetHandles},
     game_world::WorldState,
-    reflect_bundle::ReflectBundle,
 };
 
 pub(super) struct HumanPlugin;
 
 impl Plugin for HumanPlugin {
     fn build(&self, app: &mut App) {
-        app.register_race::<Human, HumanBundle>()
+        app.replicate::<Human>()
+            .register_component_as::<dyn Race, Human>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
                 (Self::init_system, Self::init_mesh_system).in_set(OnUpdate(WorldState::InWorld)),
@@ -34,6 +36,7 @@ impl HumanPlugin {
     ) {
         for entity in &actors {
             commands.entity(entity).insert((
+                HumanBundle::default(),
                 actor_animations.handle(ActorAnimation::Idle),
                 VisibilityBundle::default(),
                 GlobalTransform::default(),
@@ -56,11 +59,9 @@ impl HumanPlugin {
     }
 }
 
-/// Components for a actor inside the game.
-#[derive(Bundle, Default, Reflect)]
-#[reflect(Bundle)]
+/// Components specific to the human race.
+#[derive(Bundle, Default)]
 struct HumanBundle {
-    human: Human,
     hunger: Hunger,
     social: Social,
     hygiene: Hygiene,
@@ -70,7 +71,7 @@ struct HumanBundle {
 }
 
 #[derive(Component, Reflect, Default)]
-#[reflect(Component)]
+#[reflect(Component, Default, Race)]
 pub(crate) struct Human;
 
 impl Race for Human {

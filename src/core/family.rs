@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    actor::{race::RaceComponents, ActiveActor, ActorBundle, ActorScene},
+    actor::{race::ReflectRace, ActiveActor, ActorBundle, ActorScene},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldState,
@@ -78,7 +78,6 @@ impl FamilyPlugin {
         mut commands: Commands,
         mut spawn_select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
         mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
-        race_components: Res<RaceComponents>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
@@ -88,14 +87,15 @@ impl FamilyPlugin {
                 .id();
             for actor_scene in event.scene.actor_scenes {
                 let Some(registration) = registry.get_with_name(&actor_scene.race_name) else {
-                    error!("type {:?} is not registered", actor_scene.race_name);
+                    error!("{:?} is not registered", actor_scene.race_name);
                     continue;
                 };
-                let Some(&bundle_id) = race_components.get(&registration.type_id()) else {
-                    error!(
-                        "type {:?} is not registered as a race",
-                        actor_scene.race_name
-                    );
+                if registration.data::<ReflectRace>().is_none() {
+                    error!("{:?} doesn't have reflect(Race)", actor_scene.race_name);
+                    continue;
+                }
+                let Some(reflect_default) = registration.data::<ReflectDefault>() else {
+                    error!("{:?} doesn't have reflect(Default)", actor_scene.race_name);
                     continue;
                 };
 
@@ -105,7 +105,7 @@ impl FamilyPlugin {
                         family_entity,
                         event.city_entity,
                     ))
-                    .insert_default_with_id(bundle_id);
+                    .insert_reflect([reflect_default.default()]);
             }
             if event.select {
                 spawn_select_events.send(ToClients {

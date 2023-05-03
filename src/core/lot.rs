@@ -20,7 +20,7 @@ use super::{
     game_state::GameState,
     game_world::WorldState,
     ground::Ground,
-    task::{Task, TaskList, ReflectTask},
+    task::{ReflectTask, Task, TaskList},
 };
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;

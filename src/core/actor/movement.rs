@@ -15,7 +15,7 @@ use crate::core::{
     game_state::GameState,
     game_world::WorldState,
     ground::Ground,
-    task::{Task, TaskGroups, TaskList, ReflectTask},
+    task::{ReflectTask, Task, TaskGroups, TaskList},
 };
 
 pub(super) struct MovementPlugin;
