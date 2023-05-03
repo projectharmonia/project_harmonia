@@ -1,13 +1,12 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui::Pos2, EguiContexts};
 use bevy_inspector_egui::egui::{Align, Layout};
-use bevy_trait_query::One;
 
 use crate::core::{
     actor::ActiveActor,
     family::FamilyMode,
     game_state::GameState,
-    task::{Task, TaskList, TaskRequest},
+    task::{TaskList, TaskRequest},
 };
 
 pub(super) struct TaskMenuPlugin;
@@ -29,11 +28,10 @@ impl TaskMenuPlugin {
         mut egui: EguiContexts,
         mut task_events: EventWriter<TaskRequest>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        task_lists: Query<(Entity, &Name, Ref<TaskList>, Option<&Children>)>,
-        tasks: Query<One<&dyn Task>>,
+        task_lists: Query<(Entity, &Name, Ref<TaskList>)>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
-        let Ok((entity, name, task_list, children)) = task_lists.get_single() else {
+        let Ok((entity, name, task_list)) = task_lists.get_single() else {
             return;
         };
 
@@ -54,7 +52,7 @@ impl TaskMenuPlugin {
             .open(&mut open)
             .show(egui.ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    for task in tasks.iter_many(children.into_iter().flatten()) {
+                    for task in task_list.iter() {
                         if ui.button(task.name()).clicked() {
                             task_events.send(TaskRequest {
                                 entity: active_actors.single(),

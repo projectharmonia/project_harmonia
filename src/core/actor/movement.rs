@@ -40,13 +40,10 @@ impl Plugin for MovementPlugin {
 
 impl MovementPlugin {
     fn tasks_system(
-        mut commands: Commands,
-        grounds: Query<(Entity, &CursorHover), (With<Ground>, Added<TaskList>)>,
+        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
     ) {
-        if let Ok((entity, hover)) = grounds.get_single() {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn(Walk(hover.0));
-            });
+        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
+            task_list.push(Box::new(Walk(hover.0)));
         }
     }
 

@@ -62,19 +62,16 @@ impl Plugin for LotPlugin {
 
 impl LotPlugin {
     fn tasks_system(
-        mut commands: Commands,
-        grounds: Query<(Entity, &CursorHover), (With<Ground>, Added<TaskList>)>,
+        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok((ground_entity, hover)) = grounds.get_single() {
+        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
             let position = hover.xz();
             if let Some((lot_entity, _)) = lots
                 .iter()
                 .find(|(_, vertices)| vertices.contains_point(position))
             {
-                commands.entity(ground_entity).with_children(|parent| {
-                    parent.spawn(BuyLot(lot_entity));
-                });
+                task_list.push(Box::new(BuyLot(lot_entity)));
             }
         }
     }

@@ -35,11 +35,8 @@ impl Plugin for TaskPlugin {
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<ActiveTaskCancel>()
             .add_client_event::<QueuedTaskCancel>()
-            .add_systems(
-                (
-                    Self::task_list_system.run_if(action_just_pressed(Action::Confirm)),
-                    Self::cleanup_system
-                )
+            .add_system(
+                    Self::task_list_system.run_if(action_just_pressed(Action::Confirm))
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
@@ -66,7 +63,7 @@ impl TaskPlugin {
                 commands.entity(previous_entity).remove::<TaskList>();
             }
 
-            commands.entity(hovered_entity).insert(TaskList);
+            commands.entity(hovered_entity).insert(TaskList::default());
         }
     }
 
@@ -164,28 +161,13 @@ impl TaskPlugin {
             }
         }
     }
-
-    fn cleanup_system(
-        mut commands: Commands,
-        mut removed_task_lits: RemovedComponents<TaskList>,
-        children: Query<&Children>,
-        tasks: Query<(Entity, One<&dyn Task>)>, // TODO: use filter.
-    ) {
-        for entity in &mut removed_task_lits {
-            if let Ok(children) = children.get(entity) {
-                for (task_entity, _) in tasks.iter_many(children) {
-                    commands.entity(task_entity).despawn();
-                }
-            }
-        }
-    }
 }
 
-/// Marker that indicates that the entity contains list of possible tasks as children.
+/// Contains list of possible tasks.
 ///
 /// Added when clicking on objects.
-#[derive(Component)]
-pub(crate) struct TaskList;
+#[derive(Component, Default, Deref, DerefMut)]
+pub(crate) struct TaskList(Vec<Box<dyn Task>>);
 
 /// Marker that indicates that the entity represents a queued task.
 #[derive(Component, Reflect, Default)]
