@@ -1,7 +1,7 @@
 use std::iter;
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_mod_outline::OutlineVolume;
+use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 use bevy_rapier3d::prelude::*;
 
 use super::{
@@ -52,7 +52,7 @@ impl CursorHoverPlugin {
             return;
         };
 
-        let mut groups = Group::GROUND;
+        let mut groups = Group::GROUND | Group::ACTOR;
         if building_mode.0 != BuildingMode::Walls || city_mode.0 != CityMode::Lots {
             groups |= Group::OBJECT;
         }
@@ -132,3 +132,20 @@ pub(super) struct Hoverable;
 
 #[derive(Component, Deref)]
 pub(crate) struct CursorHover(pub(crate) Vec3);
+
+pub(super) trait HoverOutlineExt {
+    fn hover() -> Self;
+}
+
+impl HoverOutlineExt for OutlineBundle {
+    fn hover() -> Self {
+        Self {
+            outline: OutlineVolume {
+                visible: false,
+                colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
+                width: 2.0,
+            },
+            ..Default::default()
+        }
+    }
+}

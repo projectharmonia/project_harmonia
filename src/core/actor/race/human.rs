@@ -1,5 +1,8 @@
 use bevy::prelude::*;
+use bevy_mod_outline::OutlineBundle;
+use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_scene_hook::SceneHook;
 use bevy_trait_query::RegisterExt;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
@@ -12,6 +15,8 @@ use crate::core::{
         Actor, Sex,
     },
     asset_handles::{AssetCollection, AssetHandles},
+    collision_groups::LifescapeGroupsExt,
+    cursor_hover::{HoverOutlineExt, Hoverable},
     game_world::WorldState,
 };
 
@@ -35,12 +40,31 @@ impl HumanPlugin {
         actors: Query<Entity, (Added<Human>, With<Actor>)>,
     ) {
         for entity in &actors {
-            commands.entity(entity).insert((
-                HumanBundle::default(),
-                actor_animations.handle(ActorAnimation::Idle),
-                VisibilityBundle::default(),
-                GlobalTransform::default(),
-            ));
+            const HALF_HEIGHT: f32 = 0.6;
+            const RADIUS: f32 = 0.3;
+            commands
+                .entity(entity)
+                .insert((
+                    HumanBundle::default(),
+                    actor_animations.handle(ActorAnimation::Idle),
+                    VisibilityBundle::default(),
+                    GlobalTransform::default(),
+                    Hoverable,
+                    SceneHook::new(|entity, commands| {
+                        if entity.contains::<Handle<Mesh>>() {
+                            commands.insert(OutlineBundle::hover());
+                        }
+                    }),
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        SpatialBundle::from_transform(Transform::from_translation(
+                            Vec3::Y * (HALF_HEIGHT + RADIUS),
+                        )),
+                        CollisionGroups::new(Group::ACTOR, Group::ALL),
+                        Collider::capsule_y(HALF_HEIGHT, RADIUS),
+                    ));
+                });
         }
     }
 

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy_scene_hook::SceneHooked;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
 
@@ -19,13 +20,13 @@ impl Plugin for AnimationPlugin {
 }
 
 impl AnimationPlugin {
-    /// Plays animation after changing [`Handle<AnimationClip>`] or after [`Children`] initialization (to handle scene spawn delay).
+    /// Plays animation after changing [`Handle<AnimationClip>`] or after [`SceneHooked`] insertion (to handle scene spawn delay).
     ///
     /// Makes the behavior similar to adding [`Handle<Scene>`].
     fn playing_system(
         actors: Query<
             (Entity, &Handle<AnimationClip>),
-            Or<(Changed<Handle<AnimationClip>>, Added<Children>)>,
+            Or<(Changed<Handle<AnimationClip>>, Added<SceneHooked>)>,
         >,
         children: Query<&Children>,
         mut animaption_players: Query<&mut AnimationPlayer>,

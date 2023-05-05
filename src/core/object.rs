@@ -7,7 +7,7 @@ use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
     prelude::*,
 };
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_scene_hook::SceneHook;
@@ -18,6 +18,7 @@ use super::{
     city::{City, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
     component_commands::ComponentCommandsExt,
+    cursor_hover::HoverOutlineExt,
     cursor_hover::Hoverable,
     game_world::WorldState,
     lot::LotVertices,
@@ -78,14 +79,7 @@ impl ObjectPlugin {
                         if entity.contains::<Handle<Mesh>>() {
                             commands.insert((
                                 CollisionGroups::new(Group::OBJECT, Group::ALL),
-                                OutlineBundle {
-                                    outline: OutlineVolume {
-                                        visible: false,
-                                        colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
-                                        width: 2.0,
-                                    },
-                                    ..Default::default()
-                                },
+                                OutlineBundle::hover(),
                             ));
                         }
                     }),
