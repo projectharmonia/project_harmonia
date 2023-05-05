@@ -79,6 +79,7 @@ bevy_transform = { git = "https://github.com/lifescapegame/bevy", branch = "dyna
 bevy_utils = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
 bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
 bevy_winit = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
+bevy_rapier3d = { git = "https://github.com/thefakeplace/bevy_rapier", branch = "bugfix_always_on_top" }
 
 [workspace]
 members = ["xtask"]

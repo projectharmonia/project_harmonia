@@ -816,8 +816,7 @@ source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-
 [[package]]
 name = "bevy_rapier3d"
 version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4bce8074f19467fd55ab172ae6c11fca3ca28f66804590ab10c930bd5e9cd24"
+source = "git+https://github.com/thefakeplace/bevy_rapier?branch=bugfix_always_on_top#948800314d83054c002b3928f5fec9ce65c677fc"
 dependencies = [
  "bevy",
  "bitflags",
