@@ -53,8 +53,7 @@ impl HumanPlugin {
         for (entity, &sex) in &actors {
             commands
                 .entity(entity)
-                .insert(human_scenes.handle(sex.into()))
-                .despawn_descendants();
+                .insert(human_scenes.handle(sex.into()));
         }
     }
 }
