@@ -1,27 +1,20 @@
+mod buy_lot;
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
 use bevy::{
     ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
-    math::Vec3Swizzles,
     prelude::*,
 };
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_trait_query::RegisterExt;
 use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use super::{
-    cursor_hover::CursorHover,
-    family::{ActorFamily, FamilyMode},
-    game_state::GameState,
-    game_world::WorldState,
-    ground::Ground,
-    task::{ReflectTask, Task, TaskList},
-};
+use super::game_world::WorldState;
+use buy_lot::BuyLotPlugin;
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -32,27 +25,20 @@ impl Plugin for LotPlugin {
         app.add_state::<LotTool>()
             .add_plugin(CreatingLotPlugin)
             .add_plugin(MovingLotPlugin)
+            .add_plugin(BuyLotPlugin)
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
-            .replicate::<BuyLot>()
-            .register_component_as::<dyn Task, BuyLot>()
             .add_mapped_client_event::<LotSpawn>()
             .add_mapped_client_event::<LotMove>()
             .add_mapped_client_event::<LotDespawn>()
             .add_server_event::<LotEventConfirmed>()
-            .add_system(
-                Self::tasks_system
-                    .in_set(OnUpdate(GameState::Family))
-                    .in_set(OnUpdate(FamilyMode::Life)),
-            )
             .add_systems(
                 (Self::vertices_update_system, Self::init_system)
                     .in_set(OnUpdate(WorldState::InWorld)),
             )
             .add_systems(
                 (
-                    Self::buying_system,
                     Self::spawn_system,
                     Self::movement_system,
                     Self::despawn_system,
@@ -63,36 +49,6 @@ impl Plugin for LotPlugin {
 }
 
 impl LotPlugin {
-    fn tasks_system(
-        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
-        lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
-    ) {
-        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
-            let position = hover.xz();
-            if let Some((lot_entity, _)) = lots
-                .iter()
-                .find(|(_, vertices)| vertices.contains_point(position))
-            {
-                task_list.push(Box::new(BuyLot(lot_entity)));
-            }
-        }
-    }
-
-    fn buying_system(
-        mut commands: Commands,
-        lots: Query<(), Without<LotFamily>>,
-        actors: Query<(Entity, &ActorFamily, &BuyLot), Added<BuyLot>>,
-    ) {
-        for (entity, family, buy) in &actors {
-            if lots.get(buy.0).is_ok() {
-                commands.entity(buy.0).insert(LotFamily(family.0));
-            } else {
-                error!("{buy:?} from actor {entity:?} points to not a lot");
-            }
-            commands.entity(entity).remove::<BuyLot>();
-        }
-    }
-
     fn init_system(
         lot_material: Local<LotMaterial>,
         mut commands: Commands,
@@ -237,29 +193,6 @@ impl LotVertices {
         }
 
         inside
-    }
-}
-
-#[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
-#[reflect(Component, Task)]
-pub(crate) struct BuyLot(Entity);
-
-impl Task for BuyLot {
-    fn name(&self) -> &str {
-        "Buy lot"
-    }
-}
-
-impl FromWorld for BuyLot {
-    fn from_world(_world: &mut World) -> Self {
-        Self(Entity::PLACEHOLDER)
-    }
-}
-
-impl MapEntities for BuyLot {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
     }
 }
 
