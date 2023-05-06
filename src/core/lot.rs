@@ -245,7 +245,7 @@ impl LotVertices {
 pub(crate) struct BuyLot(Entity);
 
 impl Task for BuyLot {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Buy lot"
     }
 }

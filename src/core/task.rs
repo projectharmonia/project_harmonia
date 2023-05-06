@@ -188,7 +188,7 @@ impl MapEntities for QueuedTaskCancel {
 #[reflect_trait]
 pub(crate) trait Task: Reflect + Debug {
     /// Task name to display.
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
 
     /// Returns task constraints.
     fn groups(&self) -> TaskGroups {

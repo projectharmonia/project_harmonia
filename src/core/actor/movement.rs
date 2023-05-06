@@ -151,7 +151,7 @@ impl MovementPlugin {
 struct Walk(Vec3);
 
 impl Task for Walk {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Walk"
     }
 
