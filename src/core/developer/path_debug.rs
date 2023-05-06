@@ -7,37 +7,37 @@ use crate::core::{
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct RouteDebugSet;
+struct PathDebugSet;
 
-pub(super) struct RouteDebugPlugin;
+pub(super) struct PathDebugPlugin;
 
-impl Plugin for RouteDebugPlugin {
+impl Plugin for PathDebugPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<RouteDebugMaterial>()
-            .configure_set(RouteDebugSet.run_if(debug_routes_enabled))
-            .add_systems((Self::init_system, Self::despawn_system).in_set(RouteDebugSet))
+        app.init_resource::<PathDebugMaterial>()
+            .configure_set(PathDebugSet.run_if(debug_paths_enabled))
+            .add_systems((Self::init_system, Self::despawn_system).in_set(PathDebugSet))
             .add_system(
                 Self::cleanup_system
                     .in_set(SettingsApplySet)
-                    .run_if(not(debug_routes_enabled)),
+                    .run_if(not(debug_paths_enabled)),
             );
     }
 }
 
-impl RouteDebugPlugin {
+impl PathDebugPlugin {
     fn init_system(
         mut commands: Commands,
         mut polylines: ResMut<Assets<Polyline>>,
-        route_material: Res<RouteDebugMaterial>,
+        path_material: Res<PathDebugMaterial>,
         actors: Query<(Entity, &Parent, &Transform, &MovePath), Added<MovePath>>,
     ) {
         for (entity, parent, transform, move_path) in &actors {
             commands.entity(parent.get()).with_children(|parent| {
                 let mut vertices = move_path.0.clone();
                 vertices.push(transform.translation);
-                parent.spawn(RouteDebugBundle::new(
+                parent.spawn(PathDebugBundle::new(
                     entity,
-                    route_material.0.clone(),
+                    path_material.0.clone(),
                     polylines.add(Polyline { vertices }),
                 ));
             });
@@ -47,14 +47,14 @@ impl RouteDebugPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut removed_paths: RemovedComponents<MovePath>,
-        routes: Query<(Entity, &MoveActor)>,
+        debug_paths: Query<(Entity, &MoveActor)>,
     ) {
         for actor_entity in &mut removed_paths {
-            if let Some((route_entity, _)) = routes
+            if let Some((debug_entity, _)) = debug_paths
                 .iter()
                 .find(|(_, move_actor)| move_actor.0 == actor_entity)
             {
-                commands.entity(route_entity).despawn();
+                commands.entity(debug_entity).despawn();
             }
         }
     }
@@ -66,15 +66,15 @@ impl RouteDebugPlugin {
     }
 }
 
-fn debug_routes_enabled(settings: Res<Settings>) -> bool {
-    settings.developer.debug_routes
+fn debug_paths_enabled(settings: Res<Settings>) -> bool {
+    settings.developer.debug_paths
 }
 
 /// Stores a handle for the navigation debug line material.
 #[derive(Resource)]
-struct RouteDebugMaterial(Handle<PolylineMaterial>);
+struct PathDebugMaterial(Handle<PolylineMaterial>);
 
-impl FromWorld for RouteDebugMaterial {
+impl FromWorld for PathDebugMaterial {
     fn from_world(world: &mut World) -> Self {
         let mut polyline_materials = world.resource_mut::<Assets<PolylineMaterial>>();
         let material_handle = polyline_materials.add(PolylineMaterial {
@@ -87,7 +87,7 @@ impl FromWorld for RouteDebugMaterial {
 }
 
 #[derive(Bundle)]
-struct RouteDebugBundle {
+struct PathDebugBundle {
     name: Name,
     move_actor: MoveActor,
 
@@ -95,7 +95,7 @@ struct RouteDebugBundle {
     polyline_bundle: PolylineBundle,
 }
 
-impl RouteDebugBundle {
+impl PathDebugBundle {
     fn new(
         actor_entity: Entity,
         material_handle: Handle<PolylineMaterial>,

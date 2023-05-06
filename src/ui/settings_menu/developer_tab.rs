@@ -23,7 +23,10 @@ impl DeveloperTab<'_> {
             &mut self.developer_settings.debug_collisions,
             "Debug collisions",
         );
-        ui.checkbox(&mut self.developer_settings.debug_routes, "Debug routes");
+        ui.checkbox(
+            &mut self.developer_settings.debug_paths,
+            "Debug navigation paths",
+        );
         ui.checkbox(&mut self.developer_settings.wireframe, "Enable wireframe");
     }
 }
