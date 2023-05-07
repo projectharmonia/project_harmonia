@@ -16,7 +16,8 @@ pub(super) struct MovementPlugin;
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MoveHerePlugin).add_systems(
-            (Self::init_system, Self::cleanup_system).in_set(OnUpdate(WorldState::InWorld)),
+            (Self::init_system, Self::finish_system, Self::cleanup_system)
+                .in_set(OnUpdate(WorldState::InWorld)),
         );
     }
 }
@@ -37,16 +38,25 @@ impl MovementPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn finish_system(
         mut commands: Commands,
         mut removed_navigations: RemovedComponents<Navigation>,
+    ) {
+        for entity in &mut removed_navigations {
+            if let Some(mut commands) = commands.get_entity(entity) {
+                commands.remove::<Movement>();
+            }
+        }
+    }
+
+    fn cleanup_system(
+        mut removed_movements: RemovedComponents<Movement>,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<&mut Handle<AnimationClip>>,
     ) {
-        for entity in &mut removed_navigations {
+        for entity in &mut removed_movements {
             if let Ok(mut anim_handle) = actors.get_mut(entity) {
                 *anim_handle = actor_animations.handle(ActorAnimation::Idle);
-                commands.entity(entity).remove::<Movement>();
             }
         }
     }
