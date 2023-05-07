@@ -30,6 +30,8 @@ impl MovementPlugin {
             let walk_anim = match (sex, movement) {
                 (Sex::Male, Movement::Walk) => ActorAnimation::MaleWalk,
                 (Sex::Female, Movement::Walk) => ActorAnimation::FemaleWalk,
+                (Sex::Male, Movement::Run) => ActorAnimation::MaleRun,
+                (Sex::Female, Movement::Run) => ActorAnimation::FemaleRun,
             };
             *anim_handle = actor_animations.handle(walk_anim);
         }
@@ -69,12 +71,14 @@ impl MovementBundle {
 enum Movement {
     #[default]
     Walk,
+    Run,
 }
 
 impl Movement {
     fn speed(self) -> f32 {
         match self {
             Movement::Walk => 2.0,
+            Movement::Run => 4.0,
         }
     }
 }

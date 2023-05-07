@@ -50,6 +50,8 @@ pub(super) enum ActorAnimation {
     Idle,
     MaleWalk,
     FemaleWalk,
+    MaleRun,
+    FemaleRun,
 }
 
 impl AssetCollection for ActorAnimation {
@@ -63,6 +65,10 @@ impl AssetCollection for ActorAnimation {
             }
             ActorAnimation::FemaleWalk => {
                 "base/actors/animations/female_walk/female_walk.gltf#Animation0"
+            }
+            ActorAnimation::MaleRun => "base/actors/animations/male_run/male_run.gltf#Animation0",
+            ActorAnimation::FemaleRun => {
+                "base/actors/animations/female_run/female_run.gltf#Animation0"
             }
         }
     }

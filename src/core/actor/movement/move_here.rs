@@ -45,6 +45,10 @@ impl MoveHerePlugin {
                 destination: hover.0,
                 movement: Movement::Walk,
             }));
+            task_list.push(Box::new(MoveHere {
+                destination: hover.0,
+                movement: Movement::Run,
+            }));
         }
     }
 
@@ -95,6 +99,7 @@ impl Task for MoveHere {
     fn name(&self) -> &str {
         match self.movement {
             Movement::Walk => "Walk here",
+            Movement::Run => "Run here",
         }
     }
 
