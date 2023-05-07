@@ -18,6 +18,7 @@ pub(super) mod game_world;
 mod ground;
 pub(super) mod input_events;
 pub(super) mod lot;
+mod navigation;
 pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
@@ -43,6 +44,7 @@ use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use ground::GroundPlugin;
 use lot::LotPlugin;
+use navigation::NavigationPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
@@ -66,6 +68,7 @@ impl PluginGroup for CorePlugins {
             .add(CursorHoverPlugin)
             .add(ActorPlugin)
             .add(LotPlugin)
+            .add(NavigationPlugin)
             .add(GroundPlugin)
             .add(ActionPlugin)
             .add(DeveloperPlugin)

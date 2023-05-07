@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_trait_query::RegisterExt;
-use oxidized_navigation::{NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
-use super::{ComputePath, MovePath};
+use super::{Movement, MovementBundle};
 use crate::core::{
     actor::Actor,
     cursor_hover::CursorHover,
@@ -15,12 +14,12 @@ use crate::core::{
     task::{ReflectTask, Task, TaskGroups, TaskList},
 };
 
-pub(super) struct WalkPlugin;
+pub(super) struct MoveHerePlugin;
 
-impl Plugin for WalkPlugin {
+impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Walk>()
-            .register_component_as::<dyn Task, Walk>()
+        app.replicate::<MoveHere>()
+            .register_component_as::<dyn Task, MoveHere>()
             .add_system(
                 Self::tasks_system
                     .in_set(OnUpdate(GameState::Family))
@@ -37,55 +36,48 @@ impl Plugin for WalkPlugin {
     }
 }
 
-impl WalkPlugin {
+impl MoveHerePlugin {
     fn tasks_system(
         mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
     ) {
         if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
-            task_list.push(Box::new(Walk(hover.0)));
+            task_list.push(Box::new(MoveHere {
+                destination: hover.0,
+                movement: Movement::Walk,
+            }));
         }
     }
 
-    fn init_system(
-        mut commands: Commands,
-        nav_settings: Res<NavMeshSettings>,
-        nav_mesh: Res<NavMesh>,
-        actors: Query<(Entity, &Transform, &Walk), Added<Walk>>,
-    ) {
-        for (entity, transform, walk) in &actors {
-            commands.entity(entity).insert(ComputePath::new(
-                nav_mesh.get(),
-                nav_settings.clone(),
-                transform.translation,
-                walk.0,
+    fn init_system(mut commands: Commands, actors: Query<(Entity, &MoveHere), Added<MoveHere>>) {
+        for (entity, move_here) in &actors {
+            commands.entity(entity).insert(MovementBundle::new(
+                move_here.movement,
+                move_here.destination,
             ));
         }
     }
 
     fn cancellation_system(
         mut commands: Commands,
-        mut removed_walks: RemovedComponents<Walk>,
+        mut removed_tasks: RemovedComponents<MoveHere>,
         actors: Query<(), With<Actor>>,
     ) {
-        for entity in &mut removed_walks {
+        for entity in &mut removed_tasks {
             if actors.get(entity).is_ok() {
-                commands
-                    .entity(entity)
-                    .remove::<ComputePath>()
-                    .remove::<MovePath>();
+                commands.entity(entity).remove::<MovementBundle>();
             }
         }
     }
 
     fn finish_system(
         mut commands: Commands,
-        mut removed_paths: RemovedComponents<MovePath>,
-        actors: Query<Ref<Walk>>,
+        mut removed_movements: RemovedComponents<Movement>,
+        actors: Query<Ref<MoveHere>>,
     ) {
-        for entity in &mut removed_paths {
-            if let Ok(walk) = actors.get(entity) {
-                if !walk.is_added() {
-                    commands.entity(entity).remove::<Walk>();
+        for entity in &mut removed_movements {
+            if let Ok(move_here) = actors.get(entity) {
+                if !move_here.is_added() {
+                    commands.entity(entity).remove::<MoveHere>();
                 }
             }
         }
@@ -94,11 +86,16 @@ impl WalkPlugin {
 
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component, Task)]
-struct Walk(Vec3);
+struct MoveHere {
+    destination: Vec3,
+    movement: Movement,
+}
 
-impl Task for Walk {
+impl Task for MoveHere {
     fn name(&self) -> &str {
-        "Walk"
+        match self.movement {
+            Movement::Walk => "Walk here",
+        }
     }
 
     fn groups(&self) -> TaskGroups {

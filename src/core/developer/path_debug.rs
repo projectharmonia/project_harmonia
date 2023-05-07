@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_polyline::prelude::*;
 
 use crate::core::{
-    actor::movement::MovePath,
+    navigation::NavPath,
     settings::{Settings, SettingsApplySet},
 };
 
@@ -29,11 +29,11 @@ impl PathDebugPlugin {
         mut commands: Commands,
         mut polylines: ResMut<Assets<Polyline>>,
         path_material: Res<PathDebugMaterial>,
-        actors: Query<(Entity, &Parent, &Transform, &MovePath), Added<MovePath>>,
+        actors: Query<(Entity, &Parent, &Transform, &NavPath), Added<NavPath>>,
     ) {
-        for (entity, parent, transform, move_path) in &actors {
+        for (entity, parent, transform, nav_path) in &actors {
             commands.entity(parent.get()).with_children(|parent| {
-                let mut vertices = move_path.0.clone();
+                let mut vertices = nav_path.0.clone();
                 vertices.push(transform.translation);
                 parent.spawn(PathDebugBundle::new(
                     entity,
@@ -46,20 +46,20 @@ impl PathDebugPlugin {
 
     fn despawn_system(
         mut commands: Commands,
-        mut removed_paths: RemovedComponents<MovePath>,
-        debug_paths: Query<(Entity, &MoveActor)>,
+        mut removed_paths: RemovedComponents<NavPath>,
+        debug_paths: Query<(Entity, &NavActor)>,
     ) {
         for actor_entity in &mut removed_paths {
             if let Some((debug_entity, _)) = debug_paths
                 .iter()
-                .find(|(_, move_actor)| move_actor.0 == actor_entity)
+                .find(|(_, nav_actor)| nav_actor.0 == actor_entity)
             {
                 commands.entity(debug_entity).despawn();
             }
         }
     }
 
-    fn cleanup_system(mut commands: Commands, routes: Query<Entity, With<MoveActor>>) {
+    fn cleanup_system(mut commands: Commands, routes: Query<Entity, With<NavActor>>) {
         for entity in &routes {
             commands.entity(entity).despawn();
         }
@@ -89,7 +89,7 @@ impl FromWorld for PathDebugMaterial {
 #[derive(Bundle)]
 struct PathDebugBundle {
     name: Name,
-    move_actor: MoveActor,
+    nav_actor: NavActor,
 
     #[bundle]
     polyline_bundle: PolylineBundle,
@@ -103,7 +103,7 @@ impl PathDebugBundle {
     ) -> Self {
         Self {
             name: "Navigation polyline".into(),
-            move_actor: MoveActor(actor_entity),
+            nav_actor: NavActor(actor_entity),
             polyline_bundle: PolylineBundle {
                 polyline: polyline_handle,
                 material: material_handle,
@@ -117,4 +117,4 @@ impl PathDebugBundle {
 ///
 /// Used for cleanup.
 #[derive(Component)]
-struct MoveActor(Entity);
+struct NavActor(Entity);
