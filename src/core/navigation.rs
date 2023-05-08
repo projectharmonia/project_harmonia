@@ -1,3 +1,5 @@
+mod follow;
+
 use std::sync::{Arc, RwLock};
 
 use bevy::{
@@ -9,12 +11,13 @@ use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMesh, NavMeshSettings};
 
 use crate::core::game_world::WorldState;
+use follow::FollowPlugin;
 
 pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_plugin(FollowPlugin).add_systems(
             (
                 Self::init_system,
                 Self::navigation_system,
