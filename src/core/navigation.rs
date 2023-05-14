@@ -1,4 +1,5 @@
-mod follow;
+pub(super) mod endpoint;
+pub(super) mod follow;
 
 use std::sync::{Arc, RwLock};
 
@@ -8,44 +9,30 @@ use bevy::{
 };
 use derive_more::Constructor;
 use futures_lite::future;
-use oxidized_navigation::{query, tiles::NavMeshTiles, NavMesh, NavMeshSettings};
+use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 
 use crate::core::game_world::WorldState;
+use endpoint::EndpointPlugin;
 use follow::FollowPlugin;
 
 pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(FollowPlugin).add_systems(
-            (
-                Self::init_system,
-                Self::navigation_system,
-                Self::poll_system,
-                Self::cleanup_system,
-            )
-                .in_set(OnUpdate(WorldState::InWorld)),
-        );
+        app.add_plugin(EndpointPlugin)
+            .add_plugin(FollowPlugin)
+            .add_systems(
+                (
+                    Self::navigation_system,
+                    Self::poll_system,
+                    Self::cleanup_system,
+                )
+                    .in_set(OnUpdate(WorldState::InWorld)),
+            );
     }
 }
 
 impl NavigationPlugin {
-    fn init_system(
-        mut commands: Commands,
-        nav_settings: Res<NavMeshSettings>,
-        nav_mesh: Res<NavMesh>,
-        actors: Query<(Entity, &Transform, &Navigation), Added<Navigation>>,
-    ) {
-        for (entity, transform, navigation) in &actors {
-            commands.entity(entity).insert(ComputePath::new(
-                nav_mesh.get(),
-                nav_settings.clone(),
-                transform.translation,
-                navigation.destination,
-            ));
-        }
-    }
-
     fn poll_system(mut commands: Commands, mut actors: Query<(Entity, &mut ComputePath)>) {
         for (entity, mut compute_path) in &mut actors {
             if let Some(mut path) = future::block_on(future::poll_once(&mut compute_path.0)) {
@@ -99,7 +86,6 @@ impl NavigationPlugin {
 
 #[derive(Component, Constructor)]
 pub(super) struct Navigation {
-    destination: Vec3,
     speed: f32,
 }
 

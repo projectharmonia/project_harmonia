@@ -11,6 +11,7 @@ use crate::core::{
     game_state::GameState,
     game_world::WorldState,
     ground::Ground,
+    navigation::{endpoint::Endpoint, Navigation},
     task::{ReflectTask, Task, TaskGroups, TaskList},
 };
 
@@ -42,11 +43,11 @@ impl MoveHerePlugin {
     ) {
         if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
             task_list.push(Box::new(MoveHere {
-                destination: hover.0,
+                endpoint: hover.0,
                 movement: Movement::Walk,
             }));
             task_list.push(Box::new(MoveHere {
-                destination: hover.0,
+                endpoint: hover.0,
                 movement: Movement::Run,
             }));
         }
@@ -54,9 +55,9 @@ impl MoveHerePlugin {
 
     fn init_system(mut commands: Commands, actors: Query<(Entity, &MoveHere), Added<MoveHere>>) {
         for (entity, move_here) in &actors {
-            commands.entity(entity).insert(MovementBundle::new(
-                move_here.movement,
-                move_here.destination,
+            commands.entity(entity).insert((
+                MovementBundle::new(move_here.movement),
+                Endpoint::new(move_here.endpoint),
             ));
         }
     }
@@ -68,7 +69,7 @@ impl MoveHerePlugin {
     ) {
         for entity in &mut removed_tasks {
             if actors.get(entity).is_ok() {
-                commands.entity(entity).remove::<MovementBundle>();
+                commands.entity(entity).remove::<Navigation>();
             }
         }
     }
@@ -91,7 +92,7 @@ impl MoveHerePlugin {
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component, Task)]
 struct MoveHere {
-    destination: Vec3,
+    endpoint: Vec3,
     movement: Movement,
 }
 
