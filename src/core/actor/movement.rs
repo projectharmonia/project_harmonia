@@ -3,7 +3,7 @@ mod move_here;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{animation::ActorAnimation, Sex};
+use super::{ActorAnimation, Sex};
 use crate::core::{
     asset_handles::AssetHandles,
     game_world::WorldState,

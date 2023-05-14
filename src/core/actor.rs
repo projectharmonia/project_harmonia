@@ -1,4 +1,3 @@
-mod animation;
 pub(super) mod movement;
 pub(crate) mod needs;
 pub(crate) mod race;
@@ -6,11 +5,15 @@ pub(crate) mod race;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
+use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use super::{family::FamilySync, game_world::WorldState};
-use animation::AnimationPlugin;
+use super::{
+    asset_handles::{AssetCollection, AssetHandles},
+    family::FamilySync,
+    game_world::WorldState,
+};
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
 use race::RacePlugins;
@@ -19,8 +22,8 @@ pub(super) struct ActorPlugin;
 
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RacePlugins)
-            .add_plugin(AnimationPlugin)
+        app.init_resource::<AssetHandles<ActorAnimation>>()
+            .add_plugins(RacePlugins)
             .add_plugin(MovementPlugin)
             .add_plugin(NeedsPlugin)
             .replicate::<Actor>()
@@ -119,4 +122,28 @@ pub(crate) struct ActorScene {
     pub(crate) last_name: LastName,
     pub(crate) sex: Sex,
     pub(crate) race_name: String,
+}
+
+#[derive(Clone, Copy, EnumIter, IntoPrimitive)]
+#[repr(usize)]
+pub(super) enum ActorAnimation {
+    Idle,
+    MaleWalk,
+    FemaleWalk,
+    MaleRun,
+    FemaleRun,
+}
+
+impl AssetCollection for ActorAnimation {
+    type AssetType = AnimationClip;
+
+    fn asset_path(&self) -> &'static str {
+        match self {
+            ActorAnimation::Idle => "base/actors/animations/idle.gltf#Animation0",
+            ActorAnimation::MaleWalk => "base/actors/animations/male_walk.gltf#Animation0",
+            ActorAnimation::FemaleWalk => "base/actors/animations/female_walk.gltf#Animation0",
+            ActorAnimation::MaleRun => "base/actors/animations/male_run.gltf#Animation0",
+            ActorAnimation::FemaleRun => "base/actors/animations/female_run.gltf#Animation0",
+        }
+    }
 }

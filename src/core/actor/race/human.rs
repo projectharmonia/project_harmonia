@@ -10,9 +10,8 @@ use strum::EnumIter;
 use super::{Race, ReflectRace};
 use crate::core::{
     actor::{
-        animation::ActorAnimation,
         needs::{Bladder, Energy, Fun, Hunger, Hygiene, Social},
-        Actor, Sex,
+        Actor, ActorAnimation, Sex,
     },
     asset_handles::{AssetCollection, AssetHandles},
     collision_groups::LifescapeGroupsExt,

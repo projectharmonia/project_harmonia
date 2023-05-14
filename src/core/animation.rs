@@ -2,20 +2,14 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy_scene_hook::SceneHooked;
-use num_enum::IntoPrimitive;
-use strum::EnumIter;
 
-use crate::core::{
-    asset_handles::{AssetCollection, AssetHandles},
-    game_world::WorldState,
-};
+use crate::core::game_world::WorldState;
 
 pub(super) struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AssetHandles<ActorAnimation>>()
-            .add_system(Self::playing_system.in_set(OnUpdate(WorldState::InWorld)));
+        app.add_system(Self::playing_system.in_set(OnUpdate(WorldState::InWorld)));
     }
 }
 
@@ -40,30 +34,6 @@ impl AnimationPlugin {
                     .play_with_transition(handle.clone(), Duration::from_millis(200))
                     .repeat();
             }
-        }
-    }
-}
-
-#[derive(Clone, Copy, EnumIter, IntoPrimitive)]
-#[repr(usize)]
-pub(super) enum ActorAnimation {
-    Idle,
-    MaleWalk,
-    FemaleWalk,
-    MaleRun,
-    FemaleRun,
-}
-
-impl AssetCollection for ActorAnimation {
-    type AssetType = AnimationClip;
-
-    fn asset_path(&self) -> &'static str {
-        match self {
-            ActorAnimation::Idle => "base/actors/animations/idle.gltf#Animation0",
-            ActorAnimation::MaleWalk => "base/actors/animations/male_walk.gltf#Animation0",
-            ActorAnimation::FemaleWalk => "base/actors/animations/female_walk.gltf#Animation0",
-            ActorAnimation::MaleRun => "base/actors/animations/male_run.gltf#Animation0",
-            ActorAnimation::FemaleRun => "base/actors/animations/female_run.gltf#Animation0",
         }
     }
 }
