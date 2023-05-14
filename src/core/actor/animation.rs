@@ -59,17 +59,11 @@ impl AssetCollection for ActorAnimation {
 
     fn asset_path(&self) -> &'static str {
         match self {
-            ActorAnimation::Idle => "base/actors/animations/idle/idle.gltf#Animation0",
-            ActorAnimation::MaleWalk => {
-                "base/actors/animations/male_walk/male_walk.gltf#Animation0"
-            }
-            ActorAnimation::FemaleWalk => {
-                "base/actors/animations/female_walk/female_walk.gltf#Animation0"
-            }
-            ActorAnimation::MaleRun => "base/actors/animations/male_run/male_run.gltf#Animation0",
-            ActorAnimation::FemaleRun => {
-                "base/actors/animations/female_run/female_run.gltf#Animation0"
-            }
+            ActorAnimation::Idle => "base/actors/animations/idle.gltf#Animation0",
+            ActorAnimation::MaleWalk => "base/actors/animations/male_walk.gltf#Animation0",
+            ActorAnimation::FemaleWalk => "base/actors/animations/female_walk.gltf#Animation0",
+            ActorAnimation::MaleRun => "base/actors/animations/male_run.gltf#Animation0",
+            ActorAnimation::FemaleRun => "base/actors/animations/female_run.gltf#Animation0",
         }
     }
 }
