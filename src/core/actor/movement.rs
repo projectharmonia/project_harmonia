@@ -26,14 +26,14 @@ impl MovementPlugin {
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<(&Sex, &Movement, &mut Handle<AnimationClip>), Added<NavPath>>,
     ) {
-        for (sex, movement, mut anim_handle) in &mut actors {
-            let walk_anim = match (sex, movement) {
+        for (sex, movement, mut animation_handle) in &mut actors {
+            let animation = match (sex, movement) {
                 (Sex::Male, Movement::Walk) => ActorAnimation::MaleWalk,
                 (Sex::Female, Movement::Walk) => ActorAnimation::FemaleWalk,
                 (Sex::Male, Movement::Run) => ActorAnimation::MaleRun,
                 (Sex::Female, Movement::Run) => ActorAnimation::FemaleRun,
             };
-            *anim_handle = actor_animations.handle(walk_anim);
+            *animation_handle = actor_animations.handle(animation);
         }
     }
 
@@ -44,8 +44,8 @@ impl MovementPlugin {
         mut actors: Query<&mut Handle<AnimationClip>, With<Movement>>,
     ) {
         for entity in &mut removed_navigations {
-            if let Ok(mut anim_handle) = actors.get_mut(entity) {
-                *anim_handle = actor_animations.handle(ActorAnimation::Idle);
+            if let Ok(mut animation_handle) = actors.get_mut(entity) {
+                *animation_handle = actor_animations.handle(ActorAnimation::Idle);
                 commands.entity(entity).remove::<Movement>();
             }
         }

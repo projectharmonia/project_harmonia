@@ -23,11 +23,11 @@ impl AnimationPlugin {
             Or<(Changed<Handle<AnimationClip>>, Added<SceneHooked>)>,
         >,
         children: Query<&Children>,
-        mut animaption_players: Query<&mut AnimationPlayer>,
+        mut animation_players: Query<&mut AnimationPlayer>,
     ) {
-        for (human_entity, handle) in &actors {
-            if let Some(mut animation_player) = animaption_players
-                .iter_many_mut(children.iter_descendants(human_entity))
+        for (entity, handle) in &actors {
+            if let Some(mut animation_player) = animation_players
+                .iter_many_mut(children.iter_descendants(entity))
                 .fetch_next()
             {
                 animation_player
