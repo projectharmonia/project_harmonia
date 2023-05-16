@@ -7,7 +7,6 @@ use bevy::{
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
 };
-use derive_more::Constructor;
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 
@@ -63,7 +62,11 @@ impl NavigationPlugin {
                     .rotation
                     .slerp(target_rotation, ROTATION_SPEED * delta_secs);
 
-                if direction.length() < 0.1 {
+                let min_distance = navigation
+                    .offset
+                    .filter(|_| nav_path.len() == 1)
+                    .unwrap_or(0.1);
+                if direction.length() < min_distance {
                     nav_path.pop();
                 }
             } else {
@@ -84,9 +87,25 @@ impl NavigationPlugin {
     }
 }
 
-#[derive(Component, Constructor)]
+#[derive(Component)]
 pub(super) struct Navigation {
     speed: f32,
+    /// Offset for the last waypoint.
+    offset: Option<f32>,
+}
+
+impl Navigation {
+    pub(super) fn new(speed: f32) -> Self {
+        Self {
+            speed,
+            offset: None,
+        }
+    }
+
+    pub(super) fn with_offset(mut self, offset: f32) -> Self {
+        self.offset = Some(offset);
+        self
+    }
 }
 
 #[derive(Component)]

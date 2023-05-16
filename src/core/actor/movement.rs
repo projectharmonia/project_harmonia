@@ -53,22 +53,27 @@ impl MovementPlugin {
 }
 
 #[derive(Bundle)]
-struct MovementBundle {
+pub(super) struct MovementBundle {
     navigation: Navigation,
     movement: Movement,
 }
 
 impl MovementBundle {
-    fn new(movement: Movement) -> Self {
+    pub(super) fn new(movement: Movement) -> Self {
         Self {
             navigation: Navigation::new(movement.speed()),
             movement,
         }
     }
+
+    pub(super) fn with_offset(mut self, offset: f32) -> Self {
+        self.navigation = self.navigation.with_offset(offset);
+        self
+    }
 }
 
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
-enum Movement {
+pub(super) enum Movement {
     #[default]
     Walk,
     Run,

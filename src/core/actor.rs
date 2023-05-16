@@ -1,3 +1,4 @@
+mod friendly;
 pub(super) mod movement;
 pub(crate) mod needs;
 pub(crate) mod race;
@@ -14,6 +15,7 @@ use super::{
     family::FamilySync,
     game_world::WorldState,
 };
+use friendly::FriendlyPlugins;
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
 use race::RacePlugins;
@@ -24,6 +26,7 @@ impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
             .add_plugins(RacePlugins)
+            .add_plugins(FriendlyPlugins)
             .add_plugin(MovementPlugin)
             .add_plugin(NeedsPlugin)
             .replicate::<Actor>()
@@ -132,6 +135,8 @@ pub(super) enum ActorAnimation {
     FemaleWalk,
     MaleRun,
     FemaleRun,
+    TellSecret,
+    ThoughtfulNod,
 }
 
 impl AssetCollection for ActorAnimation {
@@ -144,6 +149,10 @@ impl AssetCollection for ActorAnimation {
             ActorAnimation::FemaleWalk => "base/actors/animations/female_walk.gltf#Animation0",
             ActorAnimation::MaleRun => "base/actors/animations/male_run.gltf#Animation0",
             ActorAnimation::FemaleRun => "base/actors/animations/female_run.gltf#Animation0",
+            ActorAnimation::TellSecret => "base/actors/animations/tell_secret.gltf#Animation0",
+            ActorAnimation::ThoughtfulNod => {
+                "base/actors/animations/thoughtful_nod.gltf#Animation0"
+            }
         }
     }
 }
