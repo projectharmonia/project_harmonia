@@ -1,5 +1,5 @@
 pub(super) mod endpoint;
-pub(super) mod follow;
+pub(super) mod following;
 
 use std::sync::{Arc, RwLock};
 
@@ -13,14 +13,14 @@ use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 
 use crate::core::game_world::WorldState;
 use endpoint::EndpointPlugin;
-use follow::FollowPlugin;
+use following::FollowingPlugin;
 
 pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EndpointPlugin)
-            .add_plugin(FollowPlugin)
+            .add_plugin(FollowingPlugin)
             .add_systems(
                 (
                     Self::navigation_system,
