@@ -235,8 +235,8 @@ impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
     type EventSerializer<'a> = TaskRequestSerializer<'a>;
 
     fn new<'a>(
-        registry: &'a TypeRegistryInternal,
         event: &'a TaskRequest,
+        registry: &'a TypeRegistryInternal,
     ) -> Self::EventSerializer<'a> {
         Self::EventSerializer { registry, event }
     }
@@ -325,7 +325,7 @@ mod tests {
             entity: Entity::PLACEHOLDER,
             task: Box::new(DummyTask),
         };
-        let serializer = TaskRequestSerializer::new(&registry, &task_request);
+        let serializer = TaskRequestSerializer::new(&task_request, &registry);
 
         serde_test::assert_ser_tokens(
             &serializer,

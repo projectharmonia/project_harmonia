@@ -14,7 +14,7 @@ bevy = { version = "0.10", default-features = false, features = [
   "x11",
 ] }
 bevy_atmosphere = "0.6"
-bevy_replicon = "0.3"
+bevy_replicon = "0.4"
 bevy_rapier3d = "0.21"
 bevy_mod_outline = { version = "0.4", default-features = false }
 bevy_egui = "0.20"

@@ -913,9 +913,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_renet"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e65ed3107954a2ee08513461618147d1c6a31527f1e390a414496b35c388af9e"
+checksum = "10a65da39c63f7a58d1dc03356168a16fb184bd28d40cad2dad6a991f86cb2fa"
 dependencies = [
  "bevy",
  "renet",
@@ -923,9 +923,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cc0cd772d8159eb222534439bbaac718c71326a109c3c74353f5cd6a5abb78c"
+checksum = "1f2dcd1d522ce99e23fc53117d31a00b6c708d45fa1388314fa046ccf57038df"
 dependencies = [
  "bevy",
  "bevy_renet",
@@ -1160,9 +1160,6 @@ name = "bytes"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfb24e866b15a1af2a1b663f10c6b6b8f397a84aadb828f12e5b289ec23a3a3c"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "cc"
@@ -2748,6 +2745,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "octets"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a74f2cda724d43a0a63140af89836d4e7db6138ef67c9f96d3a0f0150d05000"
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3025,18 +3028,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
-name = "rechannel"
-version = "0.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a78a1b9f690de00ab9be902447d29e1770e5dfc8e184d1faffc6cea7c91b6b9"
-dependencies = [
- "bincode",
- "bytes",
- "log",
- "serde",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3099,21 +3090,22 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 
 [[package]]
 name = "renet"
-version = "0.0.11"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aea041966cfc4d08ad0eec6cbf0c3ff9a6fc030f949e8de40c5962d005b9db95"
+checksum = "779d120ba83a560b831ea3dbf9e2a7474ea15854f02b8bb6ad11fe0e74076ea1"
 dependencies = [
  "bevy_ecs",
+ "bytes",
  "log",
- "rechannel",
+ "octets",
  "renetcode",
 ]
 
 [[package]]
 name = "renetcode"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4330d94d7a880f7717fa78c30ef8e3f15e1cc165502a911da437ac89cb585a3"
+checksum = "3061fc46e79a6f866bedcf22606e3aa0a35f8b2f6a4eee252faa9266156de9fb"
 dependencies = [
  "chacha20poly1305",
  "log",

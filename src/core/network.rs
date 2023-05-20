@@ -8,8 +8,11 @@ use bevy::prelude::*;
 use bevy_replicon::{
     prelude::*,
     renet::{
-        ChannelConfig, ClientAuthentication, RenetClient, RenetConnectionConfig, RenetServer,
-        ServerAuthentication, ServerConfig,
+        transport::{
+            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
+            ServerAuthentication, ServerConfig,
+        },
+        ChannelConfig, ConnectionConfig, RenetClient, RenetServer,
     },
 };
 use clap::Args;
@@ -66,27 +69,27 @@ impl Default for ServerSettings {
 impl ServerSettings {
     pub(crate) fn create_server(
         &self,
-        send_channels_config: Vec<ChannelConfig>,
-        receive_channels_config: Vec<ChannelConfig>,
-    ) -> Result<RenetServer> {
-        const MAX_CLIENTS: usize = 32;
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-        let server_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), self.port);
-        let socket = UdpSocket::bind(server_addr)?;
-        let server_config = ServerConfig::new(
-            MAX_CLIENTS,
-            PROTOCOL_ID,
-            socket.local_addr()?,
-            ServerAuthentication::Unsecure,
-        );
-
-        let connection_config = RenetConnectionConfig {
-            send_channels_config,
-            receive_channels_config,
+        server_channels_config: Vec<ChannelConfig>,
+        client_channels_config: Vec<ChannelConfig>,
+    ) -> Result<(RenetServer, NetcodeServerTransport)> {
+        let server = RenetServer::new(ConnectionConfig {
+            server_channels_config,
+            client_channels_config,
             ..Default::default()
-        };
+        });
 
-        RenetServer::new(current_time, server_config, connection_config, socket).map_err(From::from)
+        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+        let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), self.port);
+        let socket = UdpSocket::bind(public_addr)?;
+        let server_config = ServerConfig {
+            max_clients: 1,
+            protocol_id: PROTOCOL_ID,
+            public_addr,
+            authentication: ServerAuthentication::Unsecure,
+        };
+        let transport = NetcodeServerTransport::new(current_time, server_config, socket)?;
+
+        Ok((server, transport))
     }
 }
 
@@ -113,9 +116,15 @@ impl Default for ConnectionSettings {
 impl ConnectionSettings {
     pub(crate) fn create_client(
         &self,
-        send_channels_config: Vec<ChannelConfig>,
-        receive_channels_config: Vec<ChannelConfig>,
-    ) -> Result<RenetClient> {
+        server_channels_config: Vec<ChannelConfig>,
+        client_channels_config: Vec<ChannelConfig>,
+    ) -> Result<(RenetClient, NetcodeClientTransport)> {
+        let client = RenetClient::new(ConnectionConfig {
+            server_channels_config,
+            client_channels_config,
+            ..Default::default()
+        });
+
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         let client_id = current_time.as_millis() as u64;
         let ip = self.ip.parse()?;
@@ -127,14 +136,8 @@ impl ConnectionSettings {
             server_addr,
             user_data: None,
         };
+        let transport = NetcodeClientTransport::new(current_time, authentication, socket)?;
 
-        let connection_config = RenetConnectionConfig {
-            send_channels_config,
-            receive_channels_config,
-            ..Default::default()
-        };
-
-        RenetClient::new(current_time, socket, connection_config, authentication)
-            .map_err(From::from)
+        Ok((client, transport))
     }
 }

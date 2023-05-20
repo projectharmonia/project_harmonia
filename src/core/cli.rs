@@ -48,26 +48,28 @@ impl CliPlugin {
                     world_load,
                     server_settings,
                 } => {
-                    let server = server_settings
+                    let (server, transport) = server_settings
                         .create_server(
                             network_channels.server_channels(),
                             network_channels.client_channels(),
                         )
                         .context("unable to create server")?;
                     commands.insert_resource(server);
+                    commands.insert_resource(transport);
                     commands.insert_resource(server_settings.clone());
 
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
                     load_events.send_default();
                 }
                 GameCommand::Join(connection_settings) => {
-                    let client = connection_settings
+                    let (client, transport) = connection_settings
                         .create_client(
-                            network_channels.client_channels(),
                             network_channels.server_channels(),
+                            network_channels.client_channels(),
                         )
                         .context("unable to create client")?;
                     commands.insert_resource(client);
+                    commands.insert_resource(transport);
                     commands.insert_resource(connection_settings.clone());
                 }
             }
