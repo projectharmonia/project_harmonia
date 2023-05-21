@@ -12,6 +12,7 @@ impl Plugin for FollowingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
+                Self::init_system,
                 Self::following_system.run_if(on_timer(Duration::from_secs(1))),
                 Self::cleanup_system,
             )
@@ -21,19 +22,36 @@ impl Plugin for FollowingPlugin {
 }
 
 impl FollowingPlugin {
-    fn following_system(
+    fn init_system(
         mut commands: Commands,
         nav_settings: Res<NavMeshSettings>,
         nav_mesh: Res<NavMesh>,
-        followers: Query<(Entity, &Transform, Ref<Following>)>,
-        transforms: Query<Ref<Transform>>,
+        followers: Query<(Entity, &Transform, &Following), Changed<Following>>,
+        transforms: Query<&Transform>,
     ) {
         for (entity, transform, following) in &followers {
             let target_transform = transforms
                 .get(following.0)
                 .expect("target entity should have transform");
 
-            if following.is_changed() || target_transform.is_changed() {
+            commands.entity(entity).insert(ComputePath::new(
+                nav_mesh.get(),
+                nav_settings.clone(),
+                transform.translation,
+                target_transform.translation,
+            ));
+        }
+    }
+
+    fn following_system(
+        mut commands: Commands,
+        nav_settings: Res<NavMeshSettings>,
+        nav_mesh: Res<NavMesh>,
+        followers: Query<(Entity, &Transform, &Following)>,
+        transforms: Query<&Transform, Changed<Transform>>,
+    ) {
+        for (entity, transform, following) in &followers {
+            if let Ok(target_transform) = transforms.get(following.0) {
                 commands.entity(entity).insert(ComputePath::new(
                     nav_mesh.get(),
                     nav_settings.clone(),
