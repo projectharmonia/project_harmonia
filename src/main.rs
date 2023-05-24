@@ -15,6 +15,7 @@ use bevy::{
     },
 };
 use bevy_atmosphere::prelude::*;
+use bevy_basic_portals::PortalsPlugin;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
@@ -77,6 +78,7 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(OutlinePlugin)
         .add_plugin(PolylinePlugin)
+        .add_plugin(PortalsPlugin::default())
         .add_plugin(EguiPlugin)
         .add_plugin(DefaultInspectorConfigPlugin)
         .add_plugins(CorePlugins)

@@ -512,6 +512,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_basic_portals"
+version = "0.1.1-dev"
+source = "git+https://github.com/Selene-Amanita/bevy_basic_portals#38c5edec1bc01e33720544134c927cfff63dcd34"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_core"
 version = "0.10.1"
 source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
@@ -2307,6 +2315,7 @@ dependencies = [
  "bevy-scene-hook",
  "bevy-trait-query",
  "bevy_atmosphere",
+ "bevy_basic_portals",
  "bevy_egui",
  "bevy_mod_outline",
  "bevy_polyline",
