@@ -41,11 +41,14 @@ impl MirrorPlugin {
                 for child_entity in children.iter_descendants(parent_entity) {
                     if let Ok(material_handle) = material_handles.get(child_entity) {
                         if material_handle == mirror_handle {
-                            commands.entity(child_entity).insert(CreatePortal {
-                                destination: AsPortalDestination::CreateMirror,
-                                main_camera: Some(player_cameras.single()),
-                                ..Default::default()
-                            });
+                            commands
+                                .entity(child_entity)
+                                .remove::<Handle<StandardMaterial>>()
+                                .insert(CreatePortal {
+                                    destination: AsPortalDestination::CreateMirror,
+                                    main_camera: Some(player_cameras.single()),
+                                    ..Default::default()
+                                });
                         }
                     }
                 }
