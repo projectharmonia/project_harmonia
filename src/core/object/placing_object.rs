@@ -19,7 +19,6 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    unique_asset::UniqueAsset,
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
@@ -144,7 +143,6 @@ impl PlacingObjectPlugin {
                 .insert((
                     Name::new("Placing object"),
                     AsyncSceneCollider::default(),
-                    UniqueAsset::<StandardMaterial>::default(),
                     HookedSceneBundle {
                         scene: SceneBundle {
                             scene: scene_handle,
@@ -295,21 +293,24 @@ impl PlacingObjectPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<(Entity, &PlacingObject), Changed<PlacingObject>>,
         children: Query<&Children>,
-        material_handles: Query<&Handle<StandardMaterial>>,
+        mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
-        if let Ok((entity, placing_object)) = placing_objects.get_single() {
-            for handle in children
-                .iter_descendants(entity)
-                .filter_map(|entity| material_handles.get(entity).ok())
-            {
-                let mut material = materials
-                    .get_mut(handle)
-                    .expect("material handle should be valid");
-                material.base_color = if placing_object.collides || !placing_object.allowed_place {
-                    Color::RED
-                } else {
-                    Color::WHITE
-                };
+        if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
+            for child_entity in children.iter_descendants(placing_entity) {
+                if let Ok(mut material_handle) = material_handles.get_mut(child_entity) {
+                    let mut material = materials
+                        .get(&material_handle)
+                        .cloned()
+                        .expect("material handle should be valid");
+
+                    material.base_color =
+                        if placing_object.collides || !placing_object.allowed_place {
+                            Color::RED
+                        } else {
+                            Color::WHITE
+                        };
+                    *material_handle = materials.add(material);
+                }
             }
             debug!("assigned material color for {placing_object:?}");
         }

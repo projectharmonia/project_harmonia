@@ -6,12 +6,10 @@ use bevy::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
     },
+    scene::SceneInstance,
 };
 
-use crate::core::{
-    game_state::GameState, game_world::WorldState, player_camera::PlayerCamera,
-    unique_asset::UniqueAssetPlugin,
-};
+use crate::core::{game_state::GameState, game_world::WorldState, player_camera::PlayerCamera};
 
 pub(super) struct MirrorPlugin;
 
@@ -20,9 +18,7 @@ impl Plugin for MirrorPlugin {
         app.add_plugin(MaterialPlugin::<MirrorMaterial>::default())
             .register_type::<Mirror>()
             .add_systems((
-                Self::init_system
-                    .in_set(OnUpdate(WorldState::InWorld))
-                    .after(UniqueAssetPlugin::<StandardMaterial>::init_system),
+                Self::init_system.in_set(OnUpdate(WorldState::InWorld)),
                 Self::rotation_system
                     .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
             ));
@@ -35,11 +31,19 @@ impl MirrorPlugin {
         mut images: ResMut<Assets<Image>>,
         mut mirror_materials: ResMut<Assets<MirrorMaterial>>,
         gltfs: Res<Assets<Gltf>>,
-        mirrors: Query<(Entity, &Handle<Scene>), Added<Mirror>>,
+        scene_spawner: Res<SceneSpawner>,
+        mirrors: Query<
+            (Entity, &Handle<Scene>, &SceneInstance),
+            (With<Mirror>, Without<MirrorReady>),
+        >,
         children: Query<&Children>,
         material_handles: Query<&Handle<StandardMaterial>>,
     ) {
-        for (parent_entity, scene_handle) in &mirrors {
+        for (scene_entity, scene_handle, scene_instance) in &mirrors {
+            if !scene_spawner.instance_is_ready(**scene_instance) {
+                continue;
+            }
+
             let gltf = gltfs
                 .iter()
                 .map(|(_, gltf)| gltf)
@@ -50,7 +54,7 @@ impl MirrorPlugin {
                 continue;
             };
 
-            for child_entity in children.iter_descendants(parent_entity) {
+            for child_entity in children.iter_descendants(scene_entity) {
                 if let Ok(material_handle) = material_handles.get(child_entity) {
                     if material_handle == mirror_handle {
                         const RENDER_SIZE: u32 = 400;
@@ -62,18 +66,19 @@ impl MirrorPlugin {
                             ..Default::default()
                         });
                         let image_handle = images.add(image);
-                        let material_handle = mirror_materials.add(image_handle.clone().into());
 
                         commands
                             .entity(child_entity)
                             .remove::<Handle<StandardMaterial>>()
-                            .insert(material_handle)
+                            .insert(mirror_materials.add(image_handle.clone().into()))
                             .with_children(|parent| {
                                 parent.spawn(MirrorCameraBundle::new(image_handle));
                             });
                     }
                 }
             }
+
+            commands.entity(scene_entity).insert(MirrorReady);
         }
     }
 
@@ -95,6 +100,10 @@ impl MirrorPlugin {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component, Default)]
 pub(crate) struct Mirror;
+
+/// Marker that says that mirror materials on this entity was initialized.
+#[derive(Component)]
+struct MirrorReady;
 
 #[derive(Bundle)]
 struct MirrorCameraBundle {

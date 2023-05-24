@@ -26,7 +26,6 @@ mod player_camera;
 pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
-mod unique_asset;
 pub(super) mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
@@ -53,7 +52,6 @@ use player_camera::PlayerCameraPlugin;
 use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use task::TaskPlugin;
-use unique_asset::UniqueAssetPlugin;
 use wall::WallPlugin;
 
 pub(super) struct CorePlugins;
@@ -82,7 +80,6 @@ impl PluginGroup for CorePlugins {
             .add(PlayerCameraPlugin)
             .add(SettingsPlugin)
             .add(ObjectPlugin)
-            .add(UniqueAssetPlugin::<StandardMaterial>::default())
             .add(WallPlugin)
             .add(AssetMetadataPlugin) // Should run after registering components.
     }
