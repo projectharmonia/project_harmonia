@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_scene_hook::SceneHooked;
 
 use crate::core::game_world::WorldState;
 
@@ -17,14 +16,14 @@ impl Plugin for AnimationPlugin {
 }
 
 impl AnimationPlugin {
-    /// Plays animation after changing [`Handle<AnimationClip>`] or after [`SceneHooked`] insertion (to handle scene spawn delay).
+    /// Plays animation after changing [`Handle<AnimationClip>`] and scene loading.
     ///
     /// Makes the behavior similar to adding [`Handle<Scene>`].
     fn playing_system(
         mut commands: Commands,
         scenes: Query<
             (Entity, &Handle<AnimationClip>),
-            Or<(Changed<Handle<AnimationClip>>, Added<SceneHooked>)>,
+            Or<(Changed<Handle<AnimationClip>>, Without<Playing>)>,
         >,
         children: Query<&Children>,
         mut animation_players: Query<&mut AnimationPlayer>,
@@ -34,7 +33,10 @@ impl AnimationPlugin {
                 .iter_many_mut(children.iter_descendants(entity))
                 .fetch_next()
             {
-                commands.entity(entity).remove::<AnimationTimer>();
+                commands
+                    .entity(entity)
+                    .insert(Playing)
+                    .remove::<AnimationTimer>();
                 animation_player
                     .play_with_transition(animation_handle.clone(), Duration::from_millis(200))
                     .repeat();
@@ -70,6 +72,12 @@ impl AnimationPlugin {
         }
     }
 }
+
+/// Indicates that the animation from [`Handle<AnimationClip>`] is currently playing.
+///
+/// Used to apply animation even if scene wasn't loaded at the moment of animation handle insertion.
+#[derive(Component)]
+struct Playing;
 
 /// Tracks animation elapsed time to notify when it finishes.
 #[derive(Component, Deref, DerefMut)]
