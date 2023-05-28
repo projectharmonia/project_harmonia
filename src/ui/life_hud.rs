@@ -3,7 +3,6 @@ use bevy_egui::{
     egui::{Align2, Area, Frame, Grid, ImageButton, ProgressBar, RichText, TextureId},
     EguiContexts,
 };
-use bevy_trait_query::One;
 use derive_more::Display;
 use strum::{EnumIter, IntoEnumIterator};
 
@@ -12,7 +11,7 @@ use crate::core::{
     family::{ActiveFamily, Budget, FamilyActors, FamilyMode},
     game_state::GameState,
     preview::{Preview, PreviewKind, Previews},
-    task::{ActiveTaskCancel, QueuedTaskCancel, Task},
+    task::{ActiveTask, QueuedTask, TaskCancel},
 };
 
 pub(super) struct LifeHudPlugin;
@@ -39,15 +38,15 @@ const PORTRAIT_WIDTH: f32 = 150.0;
 impl LifeHudPlugin {
     fn active_tasks_system(
         mut egui: EguiContexts,
-        mut active_cancel_events: EventWriter<ActiveTaskCancel>,
-        mut queued_cancel_events: EventWriter<QueuedTaskCancel>,
-        active_actors: Query<(Entity, Option<&Children>, Option<&dyn Task>), With<ActiveActor>>,
-        queued_tasks: Query<(Entity, One<&dyn Task>)>,
+        mut cancel_events: EventWriter<TaskCancel>,
+        active_actors: Query<&Children, With<ActiveActor>>,
+        active_tasks: Query<(Entity, &Name), With<ActiveTask>>,
+        queued_tasks: Query<(Entity, &Name), With<QueuedTask>>,
     ) {
         Area::new("Tasks")
             .anchor(Align2::LEFT_BOTTOM, (0.0, 0.0))
             .show(egui.ctx_mut(), |ui| {
-                let (actor_entity, children, active_tasks) = active_actors.single();
+                let children = active_actors.single();
                 // Show frame with window spacing, but without visuals.
                 let queued_frame = Frame {
                     inner_margin: ui.spacing().window_margin,
@@ -55,26 +54,21 @@ impl LifeHudPlugin {
                     ..Frame::none()
                 };
                 queued_frame.show(ui, |ui| {
-                    for (task_entity, task) in
-                        queued_tasks.iter_many(children.iter().flat_map(|&children| children))
-                    {
+                    for (task_entity, name) in queued_tasks.iter_many(children) {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
-                        if ui.add(button).on_hover_text(task.name()).clicked() {
-                            queued_cancel_events.send(QueuedTaskCancel(task_entity));
+                        if ui.add(button).on_hover_text(&**name).clicked() {
+                            cancel_events.send(TaskCancel(task_entity));
                         }
                     }
                 });
                 Frame::canvas(ui.style()).show(ui, |ui| {
                     let mut task_count = 0;
-                    for task in active_tasks.into_iter().flatten() {
+                    for (task_entity, name) in active_tasks.iter_many(children) {
                         let button =
                             ImageButton::new(TextureId::Managed(0), (ICON_SIZE, ICON_SIZE));
-                        if ui.add(button).on_hover_text(task.name()).clicked() {
-                            active_cancel_events.send(ActiveTaskCancel {
-                                entity: actor_entity,
-                                task_name: task.type_name().to_string(),
-                            });
+                        if ui.add(button).on_hover_text(&**name).clicked() {
+                            cancel_events.send(TaskCancel(task_entity));
                         }
                         task_count += 1;
                     }

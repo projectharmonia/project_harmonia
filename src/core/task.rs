@@ -1,6 +1,6 @@
 use std::{
-    any,
-    fmt::{self, Debug, Formatter},
+    any::{self, TypeId},
+    fmt::{self, Formatter},
 };
 
 use bevy::{
@@ -8,11 +8,10 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        TypeRegistryInternal,
+        GetTypeRegistration, TypeRegistryInternal,
     },
 };
 use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, One};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{
@@ -32,20 +31,23 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<QueuedTask>()
+            .replicate::<ActiveTask>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
-            .add_client_event::<ActiveTaskCancel>()
-            .add_client_event::<QueuedTaskCancel>()
-            .add_system(
-                    Self::task_list_system.run_if(action_just_pressed(Action::Confirm))
+            .add_client_event::<TaskCancel>()
+            .add_systems(
+                (
+                    Self::list_system.run_if(action_just_pressed(Action::Confirm)),
+                    Self::cleanup_system,
+
+                )
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
             .add_systems(
                 (
-                    Self::activation_system,
                     Self::queue_system,
-                    Self::queued_cancelation_system,
-                    Self::active_cancelation_system,
+                    Self::activation_system,
+                    Self::cancelation_system,
                 )
                     .in_set(ServerSet::Authority),
             );
@@ -53,7 +55,7 @@ impl Plugin for TaskPlugin {
 }
 
 impl TaskPlugin {
-    fn task_list_system(
+    fn list_system(
         mut commands: Commands,
         hovered: Query<Entity, With<CursorHover>>,
         task_lists: Query<Entity, With<TaskList>>,
@@ -63,141 +65,132 @@ impl TaskPlugin {
                 commands.entity(previous_entity).remove::<TaskList>();
             }
 
-            commands.entity(hovered_entity).insert(TaskList::default());
+            commands.entity(hovered_entity).insert(TaskList);
         }
     }
 
     fn queue_system(
         mut commands: Commands,
+        task_components: Res<TaskComponents>,
+        registry: Res<AppTypeRegistry>,
         mut task_events: ResMut<Events<FromClient<TaskRequest>>>,
         actors: Query<(), With<Actor>>,
     ) {
+        let registry = registry.read();
         for event in task_events.drain().map(|event| event.event) {
-            if actors.get(event.entity).is_ok() {
-                commands.entity(event.entity).with_children(|parent| {
-                    parent
-                        .spawn((QueuedTask, Replication))
-                        .insert_reflect([event.task.into_reflect()]);
-                });
-            } else {
+            if actors.get(event.entity).is_err() {
                 error!("entity {:?} is not an actor", event.entity);
+                continue;
             }
+
+            // TODO 0.11: use `Reflect::get_represented_type_info`.
+            let Some(registration) = registry.get_with_name(event.task.type_name()) else {
+                error!("{} should be registered", event.task.type_name());
+                continue;
+            };
+
+            if !task_components.contains(&registration.type_id()) {
+                error!("{:?} is not a task", event.task.type_name());
+                continue;
+            }
+
+            commands.entity(event.entity).with_children(|parent| {
+                parent
+                    .spawn((Replication, QueuedTask))
+                    .insert_reflect([event.task.into_reflect()]);
+            });
         }
     }
 
     fn activation_system(
         mut commands: Commands,
-        queued_tasks: Query<(Entity, One<&dyn Task>), With<QueuedTask>>,
-        actors: Query<(Entity, &Children, Option<&dyn Task>), With<Actor>>,
+        active_tasks: Query<&TaskGroups, With<ActiveTask>>,
+        queued_tasks: Query<(Entity, &TaskGroups), With<QueuedTask>>,
+        actors: Query<&Children, With<Actor>>,
     ) {
-        for (actor_entity, children, tasks) in &actors {
-            let current_groups = tasks
-                .iter()
-                .flatten()
-                .map(|task| task.groups())
-                .reduce(|acc, e| acc & e)
+        for children in &actors {
+            let current_groups = active_tasks
+                .iter_many(children)
+                .copied()
+                .reduce(|acc, groups| acc & groups)
                 .unwrap_or_default();
 
-            for (task_entity, task) in queued_tasks
+            if let Some((task_entity, _)) = queued_tasks
                 .iter_many(children)
-                .filter(|(_, task)| !task.groups().intersects(current_groups))
+                .find(|(_, groups)| !groups.intersects(current_groups))
             {
                 commands
-                    .entity(actor_entity)
-                    .insert_reflect([task.clone_value()]);
-                commands.entity(task_entity).despawn();
+                    .entity(task_entity)
+                    .remove::<QueuedTask>()
+                    .insert(ActiveTask);
             }
         }
     }
 
-    fn queued_cancelation_system(
+    fn cancelation_system(
         mut commands: Commands,
-        mut cancel_events: EventReader<FromClient<QueuedTaskCancel>>,
+        mut cancel_events: EventReader<FromClient<TaskCancel>>,
         queued_tasks: Query<(), With<QueuedTask>>,
+        active_tasks: Query<(), With<ActiveTask>>,
     ) {
         for event in cancel_events.iter().map(|event| &event.event) {
             if queued_tasks.get(event.0).is_ok() {
                 commands.entity(event.0).despawn();
+            } else if active_tasks.get(event.0).is_ok() {
+                commands.entity(event.0).insert(CancelledTask);
             } else {
                 error!("entity {:?} is not a task", event.0);
             }
         }
     }
 
-    fn active_cancelation_system(
+    fn cleanup_system(
         mut commands: Commands,
-        mut cancel_events: ResMut<Events<FromClient<ActiveTaskCancel>>>,
-        registry: Res<AppTypeRegistry>,
+        mut removed_lists: RemovedComponents<TaskList>,
+        children: Query<&Children>,
+        tasks: Query<Entity, With<ListedTask>>,
     ) {
-        let registry = registry.read();
-        for event in cancel_events.drain().map(|event| event.event) {
-            let Some(registration) = registry.get_with_name(&event.task_name) else {
-                error!("{:?} is not registered", event.task_name);
-                continue;
-            };
-
-            if registration.data::<ReflectTask>().is_some() {
-                commands
-                    .entity(event.entity)
-                    .remove_by_name(event.task_name);
-            } else {
-                error!("{:?} doesn't have reflect(Task)", &event.task_name);
+        for list_entity in &mut removed_lists {
+            if let Ok(children) = children.get(list_entity) {
+                for task_entity in tasks.iter_many(children) {
+                    commands.entity(task_entity).despawn();
+                }
             }
         }
     }
 }
 
-/// Contains list of possible tasks.
+/// List of tasks assigned to entity.
+#[derive(Component, Default, Deref, DerefMut)]
+struct Tasks(Vec<Entity>);
+
+/// Marker that indicates that the entity contains list of possible tasks as children.
 ///
 /// Added when clicking on objects.
-#[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct TaskList(Vec<Box<dyn Task>>);
+#[derive(Component)]
+pub(crate) struct TaskList;
 
-/// Marker that indicates that the entity represents a queued task.
+/// Marker for a task that is a children of [`TaskList`].
+#[derive(Component)]
+pub(crate) struct ListedTask;
+
+/// Marker for a task that was queued.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
-pub(super) struct QueuedTask;
+pub(crate) struct QueuedTask;
 
-/// An event of canceling an active task from the currently active player.
-///
-/// Emitted by players.
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ActiveTaskCancel {
-    pub(crate) entity: Entity,
-    pub(crate) task_name: String,
-}
+/// Marker for a task that is currently active.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub(crate) struct ActiveTask;
 
-/// An event of canceling a queued actor task.
-///
-/// Emitted by players.
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct QueuedTaskCancel(pub(crate) Entity);
-
-impl MapEntities for QueuedTaskCancel {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
-    }
-}
-
-/// A trait to mark component as task.
-///
-/// Will be counted as an ongoing task when exists on an actor.
-/// Will be counted as a queued task when exists on actor's children with component [`QueuedTask`].
-#[queryable]
-#[reflect_trait]
-pub(crate) trait Task: Reflect + Debug {
-    /// Task name to display.
-    fn name(&self) -> &str;
-
-    /// Returns task constraints.
-    fn groups(&self) -> TaskGroups {
-        TaskGroups::default()
-    }
-}
+/// Marker for a task that was cancelled.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub(super) struct CancelledTask;
 
 bitflags! {
-    #[derive(Default)]
+    #[derive(Default, Component)]
     pub(crate) struct TaskGroups: u8 {
         const LEFT_HAND = 0b00000001;
         const RIGHT_HAND = 0b00000010;
@@ -206,10 +199,39 @@ bitflags! {
     }
 }
 
+pub(super) trait AppTaskExt {
+    fn register_task<T: Component + GetTypeRegistration>(&mut self) -> &mut Self;
+}
+
+impl AppTaskExt for App {
+    fn register_task<T: Component + GetTypeRegistration>(&mut self) -> &mut Self {
+        self.world
+            .get_resource_or_insert_with(TaskComponents::default)
+            .push(TypeId::of::<T>());
+        self.replicate::<T>()
+    }
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
+pub(crate) struct TaskComponents(pub(crate) Vec<TypeId>);
+
+/// An event of canceling the specified task.
+///
+/// Emitted by players.
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct TaskCancel(pub(crate) Entity);
+
+impl MapEntities for TaskCancel {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct TaskRequest {
     pub(crate) entity: Entity,
-    pub(crate) task: Box<dyn Task>,
+    pub(crate) task: Box<dyn Reflect>,
 }
 
 impl MapEntities for TaskRequest {
@@ -292,20 +314,9 @@ impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
         let entity = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Entity as usize, &self))?;
-        let reflect = seq
+        let task = seq
             .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Task as usize, &self))?;
-        let type_name = reflect.type_name();
-        let registration = self
-            .registry
-            .get(reflect.type_id())
-            .ok_or_else(|| de::Error::custom(format!("{type_name} is not registered")))?;
-        let reflect_task = registration
-            .data::<ReflectTask>()
-            .ok_or_else(|| de::Error::custom(format!("{type_name} doesn't have reflect(Task)")))?;
-        let task = reflect_task.get_boxed(reflect).map_err(|reflect| {
-            de::Error::custom(format!("unable to cast {} to Task", reflect.type_name()))
-        })?;
 
         Ok(TaskRequest { entity, task })
     }
@@ -352,10 +363,4 @@ mod tests {
 
     #[derive(Reflect, Debug)]
     struct DummyTask;
-
-    impl Task for DummyTask {
-        fn name(&self) -> &'static str {
-            "Dummy"
-        }
-    }
 }

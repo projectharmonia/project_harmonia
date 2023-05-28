@@ -40,14 +40,9 @@ impl MovementPlugin {
     fn cleanup_system(
         mut commands: Commands,
         mut removed_navigations: RemovedComponents<Navigation>,
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
-        mut actors: Query<&mut Handle<AnimationClip>, With<Movement>>,
     ) {
         for entity in &mut removed_navigations {
-            if let Ok(mut animation_handle) = actors.get_mut(entity) {
-                *animation_handle = actor_animations.handle(ActorAnimation::Idle);
-                commands.entity(entity).remove::<Movement>();
-            }
+            commands.entity(entity).remove::<Movement>();
         }
     }
 }

@@ -1,12 +1,14 @@
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::{egui::Pos2, EguiContexts};
-use bevy_inspector_egui::egui::{Align, Layout};
+use bevy_egui::{
+    egui::{Align, Layout, Pos2},
+    EguiContexts,
+};
 
 use crate::core::{
     actor::ActiveActor,
     family::FamilyMode,
     game_state::GameState,
-    task::{TaskList, TaskRequest},
+    task::{ListedTask, TaskComponents, TaskList, TaskRequest},
 };
 
 pub(super) struct TaskMenuPlugin;
@@ -25,13 +27,15 @@ impl TaskMenuPlugin {
     fn menu_system(
         mut position: Local<Pos2>,
         mut commands: Commands,
-        mut egui: EguiContexts,
-        mut task_events: EventWriter<TaskRequest>,
+        mut set: ParamSet<(&World, EguiContexts, EventWriter<TaskRequest>)>,
+        task_components: Res<TaskComponents>,
+        registry: Res<AppTypeRegistry>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        mut task_lists: Query<(Entity, &Name, &mut TaskList)>,
+        task_lists: Query<(Entity, &Name, Option<&Children>, Ref<TaskList>)>,
+        tasks: Query<(Entity, &Name), With<ListedTask>>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
-        let Ok((entity, name, mut task_list)) = task_lists.get_single_mut() else {
+        let Ok((entity, name, children, task_list)) = task_lists.get_single() else {
             return;
         };
 
@@ -44,30 +48,48 @@ impl TaskMenuPlugin {
         }
 
         let mut open = true;
+        let mut task_entity = None;
         bevy_egui::egui::Window::new(name.as_str())
             .resizable(false)
             .collapsible(false)
             .fixed_pos(*position)
             .default_width(130.0)
             .open(&mut open)
-            .show(egui.ctx_mut(), |ui| {
+            .show(set.p1().ctx_mut(), |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    let mut clicked_index = None;
-                    for (index, task) in task_list.iter().enumerate() {
-                        if ui.button(task.name()).clicked() {
-                            clicked_index = Some(index);
+                    for (entity, name) in tasks.iter_many(children.into_iter().flatten()) {
+                        if ui.button(&**name).clicked() {
+                            task_entity = Some(entity);
                         }
-                    }
-                    if let Some(index) = clicked_index {
-                        let task = task_list.swap_remove(index);
-                        task_events.send(TaskRequest {
-                            entity: active_actors.single(),
-                            task,
-                        });
-                        commands.entity(entity).remove::<TaskList>();
                     }
                 });
             });
+
+        if let Some(task_entity) = task_entity {
+            let task_entity = set.p0().entity(task_entity);
+            let type_id = *task_components
+                .iter()
+                .find(|&&type_id| task_entity.contains_type_id(type_id))
+                .expect("listed task should contain a registered component");
+            let registry = registry.read();
+            let registration = registry
+                .get(type_id)
+                .expect("all tasks should have registered TypeId");
+            let type_name = registration.type_name();
+            let reflect_component = registration
+                .data::<ReflectComponent>()
+                .unwrap_or_else(|| panic!("{type_name} should have reflect(Component)"));
+            let task = reflect_component
+                .reflect(task_entity)
+                .map(|task| task.clone_value())
+                .unwrap_or_else(|| panic!("entity should have {type_name}"));
+            set.p2().send(TaskRequest {
+                entity: active_actors.single(),
+                task,
+            });
+
+            open = false;
+        }
 
         if !open {
             commands.entity(entity).remove::<TaskList>();
