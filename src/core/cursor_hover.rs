@@ -133,11 +133,11 @@ pub(super) struct Hoverable;
 #[derive(Component, Deref)]
 pub(crate) struct CursorHover(pub(crate) Vec3);
 
-pub(super) trait HoverOutlineExt {
+pub(super) trait OutlineHoverExt {
     fn hover() -> Self;
 }
 
-impl HoverOutlineExt for OutlineBundle {
+impl OutlineHoverExt for OutlineBundle {
     fn hover() -> Self {
         Self {
             outline: OutlineVolume {

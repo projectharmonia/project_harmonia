@@ -26,11 +26,11 @@ impl NeedsPlugin {
     }
 }
 
-trait NeedExt {
+trait AppNeedExt {
     fn register_need<T: Need + GetTypeRegistration + Component>(&mut self) -> &mut Self;
 }
 
-impl NeedExt for App {
+impl AppNeedExt for App {
     fn register_need<T: Need + GetTypeRegistration + Component>(&mut self) -> &mut Self {
         self.replicate::<T>().register_component_as::<dyn Need, T>()
     }

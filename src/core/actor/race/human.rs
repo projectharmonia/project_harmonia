@@ -15,7 +15,7 @@ use crate::core::{
     },
     asset_handles::{AssetCollection, AssetHandles},
     collision_groups::LifescapeGroupsExt,
-    cursor_hover::{HoverOutlineExt, Hoverable},
+    cursor_hover::{Hoverable, OutlineHoverExt},
     game_world::WorldState,
 };
 

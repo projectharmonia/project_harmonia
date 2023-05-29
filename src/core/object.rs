@@ -18,8 +18,8 @@ use super::{
     city::{City, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
     component_commands::ComponentCommandsExt,
-    cursor_hover::HoverOutlineExt,
     cursor_hover::Hoverable,
+    cursor_hover::OutlineHoverExt,
     game_world::WorldState,
     lot::LotVertices,
 };
