@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
-use bevy_replicon::prelude::*;
 use bevy_scene_hook::SceneHook;
-use bevy_trait_query::RegisterExt;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
 
-use super::{Race, ReflectRace};
+use super::{AppRaceExt, Race, ReflectRace};
 use crate::core::{
     actor::{
         needs::{Bladder, Energy, Fun, Hunger, Hygiene, Social},
@@ -23,8 +21,7 @@ pub(super) struct HumanPlugin;
 
 impl Plugin for HumanPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Human>()
-            .register_component_as::<dyn Race, Human>()
+        app.register_race::<Human>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
                 (Self::init_system, Self::init_mesh_system).in_set(OnUpdate(WorldState::InWorld)),
