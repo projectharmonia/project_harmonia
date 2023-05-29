@@ -213,7 +213,7 @@ impl AppTaskExt for App {
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub(crate) struct TaskComponents(pub(crate) Vec<TypeId>);
+pub(crate) struct TaskComponents(Vec<TypeId>);
 
 /// An event of canceling the specified task.
 ///
