@@ -11,7 +11,7 @@ use crate::core::{
     game_world::WorldState,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, ListedTask, TaskGroups, TaskList},
+    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -26,7 +26,6 @@ impl Plugin for MoveHerePlugin {
             )
             .add_systems(
                 (
-                    Self::init_system,
                     Self::activation_system,
                     Self::cancellation_system,
                     Self::finish_system,
@@ -38,38 +37,17 @@ impl Plugin for MoveHerePlugin {
 
 impl MoveHerePlugin {
     fn list_system(
-        mut commands: Commands,
-        grounds: Query<(Entity, &CursorHover), (With<Ground>, Added<TaskList>)>,
+        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
     ) {
-        if let Ok((entity, hover)) = grounds.get_single() {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn((
-                    ListedTask,
-                    MoveHere {
-                        endpoint: hover.0,
-                        movement: Movement::Walk,
-                    },
-                ));
-                parent.spawn((
-                    ListedTask,
-                    MoveHere {
-                        endpoint: hover.0,
-                        movement: Movement::Run,
-                    },
-                ));
-            });
-        }
-    }
-
-    fn init_system(mut commands: Commands, tasks: Query<(Entity, &MoveHere), Added<MoveHere>>) {
-        for (entity, move_here) in &tasks {
-            let name = match move_here.movement {
-                Movement::Walk => "Walk",
-                Movement::Run => "Run",
-            };
-            commands
-                .entity(entity)
-                .insert((Name::new(name), TaskGroups::LEGS));
+        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
+            task_list.push(Box::new(MoveHere {
+                endpoint: hover.0,
+                movement: Movement::Walk,
+            }));
+            task_list.push(Box::new(MoveHere {
+                endpoint: hover.0,
+                movement: Movement::Run,
+            }));
         }
     }
 
@@ -114,4 +92,17 @@ impl MoveHerePlugin {
 struct MoveHere {
     endpoint: Vec3,
     movement: Movement,
+}
+
+impl Task for MoveHere {
+    fn name(&self) -> &str {
+        match self.movement {
+            Movement::Walk => "Walk here",
+            Movement::Run => "Move here",
+        }
+    }
+
+    fn groups(&self) -> TaskGroups {
+        TaskGroups::LEGS
+    }
 }

@@ -10,9 +10,8 @@ use crate::core::{
     cursor_hover::CursorHover,
     family::{ActorFamily, FamilyMode},
     game_state::GameState,
-    game_world::WorldState,
     ground::Ground,
-    task::{ActiveTask, AppTaskExt, ListedTask, TaskGroups, TaskList},
+    task::{ActiveTask, AppTaskExt, Task, TaskList},
 };
 
 use super::{LotFamily, LotVertices};
@@ -27,35 +26,23 @@ impl Plugin for BuyLotPlugin {
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
-            .add_system(Self::init_system.in_set(OnUpdate(WorldState::InWorld)))
             .add_system(Self::buying_system.in_set(ServerSet::Authority));
     }
 }
 
 impl BuyLotPlugin {
     fn list_system(
-        mut commands: Commands,
-        grounds: Query<(Entity, &CursorHover), (With<Ground>, Added<TaskList>)>,
+        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok((entity, hover)) = grounds.get_single() {
+        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
             let position = hover.xz();
             if let Some((lot_entity, _)) = lots
                 .iter()
                 .find(|(_, vertices)| vertices.contains_point(position))
             {
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn((ListedTask, BuyLot(lot_entity)));
-                });
+                task_list.push(Box::new(BuyLot(lot_entity)));
             }
-        }
-    }
-
-    fn init_system(mut commands: Commands, tasks: Query<Entity, Added<BuyLot>>) {
-        for entity in &tasks {
-            commands
-                .entity(entity)
-                .insert((Name::new("Buy lot"), TaskGroups::default()));
         }
     }
 
@@ -82,6 +69,12 @@ impl BuyLotPlugin {
 #[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct BuyLot(Entity);
+
+impl Task for BuyLot {
+    fn name(&self) -> &str {
+        "Buy lot"
+    }
+}
 
 impl FromWorld for BuyLot {
     fn from_world(_world: &mut World) -> Self {

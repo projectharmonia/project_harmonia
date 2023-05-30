@@ -1,6 +1,6 @@
 use std::{
-    any::{self, TypeId},
-    fmt::{self, Formatter},
+    any,
+    fmt::{self, Debug, Formatter},
 };
 
 use bevy::{
@@ -12,6 +12,7 @@ use bevy::{
     },
 };
 use bevy_replicon::prelude::*;
+use bevy_trait_query::{queryable, RegisterExt};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{
@@ -34,12 +35,8 @@ impl Plugin for TaskPlugin {
             .replicate::<ActiveTask>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<TaskCancel>()
-            .add_systems(
-                (
-                    Self::list_system.run_if(action_just_pressed(Action::Confirm)),
-                    Self::cleanup_system,
-
-                )
+            .add_system(
+                    Self::list_system.run_if(action_just_pressed(Action::Confirm))
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
@@ -65,40 +62,30 @@ impl TaskPlugin {
                 commands.entity(previous_entity).remove::<TaskList>();
             }
 
-            commands.entity(hovered_entity).insert(TaskList);
+            commands.entity(hovered_entity).insert(TaskList::default());
         }
     }
 
     fn queue_system(
         mut commands: Commands,
-        task_components: Res<TaskComponents>,
-        registry: Res<AppTypeRegistry>,
         mut task_events: ResMut<Events<FromClient<TaskRequest>>>,
         actors: Query<(), With<Actor>>,
     ) {
-        let registry = registry.read();
         for event in task_events.drain().map(|event| event.event) {
-            if actors.get(event.entity).is_err() {
+            if actors.get(event.entity).is_ok() {
+                commands.entity(event.entity).with_children(|parent| {
+                    parent
+                        .spawn((
+                            Name::new(event.task.name().to_string()),
+                            event.task.groups(),
+                            Replication,
+                            QueuedTask,
+                        ))
+                        .insert_reflect([event.task.into_reflect()]);
+                });
+            } else {
                 error!("entity {:?} is not an actor", event.entity);
-                continue;
             }
-
-            // TODO 0.11: use `Reflect::get_represented_type_info`.
-            let Some(registration) = registry.get_with_name(event.task.type_name()) else {
-                error!("{} should be registered", event.task.type_name());
-                continue;
-            };
-
-            if !task_components.contains(&registration.type_id()) {
-                error!("{:?} is not a task", event.task.type_name());
-                continue;
-            }
-
-            commands.entity(event.entity).with_children(|parent| {
-                parent
-                    .spawn((Replication, QueuedTask))
-                    .insert_reflect([event.task.into_reflect()]);
-            });
         }
     }
 
@@ -143,36 +130,17 @@ impl TaskPlugin {
             }
         }
     }
-
-    fn cleanup_system(
-        mut commands: Commands,
-        mut removed_lists: RemovedComponents<TaskList>,
-        children: Query<&Children>,
-        tasks: Query<Entity, With<ListedTask>>,
-    ) {
-        for list_entity in &mut removed_lists {
-            if let Ok(children) = children.get(list_entity) {
-                for task_entity in tasks.iter_many(children) {
-                    commands.entity(task_entity).despawn();
-                }
-            }
-        }
-    }
 }
 
 /// List of tasks assigned to entity.
 #[derive(Component, Default, Deref, DerefMut)]
 struct Tasks(Vec<Entity>);
 
-/// Marker that indicates that the entity contains list of possible tasks as children.
+/// Contains list of possible tasks.
 ///
 /// Added when clicking on objects.
-#[derive(Component)]
-pub(crate) struct TaskList;
-
-/// Marker for a task that is a children of [`TaskList`].
-#[derive(Component)]
-pub(crate) struct ListedTask;
+#[derive(Component, Default, Deref, DerefMut)]
+pub(crate) struct TaskList(Vec<Box<dyn Task>>);
 
 /// Marker for a task that was queued.
 #[derive(Component, Reflect, Default)]
@@ -200,20 +168,23 @@ bitflags! {
 }
 
 pub(super) trait AppTaskExt {
-    fn register_task<T: Component + GetTypeRegistration>(&mut self) -> &mut Self;
+    fn register_task<T: Component + Task + GetTypeRegistration>(&mut self) -> &mut Self;
 }
 
 impl AppTaskExt for App {
-    fn register_task<T: Component + GetTypeRegistration>(&mut self) -> &mut Self {
-        self.world
-            .get_resource_or_insert_with(TaskComponents::default)
-            .push(TypeId::of::<T>());
-        self.replicate::<T>()
+    fn register_task<T: Component + Task + GetTypeRegistration>(&mut self) -> &mut Self {
+        self.replicate::<T>().register_component_as::<dyn Task, T>()
     }
 }
 
-#[derive(Resource, Deref, DerefMut, Default)]
-pub(crate) struct TaskComponents(Vec<TypeId>);
+#[queryable]
+#[reflect_trait]
+pub(crate) trait Task: Reflect + Debug {
+    fn name(&self) -> &str;
+    fn groups(&self) -> TaskGroups {
+        TaskGroups::default()
+    }
+}
 
 /// An event of canceling the specified task.
 ///
@@ -231,7 +202,7 @@ impl MapEntities for TaskCancel {
 #[derive(Debug)]
 pub(crate) struct TaskRequest {
     pub(crate) entity: Entity,
-    pub(crate) task: Box<dyn Reflect>,
+    pub(crate) task: Box<dyn Task>,
 }
 
 impl MapEntities for TaskRequest {
@@ -314,9 +285,20 @@ impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
         let entity = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Entity as usize, &self))?;
-        let task = seq
+        let reflect = seq
             .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Task as usize, &self))?;
+        let type_name = reflect.type_name();
+        let registration = self
+            .registry
+            .get(reflect.type_id())
+            .ok_or_else(|| de::Error::custom(format!("{type_name} is not registered")))?;
+        let reflect_task = registration
+            .data::<ReflectTask>()
+            .ok_or_else(|| de::Error::custom(format!("{type_name} doesn't have reflect(Task)")))?;
+        let task = reflect_task.get_boxed(reflect).map_err(|reflect| {
+            de::Error::custom(format!("{} is not a Task", reflect.type_name()))
+        })?;
 
         Ok(TaskRequest { entity, task })
     }
@@ -363,4 +345,10 @@ mod tests {
 
     #[derive(Reflect, Debug)]
     struct DummyTask;
+
+    impl Task for DummyTask {
+        fn name(&self) -> &str {
+            unimplemented!()
+        }
+    }
 }

@@ -12,7 +12,7 @@ use crate::core::{
     game_state::GameState,
     game_world::WorldState,
     navigation::{following::Following, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, ListedTask, TaskGroups, TaskList},
+    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList},
 };
 
 pub(super) struct TellSecretPlugin;
@@ -28,7 +28,6 @@ impl Plugin for TellSecretPlugin {
             )
             .add_systems(
                 (
-                    Self::tell_init_system,
                     Self::tell_activation_system,
                     Self::tell_system,
                     Self::listen_activation_system,
@@ -43,19 +42,9 @@ impl Plugin for TellSecretPlugin {
 }
 
 impl TellSecretPlugin {
-    fn list_system(mut commands: Commands, actors: Query<Entity, (With<Actor>, Added<TaskList>)>) {
-        if let Ok(entity) = actors.get_single() {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn((ListedTask, TellSecret(entity)));
-            });
-        }
-    }
-
-    fn tell_init_system(mut commands: Commands, tasks: Query<Entity, Added<TellSecret>>) {
-        for entity in &tasks {
-            commands
-                .entity(entity)
-                .insert((Name::new("Tell secret"), TaskGroups::LEGS));
+    fn list_system(mut actors: Query<(Entity, &mut TaskList), (With<Actor>, Added<TaskList>)>) {
+        if let Ok((entity, mut task_list)) = actors.get_single_mut() {
+            task_list.push(Box::new(TellSecret(entity)));
         }
     }
 
@@ -206,6 +195,16 @@ struct ToldSecret;
 #[derive(Debug, Reflect, Component)]
 #[reflect(Component)]
 struct TellSecret(Entity);
+
+impl Task for TellSecret {
+    fn name(&self) -> &str {
+        "Tell secret"
+    }
+
+    fn groups(&self) -> TaskGroups {
+        TaskGroups::LEGS
+    }
+}
 
 impl FromWorld for TellSecret {
     fn from_world(_world: &mut World) -> Self {
