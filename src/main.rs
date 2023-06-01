@@ -3,7 +3,10 @@
 #![allow(clippy::too_many_arguments)] // Do not warn about big systems
 
 mod core;
+#[cfg(not(feature = "bevy_ui"))]
 mod ui;
+#[cfg(feature = "bevy_ui")]
+mod ui2;
 
 use bevy::{
     log::LogPlugin,
@@ -26,7 +29,10 @@ use leafwing_input_manager::prelude::*;
 use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
 
 use crate::core::{action::Action, cli::Cli, CorePlugins};
+#[cfg(not(feature = "bevy_ui"))]
 use ui::UiPlugins;
+#[cfg(feature = "bevy_ui")]
+use ui2::UiPlugins;
 
 fn main() {
     App::new()

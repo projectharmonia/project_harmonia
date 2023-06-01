@@ -48,6 +48,9 @@ futures-lite = "1.13"
 fastrand = "1.9.0"
 serde_test = "1.0"
 
+[features]
+bevy_ui = ["bevy/bevy_ui", "bevy/bevy_sprite", "bevy/bevy_text"]
+
 [patch.crates-io]
 bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }
 bevy_animation = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }

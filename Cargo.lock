@@ -714,9 +714,12 @@ dependencies = [
  "bevy_reflect",
  "bevy_render",
  "bevy_scene",
+ "bevy_sprite",
  "bevy_tasks",
+ "bevy_text",
  "bevy_time",
  "bevy_transform",
+ "bevy_ui",
  "bevy_utils",
  "bevy_window",
  "bevy_winit",
@@ -957,6 +960,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_sprite"
+version = "0.10.1"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
+dependencies = [
+ "bevy_app",
+ "bevy_asset",
+ "bevy_core_pipeline",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_math",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_transform",
+ "bevy_utils",
+ "bitflags",
+ "bytemuck",
+ "fixedbitset",
+ "guillotiere",
+ "rectangle-pack",
+ "thiserror",
+]
+
+[[package]]
 name = "bevy_tasks"
 version = "0.10.1"
 source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
@@ -968,6 +995,28 @@ dependencies = [
  "futures-lite",
  "once_cell",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "bevy_text"
+version = "0.10.1"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
+dependencies = [
+ "ab_glyph",
+ "anyhow",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_ecs",
+ "bevy_math",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_sprite",
+ "bevy_transform",
+ "bevy_utils",
+ "bevy_window",
+ "glyph_brush_layout",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -995,6 +1044,35 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "serde",
+]
+
+[[package]]
+name = "bevy_ui"
+version = "0.10.1"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#4d153d3db94067855e95d25ca76add04f78bb967"
+dependencies = [
+ "bevy_a11y",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_core_pipeline",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_input",
+ "bevy_log",
+ "bevy_math",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_sprite",
+ "bevy_text",
+ "bevy_transform",
+ "bevy_utils",
+ "bevy_window",
+ "bytemuck",
+ "serde",
+ "smallvec",
+ "taffy",
+ "thiserror",
 ]
 
 [[package]]
@@ -1660,6 +1738,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "euclid"
+version = "0.22.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87f253bc5c813ca05792837a0ff4b3a580336b224512d48f7eda1d7dd9210787"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,6 +1994,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "glyph_brush_layout"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc32c2334f00ca5ac3695c5009ae35da21da8c62d255b5b96d56e2597a637a38"
+dependencies = [
+ "ab_glyph",
+ "approx",
+ "xi-unicode",
+]
+
+[[package]]
 name = "gpu-alloc"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1956,6 +2054,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "363e3677e55ad168fef68cf9de3a4a310b53124c5e784c53a1d70e92d23f2126"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "guillotiere"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b62d5865c036cb1393e23c50693df631d3f5d7bcca4c04fe4cc0fd592e74a782"
+dependencies = [
+ "euclid",
+ "svg_fmt",
 ]
 
 [[package]]
@@ -3028,6 +3136,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
+name = "rectangle-pack"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0d463f2884048e7153449a55166f91028d5b0ea53c79377099ce4e8cf0cf9bb"
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3368,6 +3482,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
+name = "svg_fmt"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
+
+[[package]]
 name = "syn"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3401,6 +3521,17 @@ dependencies = [
  "ntapi",
  "once_cell",
  "winapi",
+]
+
+[[package]]
+name = "taffy"
+version = "0.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3540ec65df399929a04a485feb50144475735920cc47eaf8eba09c70b1df4055"
+dependencies = [
+ "arrayvec",
+ "num-traits",
+ "slotmap",
 ]
 
 [[package]]
@@ -4239,6 +4370,12 @@ checksum = "56b245751c0ac9db0e006dc812031482784e434630205a93c73cfefcaabeac67"
 dependencies = [
  "nix 0.24.3",
 ]
+
+[[package]]
+name = "xi-unicode"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a67300977d3dc3f8034dae89778f502b6ba20b269527b3223ba59c0cf393bb8a"
 
 [[package]]
 name = "xml-rs"

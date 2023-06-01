@@ -3,7 +3,7 @@ unmaintained = "deny"
 yanked = "deny"
 notice = "deny"
 unsound = "deny"
-ignore = ["RUSTSEC-2020-0168", "RUSTSEC-2022-0048"]
+ignore = ["RUSTSEC-2020-0168", "RUSTSEC-2023-0040"]
 
 [licenses]
 copyleft = "allow"
