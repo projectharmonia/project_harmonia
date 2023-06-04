@@ -4,8 +4,8 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use crate::core::settings::Settings;
 
 use super::{
-    button::{ExclusiveButton, Pressed},
-    checkbox::{Checkbox, CheckboxBundle},
+    button::{ButtonCommandsExt, ExclusiveButton, Pressed},
+    checkbox::CheckboxCommandsExt,
     theme::Theme,
     ui_state::UiState,
 };
@@ -48,23 +48,11 @@ impl SettingsMenuPlugin {
                     })
                     .with_children(|parent| {
                         for (index, tab) in SettingsTab::iter().enumerate() {
-                            parent
-                                .spawn((
-                                    tab,
-                                    ExclusiveButton,
-                                    Pressed(index == 0),
-                                    ButtonBundle {
-                                        style: theme.button.normal.clone(),
-                                        background_color: theme.button.normal_color.into(),
-                                        ..Default::default()
-                                    },
-                                ))
-                                .with_children(|parent| {
-                                    parent.spawn(TextBundle::from_section(
-                                        tab.to_string(),
-                                        theme.text.normal_button.clone(),
-                                    ));
-                                });
+                            parent.spawn_button(&theme, tab.to_string()).insert((
+                                tab,
+                                ExclusiveButton,
+                                Pressed(index == 0),
+                            ));
                         }
                     });
 
@@ -83,24 +71,11 @@ impl SettingsMenuPlugin {
                         ))
                         .with_children(|parent| match tab {
                             SettingsTab::Video => {
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: theme.checkbox.node.clone(),
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        parent.spawn(CheckboxBundle {
-                                            checkbox: Checkbox(settings.video.perf_stats),
-                                            button_bundle: ButtonBundle {
-                                                style: theme.checkbox.button.clone(),
-                                                ..Default::default()
-                                            },
-                                        });
-                                        parent.spawn(TextBundle::from_section(
-                                            "Display performance stats",
-                                            theme.text.normal.clone(),
-                                        ));
-                                    });
+                                parent.spawn_checkbox(
+                                    &theme,
+                                    settings.video.perf_stats,
+                                    "Display performance stats",
+                                );
                             }
                             SettingsTab::Controls => (),
                             SettingsTab::Developer => (),

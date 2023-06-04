@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use super::theme::Theme;
 
@@ -45,8 +45,36 @@ impl CheckboxPlugin {
 #[derive(Component)]
 pub(super) struct Checkbox(pub(super) bool);
 
-#[derive(Bundle)]
-pub(super) struct CheckboxBundle {
-    pub(super) checkbox: Checkbox,
-    pub(super) button_bundle: ButtonBundle,
+pub(super) trait CheckboxCommandsExt<'w, 's> {
+    fn spawn_checkbox(
+        &mut self,
+        theme: &Theme,
+        checked: bool,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_>;
+}
+
+impl<'w, 's, 'a> CheckboxCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
+    fn spawn_checkbox(
+        &mut self,
+        theme: &Theme,
+        checked: bool,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_> {
+        let mut entity = self.spawn(NodeBundle {
+            style: theme.checkbox.node.clone(),
+            ..Default::default()
+        });
+        entity.with_children(|parent| {
+            parent.spawn((
+                Checkbox(checked),
+                ButtonBundle {
+                    style: theme.checkbox.button.clone(),
+                    ..Default::default()
+                },
+            ));
+            parent.spawn(TextBundle::from_section(text, theme.text.normal.clone()));
+        });
+        entity
+    }
 }

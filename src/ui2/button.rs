@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use super::theme::Theme;
 
@@ -86,3 +86,57 @@ pub(super) struct ExclusiveButton;
 ///
 /// Used to unpress the other checked button.
 struct ExclusivePress(Entity);
+
+pub(super) trait ButtonCommandsExt<'w, 's> {
+    fn spawn_button(
+        &mut self,
+        theme: &Theme,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_>;
+
+    fn spawn_large_button(
+        &mut self,
+        theme: &Theme,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_>;
+}
+
+impl<'w, 's, 'a> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
+    fn spawn_button(
+        &mut self,
+        theme: &Theme,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_> {
+        let mut entity = self.spawn(ButtonBundle {
+            style: theme.button.normal.clone(),
+            background_color: theme.button.normal_color.into(),
+            ..Default::default()
+        });
+        entity.with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                text,
+                theme.text.normal_button.clone(),
+            ));
+        });
+        entity
+    }
+
+    fn spawn_large_button(
+        &mut self,
+        theme: &Theme,
+        text: impl Into<String>,
+    ) -> EntityCommands<'w, 's, '_> {
+        let mut entity = self.spawn(ButtonBundle {
+            style: theme.button.large.clone(),
+            background_color: theme.button.normal_color.into(),
+            ..Default::default()
+        });
+        entity.with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                text,
+                theme.text.large_button.clone(),
+            ));
+        });
+        entity
+    }
+}

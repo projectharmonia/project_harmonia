@@ -1,7 +1,7 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{theme::Theme, ui_state::UiState};
+use super::{button::ButtonCommandsExt, theme::Theme, ui_state::UiState};
 
 pub(super) struct MainMenuPlugin;
 
@@ -34,20 +34,8 @@ impl MainMenuPlugin {
             .with_children(|parent| {
                 for button in MainMenuButton::iter() {
                     parent
-                        .spawn((
-                            ButtonBundle {
-                                style: theme.button.large.clone(),
-                                background_color: theme.button.normal_color.into(),
-                                ..Default::default()
-                            },
-                            button,
-                        ))
-                        .with_children(|parent| {
-                            parent.spawn(TextBundle::from_section(
-                                button.to_string(),
-                                theme.text.large_button.clone(),
-                            ));
-                        });
+                        .spawn_large_button(&theme, button.to_string())
+                        .insert(button);
                 }
             });
     }
