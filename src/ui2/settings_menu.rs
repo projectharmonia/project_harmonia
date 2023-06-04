@@ -1,7 +1,11 @@
 use bevy::prelude::*;
+use leafwing_input_manager::{
+    user_input::{InputKind, UserInput},
+    Actionlike,
+};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::settings::Settings;
+use crate::core::{action::Action, settings::Settings};
 
 use super::{
     button::{ButtonCommandsExt, ExclusiveButton, Pressed},
@@ -18,7 +22,7 @@ impl Plugin for SettingsMenuPlugin {
             Self::setup_system.in_schedule(OnEnter(UiState::Settings)),
             Self::cleanup_system.in_schedule(OnExit(UiState::Settings)),
         ))
-        .add_system(Self::visibility_system.in_set(OnUpdate(UiState::Settings)));
+        .add_system(Self::display_system.in_set(OnUpdate(UiState::Settings)));
     }
 }
 
@@ -40,7 +44,6 @@ impl SettingsMenuPlugin {
                 parent
                     .spawn(NodeBundle {
                         style: Style {
-                            flex_direction: FlexDirection::Row,
                             justify_content: JustifyContent::Center,
                             ..Default::default()
                         },
@@ -48,11 +51,11 @@ impl SettingsMenuPlugin {
                     })
                     .with_children(|parent| {
                         for (index, tab) in SettingsTab::iter().enumerate() {
-                            parent.spawn_button(&theme, tab.to_string()).insert((
-                                tab,
-                                ExclusiveButton,
-                                Pressed(index == 0),
-                            ));
+                            parent.spawn_button(
+                                &theme,
+                                tab.to_string(),
+                                (tab, ExclusiveButton, Pressed(index == 0)),
+                            );
                         }
                     });
 
@@ -62,41 +65,36 @@ impl SettingsMenuPlugin {
                             tab,
                             NodeBundle {
                                 style: Style {
-                                    flex_direction: FlexDirection::Column,
-                                    margin: UiRect::all(Val::Px(50.0)),
+                                    margin: theme.tab_content_margin,
                                     ..Default::default()
                                 },
                                 ..Default::default()
                             },
                         ))
                         .with_children(|parent| match tab {
-                            SettingsTab::Video => {
-                                parent.spawn_checkbox(
-                                    &theme,
-                                    settings.video.perf_stats,
-                                    "Display performance stats",
-                                );
+                            SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
+                            SettingsTab::Controls => setup_controls_tab(parent, &theme, &settings),
+                            SettingsTab::Developer => {
+                                setup_developer_tab(parent, &theme, &settings)
                             }
-                            SettingsTab::Controls => (),
-                            SettingsTab::Developer => (),
                         });
                 }
             });
     }
 
-    fn visibility_system(
+    fn display_system(
         tabs: Query<(&Pressed, &SettingsTab), Changed<Pressed>>,
-        mut tab_nodes: Query<(&mut Visibility, &SettingsTab), Without<Pressed>>,
+        mut tab_nodes: Query<(&mut Style, &SettingsTab), Without<Pressed>>,
     ) {
         for (pressed, tab) in &tabs {
-            let (mut visibility, _) = tab_nodes
+            let (mut style, _) = tab_nodes
                 .iter_mut()
                 .find(|&(_, node_tab)| node_tab == tab)
                 .expect("tabs should have associated nodes");
-            *visibility = if pressed.0 {
-                Visibility::Visible
+            style.display = if pressed.0 {
+                Display::Flex
             } else {
-                Visibility::Hidden
+                Display::None
             };
         }
     }
@@ -104,6 +102,109 @@ impl SettingsMenuPlugin {
     fn cleanup_system(mut commands: Commands, main_menus: Query<Entity, With<SettingsMenu>>) {
         commands.entity(main_menus.single()).despawn_recursive();
     }
+}
+
+fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn_checkbox(
+                theme,
+                settings.video.perf_stats,
+                "Display performance stats",
+                (),
+            );
+        });
+}
+
+fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
+    // TODO 0.11: Use grid layout.
+    const PADDING: f32 = 7.5;
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                gap: Size::all(Val::Px(PADDING * 2.0)),
+                padding: UiRect::all(Val::Px(PADDING)),
+                flex_direction: FlexDirection::Column,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            for action in Action::variants() {
+                parent.spawn(TextBundle::from_section(
+                    action.to_string(),
+                    theme.text.normal.clone(),
+                ));
+            }
+        });
+
+    for index in 0..3 {
+        parent
+            .spawn(NodeBundle {
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                for action in Action::variants() {
+                    let inputs = settings.controls.mappings.get(action);
+                    let button_text = match inputs.get_at(index) {
+                        Some(UserInput::Single(InputKind::GamepadButton(gamepad_button))) => {
+                            format!("{gamepad_button:?}")
+                        }
+                        Some(UserInput::Single(InputKind::Keyboard(keycode))) => {
+                            format!("{keycode:?}")
+                        }
+                        Some(UserInput::Single(InputKind::Mouse(mouse_button))) => {
+                            format!("{mouse_button:?}")
+                        }
+                        _ => "Empty".to_string(),
+                    };
+
+                    parent.spawn_button(theme, button_text, ());
+                }
+            });
+    }
+}
+
+fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn_checkbox(
+                theme,
+                settings.developer.game_inspector,
+                "Enable game inspector",
+                (),
+            );
+            parent.spawn_checkbox(
+                theme,
+                settings.developer.debug_collisions,
+                "Debug collisions",
+                (),
+            );
+            parent.spawn_checkbox(
+                theme,
+                settings.developer.debug_paths,
+                "Debug navigation paths",
+                (),
+            );
+        });
 }
 
 #[derive(Component)]

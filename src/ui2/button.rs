@@ -92,12 +92,14 @@ pub(super) trait ButtonCommandsExt<'w, 's> {
         &mut self,
         theme: &Theme,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_>;
 
     fn spawn_large_button(
         &mut self,
         theme: &Theme,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_>;
 }
 
@@ -106,12 +108,16 @@ impl<'w, 's, 'a> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
         &mut self,
         theme: &Theme,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn(ButtonBundle {
-            style: theme.button.normal.clone(),
-            background_color: theme.button.normal_color.into(),
-            ..Default::default()
-        });
+        let mut entity = self.spawn((
+            bundle,
+            ButtonBundle {
+                style: theme.button.normal.clone(),
+                background_color: theme.button.normal_color.into(),
+                ..Default::default()
+            },
+        ));
         entity.with_children(|parent| {
             parent.spawn(TextBundle::from_section(
                 text,
@@ -125,12 +131,16 @@ impl<'w, 's, 'a> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
         &mut self,
         theme: &Theme,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn(ButtonBundle {
-            style: theme.button.large.clone(),
-            background_color: theme.button.normal_color.into(),
-            ..Default::default()
-        });
+        let mut entity = self.spawn((
+            bundle,
+            ButtonBundle {
+                style: theme.button.large.clone(),
+                background_color: theme.button.normal_color.into(),
+                ..Default::default()
+            },
+        ));
         entity.with_children(|parent| {
             parent.spawn(TextBundle::from_section(
                 text,

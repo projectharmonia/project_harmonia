@@ -51,6 +51,7 @@ pub(super) trait CheckboxCommandsExt<'w, 's> {
         theme: &Theme,
         checked: bool,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_>;
 }
 
@@ -60,11 +61,15 @@ impl<'w, 's, 'a> CheckboxCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
         theme: &Theme,
         checked: bool,
         text: impl Into<String>,
+        bundle: impl Bundle,
     ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn(NodeBundle {
-            style: theme.checkbox.node.clone(),
-            ..Default::default()
-        });
+        let mut entity = self.spawn((
+            bundle,
+            NodeBundle {
+                style: theme.checkbox.node.clone(),
+                ..Default::default()
+            },
+        ));
         entity.with_children(|parent| {
             parent.spawn((
                 Checkbox(checked),

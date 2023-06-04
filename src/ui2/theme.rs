@@ -16,6 +16,7 @@ pub(super) struct Theme {
     pub(super) button: ButtonTheme,
     pub(super) text: TextTheme,
     pub(super) checkbox: CheckboxTheme,
+    pub(super) tab_content_margin: UiRect,
 }
 
 impl FromWorld for Theme {
@@ -79,6 +80,7 @@ impl FromWorld for Theme {
                 },
                 tick_color: Color::rgb(0.35, 0.75, 0.35),
             },
+            tab_content_margin: UiRect::all(Val::Px(20.0)),
         }
     }
 }

@@ -33,9 +33,7 @@ impl MainMenuPlugin {
             ))
             .with_children(|parent| {
                 for button in MainMenuButton::iter() {
-                    parent
-                        .spawn_large_button(&theme, button.to_string())
-                        .insert(button);
+                    parent.spawn_large_button(&theme, button.to_string(), button);
                 }
             });
     }
