@@ -55,7 +55,7 @@ pub(super) trait CheckboxCommandsExt<'w, 's> {
     ) -> EntityCommands<'w, 's, '_>;
 }
 
-impl<'w, 's, 'a> CheckboxCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
+impl<'w, 's> CheckboxCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
     fn spawn_checkbox(
         &mut self,
         theme: &Theme,

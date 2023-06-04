@@ -103,7 +103,7 @@ pub(super) trait ButtonCommandsExt<'w, 's> {
     ) -> EntityCommands<'w, 's, '_>;
 }
 
-impl<'w, 's, 'a> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
+impl<'w, 's> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
     fn spawn_button(
         &mut self,
         theme: &Theme,
