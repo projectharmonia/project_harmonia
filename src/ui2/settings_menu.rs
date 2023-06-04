@@ -5,7 +5,10 @@ use leafwing_input_manager::{
 };
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::{action::Action, settings::Settings};
+use crate::core::{
+    action::Action,
+    settings::{Settings, SettingsApply},
+};
 
 use super::{
     button::{ButtonCommandsExt, ExclusiveButton, Pressed},
@@ -22,7 +25,9 @@ impl Plugin for SettingsMenuPlugin {
             Self::setup_system.in_schedule(OnEnter(UiState::Settings)),
             Self::cleanup_system.in_schedule(OnExit(UiState::Settings)),
         ))
-        .add_system(Self::display_system.in_set(OnUpdate(UiState::Settings)));
+        .add_systems(
+            (Self::tab_display_system, Self::buttons_system).in_set(OnUpdate(UiState::Settings)),
+        );
     }
 }
 
@@ -65,7 +70,7 @@ impl SettingsMenuPlugin {
                             tab,
                             NodeBundle {
                                 style: Style {
-                                    margin: theme.tab_content_margin,
+                                    padding: theme.tab_content_margin,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -79,10 +84,26 @@ impl SettingsMenuPlugin {
                             }
                         });
                 }
+
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            align_items: AlignItems::End,
+                            size: Size::all(Val::Percent(100.0)),
+                            justify_content: JustifyContent::End,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        for button in SettingsButton::iter() {
+                            parent.spawn_button(&theme, button.to_string(), button);
+                        }
+                    });
             });
     }
 
-    fn display_system(
+    fn tab_display_system(
         tabs: Query<(&Pressed, &SettingsTab), Changed<Pressed>>,
         mut tab_nodes: Query<(&mut Style, &SettingsTab), Without<Pressed>>,
     ) {
@@ -96,6 +117,24 @@ impl SettingsMenuPlugin {
             } else {
                 Display::None
             };
+        }
+    }
+
+    fn buttons_system(
+        mut apply_events: EventWriter<SettingsApply>,
+        mut ui_state: ResMut<NextState<UiState>>,
+        buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
+    ) {
+        for (&interaction, &button) in &buttons {
+            if interaction == Interaction::Clicked {
+                match button {
+                    SettingsButton::Ok => {
+                        apply_events.send_default();
+                        ui_state.set(UiState::MainMenu);
+                    }
+                    SettingsButton::Cancel => ui_state.set(UiState::MainMenu),
+                }
+            }
         }
     }
 
@@ -215,4 +254,10 @@ enum SettingsTab {
     Video,
     Controls,
     Developer,
+}
+
+#[derive(Clone, Component, Copy, Display, EnumIter)]
+pub(super) enum SettingsButton {
+    Ok,
+    Cancel,
 }
