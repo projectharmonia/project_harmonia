@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
-pub(super) struct ThemePlugin;
+pub(crate) struct ThemePlugin;
 
 impl Plugin for ThemePlugin {
     fn build(&self, app: &mut App) {
@@ -12,11 +12,11 @@ impl Plugin for ThemePlugin {
 }
 
 #[derive(Resource)]
-pub(super) struct Theme {
-    pub(super) button: ButtonTheme,
-    pub(super) text: TextTheme,
-    pub(super) checkbox: CheckboxTheme,
-    pub(super) global_padding: UiRect,
+pub(crate) struct Theme {
+    pub(crate) button: ButtonTheme,
+    pub(crate) text: TextTheme,
+    pub(crate) checkbox: CheckboxTheme,
+    pub(crate) global_padding: UiRect,
 }
 
 impl FromWorld for Theme {
@@ -85,24 +85,24 @@ impl FromWorld for Theme {
     }
 }
 
-pub(super) struct ButtonTheme {
-    pub(super) normal: Style,
-    pub(super) large: Style,
-    pub(super) normal_color: Color,
-    pub(super) hovered_color: Color,
-    pub(super) pressed_color: Color,
-    pub(super) hovered_pressed_color: Color,
+pub(crate) struct ButtonTheme {
+    pub(crate) normal: Style,
+    pub(crate) large: Style,
+    pub(crate) normal_color: Color,
+    pub(crate) hovered_color: Color,
+    pub(crate) pressed_color: Color,
+    pub(crate) hovered_pressed_color: Color,
 }
 
-pub(super) struct TextTheme {
-    pub(super) normal: TextStyle,
-    pub(super) normal_button: TextStyle,
-    pub(super) large_button: TextStyle,
+pub(crate) struct TextTheme {
+    pub(crate) normal: TextStyle,
+    pub(crate) normal_button: TextStyle,
+    pub(crate) large_button: TextStyle,
 }
 
-pub(super) struct CheckboxTheme {
-    pub(super) node: Style,
-    pub(super) button: Style,
-    pub(super) tick: Style,
-    pub(super) tick_color: Color,
+pub(crate) struct CheckboxTheme {
+    pub(crate) node: Style,
+    pub(crate) button: Style,
+    pub(crate) tick: Style,
+    pub(crate) tick_color: Color,
 }

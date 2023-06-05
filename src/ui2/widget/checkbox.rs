@@ -1,8 +1,8 @@
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
-use super::theme::Theme;
+use crate::ui2::theme::Theme;
 
-pub(super) struct CheckboxPlugin;
+pub(crate) struct CheckboxPlugin;
 
 impl Plugin for CheckboxPlugin {
     fn build(&self, app: &mut App) {
@@ -43,9 +43,9 @@ impl CheckboxPlugin {
 }
 
 #[derive(Component)]
-pub(super) struct Checkbox(pub(super) bool);
+pub(crate) struct Checkbox(pub(crate) bool);
 
-pub(super) trait CheckboxCommandsExt<'w, 's> {
+pub(crate) trait CheckboxCommandsExt<'w, 's> {
     fn spawn_checkbox(
         &mut self,
         theme: &Theme,

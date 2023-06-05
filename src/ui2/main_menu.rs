@@ -1,7 +1,7 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{button::ButtonCommandsExt, theme::Theme, ui_state::UiState};
+use super::{theme::Theme, ui_state::UiState, widget::button::ButtonCommandsExt};
 
 pub(super) struct MainMenuPlugin;
 

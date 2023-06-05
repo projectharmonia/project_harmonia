@@ -11,10 +11,12 @@ use crate::core::{
 };
 
 use super::{
-    button::{ButtonCommandsExt, ExclusiveButton, Pressed},
-    checkbox::CheckboxCommandsExt,
     theme::Theme,
     ui_state::UiState,
+    widget::{
+        button::{ButtonCommandsExt, ExclusiveButton, Pressed},
+        checkbox::CheckboxCommandsExt,
+    },
 };
 
 pub(super) struct SettingsMenuPlugin;

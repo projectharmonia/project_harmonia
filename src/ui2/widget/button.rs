@@ -1,8 +1,8 @@
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
-use super::theme::Theme;
+use crate::ui2::theme::Theme;
 
-pub(super) struct ButtonPlugin;
+pub(crate) struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
@@ -74,20 +74,20 @@ impl ButtonPlugin {
 ///
 /// Used in combination with [`ExclusiveButton`].
 #[derive(Component)]
-pub(super) struct Pressed(pub(crate) bool);
+pub(crate) struct Pressed(pub(crate) bool);
 
 /// If present, then only one button that belongs to the parent node can be pressed at any given time.
 ///
 /// The user can click on any button to check it, and that button will replace the existing one as the checked button in the parent node.
 #[derive(Component)]
-pub(super) struct ExclusiveButton;
+pub(crate) struct ExclusiveButton;
 
 /// An event that triggered when button with [`ExclusiveButton`] is clicked.
 ///
 /// Used to unpress the other checked button.
 struct ExclusivePress(Entity);
 
-pub(super) trait ButtonCommandsExt<'w, 's> {
+pub(crate) trait ButtonCommandsExt<'w, 's> {
     fn spawn_button(
         &mut self,
         theme: &Theme,
