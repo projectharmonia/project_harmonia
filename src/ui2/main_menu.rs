@@ -25,6 +25,7 @@ impl MainMenuPlugin {
                         size: Size::all(Val::Percent(100.0)),
                         align_items: AlignItems::FlexStart,
                         justify_content: JustifyContent::Center,
+                        padding: theme.global_padding,
                         ..Default::default()
                     },
                     ..Default::default()

@@ -39,6 +39,7 @@ impl SettingsMenuPlugin {
                     style: Style {
                         flex_direction: FlexDirection::Column,
                         size: Size::all(Val::Percent(100.0)),
+                        padding: theme.global_padding,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -66,16 +67,7 @@ impl SettingsMenuPlugin {
 
                 for tab in SettingsTab::iter() {
                     parent
-                        .spawn((
-                            tab,
-                            NodeBundle {
-                                style: Style {
-                                    padding: theme.tab_content_margin,
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            },
-                        ))
+                        .spawn((tab, NodeBundle::default()))
                         .with_children(|parent| match tab {
                             SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
                             SettingsTab::Controls => setup_controls_tab(parent, &theme, &settings),
