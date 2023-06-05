@@ -769,14 +769,15 @@ dependencies = [
 
 [[package]]
 name = "bevy_mod_outline"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07c3965e18b7d9ed94b494c9c01de95d751ba6c3e3e276b5d8a0df13e2ff1d3d"
+checksum = "6ea5339069d5307996d37c8255ea7aa64386c12cd27f02d4cd681bda81c0123c"
 dependencies = [
  "bevy",
  "bitfield",
  "interpolation",
  "thiserror",
+ "wgpu-types",
 ]
 
 [[package]]
