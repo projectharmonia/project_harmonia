@@ -16,6 +16,7 @@ use super::{
     widget::{
         button::{ButtonCommandsExt, ExclusiveButton, Pressed},
         checkbox::CheckboxCommandsExt,
+        ui_root::UiRoot,
     },
 };
 
@@ -23,13 +24,11 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::setup_system.in_schedule(OnEnter(UiState::Settings)),
-            Self::cleanup_system.in_schedule(OnExit(UiState::Settings)),
-        ))
-        .add_systems(
-            (Self::tab_display_system, Self::buttons_system).in_set(OnUpdate(UiState::Settings)),
-        );
+        app.add_system(Self::setup_system.in_schedule(OnEnter(UiState::Settings)))
+            .add_systems(
+                (Self::tab_display_system, Self::buttons_system)
+                    .in_set(OnUpdate(UiState::Settings)),
+            );
     }
 }
 
@@ -46,7 +45,7 @@ impl SettingsMenuPlugin {
                     },
                     ..Default::default()
                 },
-                SettingsMenu,
+                UiRoot,
             ))
             .with_children(|parent| {
                 parent
@@ -130,10 +129,6 @@ impl SettingsMenuPlugin {
                 }
             }
         }
-    }
-
-    fn cleanup_system(mut commands: Commands, main_menus: Query<Entity, With<SettingsMenu>>) {
-        commands.entity(main_menus.single()).despawn_recursive();
     }
 }
 
@@ -239,9 +234,6 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
             );
         });
 }
-
-#[derive(Component)]
-struct SettingsMenu;
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum SettingsTab {

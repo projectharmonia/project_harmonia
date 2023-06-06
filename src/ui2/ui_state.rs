@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use strum::EnumIter;
 
 pub(super) struct UiStatePlugin;
 
@@ -8,7 +9,7 @@ impl Plugin for UiStatePlugin {
     }
 }
 
-#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default, EnumIter)]
 pub(super) enum UiState {
     #[default]
     MainMenu,

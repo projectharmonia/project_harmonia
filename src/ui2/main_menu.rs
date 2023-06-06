@@ -1,7 +1,11 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{theme::Theme, ui_state::UiState, widget::button::ButtonCommandsExt};
+use super::{
+    theme::Theme,
+    ui_state::UiState,
+    widget::{button::ButtonCommandsExt, ui_root::UiRoot},
+};
 
 pub(super) struct MainMenuPlugin;
 
@@ -10,7 +14,6 @@ impl Plugin for MainMenuPlugin {
         app.add_systems((
             Self::setup_system.in_schedule(OnEnter(UiState::MainMenu)),
             Self::button_system.in_set(OnUpdate(UiState::MainMenu)),
-            Self::cleanup_system.in_schedule(OnExit(UiState::MainMenu)),
         ));
     }
 }
@@ -30,7 +33,7 @@ impl MainMenuPlugin {
                     },
                     ..Default::default()
                 },
-                MainMenu,
+                UiRoot,
             ))
             .with_children(|parent| {
                 for button in MainMenuButton::iter() {
@@ -54,14 +57,7 @@ impl MainMenuPlugin {
             }
         }
     }
-
-    fn cleanup_system(mut commands: Commands, main_menus: Query<Entity, With<MainMenu>>) {
-        commands.entity(main_menus.single()).despawn_recursive();
-    }
 }
-
-#[derive(Component)]
-struct MainMenu;
 
 #[derive(Clone, Component, Copy, Display, EnumIter)]
 enum MainMenuButton {
