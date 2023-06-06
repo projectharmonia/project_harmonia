@@ -4,7 +4,10 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     ui_state::UiState,
-    widget::{button::ButtonCommandsExt, ui_root::UiRoot},
+    widget::{
+        button::{ButtonSize, TextButtonBundle},
+        ui_root::UiRoot,
+    },
 };
 
 pub(super) struct MainMenuPlugin;
@@ -37,7 +40,10 @@ impl MainMenuPlugin {
             ))
             .with_children(|parent| {
                 for button in MainMenuButton::iter() {
-                    parent.spawn_large_button(&theme, button.to_string(), button);
+                    parent.spawn((
+                        button,
+                        TextButtonBundle::new(&theme, ButtonSize::Large, button.to_string()),
+                    ));
                 }
             });
     }

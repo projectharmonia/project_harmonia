@@ -14,8 +14,8 @@ use super::{
     theme::Theme,
     ui_state::UiState,
     widget::{
-        button::{ButtonCommandsExt, ExclusiveButton, Pressed},
-        checkbox::CheckboxCommandsExt,
+        button::{ButtonSize, ExclusiveButton, Pressed, TextButtonBundle},
+        checkbox::CheckboxBundle,
         ui_root::UiRoot,
     },
 };
@@ -58,11 +58,12 @@ impl SettingsMenuPlugin {
                     })
                     .with_children(|parent| {
                         for (index, tab) in SettingsTab::iter().enumerate() {
-                            parent.spawn_button(
-                                &theme,
-                                tab.to_string(),
-                                (tab, ExclusiveButton, Pressed(index == 0)),
-                            );
+                            parent.spawn((
+                                tab,
+                                ExclusiveButton,
+                                Pressed(index == 0),
+                                TextButtonBundle::new(&theme, ButtonSize::Normal, tab.to_string()),
+                            ));
                         }
                     });
 
@@ -90,7 +91,14 @@ impl SettingsMenuPlugin {
                     })
                     .with_children(|parent| {
                         for button in SettingsButton::iter() {
-                            parent.spawn_button(&theme, button.to_string(), button);
+                            parent.spawn((
+                                button,
+                                TextButtonBundle::new(
+                                    &theme,
+                                    ButtonSize::Normal,
+                                    button.to_string(),
+                                ),
+                            ));
                         }
                     });
             });
@@ -142,12 +150,11 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn_checkbox(
+            parent.spawn(CheckboxBundle::new(
                 theme,
                 settings.video.perf_stats,
                 "Display performance stats",
-                (),
-            );
+            ));
         });
 }
 
@@ -185,7 +192,7 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             .with_children(|parent| {
                 for action in Action::variants() {
                     let inputs = settings.controls.mappings.get(action);
-                    let button_text = match inputs.get_at(index) {
+                    let text = match inputs.get_at(index) {
                         Some(UserInput::Single(InputKind::GamepadButton(gamepad_button))) => {
                             format!("{gamepad_button:?}")
                         }
@@ -198,7 +205,7 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                         _ => "Empty".to_string(),
                     };
 
-                    parent.spawn_button(theme, button_text, ());
+                    parent.spawn(TextButtonBundle::new(theme, ButtonSize::Normal, text));
                 }
             });
     }
@@ -214,24 +221,21 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn_checkbox(
+            parent.spawn(CheckboxBundle::new(
                 theme,
                 settings.developer.game_inspector,
                 "Enable game inspector",
-                (),
-            );
-            parent.spawn_checkbox(
+            ));
+            parent.spawn(CheckboxBundle::new(
                 theme,
                 settings.developer.debug_collisions,
                 "Debug collisions",
-                (),
-            );
-            parent.spawn_checkbox(
+            ));
+            parent.spawn(CheckboxBundle::new(
                 theme,
                 settings.developer.debug_paths,
                 "Debug navigation paths",
-                (),
-            );
+            ));
         });
 }
 

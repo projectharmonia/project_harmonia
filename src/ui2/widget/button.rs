@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::prelude::*;
 
 use crate::ui2::theme::Theme;
 
@@ -7,12 +7,28 @@ pub(crate) struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ExclusivePress>()
-            .add_system(Self::interaction_system)
+            .add_systems((Self::init_system, Self::interaction_system))
             .add_systems((Self::exclusive_press_system, Self::exclusive_unpress_system).chain());
     }
 }
 
 impl ButtonPlugin {
+    fn init_system(
+        mut commmands: Commands,
+        theme: Res<Theme>,
+        buttons: Query<(Entity, &ButtonText, &ButtonSize), Added<ButtonText>>,
+    ) {
+        for (entity, text, size) in &buttons {
+            commmands.entity(entity).with_children(|parent| {
+                let style = match size {
+                    ButtonSize::Normal => theme.text.normal_button.clone(),
+                    ButtonSize::Large => theme.text.large_button.clone(),
+                };
+                parent.spawn(TextBundle::from_section(text.0.clone(), style));
+            });
+        }
+    }
+
     fn interaction_system(
         theme: Res<Theme>,
         mut buttons: Query<
@@ -87,66 +103,38 @@ pub(crate) struct ExclusiveButton;
 /// Used to unpress the other checked button.
 struct ExclusivePress(Entity);
 
-pub(crate) trait ButtonCommandsExt<'w, 's> {
-    fn spawn_button(
-        &mut self,
-        theme: &Theme,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_>;
-
-    fn spawn_large_button(
-        &mut self,
-        theme: &Theme,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_>;
+#[derive(Component)]
+pub(crate) enum ButtonSize {
+    Normal,
+    Large,
 }
 
-impl<'w, 's> ButtonCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
-    fn spawn_button(
-        &mut self,
-        theme: &Theme,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn((
-            bundle,
-            ButtonBundle {
-                style: theme.button.normal.clone(),
-                background_color: theme.button.normal_color.into(),
-                ..Default::default()
-            },
-        ));
-        entity.with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                text,
-                theme.text.normal_button.clone(),
-            ));
-        });
-        entity
-    }
+#[derive(Component)]
+struct ButtonText(String);
 
-    fn spawn_large_button(
-        &mut self,
-        theme: &Theme,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn((
-            bundle,
-            ButtonBundle {
-                style: theme.button.large.clone(),
+#[derive(Bundle)]
+pub(crate) struct TextButtonBundle {
+    button_size: ButtonSize,
+    button_text: ButtonText,
+
+    #[bundle]
+    button_bundle: ButtonBundle,
+}
+
+impl TextButtonBundle {
+    pub(crate) fn new(theme: &Theme, button_size: ButtonSize, text: impl Into<String>) -> Self {
+        let style = match button_size {
+            ButtonSize::Normal => theme.button.normal.clone(),
+            ButtonSize::Large => theme.button.large.clone(),
+        };
+        Self {
+            button_size,
+            button_text: ButtonText(text.into()),
+            button_bundle: ButtonBundle {
+                style,
                 background_color: theme.button.normal_color.into(),
                 ..Default::default()
             },
-        ));
-        entity.with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                text,
-                theme.text.large_button.clone(),
-            ));
-        });
-        entity
+        }
     }
 }

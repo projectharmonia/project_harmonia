@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::prelude::*;
 
 use crate::ui2::theme::Theme;
 
@@ -6,17 +6,43 @@ pub(crate) struct CheckboxPlugin;
 
 impl Plugin for CheckboxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((Self::interaction_system, Self::tick_system));
+        app.add_systems((
+            Self::init_system,
+            Self::interaction_system,
+            Self::tick_system,
+        ));
     }
 }
 
 impl CheckboxPlugin {
-    fn interaction_system(
-        mut checkboxes: Query<(&Interaction, &mut Checkbox), Changed<Interaction>>,
+    fn init_system(
+        mut commmands: Commands,
+        theme: Res<Theme>,
+        checkboxes: Query<(Entity, &CheckboxText), Added<CheckboxText>>,
     ) {
-        for (interaction, mut checkbox) in &mut checkboxes {
+        for (entity, text) in &checkboxes {
+            commmands.entity(entity).with_children(|parent| {
+                parent.spawn(ButtonBundle {
+                    style: theme.checkbox.button.clone(),
+                    ..Default::default()
+                });
+                parent.spawn(TextBundle::from_section(
+                    text.0.clone(),
+                    theme.text.normal.clone(),
+                ));
+            });
+        }
+    }
+
+    fn interaction_system(
+        mut checkboxes: Query<&mut Checkbox>,
+        interactions: Query<(&Parent, &Interaction), Changed<Interaction>>,
+    ) {
+        for (parent, interaction) in &interactions {
             if *interaction == Interaction::Clicked {
-                checkbox.0 = !checkbox.0;
+                if let Ok(mut checkbox) = checkboxes.get_mut(**parent) {
+                    checkbox.0 = !checkbox.0;
+                }
             }
         }
     }
@@ -24,12 +50,15 @@ impl CheckboxPlugin {
     fn tick_system(
         mut commmands: Commands,
         theme: Res<Theme>,
-        checkboxes: Query<(Entity, &Checkbox), Changed<Checkbox>>,
+        checkboxes: Query<(&Children, &Checkbox), Changed<Checkbox>>,
+        buttons: Query<Entity, With<Button>>,
     ) {
-        for (entity, checkbox) in &checkboxes {
+        for (chidlren, checkbox) in &checkboxes {
+            let entity = buttons
+                .iter_many(chidlren)
+                .next()
+                .expect("checkbox should have child button");
             if checkbox.0 {
-                commmands.entity(entity).despawn_descendants();
-            } else {
                 commmands.entity(entity).with_children(|parent| {
                     parent.spawn(NodeBundle {
                         style: theme.checkbox.tick.clone(),
@@ -37,6 +66,8 @@ impl CheckboxPlugin {
                         ..Default::default()
                     });
                 });
+            } else {
+                commmands.entity(entity).despawn_descendants();
             }
         }
     }
@@ -45,41 +76,27 @@ impl CheckboxPlugin {
 #[derive(Component)]
 pub(crate) struct Checkbox(pub(crate) bool);
 
-pub(crate) trait CheckboxCommandsExt<'w, 's> {
-    fn spawn_checkbox(
-        &mut self,
-        theme: &Theme,
-        checked: bool,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_>;
+#[derive(Component)]
+pub(crate) struct CheckboxText(pub(crate) String);
+
+#[derive(Bundle)]
+pub(crate) struct CheckboxBundle {
+    checkbox: Checkbox,
+    checkbox_text: CheckboxText,
+
+    #[bundle]
+    node_bundle: NodeBundle,
 }
 
-impl<'w, 's> CheckboxCommandsExt<'w, 's> for ChildBuilder<'w, 's, '_> {
-    fn spawn_checkbox(
-        &mut self,
-        theme: &Theme,
-        checked: bool,
-        text: impl Into<String>,
-        bundle: impl Bundle,
-    ) -> EntityCommands<'w, 's, '_> {
-        let mut entity = self.spawn((
-            bundle,
-            NodeBundle {
+impl CheckboxBundle {
+    pub(crate) fn new(theme: &Theme, checked: bool, text: impl Into<String>) -> Self {
+        Self {
+            checkbox: Checkbox(checked),
+            checkbox_text: CheckboxText(text.into()),
+            node_bundle: NodeBundle {
                 style: theme.checkbox.node.clone(),
                 ..Default::default()
             },
-        ));
-        entity.with_children(|parent| {
-            parent.spawn((
-                Checkbox(checked),
-                ButtonBundle {
-                    style: theme.checkbox.button.clone(),
-                    ..Default::default()
-                },
-            ));
-            parent.spawn(TextBundle::from_section(text, theme.text.normal.clone()));
-        });
-        entity
+        }
     }
 }
