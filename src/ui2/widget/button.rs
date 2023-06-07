@@ -104,7 +104,7 @@ pub(crate) struct ExclusiveButton;
 struct ExclusivePress(Entity);
 
 #[derive(Component)]
-pub(crate) enum ButtonSize {
+enum ButtonSize {
     Normal,
     Large,
 }
@@ -122,7 +122,15 @@ pub(crate) struct TextButtonBundle {
 }
 
 impl TextButtonBundle {
-    pub(crate) fn new(theme: &Theme, button_size: ButtonSize, text: impl Into<String>) -> Self {
+    pub(crate) fn normal(theme: &Theme, text: impl Into<String>) -> Self {
+        Self::new(theme, ButtonSize::Normal, text)
+    }
+
+    pub(crate) fn large(theme: &Theme, text: impl Into<String>) -> Self {
+        Self::new(theme, ButtonSize::Large, text)
+    }
+
+    fn new(theme: &Theme, button_size: ButtonSize, text: impl Into<String>) -> Self {
         let style = match button_size {
             ButtonSize::Normal => theme.button.normal.clone(),
             ButtonSize::Large => theme.button.large.clone(),

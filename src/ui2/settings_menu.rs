@@ -14,7 +14,7 @@ use super::{
     theme::Theme,
     ui_state::UiState,
     widget::{
-        button::{ButtonSize, ExclusiveButton, Pressed, TextButtonBundle},
+        button::{ExclusiveButton, Pressed, TextButtonBundle},
         checkbox::CheckboxBundle,
         ui_root::UiRoot,
     },
@@ -62,7 +62,7 @@ impl SettingsMenuPlugin {
                                 tab,
                                 ExclusiveButton,
                                 Pressed(index == 0),
-                                TextButtonBundle::new(&theme, ButtonSize::Normal, tab.to_string()),
+                                TextButtonBundle::normal(&theme, tab.to_string()),
                             ));
                         }
                     });
@@ -93,11 +93,7 @@ impl SettingsMenuPlugin {
                         for button in SettingsButton::iter() {
                             parent.spawn((
                                 button,
-                                TextButtonBundle::new(
-                                    &theme,
-                                    ButtonSize::Normal,
-                                    button.to_string(),
-                                ),
+                                TextButtonBundle::normal(&theme, button.to_string()),
                             ));
                         }
                     });
@@ -205,7 +201,7 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                         _ => "Empty".to_string(),
                     };
 
-                    parent.spawn(TextButtonBundle::new(theme, ButtonSize::Normal, text));
+                    parent.spawn(TextButtonBundle::normal(theme, text));
                 }
             });
     }
