@@ -7,7 +7,11 @@ pub(crate) struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ExclusivePress>()
-            .add_systems((Self::init_system, Self::interaction_system))
+            .add_systems((
+                Self::init_system,
+                Self::interaction_system,
+                Self::text_update_system,
+            ))
             .add_systems((Self::exclusive_press_system, Self::exclusive_unpress_system).chain());
     }
 }
@@ -26,6 +30,18 @@ impl ButtonPlugin {
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
             });
+        }
+    }
+
+    /// Won't be triggered after spawning because text child will be spawned at the next frame.
+    fn text_update_system(
+        buttons: Query<(&Children, &ButtonText), Changed<ButtonText>>,
+        mut texts: Query<&mut Text>,
+    ) {
+        for (children, button_text) in &buttons {
+            let mut iter = texts.iter_many_mut(children);
+            let mut text = iter.fetch_next().expect("button should have child text");
+            text.sections[0].value.clone_from(&button_text.0);
         }
     }
 
