@@ -126,7 +126,7 @@ enum ButtonSize {
 }
 
 #[derive(Component)]
-struct ButtonText(String);
+pub(crate) struct ButtonText(pub(crate) String);
 
 #[derive(Bundle)]
 pub(crate) struct TextButtonBundle {

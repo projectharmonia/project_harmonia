@@ -5,19 +5,20 @@ use leafwing_input_manager::{
 };
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::{
-    action::Action,
-    settings::{Settings, SettingsApply},
-};
-
 use super::{
     theme::Theme,
     ui_state::UiState,
     widget::{
-        button::{ExclusiveButton, Pressed, TextButtonBundle},
+        button::{ButtonText, ExclusiveButton, Pressed, TextButtonBundle},
         checkbox::CheckboxBundle,
         ui_root::UiRoot,
+        LabelBundle, Modal, ModalBundle,
     },
+};
+use crate::core::{
+    action::Action,
+    input_events::InputEvents,
+    settings::{Settings, SettingsApply},
 };
 
 pub(super) struct SettingsMenuPlugin;
@@ -26,7 +27,16 @@ impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::setup_system.in_schedule(OnEnter(UiState::Settings)))
             .add_systems(
-                (Self::tab_display_system, Self::buttons_system)
+                (
+                    Self::binding_button_system,
+                    Self::tab_display_system,
+                    Self::binding_dialog_system,
+                    Self::binding_confirmation_system
+                        .run_if(not(any_with_component::<ConflictButton>()))
+                        .run_if(any_with_component::<BindingButton>()),
+                    Self::conflict_button_system,
+                    Self::settings_buttons_system,
+                )
                     .in_set(OnUpdate(UiState::Settings)),
             );
     }
@@ -100,6 +110,23 @@ impl SettingsMenuPlugin {
             });
     }
 
+    fn binding_button_system(mut modals: Query<(&Binding, &mut ButtonText), Changed<Binding>>) {
+        for (binding, mut text) in &mut modals {
+            text.0 = match binding.input_kind {
+                Some(InputKind::GamepadButton(gamepad_button)) => {
+                    format!("{gamepad_button:?}")
+                }
+                Some(InputKind::Keyboard(keycode)) => {
+                    format!("{keycode:?}")
+                }
+                Some(InputKind::Mouse(mouse_button)) => {
+                    format!("{mouse_button:?}")
+                }
+                _ => "Empty".to_string(),
+            };
+        }
+    }
+
     fn tab_display_system(
         tabs: Query<(&Pressed, &SettingsTab), Changed<Pressed>>,
         mut tab_nodes: Query<(&mut Style, &SettingsTab), Without<Pressed>>,
@@ -117,7 +144,119 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn buttons_system(
+    fn binding_dialog_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        roots: Query<Entity, With<UiRoot>>,
+        buttons: Query<(Entity, &Interaction), (Changed<Interaction>, With<Binding>)>,
+    ) {
+        for (entity, &interaction) in &buttons {
+            if interaction != Interaction::Clicked {
+                continue;
+            }
+
+            commands.entity(roots.single()).with_children(|parent| {
+                parent
+                    .spawn(ModalBundle::new(&theme))
+                    .with_children(|parent| {
+                        parent
+                            .spawn((
+                                BindingButton(entity),
+                                NodeBundle {
+                                    style: theme.element.binding_dialog.clone(),
+                                    background_color: theme.modal.panel_color.into(),
+                                    ..Default::default()
+                                },
+                            ))
+                            .with_children(|parent| {
+                                parent.spawn((
+                                    BindingLabel,
+                                    LabelBundle::new(&theme, "Press any key"),
+                                ));
+                            });
+                    });
+            });
+        }
+    }
+
+    fn binding_confirmation_system(
+        mut commands: Commands,
+        mut input_events: InputEvents,
+        settings: Res<Settings>,
+        theme: Res<Theme>,
+        dialogs: Query<(Entity, &BindingButton)>,
+        modals: Query<Entity, With<Modal>>,
+        mut buttons: Query<&mut Binding>,
+        mut binding_labels: Query<&mut Text, With<BindingLabel>>,
+    ) {
+        if let Some(input_kind) = input_events.input_kind() {
+            let (entity, binding_button) = dialogs.single();
+            let mut binding = buttons
+                .get_mut(binding_button.0)
+                .expect("binding dialog should point to a button with binding");
+
+            if let Some((_, conflict_action)) = settings
+                .controls
+                .mappings
+                .iter()
+                .filter(|&(_, action)| action != binding.action)
+                .find(|(inputs, _)| inputs.contains(&input_kind.into()))
+            {
+                let mut text = binding_labels.single_mut();
+                text.sections[0].value =
+                    format!("Input \"{input_kind}\" is already used by \"{conflict_action:?}\"",);
+
+                commands
+                    .entity(entity)
+                    .insert(BindingConflict(input_kind))
+                    .with_children(|parent| {
+                        parent.spawn(NodeBundle::default()).with_children(|parent| {
+                            for button in ConflictButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(&theme, button.to_string()),
+                                ));
+                            }
+                        });
+                    });
+            } else {
+                binding.input_kind = Some(input_kind);
+                commands.entity(modals.single()).despawn_recursive();
+            }
+        }
+    }
+
+    fn conflict_button_system(
+        mut commands: Commands,
+        conflict_buttons: Query<(&Interaction, &ConflictButton), Changed<Interaction>>,
+        dialogs: Query<(&BindingConflict, &BindingButton)>,
+        mut binding_buttons: Query<&mut Binding>,
+        modals: Query<Entity, With<Modal>>,
+    ) {
+        for (&interaction, conflict_button) in &conflict_buttons {
+            if interaction == Interaction::Clicked {
+                let (conflict, binding_button) = dialogs.single();
+                match conflict_button {
+                    ConflictButton::Replace => {
+                        let mut conflict_binding = binding_buttons
+                            .iter_mut()
+                            .find(|binding| binding.input_kind == Some(conflict.0))
+                            .expect("binding with the same input should exist on conflict");
+                        conflict_binding.input_kind = None;
+
+                        let mut binding = binding_buttons
+                            .get_mut(binding_button.0)
+                            .expect("binding should point to a button");
+                        binding.input_kind = Some(conflict.0);
+                        commands.entity(modals.single()).despawn_recursive();
+                    }
+                    ConflictButton::Cancel => commands.entity(modals.single()).despawn_recursive(),
+                }
+            }
+        }
+    }
+
+    fn settings_buttons_system(
         mut apply_events: EventWriter<SettingsApply>,
         mut ui_state: ResMut<NextState<UiState>>,
         buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
@@ -188,20 +327,16 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             .with_children(|parent| {
                 for action in Action::variants() {
                     let inputs = settings.controls.mappings.get(action);
-                    let text = match inputs.get_at(index) {
-                        Some(UserInput::Single(InputKind::GamepadButton(gamepad_button))) => {
-                            format!("{gamepad_button:?}")
-                        }
-                        Some(UserInput::Single(InputKind::Keyboard(keycode))) => {
-                            format!("{keycode:?}")
-                        }
-                        Some(UserInput::Single(InputKind::Mouse(mouse_button))) => {
-                            format!("{mouse_button:?}")
-                        }
-                        _ => "Empty".to_string(),
+                    let input = inputs.get_at(index).cloned();
+                    let input_kind = if let Some(UserInput::Single(input_kind)) = input {
+                        Some(input_kind)
+                    } else {
+                        None
                     };
-
-                    parent.spawn(TextButtonBundle::normal(theme, text));
+                    parent.spawn((
+                        Binding { action, input_kind },
+                        TextButtonBundle::normal(theme, String::new()),
+                    ));
                 }
             });
     }
@@ -243,7 +378,28 @@ enum SettingsTab {
 }
 
 #[derive(Clone, Component, Copy, Display, EnumIter)]
-pub(super) enum SettingsButton {
+enum SettingsButton {
     Ok,
     Cancel,
 }
+
+#[derive(Clone, Component, Copy, Display, EnumIter)]
+enum ConflictButton {
+    Replace,
+    Cancel,
+}
+
+#[derive(Component)]
+struct Binding {
+    action: Action,
+    input_kind: Option<InputKind>,
+}
+
+#[derive(Component)]
+struct BindingButton(Entity);
+
+#[derive(Component)]
+struct BindingConflict(InputKind);
+
+#[derive(Component)]
+struct BindingLabel;

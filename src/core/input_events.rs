@@ -27,10 +27,11 @@ impl InputEvents<'_, '_> {
             return Some(input.into());
         }
 
+        // TODO: Check on release until buttons in Bevy could be triggered on it.
         if let Some(input) = self
             .mouse_buttons
             .iter()
-            .find(|input| input.state == ButtonState::Released)
+            .find(|input| input.state == ButtonState::Pressed)
         {
             return Some(input.button.into());
         }

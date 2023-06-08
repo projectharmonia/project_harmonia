@@ -16,6 +16,8 @@ pub(crate) struct Theme {
     pub(crate) button: ButtonTheme,
     pub(crate) text: TextTheme,
     pub(crate) checkbox: CheckboxTheme,
+    pub(crate) modal: ModalTheme,
+    pub(crate) element: ElementTheme,
     pub(crate) global_padding: UiRect,
 }
 
@@ -80,6 +82,19 @@ impl FromWorld for Theme {
                 },
                 tick_color: Color::rgb(0.35, 0.75, 0.35),
             },
+            modal: ModalTheme {
+                background_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
+                panel_color: Color::rgb(0.8, 0.8, 0.8),
+            },
+            element: ElementTheme {
+                binding_dialog: Style {
+                    size: Size::new(Val::Px(600.0), Val::Px(200.0)),
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+            },
             global_padding: UiRect::all(Val::Px(20.0)),
         }
     }
@@ -105,4 +120,13 @@ pub(crate) struct CheckboxTheme {
     pub(crate) button: Style,
     pub(crate) tick: Style,
     pub(crate) tick_color: Color,
+}
+
+pub(crate) struct ModalTheme {
+    pub(crate) background_color: Color,
+    pub(crate) panel_color: Color,
+}
+
+pub(crate) struct ElementTheme {
+    pub(crate) binding_dialog: Style,
 }
