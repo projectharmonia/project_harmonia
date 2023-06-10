@@ -171,7 +171,7 @@ impl SettingsMenuPlugin {
                                     BindingLabel,
                                     LabelBundle::new(
                                         &theme,
-                                        format!("Binding {}, press any key", mapping.action),
+                                        format!("Binding \"{}\", press any key", mapping.action),
                                     ),
                                 ));
                                 parent.spawn(NodeBundle::default()).with_children(|parent| {
@@ -210,7 +210,7 @@ impl SettingsMenuPlugin {
             {
                 let mut text = binding_labels.single_mut();
                 text.sections[0].value = format!(
-                    "Input \"{input_kind}\" is already used by \"{:?}\"",
+                    "\"{input_kind}\" is already used by \"{:?}\"",
                     mapping.action
                 );
 
