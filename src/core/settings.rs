@@ -38,13 +38,14 @@ pub(super) struct SettingsApplySet;
 #[derive(Default)]
 pub(crate) struct SettingsApply;
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Resource, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]
 #[serde(default)]
 pub(crate) struct Settings {
     pub(crate) video: VideoSettings,
     // TODO: TOML implementations have issues with [`HashSet`]:
     // https://github.com/alexcrichton/toml-rs/issues/469 and https://github.com/ordian/toml_edit/issues/319
     #[serde(skip)]
+    #[reflect(ignore)]
     pub(crate) controls: ControlsSettings,
     pub(crate) developer: DeveloperSettings,
 }
@@ -78,7 +79,7 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub(crate) struct VideoSettings {
     pub(crate) msaa: u32,
@@ -123,7 +124,7 @@ impl Default for ControlsSettings {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub(crate) struct DeveloperSettings {
     pub(crate) game_inspector: bool,

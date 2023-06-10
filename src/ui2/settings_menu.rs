@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::GetPath};
 use leafwing_input_manager::{
     user_input::{InputKind, UserInput},
     Actionlike,
@@ -10,7 +10,7 @@ use super::{
     ui_state::UiState,
     widget::{
         button::{ButtonText, ExclusiveButton, Pressed, TextButtonBundle},
-        checkbox::CheckboxBundle,
+        checkbox::{Checkbox, CheckboxBundle},
         ui_root::UiRoot,
         LabelBundle, Modal, ModalBundle,
     },
@@ -257,21 +257,54 @@ impl SettingsMenuPlugin {
 
     fn settings_buttons_system(
         mut apply_events: EventWriter<SettingsApply>,
+        mut settings: ResMut<Settings>,
         mut ui_state: ResMut<NextState<UiState>>,
         buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
+        mapping_buttons: Query<&Mapping>,
+        checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
         for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
-                match button {
-                    SettingsButton::Ok => {
-                        apply_events.send_default();
-                        ui_state.set(UiState::MainMenu);
+            if interaction != Interaction::Clicked {
+                continue;
+            }
+
+            match button {
+                SettingsButton::Ok => {
+                    for (checkbox, field) in &checkboxes {
+                        let field_value = settings
+                            .path_mut::<bool>(field.0)
+                            .expect("fields with checkboxes should be stored as bools");
+                        *field_value = checkbox.0;
                     }
-                    SettingsButton::Cancel => ui_state.set(UiState::MainMenu),
+                    for mapping in &mapping_buttons {
+                        if let Some(input_kind) = mapping.input_kind {
+                            settings.controls.mappings.insert_at(
+                                input_kind,
+                                mapping.action,
+                                mapping.index,
+                            );
+                        } else {
+                            settings
+                                .controls
+                                .mappings
+                                .remove_at(mapping.action, mapping.index);
+                        }
+                    }
+                    apply_events.send_default();
+                    ui_state.set(UiState::MainMenu);
                 }
+                SettingsButton::Cancel => ui_state.set(UiState::MainMenu),
             }
         }
     }
+}
+
+/// Creates [`SettingsField`] from passed field.
+macro_rules! setting_field {
+    ($path:expr) => {{
+        let _validate_field = $path;
+        SettingsField(stringify!($path).split_once('.').unwrap().1)
+    }};
 }
 
 fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
@@ -284,10 +317,13 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn(CheckboxBundle::new(
-                theme,
-                settings.video.perf_stats,
-                "Display performance stats",
+            parent.spawn((
+                CheckboxBundle::new(
+                    theme,
+                    settings.video.perf_stats,
+                    "Display performance stats",
+                ),
+                setting_field!(settings.video.perf_stats),
             ));
         });
 }
@@ -333,7 +369,11 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                         None
                     };
                     parent.spawn((
-                        Mapping { action, input_kind },
+                        Mapping {
+                            action,
+                            input_kind,
+                            index,
+                        },
                         TextButtonBundle::normal(theme, String::new()),
                     ));
                 }
@@ -351,20 +391,21 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn(CheckboxBundle::new(
-                theme,
-                settings.developer.game_inspector,
-                "Enable game inspector",
+            parent.spawn((
+                CheckboxBundle::new(
+                    theme,
+                    settings.developer.debug_collisions,
+                    "Debug collisions",
+                ),
+                setting_field!(settings.developer.debug_collisions),
             ));
-            parent.spawn(CheckboxBundle::new(
-                theme,
-                settings.developer.debug_collisions,
-                "Debug collisions",
-            ));
-            parent.spawn(CheckboxBundle::new(
-                theme,
-                settings.developer.debug_paths,
-                "Debug navigation paths",
+            parent.spawn((
+                CheckboxBundle::new(
+                    theme,
+                    settings.developer.debug_paths,
+                    "Debug navigation paths",
+                ),
+                setting_field!(settings.developer.debug_paths),
             ));
         });
 }
@@ -391,6 +432,7 @@ enum ConflictDialogButton {
 /// Stores information about button mapping.
 #[derive(Component)]
 struct Mapping {
+    index: usize,
     action: Action,
     input_kind: Option<InputKind>,
 }
@@ -406,3 +448,6 @@ struct ConflictButton(Entity);
 /// Marker for label with binding dialog text.
 #[derive(Component)]
 struct BindingLabel;
+
+#[derive(Component)]
+struct SettingsField(&'static str);
