@@ -162,7 +162,7 @@ impl SettingsMenuPlugin {
                                 BindingButton(entity),
                                 NodeBundle {
                                     style: theme.element.binding_dialog.clone(),
-                                    background_color: theme.modal.panel_color.into(),
+                                    background_color: theme.panel_color.into(),
                                     ..Default::default()
                                 },
                             ))

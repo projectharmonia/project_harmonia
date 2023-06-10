@@ -57,7 +57,7 @@ impl ModalBundle {
                     ..Default::default()
                 },
                 focus_policy: FocusPolicy::Block,
-                background_color: theme.modal.background_color.into(),
+                background_color: theme.modal_color.into(),
                 ..Default::default()
             },
         }
