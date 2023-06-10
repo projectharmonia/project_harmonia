@@ -4,6 +4,7 @@ mod settings_menu;
 mod theme;
 mod ui_state;
 mod widget;
+mod world_browser;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
@@ -13,6 +14,7 @@ use settings_menu::SettingsMenuPlugin;
 use theme::ThemePlugin;
 use ui_state::UiStatePlugin;
 use widget::WidgetPlugin;
+use world_browser::WorldBrowserPlugin;
 
 pub(super) struct UiPlugins;
 
@@ -25,5 +27,6 @@ impl PluginGroup for UiPlugins {
             .add(MainMenuPlugin)
             .add(SettingsMenuPlugin)
             .add(ThemePlugin)
+            .add(WorldBrowserPlugin)
     }
 }

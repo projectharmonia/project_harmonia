@@ -34,6 +34,13 @@ impl LabelBundle {
             text_bundle: TextBundle::from_section(text, theme.text.normal.clone()),
         }
     }
+
+    pub(super) fn large(theme: &Theme, text: impl Into<String>) -> Self {
+        Self {
+            label: Label,
+            text_bundle: TextBundle::from_section(text, theme.text.large.clone()),
+        }
+    }
 }
 
 #[derive(Bundle)]

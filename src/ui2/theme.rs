@@ -56,6 +56,11 @@ impl FromWorld for Theme {
                     font_size: 35.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
+                large: TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 45.0,
+                    color: Color::rgb(0.1, 0.1, 0.1),
+                },
                 large_button: TextStyle {
                     font: font_handle,
                     font_size: 40.0,
@@ -107,6 +112,7 @@ pub(crate) struct ButtonTheme {
 pub(crate) struct TextTheme {
     pub(crate) normal: TextStyle,
     pub(crate) normal_button: TextStyle,
+    pub(crate) large: TextStyle,
     pub(crate) large_button: TextStyle,
 }
 
