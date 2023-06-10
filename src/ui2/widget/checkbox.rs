@@ -18,14 +18,24 @@ impl CheckboxPlugin {
     fn init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
-        checkboxes: Query<(Entity, &CheckboxText), Added<CheckboxText>>,
+        checkboxes: Query<(Entity, &Checkbox, &CheckboxText), Added<CheckboxText>>,
     ) {
-        for (entity, text) in &checkboxes {
+        for (entity, checkbox, text) in &checkboxes {
             commmands.entity(entity).with_children(|parent| {
-                parent.spawn(ButtonBundle {
-                    style: theme.checkbox.button.clone(),
-                    ..Default::default()
-                });
+                parent
+                    .spawn(ButtonBundle {
+                        style: theme.checkbox.button.clone(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        if checkbox.0 {
+                            parent.spawn(NodeBundle {
+                                style: theme.checkbox.tick.clone(),
+                                background_color: theme.checkbox.tick_color.into(),
+                                ..Default::default()
+                            });
+                        }
+                    });
                 parent.spawn(TextBundle::from_section(
                     text.0.clone(),
                     theme.text.normal.clone(),
@@ -47,6 +57,7 @@ impl CheckboxPlugin {
         }
     }
 
+    /// Won't be triggered after spawning because button child will be spawned at the next frame.
     fn tick_system(
         mut commmands: Commands,
         theme: Res<Theme>,
