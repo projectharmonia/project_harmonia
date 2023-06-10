@@ -28,7 +28,7 @@ pub(super) struct LabelBundle {
 }
 
 impl LabelBundle {
-    pub(super) fn new(theme: &Theme, text: impl Into<String>) -> Self {
+    pub(super) fn normal(theme: &Theme, text: impl Into<String>) -> Self {
         Self {
             label: Label,
             text_bundle: TextBundle::from_section(text, theme.text.normal.clone()),

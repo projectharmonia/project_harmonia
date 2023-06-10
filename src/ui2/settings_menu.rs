@@ -169,7 +169,7 @@ impl SettingsMenuPlugin {
                             .with_children(|parent| {
                                 parent.spawn((
                                     BindingLabel,
-                                    LabelBundle::new(
+                                    LabelBundle::normal(
                                         &theme,
                                         format!("Binding \"{}\", press any key", mapping.action),
                                     ),
