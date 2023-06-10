@@ -16,9 +16,10 @@ pub(crate) struct Theme {
     pub(crate) button: ButtonTheme,
     pub(crate) text: TextTheme,
     pub(crate) checkbox: CheckboxTheme,
+    pub(crate) gap: GapTheme,
+    pub(crate) padding: PaddingTheme,
     pub(crate) modal_color: Color,
     pub(crate) panel_color: Color,
-    pub(crate) global_padding: UiRect,
 }
 
 impl FromWorld for Theme {
@@ -29,14 +30,12 @@ impl FromWorld for Theme {
             button: ButtonTheme {
                 normal: Style {
                     size: Size::new(Val::Px(170.0), Val::Px(40.0)),
-                    margin: UiRect::all(Val::Px(5.0)),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 large: Style {
                     size: Size::new(Val::Px(200.0), Val::Px(60.0)),
-                    margin: UiRect::all(Val::Px(15.0)),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
@@ -82,9 +81,16 @@ impl FromWorld for Theme {
                 },
                 tick_color: Color::rgb(0.35, 0.75, 0.35),
             },
+            gap: GapTheme {
+                normal: Size::all(Val::Px(15.0)),
+                large: Size::all(Val::Px(25.0)),
+            },
+            padding: PaddingTheme {
+                normal: UiRect::all(Val::Px(10.0)),
+                global: UiRect::all(Val::Px(20.0)),
+            },
             modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
             panel_color: Color::rgb(0.8, 0.8, 0.8),
-            global_padding: UiRect::all(Val::Px(20.0)),
         }
     }
 }
@@ -109,4 +115,13 @@ pub(crate) struct CheckboxTheme {
     pub(crate) button: Style,
     pub(crate) tick: Style,
     pub(crate) tick_color: Color,
+}
+pub(crate) struct GapTheme {
+    pub(crate) normal: Size,
+    pub(crate) large: Size,
+}
+
+pub(crate) struct PaddingTheme {
+    pub(crate) normal: UiRect,
+    pub(crate) global: UiRect,
 }

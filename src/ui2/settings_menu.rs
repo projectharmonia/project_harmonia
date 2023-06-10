@@ -48,7 +48,7 @@ impl SettingsMenuPlugin {
                     style: Style {
                         flex_direction: FlexDirection::Column,
                         size: Size::all(Val::Percent(100.0)),
-                        padding: theme.global_padding,
+                        padding: theme.padding.global,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -77,7 +77,17 @@ impl SettingsMenuPlugin {
 
                 for tab in SettingsTab::iter() {
                     parent
-                        .spawn((tab, NodeBundle::default()))
+                        .spawn((
+                            tab,
+                            NodeBundle {
+                                style: Style {
+                                    padding: theme.padding.normal,
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            },
+                        ))
                         .with_children(|parent| match tab {
                             SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
                             SettingsTab::Controls => setup_controls_tab(parent, &theme, &settings),
@@ -93,6 +103,7 @@ impl SettingsMenuPlugin {
                             align_items: AlignItems::End,
                             size: Size::all(Val::Percent(100.0)),
                             justify_content: JustifyContent::End,
+                            gap: theme.gap.normal,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -180,19 +191,27 @@ impl SettingsMenuPlugin {
                                         format!("Binding \"{}\", press any key", mapping.action),
                                     ),
                                 ));
-                                parent.spawn(NodeBundle::default()).with_children(|parent| {
-                                    for dialog_button in BindingDialogButton::iter() {
-                                        let mut button_bundle = TextButtonBundle::normal(
-                                            &theme,
-                                            dialog_button.to_string(),
-                                        );
-                                        if dialog_button == BindingDialogButton::Replace {
-                                            button_bundle.button_bundle.style.display =
-                                                Display::None;
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            gap: theme.gap.normal,
+                                            ..Default::default()
+                                        },
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        for dialog_button in BindingDialogButton::iter() {
+                                            let mut button_bundle = TextButtonBundle::normal(
+                                                &theme,
+                                                dialog_button.to_string(),
+                                            );
+                                            if dialog_button == BindingDialogButton::Replace {
+                                                button_bundle.button_bundle.style.display =
+                                                    Display::None;
+                                            }
+                                            parent.spawn((dialog_button, button_bundle));
                                         }
-                                        parent.spawn((dialog_button, button_bundle));
-                                    }
-                                });
+                                    });
                             });
                     });
             });
@@ -335,6 +354,7 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
+                // gap: theme.gap.normal,
                 ..Default::default()
             },
             ..Default::default()
@@ -353,12 +373,11 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
 
 fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
     // TODO 0.11: Use grid layout.
-    const PADDING: f32 = 7.5;
+    const GRID_GAP: Size = Size::all(Val::Px(20.0));
     parent
         .spawn(NodeBundle {
             style: Style {
-                gap: Size::all(Val::Px(PADDING * 2.0)),
-                padding: UiRect::all(Val::Px(PADDING)),
+                gap: GRID_GAP,
                 flex_direction: FlexDirection::Column,
                 ..Default::default()
             },
@@ -378,6 +397,7 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             .spawn(NodeBundle {
                 style: Style {
                     flex_direction: FlexDirection::Column,
+                    gap: theme.gap.normal,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -409,6 +429,7 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
+                gap: theme.gap.normal,
                 ..Default::default()
             },
             ..Default::default()
