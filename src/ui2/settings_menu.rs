@@ -161,7 +161,13 @@ impl SettingsMenuPlugin {
                             .spawn((
                                 BindingButton(entity),
                                 NodeBundle {
-                                    style: theme.element.binding_dialog.clone(),
+                                    style: Style {
+                                        size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
+                                        flex_direction: FlexDirection::Column,
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        ..Default::default()
+                                    },
                                     background_color: theme.panel_color.into(),
                                     ..Default::default()
                                 },
