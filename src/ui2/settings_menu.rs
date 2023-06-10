@@ -31,10 +31,8 @@ impl Plugin for SettingsMenuPlugin {
                     Self::mapping_button_system,
                     Self::tab_display_system,
                     Self::binding_dialog_system,
-                    Self::binding_confirmation_system
-                        .run_if(any_with_component::<BindingButton>())
-                        .run_if(not(any_with_component::<ConflictDialogButton>())),
-                    Self::conflict_dialog_system,
+                    Self::binding_confirmation_system.run_if(any_with_component::<BindingButton>()),
+                    Self::binding_dialog_buttons_system,
                     Self::settings_buttons_system,
                 )
                     .in_set(OnUpdate(UiState::Settings)),
@@ -148,9 +146,9 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
-        buttons: Query<(Entity, &Interaction), (Changed<Interaction>, With<Mapping>)>,
+        buttons: Query<(Entity, &Interaction, &Mapping), Changed<Interaction>>,
     ) {
-        for (entity, &interaction) in &buttons {
+        for (entity, &interaction, mapping) in &buttons {
             if interaction != Interaction::Clicked {
                 continue;
             }
@@ -171,8 +169,24 @@ impl SettingsMenuPlugin {
                             .with_children(|parent| {
                                 parent.spawn((
                                     BindingLabel,
-                                    LabelBundle::new(&theme, "Press any key"),
+                                    LabelBundle::new(
+                                        &theme,
+                                        format!("Binding {}, press any key", mapping.action),
+                                    ),
                                 ));
+                                parent.spawn(NodeBundle::default()).with_children(|parent| {
+                                    for dialog_button in BindingDialogButton::iter() {
+                                        let mut button_bundle = TextButtonBundle::normal(
+                                            &theme,
+                                            dialog_button.to_string(),
+                                        );
+                                        if dialog_button == BindingDialogButton::Replace {
+                                            button_bundle.button_bundle.style.display =
+                                                Display::None;
+                                        }
+                                        parent.spawn((dialog_button, button_bundle));
+                                    }
+                                });
                             });
                     });
             });
@@ -182,11 +196,11 @@ impl SettingsMenuPlugin {
     fn binding_confirmation_system(
         mut commands: Commands,
         mut input_events: InputEvents,
-        theme: Res<Theme>,
         dialogs: Query<(Entity, &BindingButton)>,
         modals: Query<Entity, With<Modal>>,
         mut mapping_buttons: Query<(Entity, &mut Mapping)>,
         mut binding_labels: Query<&mut Text, With<BindingLabel>>,
+        mut dialog_buttons: Query<(&mut Style, &BindingDialogButton)>,
     ) {
         if let Some(input_kind) = input_events.input_kind() {
             let (dialog_entity, binding_button) = dialogs.single();
@@ -202,17 +216,13 @@ impl SettingsMenuPlugin {
 
                 commands
                     .entity(dialog_entity)
-                    .insert(ConflictButton(conflict_entity))
-                    .with_children(|parent| {
-                        parent.spawn(NodeBundle::default()).with_children(|parent| {
-                            for button in ConflictDialogButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(&theme, button.to_string()),
-                                ));
-                            }
-                        });
-                    });
+                    .insert(ConflictButton(conflict_entity));
+
+                let (mut style, _) = dialog_buttons
+                    .iter_mut()
+                    .find(|(_, &button)| button == BindingDialogButton::Replace)
+                    .expect("replace button should be spawned with the dialog");
+                style.display = Display::Flex;
             } else {
                 let mut mapping = mapping_buttons
                     .get_component_mut::<Mapping>(binding_button.0)
@@ -223,18 +233,20 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn conflict_dialog_system(
+    fn binding_dialog_buttons_system(
         mut commands: Commands,
-        conflict_buttons: Query<(&Interaction, &ConflictDialogButton), Changed<Interaction>>,
-        dialogs: Query<(&ConflictButton, &BindingButton)>,
+        conflict_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
+        dialogs: Query<(Option<&ConflictButton>, &BindingButton)>,
         mut mapping_buttons: Query<&mut Mapping>,
         modals: Query<Entity, With<Modal>>,
     ) {
         for (&interaction, dialog_button) in &conflict_buttons {
             if interaction == Interaction::Clicked {
-                let (conflict_button, binding_button) = dialogs.single();
                 match dialog_button {
-                    ConflictDialogButton::Replace => {
+                    BindingDialogButton::Replace => {
+                        let (conflict_button, binding_button) = dialogs.single();
+                        let conflict_button = conflict_button
+                            .expect("replace button should be clickable only with conflict");
                         let mut conflict_mapping = mapping_buttons
                             .get_mut(conflict_button.0)
                             .expect("binding conflict should point to a button");
@@ -245,12 +257,17 @@ impl SettingsMenuPlugin {
                             .get_mut(binding_button.0)
                             .expect("binding should point to a button");
                         mapping.input_kind = input_kind;
-                        commands.entity(modals.single()).despawn_recursive();
                     }
-                    ConflictDialogButton::Cancel => {
-                        commands.entity(modals.single()).despawn_recursive()
+                    BindingDialogButton::Delete => {
+                        let (_, binding_button) = dialogs.single();
+                        let mut mapping = mapping_buttons
+                            .get_mut(binding_button.0)
+                            .expect("binding should point to a button");
+                        mapping.input_kind = None;
                     }
+                    BindingDialogButton::Cancel => (),
                 }
+                commands.entity(modals.single()).despawn_recursive();
             }
         }
     }
@@ -423,9 +440,10 @@ enum SettingsButton {
     Cancel,
 }
 
-#[derive(Clone, Component, Copy, Display, EnumIter)]
-enum ConflictDialogButton {
+#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
+enum BindingDialogButton {
     Replace,
+    Delete,
     Cancel,
 }
 

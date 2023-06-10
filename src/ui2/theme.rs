@@ -88,7 +88,7 @@ impl FromWorld for Theme {
             },
             element: ElementTheme {
                 binding_dialog: Style {
-                    size: Size::new(Val::Px(600.0), Val::Px(200.0)),
+                    size: Size::new(Val::Px(700.0), Val::Px(200.0)),
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,

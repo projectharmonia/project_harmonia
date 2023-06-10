@@ -134,7 +134,7 @@ pub(crate) struct TextButtonBundle {
     button_text: ButtonText,
 
     #[bundle]
-    button_bundle: ButtonBundle,
+    pub(crate) button_bundle: ButtonBundle,
 }
 
 impl TextButtonBundle {
