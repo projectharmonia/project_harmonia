@@ -339,7 +339,7 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
-                // gap: theme.gap.normal,
+                gap: theme.gap.normal,
                 ..Default::default()
             },
             ..Default::default()
