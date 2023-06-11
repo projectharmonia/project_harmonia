@@ -50,58 +50,28 @@ impl WorldBrowserPlugin {
             ))
             .with_children(|parent| {
                 parent.spawn(LabelBundle::large(&theme, "World browser"));
-
-                let world_names = game_paths
-                    .get_world_names()
-                    .map_err(|e| error!("unable to get world names: {e}"))
-                    .unwrap_or_default();
-                for world_name in world_names {
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
-                                padding: theme.padding.normal,
-                                ..Default::default()
-                            },
-                            background_color: theme.panel_color.into(),
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::all(Val::Percent(100.0)),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::FlexStart,
+                            padding: theme.padding.normal,
+                            gap: theme.gap.normal,
                             ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            let node_entity = parent.parent_entity();
-                            let label_entity =
-                                parent.spawn(LabelBundle::large(&theme, world_name)).id();
-                            parent
-                                .spawn(NodeBundle {
-                                    style: Style {
-                                        size: Size::all(Val::Percent(100.0)),
-                                        ..Default::default()
-                                    },
-                                    ..Default::default()
-                                })
-                                .add_child(label_entity);
-                            parent
-                                .spawn(NodeBundle {
-                                    style: Style {
-                                        flex_direction: FlexDirection::Column,
-                                        gap: theme.gap.normal,
-                                        ..Default::default()
-                                    },
-                                    ..Default::default()
-                                })
-                                .with_children(|parent| {
-                                    for button in WorldButton::iter() {
-                                        parent.spawn((
-                                            button,
-                                            WorldNode {
-                                                label_entity,
-                                                node_entity,
-                                            },
-                                            TextButtonBundle::normal(&theme, button.to_string()),
-                                        ));
-                                    }
-                                });
-                        });
-                }
+                        },
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        let world_names = game_paths
+                            .get_world_names()
+                            .map_err(|e| error!("unable to get world names: {e}"))
+                            .unwrap_or_default();
+                        for world_name in world_names {
+                            setup_world_node(parent, &theme, world_name);
+                        }
+                    });
             });
     }
 
@@ -209,6 +179,53 @@ impl WorldBrowserPlugin {
 
         Ok(())
     }
+}
+
+fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<String>) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                padding: theme.padding.normal,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            let node_entity = parent.parent_entity();
+            let label_entity = parent.spawn(LabelBundle::large(theme, label)).id();
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        size: Size::all(Val::Percent(100.0)),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .add_child(label_entity);
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        gap: theme.gap.normal,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    for button in WorldButton::iter() {
+                        parent.spawn((
+                            button,
+                            WorldNode {
+                                label_entity,
+                                node_entity,
+                            },
+                            TextButtonBundle::normal(theme, button.to_string()),
+                        ));
+                    }
+                });
+        });
 }
 
 #[derive(Component, EnumIter, Clone, Copy, Display)]

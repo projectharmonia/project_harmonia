@@ -88,10 +88,14 @@ impl WorldMenuPlugin {
                         ))
                         .with_children(|parent| match tab {
                             WorldTab::Families => {
-                                setup_world_tab::<FamilyButton, _>(parent, &theme, &families)
+                                for (entity, name) in &families {
+                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+                                }
                             }
                             WorldTab::Cities => {
-                                setup_world_tab::<CityButton, _>(parent, &theme, &cities)
+                                for (entity, name) in &cities {
+                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+                                }
                             }
                         })
                         .id();
@@ -173,54 +177,55 @@ impl WorldMenuPlugin {
     }
 }
 
-fn setup_world_tab<'a, E, I>(parent: &mut ChildBuilder, theme: &Theme, iterator: I)
-where
+fn setup_entity_node<E>(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    entity: Entity,
+    label: impl Into<String>,
+) where
     E: IntoEnumIterator + Clone + Copy + Component + Display,
-    I: IntoIterator<Item = (Entity, &'a Name)> + 'a,
 {
-    for (entity, name) in iterator {
-        parent
-            .spawn(NodeBundle {
-                style: Style {
-                    size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
-                    padding: theme.padding.normal,
-                    ..Default::default()
-                },
-                background_color: theme.panel_color.into(),
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                padding: theme.padding.normal,
                 ..Default::default()
-            })
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            size: Size::all(Val::Percent(100.0)),
-                            ..Default::default()
-                        },
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        size: Size::all(Val::Percent(100.0)),
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::large(&theme, &*name));
-                    });
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            gap: theme.gap.normal,
-                            ..Default::default()
-                        },
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::large(theme, label));
+                });
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        for button in E::iter() {
-                            parent.spawn((
-                                button,
-                                WorldEntity(entity),
-                                TextButtonBundle::normal(&theme, button.to_string()),
-                            ));
-                        }
-                    });
-            });
-    }
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    for button in E::iter() {
+                        parent.spawn((
+                            button,
+                            WorldEntity(entity),
+                            TextButtonBundle::normal(theme, button.to_string()),
+                        ));
+                    }
+                });
+        });
 }
 
 #[derive(Clone, Component, Copy, Display, EnumIter)]
