@@ -11,6 +11,7 @@ impl Plugin for ButtonPlugin {
                 Self::init_system,
                 Self::interaction_system,
                 Self::text_update_system,
+                Self::tab_switching_system,
             ))
             .add_systems((Self::exclusive_press_system, Self::exclusive_unpress_system).chain());
     }
@@ -100,6 +101,22 @@ impl ButtonPlugin {
             }
         }
     }
+
+    fn tab_switching_system(
+        tabs: Query<(&Pressed, &TabContent), Changed<Pressed>>,
+        mut tab_nodes: Query<&mut Style>,
+    ) {
+        for (pressed, tab_content) in &tabs {
+            let mut style = tab_nodes
+                .get_mut(tab_content.0)
+                .expect("tabs should point to nodes with style component");
+            style.display = if pressed.0 {
+                Display::Flex
+            } else {
+                Display::None
+            };
+        }
+    }
 }
 
 /// Makes the button togglable.
@@ -113,6 +130,10 @@ pub(crate) struct Pressed(pub(crate) bool);
 /// The user can click on any button to check it, and that button will replace the existing one as the checked button in the parent node.
 #[derive(Component)]
 pub(crate) struct ExclusiveButton;
+
+/// Makes button behave like tab by changing visibility of the stored entity depending on the value of [`Pressed`].
+#[derive(Component)]
+pub(crate) struct TabContent(pub(crate) Entity);
 
 /// An event that triggered when button with [`ExclusiveButton`] is clicked.
 ///

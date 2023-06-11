@@ -8,7 +8,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     widget::{
-        button::{ButtonText, ExclusiveButton, Pressed, TextButtonBundle},
+        button::{ButtonText, ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         checkbox::{Checkbox, CheckboxBundle},
         ui_root::UiRoot,
         LabelBundle, Modal, ModalBundle,
@@ -29,7 +29,6 @@ impl Plugin for SettingsMenuPlugin {
             .add_systems(
                 (
                     Self::mapping_button_system,
-                    Self::tab_display_system,
                     Self::binding_dialog_system,
                     Self::binding_confirmation_system.run_if(any_with_component::<BindingButton>()),
                     Self::binding_dialog_buttons_system,
@@ -41,7 +40,12 @@ impl Plugin for SettingsMenuPlugin {
 }
 
 impl SettingsMenuPlugin {
-    fn setup_system(mut commands: Commands, settings: Res<Settings>, theme: Res<Theme>) {
+    fn setup_system(
+        mut commands: Commands,
+        mut tab_commands: Commands,
+        settings: Res<Settings>,
+        theme: Res<Theme>,
+    ) {
         commands
             .spawn((
                 NodeBundle {
@@ -56,7 +60,7 @@ impl SettingsMenuPlugin {
                 UiRoot,
             ))
             .with_children(|parent| {
-                parent
+                let tabs_entity = parent
                     .spawn(NodeBundle {
                         style: Style {
                             justify_content: JustifyContent::Center,
@@ -64,37 +68,35 @@ impl SettingsMenuPlugin {
                         },
                         ..Default::default()
                     })
-                    .with_children(|parent| {
-                        for (index, tab) in SettingsTab::iter().enumerate() {
-                            parent.spawn((
-                                tab,
-                                ExclusiveButton,
-                                Pressed(index == 0),
-                                TextButtonBundle::normal(&theme, tab.to_string()),
-                            ));
-                        }
-                    });
+                    .id();
 
-                for tab in SettingsTab::iter() {
-                    parent
-                        .spawn((
-                            tab,
-                            NodeBundle {
-                                style: Style {
-                                    padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                for (index, tab) in SettingsTab::iter().enumerate() {
+                    let content_entity = parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                padding: theme.padding.normal,
+                                gap: theme.gap.normal,
                                 ..Default::default()
                             },
-                        ))
+                            ..Default::default()
+                        })
                         .with_children(|parent| match tab {
                             SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
                             SettingsTab::Controls => setup_controls_tab(parent, &theme, &settings),
                             SettingsTab::Developer => {
                                 setup_developer_tab(parent, &theme, &settings)
                             }
-                        });
+                        })
+                        .id();
+
+                    tab_commands
+                        .spawn((
+                            TabContent(content_entity),
+                            ExclusiveButton,
+                            Pressed(index == 0),
+                            TextButtonBundle::normal(&theme, tab.to_string()),
+                        ))
+                        .set_parent(tabs_entity);
                 }
 
                 parent
@@ -132,23 +134,6 @@ impl SettingsMenuPlugin {
                     format!("{mouse_button:?}")
                 }
                 _ => "Empty".to_string(),
-            };
-        }
-    }
-
-    fn tab_display_system(
-        tabs: Query<(&Pressed, &SettingsTab), Changed<Pressed>>,
-        mut tab_nodes: Query<(&mut Style, &SettingsTab), Without<Pressed>>,
-    ) {
-        for (pressed, tab) in &tabs {
-            let (mut style, _) = tab_nodes
-                .iter_mut()
-                .find(|&(_, node_tab)| node_tab == tab)
-                .expect("tabs should have associated nodes");
-            style.display = if pressed.0 {
-                Display::Flex
-            } else {
-                Display::None
             };
         }
     }
@@ -454,7 +439,7 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
         });
 }
 
-#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
+#[derive(Display, EnumIter)]
 enum SettingsTab {
     Video,
     Controls,
