@@ -92,8 +92,10 @@ impl WorldBrowserPlugin {
                                     for button in WorldButton::iter() {
                                         parent.spawn((
                                             button,
-                                            WorldLabel(label_entity),
-                                            WorldNode(node_entity),
+                                            WorldNode {
+                                                label_entity,
+                                                node_entity,
+                                            },
                                             TextButtonBundle::normal(&theme, button.to_string()),
                                         ));
                                     }
@@ -107,20 +109,17 @@ impl WorldBrowserPlugin {
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         theme: Res<Theme>,
-        world_buttons: Query<
-            (&Interaction, &WorldButton, &WorldLabel, &WorldNode),
-            Changed<Interaction>,
-        >,
+        world_buttons: Query<(&Interaction, &WorldButton, &WorldNode), Changed<Interaction>>,
         mut labels: Query<&mut Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, world_button, &world_label, &world_node) in &world_buttons {
+        for (&interaction, world_button, &world_node) in &world_buttons {
             if interaction != Interaction::Clicked {
                 continue;
             }
 
             let mut text = labels
-                .get_mut(world_label.0)
+                .get_mut(world_node.label_entity)
                 .expect("world label should contain text");
             let world_name = &mut text.sections[0].value;
             match world_button {
@@ -132,7 +131,7 @@ impl WorldBrowserPlugin {
                 WorldButton::Delete => {
                     commands.entity(roots.single()).with_children(|parent| {
                         parent
-                            .spawn((ModalBundle::new(&theme), world_node, world_label))
+                            .spawn((ModalBundle::new(&theme), world_node))
                             .with_children(|parent| {
                                 parent
                                     .spawn(NodeBundle {
@@ -184,15 +183,15 @@ impl WorldBrowserPlugin {
     fn remove_confirmation_system(
         mut commands: Commands,
         game_paths: Res<GamePaths>,
-        dialogs: Query<(Entity, &WorldNode, &WorldLabel), With<Modal>>,
+        dialogs: Query<(Entity, &WorldNode), With<Modal>>,
         buttons: Query<(&Interaction, &RemoveDialogButton)>,
         labels: Query<&Text>,
     ) -> Result<()> {
         for (&interaction, dialog_button) in &buttons {
             if interaction == Interaction::Clicked {
-                let (dialog_entity, world_node, world_label) = dialogs.single();
+                let (dialog_entity, world_node) = dialogs.single();
                 let text = labels
-                    .get(world_label.0)
+                    .get(world_node.label_entity)
                     .expect("world label should contain text");
                 let world_name = &text.sections[0].value;
                 match dialog_button {
@@ -200,7 +199,7 @@ impl WorldBrowserPlugin {
                         let world_path = game_paths.world_path(world_name);
                         fs::remove_file(&world_path)
                             .with_context(|| format!("unable to remove {world_path:?}"))?;
-                        commands.entity(world_node.0).despawn_recursive();
+                        commands.entity(world_node.node_entity).despawn_recursive();
                     }
                     RemoveDialogButton::Cancel => (),
                 }
@@ -225,8 +224,9 @@ enum RemoveDialogButton {
     Cancel,
 }
 
+/// Associated world node entities.
 #[derive(Clone, Component, Copy)]
-struct WorldLabel(Entity);
-
-#[derive(Clone, Component, Copy)]
-struct WorldNode(Entity);
+struct WorldNode {
+    label_entity: Entity,
+    node_entity: Entity,
+}
