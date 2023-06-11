@@ -72,6 +72,22 @@ impl WorldBrowserPlugin {
                             setup_world_node(parent, &theme, world_name);
                         }
                     });
+
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(100.0), Val::Auto),
+                            justify_content: JustifyContent::FlexStart,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn((
+                            CreateWorldButton,
+                            TextButtonBundle::normal(&theme, "Create new"),
+                        ));
+                    });
             });
     }
 
@@ -185,7 +201,7 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
     parent
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                size: Size::new(Val::Percent(50.0), Val::Percent(30.0)),
                 padding: theme.padding.normal,
                 ..Default::default()
             },
@@ -247,3 +263,6 @@ struct WorldNode {
     label_entity: Entity,
     node_entity: Entity,
 }
+
+#[derive(Component)]
+struct CreateWorldButton;
