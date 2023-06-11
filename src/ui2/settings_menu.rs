@@ -245,9 +245,9 @@ impl SettingsMenuPlugin {
 
     fn binding_dialog_buttons_system(
         mut commands: Commands,
+        mut mapping_buttons: Query<&mut Mapping>,
         conflict_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
         dialogs: Query<(Option<&ConflictButton>, &BindingButton)>,
-        mut mapping_buttons: Query<&mut Mapping>,
         modals: Query<Entity, With<Modal>>,
     ) {
         for (&interaction, dialog_button) in &conflict_buttons {
@@ -286,16 +286,16 @@ impl SettingsMenuPlugin {
         mut apply_events: EventWriter<SettingsApply>,
         mut settings: ResMut<Settings>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
+        settings_buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
-        for (&interaction, &button) in &buttons {
+        for (&interaction, &settings_button) in &settings_buttons {
             if interaction != Interaction::Clicked {
                 continue;
             }
 
-            match button {
+            match settings_button {
                 SettingsButton::Ok => {
                     for (checkbox, field) in &checkboxes {
                         let field_value = settings

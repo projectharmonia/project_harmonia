@@ -37,8 +37,8 @@ impl WorldBrowserPlugin {
             .spawn((
                 NodeBundle {
                     style: Style {
-                        flex_direction: FlexDirection::Column,
                         size: Size::all(Val::Percent(100.0)),
+                        flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::FlexStart,
                         padding: theme.padding.global,
@@ -109,11 +109,11 @@ impl WorldBrowserPlugin {
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         theme: Res<Theme>,
-        world_buttons: Query<(&Interaction, &WorldButton, &WorldNode), Changed<Interaction>>,
+        buttons: Query<(&Interaction, &WorldButton, &WorldNode), Changed<Interaction>>,
         mut labels: Query<&mut Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, world_button, &world_node) in &world_buttons {
+        for (&interaction, world_button, &world_node) in &buttons {
             if interaction != Interaction::Clicked {
                 continue;
             }
