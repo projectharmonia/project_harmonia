@@ -120,8 +120,10 @@ impl WorldMenuPlugin {
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent
-                            .spawn((CreateButton, TextButtonBundle::normal(&theme, "Create new")));
+                        parent.spawn((
+                            CreateEntityButton,
+                            TextButtonBundle::normal(&theme, "Create new"),
+                        ));
                     });
             });
     }
@@ -250,5 +252,6 @@ enum CityButton {
 #[derive(Component)]
 struct WorldEntity(Entity);
 
+/// Button that creates family or city depending on the selected [`WorldTab`].
 #[derive(Component)]
-struct CreateButton;
+struct CreateEntityButton;
