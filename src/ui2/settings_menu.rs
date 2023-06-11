@@ -7,7 +7,6 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
     theme::Theme,
-    ui_state::UiState,
     widget::{
         button::{ButtonText, ExclusiveButton, Pressed, TextButtonBundle},
         checkbox::{Checkbox, CheckboxBundle},
@@ -17,6 +16,7 @@ use super::{
 };
 use crate::core::{
     action::Action,
+    game_state::GameState,
     input_events::InputEvents,
     settings::{Settings, SettingsApply},
 };
@@ -25,7 +25,7 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(UiState::Settings)))
+        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::Settings)))
             .add_systems(
                 (
                     Self::mapping_button_system,
@@ -35,7 +35,7 @@ impl Plugin for SettingsMenuPlugin {
                     Self::binding_dialog_buttons_system,
                     Self::settings_buttons_system,
                 )
-                    .in_set(OnUpdate(UiState::Settings)),
+                    .in_set(OnUpdate(GameState::Settings)),
             );
     }
 }
@@ -300,7 +300,7 @@ impl SettingsMenuPlugin {
     fn settings_buttons_system(
         mut apply_events: EventWriter<SettingsApply>,
         mut settings: ResMut<Settings>,
-        mut ui_state: ResMut<NextState<UiState>>,
+        mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
@@ -333,9 +333,9 @@ impl SettingsMenuPlugin {
                         }
                     }
                     apply_events.send_default();
-                    ui_state.set(UiState::MainMenu);
+                    game_state.set(GameState::MainMenu);
                 }
-                SettingsButton::Cancel => ui_state.set(UiState::MainMenu),
+                SettingsButton::Cancel => game_state.set(GameState::MainMenu),
             }
         }
     }

@@ -7,12 +7,12 @@ use strum::{EnumIter, IntoEnumIterator};
 
 use crate::core::{
     game_paths::GamePaths,
+    game_state::GameState,
     game_world::{GameLoad, GameWorldPlugin, WorldName},
 };
 
 use super::{
     theme::Theme,
-    ui_state::UiState,
     widget::{button::TextButtonBundle, ui_root::UiRoot, LabelBundle, Modal, ModalBundle},
 };
 
@@ -20,13 +20,13 @@ pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(UiState::WorldBrowser)))
+        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::WorldBrowser)))
             .add_systems(
                 (
                     Self::world_buttons_system.after(GameWorldPlugin::loading_system),
                     Self::remove_confirmation_system.pipe(error),
                 )
-                    .in_set(OnUpdate(UiState::WorldBrowser)),
+                    .in_set(OnUpdate(GameState::WorldBrowser)),
             );
     }
 }

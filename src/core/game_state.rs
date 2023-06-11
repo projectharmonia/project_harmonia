@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use strum::EnumIter;
 
 pub(super) struct GameStatePlugin;
 
@@ -8,10 +9,12 @@ impl Plugin for GameStatePlugin {
     }
 }
 
-#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default, EnumIter)]
 pub(crate) enum GameState {
     #[default]
     MainMenu,
+    Settings,
+    WorldBrowser,
     FamilyEditor,
     World,
     City,

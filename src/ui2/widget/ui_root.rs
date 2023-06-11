@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
-use crate::ui2::ui_state::UiState;
+use crate::core::game_state::GameState;
 
 pub(super) struct UiRootPlugin;
 
 impl Plugin for UiRootPlugin {
     fn build(&self, app: &mut App) {
-        for state in UiState::iter() {
+        for state in GameState::iter() {
             app.add_system(Self::cleanup_system.in_schedule(OnExit(state)));
         }
     }

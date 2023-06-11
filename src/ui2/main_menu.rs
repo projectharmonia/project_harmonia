@@ -1,9 +1,10 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
+use crate::core::game_state::GameState;
+
 use super::{
     theme::Theme,
-    ui_state::UiState,
     widget::{button::TextButtonBundle, ui_root::UiRoot},
 };
 
@@ -12,8 +13,8 @@ pub(super) struct MainMenuPlugin;
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems((
-            Self::setup_system.in_schedule(OnEnter(UiState::MainMenu)),
-            Self::button_system.in_set(OnUpdate(UiState::MainMenu)),
+            Self::setup_system.in_schedule(OnEnter(GameState::MainMenu)),
+            Self::button_system.in_set(OnUpdate(GameState::MainMenu)),
         ));
     }
 }
@@ -45,14 +46,14 @@ impl MainMenuPlugin {
 
     fn button_system(
         mut exit_events: EventWriter<AppExit>,
-        mut ui_state: ResMut<NextState<UiState>>,
+        mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<(&Interaction, &MainMenuButton), Changed<Interaction>>,
     ) {
         for (interaction, button) in &buttons {
             if *interaction == Interaction::Clicked {
                 match button {
-                    MainMenuButton::Play => ui_state.set(UiState::WorldBrowser),
-                    MainMenuButton::Settings => ui_state.set(UiState::Settings),
+                    MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
+                    MainMenuButton::Settings => game_state.set(GameState::Settings),
                     MainMenuButton::Exit => exit_events.send_default(),
                 }
             }
