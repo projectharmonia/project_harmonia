@@ -10,6 +10,12 @@ impl Plugin for Camera2dPlugin {
 
 impl Camera2dPlugin {
     fn setup_system(mut commands: Commands) {
-        commands.spawn(Camera2dBundle::default());
+        commands.spawn(Camera2dBundle {
+            camera: Camera {
+                order: -1,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
     }
 }
