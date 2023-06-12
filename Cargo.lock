@@ -285,7 +285,7 @@ dependencies = [
  "async-lock",
  "async-task",
  "concurrent-queue",
- "fastrand",
+ "fastrand 1.9.0",
  "futures-lite",
  "slab",
 ]
@@ -476,7 +476,7 @@ dependencies = [
  "bevy_winit",
  "crossbeam-channel",
  "downcast-rs",
- "fastrand",
+ "fastrand 1.9.0",
  "js-sys",
  "notify",
  "parking_lot",
@@ -1763,6 +1763,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
+
+[[package]]
 name = "filetime"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1847,7 +1853,7 @@ version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a9d51ce47660b1e808d3c990b4709f2f415d928835a17dfd16991515c46bce"
 dependencies = [
- "fastrand",
+ "fastrand 1.9.0",
  "futures-core",
  "futures-io",
  "memchr",
@@ -2425,7 +2431,7 @@ dependencies = [
  "bitflags",
  "clap",
  "derive_more",
- "fastrand",
+ "fastrand 2.0.0",
  "futures-lite",
  "itertools",
  "leafwing-input-manager",
