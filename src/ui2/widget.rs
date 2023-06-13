@@ -31,14 +31,14 @@ impl LabelBundle {
     pub(super) fn normal(theme: &Theme, text: impl Into<String>) -> Self {
         Self {
             label: Label,
-            text_bundle: TextBundle::from_section(text, theme.text.normal.clone()),
+            text_bundle: TextBundle::from_section(text, theme.label.normal.clone()),
         }
     }
 
     pub(super) fn large(theme: &Theme, text: impl Into<String>) -> Self {
         Self {
             label: Label,
-            text_bundle: TextBundle::from_section(text, theme.text.large.clone()),
+            text_bundle: TextBundle::from_section(text, theme.label.large.clone()),
         }
     }
 }

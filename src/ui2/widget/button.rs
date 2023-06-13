@@ -26,8 +26,8 @@ impl ButtonPlugin {
         for (entity, text, size) in &buttons {
             commmands.entity(entity).with_children(|parent| {
                 let style = match size {
-                    ButtonSize::Normal => theme.text.normal_button.clone(),
-                    ButtonSize::Large => theme.text.large_button.clone(),
+                    ButtonSize::Normal => theme.button.normal_text.clone(),
+                    ButtonSize::Large => theme.button.large_text.clone(),
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
             });

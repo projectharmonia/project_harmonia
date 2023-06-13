@@ -38,7 +38,7 @@ impl CheckboxPlugin {
                     });
                 parent.spawn(TextBundle::from_section(
                     text.0.clone(),
-                    theme.text.normal.clone(),
+                    theme.label.normal.clone(),
                 ));
             });
         }

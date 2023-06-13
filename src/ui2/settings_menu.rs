@@ -372,7 +372,7 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             for action in Action::variants() {
                 parent.spawn(TextBundle::from_section(
                     action.to_string(),
-                    theme.text.normal.clone(),
+                    theme.label.normal.clone(),
                 ));
             }
         });

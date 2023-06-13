@@ -14,7 +14,7 @@ impl Plugin for ThemePlugin {
 #[derive(Resource)]
 pub(crate) struct Theme {
     pub(crate) button: ButtonTheme,
-    pub(crate) text: TextTheme,
+    pub(crate) label: LabelTheme,
     pub(crate) checkbox: CheckboxTheme,
     pub(crate) gap: GapTheme,
     pub(crate) padding: PaddingTheme,
@@ -40,31 +40,31 @@ impl FromWorld for Theme {
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
+                normal_text: TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 35.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
+                },
+                large_text: TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 40.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
+                },
                 normal_color: Color::rgb(0.15, 0.15, 0.15),
                 hovered_color: Color::rgb(0.25, 0.25, 0.25),
                 pressed_color: Color::rgb(0.35, 0.75, 0.35),
                 hovered_pressed_color: Color::rgb(0.25, 0.65, 0.25),
             },
-            text: TextTheme {
+            label: LabelTheme {
                 normal: TextStyle {
                     font: font_handle.clone(),
                     font_size: 35.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
-                normal_button: TextStyle {
-                    font: font_handle.clone(),
-                    font_size: 35.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
-                },
                 large: TextStyle {
-                    font: font_handle.clone(),
+                    font: font_handle,
                     font_size: 45.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
-                },
-                large_button: TextStyle {
-                    font: font_handle,
-                    font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
                 },
             },
             checkbox: CheckboxTheme {
@@ -103,17 +103,17 @@ impl FromWorld for Theme {
 pub(crate) struct ButtonTheme {
     pub(crate) normal: Style,
     pub(crate) large: Style,
+    pub(crate) normal_text: TextStyle,
+    pub(crate) large_text: TextStyle,
     pub(crate) normal_color: Color,
     pub(crate) hovered_color: Color,
     pub(crate) pressed_color: Color,
     pub(crate) hovered_pressed_color: Color,
 }
 
-pub(crate) struct TextTheme {
+pub(crate) struct LabelTheme {
     pub(crate) normal: TextStyle,
-    pub(crate) normal_button: TextStyle,
     pub(crate) large: TextStyle,
-    pub(crate) large_button: TextStyle,
 }
 
 pub(crate) struct CheckboxTheme {
@@ -122,6 +122,7 @@ pub(crate) struct CheckboxTheme {
     pub(crate) tick: Style,
     pub(crate) tick_color: Color,
 }
+
 pub(crate) struct GapTheme {
     pub(crate) normal: Size,
     pub(crate) large: Size,
