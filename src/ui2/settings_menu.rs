@@ -30,9 +30,9 @@ impl Plugin for SettingsMenuPlugin {
                 (
                     Self::mapping_button_system,
                     Self::binding_dialog_system,
-                    Self::binding_confirmation_system.run_if(any_with_component::<BindingButton>()),
-                    Self::binding_dialog_buttons_system,
-                    Self::settings_buttons_system,
+                    Self::binding_system.run_if(any_with_component::<BindingButton>()),
+                    Self::binding_dialog_button_system,
+                    Self::settings_button_system,
                 )
                     .in_set(OnUpdate(GameState::Settings)),
             );
@@ -203,7 +203,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn binding_confirmation_system(
+    fn binding_system(
         mut commands: Commands,
         mut input_events: InputEvents,
         dialogs: Query<(Entity, &BindingButton)>,
@@ -243,7 +243,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn binding_dialog_buttons_system(
+    fn binding_dialog_button_system(
         mut commands: Commands,
         mut mapping_buttons: Query<&mut Mapping>,
         conflict_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
@@ -282,7 +282,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn settings_buttons_system(
+    fn settings_button_system(
         mut apply_events: EventWriter<SettingsApply>,
         mut settings: ResMut<Settings>,
         mut game_state: ResMut<NextState<GameState>>,

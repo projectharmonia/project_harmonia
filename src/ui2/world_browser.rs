@@ -23,7 +23,7 @@ impl Plugin for WorldBrowserPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::WorldBrowser)))
             .add_systems(
                 (
-                    Self::world_buttons_system.after(GameWorldPlugin::loading_system),
+                    Self::world_button_system.after(GameWorldPlugin::loading_system),
                     Self::remove_confirmation_system.pipe(error),
                 )
                     .in_set(OnUpdate(GameState::WorldBrowser)),
@@ -91,7 +91,7 @@ impl WorldBrowserPlugin {
             });
     }
 
-    fn world_buttons_system(
+    fn world_button_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         theme: Res<Theme>,

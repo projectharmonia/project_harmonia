@@ -26,7 +26,7 @@ impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::World)))
             .add_systems(
-                (Self::family_buttons_system, Self::city_button_system)
+                (Self::family_button_system, Self::city_button_system)
                     .in_set(OnUpdate(GameState::World)),
             );
     }
@@ -128,7 +128,7 @@ impl WorldMenuPlugin {
             });
     }
 
-    fn family_buttons_system(
+    fn family_button_system(
         mut commands: Commands,
         mut despawn_events: EventWriter<FamilyDespawn>,
         mut game_state: ResMut<NextState<GameState>>,
