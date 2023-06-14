@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, mem};
 
 use bevy::prelude::*;
 use derive_more::Display;
@@ -8,8 +8,9 @@ use super::{
     theme::Theme,
     widget::{
         button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
+        text_edit::TextEditBundle,
         ui_root::UiRoot,
-        LabelBundle,
+        LabelBundle, Modal, ModalBundle,
     },
 };
 use crate::core::{
@@ -26,7 +27,11 @@ impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::World)))
             .add_systems(
-                (Self::family_button_system, Self::city_button_system)
+                (
+                    Self::family_button_system,
+                    Self::city_button_system,
+                    Self::create_button_system,
+                )
                     .in_set(OnUpdate(GameState::World)),
             );
     }
@@ -71,21 +76,18 @@ impl WorldMenuPlugin {
 
                 for (index, tab) in WorldTab::iter().enumerate() {
                     let content_entity = parent
-                        .spawn((
-                            tab,
-                            NodeBundle {
-                                style: Style {
-                                    size: Size::all(Val::Percent(100.0)),
-                                    flex_direction: FlexDirection::Column,
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::FlexStart,
-                                    padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                        .spawn(NodeBundle {
+                            style: Style {
+                                size: Size::all(Val::Percent(100.0)),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::FlexStart,
+                                padding: theme.padding.normal,
+                                gap: theme.gap.normal,
                                 ..Default::default()
                             },
-                        ))
+                            ..Default::default()
+                        })
                         .with_children(|parent| match tab {
                             WorldTab::Families => {
                                 for (entity, name) in &families {
@@ -102,6 +104,7 @@ impl WorldMenuPlugin {
 
                     tab_commands
                         .spawn((
+                            tab,
                             TabContent(content_entity),
                             ExclusiveButton,
                             Pressed(index == 0),
@@ -174,6 +177,78 @@ impl WorldMenuPlugin {
                     game_state.set(GameState::City);
                 }
                 CityButton::Delete => commands.entity(world_entity.0).despawn(),
+            }
+        }
+    }
+
+    fn create_button_system(
+        mut commands: Commands,
+        mut game_state: ResMut<NextState<GameState>>,
+        theme: Res<Theme>,
+        buttons: Query<&Interaction, (Changed<Interaction>, With<CreateEntityButton>)>,
+        tabs: Query<(&Pressed, &WorldTab)>,
+        roots: Query<Entity, With<UiRoot>>,
+    ) {
+        if let Ok(&interaction) = buttons.get_single() {
+            if interaction != Interaction::Clicked {
+                return;
+            }
+
+            let current_tab = tabs
+                .iter()
+                .find_map(|(pressed, world_tab)| pressed.0.then_some(world_tab))
+                .expect("one tab should always be active");
+
+            match current_tab {
+                WorldTab::Families => game_state.set(GameState::FamilyEditor),
+                WorldTab::Cities => {
+                    commands.entity(roots.single()).with_children(|parent| {
+                        parent
+                            .spawn(ModalBundle::new(&theme))
+                            .with_children(|parent| {
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                                            flex_direction: FlexDirection::Column,
+                                            justify_content: JustifyContent::Center,
+                                            align_items: AlignItems::Center,
+                                            padding: theme.padding.normal,
+                                            gap: theme.gap.normal,
+                                            ..Default::default()
+                                        },
+                                        background_color: theme.panel_color.into(),
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        parent.spawn(LabelBundle::normal(&theme, "Create city"));
+                                        parent.spawn((
+                                            CityNameEdit,
+                                            TextEditBundle::new(&theme, "New city"),
+                                        ));
+                                        parent
+                                            .spawn(NodeBundle {
+                                                style: Style {
+                                                    gap: theme.gap.normal,
+                                                    ..Default::default()
+                                                },
+                                                ..Default::default()
+                                            })
+                                            .with_children(|parent| {
+                                                for dialog_button in CityDialogButton::iter() {
+                                                    parent.spawn((
+                                                        dialog_button,
+                                                        TextButtonBundle::normal(
+                                                            &theme,
+                                                            dialog_button.to_string(),
+                                                        ),
+                                                    ));
+                                                }
+                                            });
+                                    });
+                            });
+                    });
+                }
             }
         }
     }
@@ -255,3 +330,12 @@ struct WorldEntity(Entity);
 /// Button that creates family or city depending on the selected [`WorldTab`].
 #[derive(Component)]
 struct CreateEntityButton;
+
+#[derive(Component, EnumIter, Clone, Copy, Display)]
+enum CityDialogButton {
+    Create,
+    Cancel,
+}
+
+#[derive(Component)]
+struct CityNameEdit;
