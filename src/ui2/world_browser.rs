@@ -13,7 +13,10 @@ use crate::core::{
 
 use super::{
     theme::Theme,
-    widget::{button::TextButtonBundle, ui_root::UiRoot, LabelBundle, Modal, ModalBundle},
+    widget::{
+        button::TextButtonBundle, text_edit::TextEditBundle, ui_root::UiRoot, LabelBundle, Modal,
+        ModalBundle,
+    },
 };
 
 pub(super) struct WorldBrowserPlugin;
@@ -24,7 +27,9 @@ impl Plugin for WorldBrowserPlugin {
             .add_systems(
                 (
                     Self::world_button_system.after(GameWorldPlugin::loading_system),
-                    Self::remove_confirmation_system.pipe(error),
+                    Self::remove_dialog_button_system.pipe(error),
+                    Self::create_button_system,
+                    Self::create_dialog_button_system,
                 )
                     .in_set(OnUpdate(GameState::WorldBrowser)),
             );
@@ -166,7 +171,7 @@ impl WorldBrowserPlugin {
         }
     }
 
-    fn remove_confirmation_system(
+    fn remove_dialog_button_system(
         mut commands: Commands,
         game_paths: Res<GamePaths>,
         dialogs: Query<(Entity, &WorldNode), With<Modal>>,
@@ -194,6 +199,86 @@ impl WorldBrowserPlugin {
         }
 
         Ok(())
+    }
+
+    fn create_button_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        buttons: Query<&Interaction, (Changed<Interaction>, With<CreateWorldButton>)>,
+        roots: Query<Entity, With<UiRoot>>,
+    ) {
+        if let Ok(&interaction) = buttons.get_single() {
+            if interaction != Interaction::Clicked {
+                return;
+            }
+
+            commands.entity(roots.single()).with_children(|parent| {
+                parent
+                    .spawn(ModalBundle::new(&theme))
+                    .with_children(|parent| {
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                                    flex_direction: FlexDirection::Column,
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    padding: theme.padding.normal,
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                background_color: theme.panel_color.into(),
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                parent.spawn(LabelBundle::normal(&theme, "Create world"));
+                                parent.spawn((
+                                    WorldNameEdit,
+                                    TextEditBundle::new(&theme, "New world"),
+                                ));
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            gap: theme.gap.normal,
+                                            ..Default::default()
+                                        },
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        for dialog_button in CreateDialogButton::iter() {
+                                            parent.spawn((
+                                                dialog_button,
+                                                TextButtonBundle::normal(
+                                                    &theme,
+                                                    dialog_button.to_string(),
+                                                ),
+                                            ));
+                                        }
+                                    });
+                            });
+                    });
+            });
+        }
+    }
+
+    fn create_dialog_button_system(
+        mut commands: Commands,
+        mut game_state: ResMut<NextState<GameState>>,
+        conflict_buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
+        mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
+        modals: Query<Entity, With<Modal>>,
+    ) {
+        for (&interaction, dialog_button) in &conflict_buttons {
+            if interaction == Interaction::Clicked {
+                if let CreateDialogButton::Create = dialog_button {
+                    let mut text = text_edits.single_mut();
+                    let world_name = &mut text.sections[0].value;
+                    commands.insert_resource(WorldName(mem::take(world_name)));
+                    game_state.set(GameState::World);
+                }
+                commands.entity(modals.single()).despawn_recursive();
+            }
+        }
     }
 }
 
@@ -266,3 +351,12 @@ struct WorldNode {
 
 #[derive(Component)]
 struct CreateWorldButton;
+
+#[derive(Component, EnumIter, Clone, Copy, Display)]
+enum CreateDialogButton {
+    Create,
+    Cancel,
+}
+
+#[derive(Component)]
+struct WorldNameEdit;

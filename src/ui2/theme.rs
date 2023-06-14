@@ -15,6 +15,7 @@ impl Plugin for ThemePlugin {
 pub(crate) struct Theme {
     pub(crate) button: ButtonTheme,
     pub(crate) label: LabelTheme,
+    pub(crate) text_edit: TextEditTheme,
     pub(crate) checkbox: CheckboxTheme,
     pub(crate) gap: GapTheme,
     pub(crate) padding: PaddingTheme,
@@ -62,10 +63,22 @@ impl FromWorld for Theme {
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
                 large: TextStyle {
-                    font: font_handle,
+                    font: font_handle.clone(),
                     font_size: 45.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
+            },
+            text_edit: TextEditTheme {
+                style: Style {
+                    min_size: Size::new(Val::Px(200.0), Val::Px(30.0)),
+                    ..Default::default()
+                },
+                text: TextStyle {
+                    font: font_handle,
+                    font_size: 30.0,
+                    color: Color::rgb(0.1, 0.1, 0.1),
+                },
+                background_color: Color::rgb(0.6, 0.6, 0.6),
             },
             checkbox: CheckboxTheme {
                 node: Style {
@@ -114,6 +127,12 @@ pub(crate) struct ButtonTheme {
 pub(crate) struct LabelTheme {
     pub(crate) normal: TextStyle,
     pub(crate) large: TextStyle,
+}
+
+pub(crate) struct TextEditTheme {
+    pub(crate) style: Style,
+    pub(crate) text: TextStyle,
+    pub(crate) background_color: Color,
 }
 
 pub(crate) struct CheckboxTheme {
