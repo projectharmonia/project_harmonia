@@ -1,4 +1,4 @@
-use std::{fmt::Display, mem};
+use std::fmt::Display;
 
 use bevy::prelude::*;
 use derive_more::Display;
@@ -10,7 +10,7 @@ use super::{
         button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         text_edit::TextEditBundle,
         ui_root::UiRoot,
-        LabelBundle, Modal, ModalBundle,
+        LabelBundle, ModalBundle,
     },
 };
 use crate::core::{
@@ -28,6 +28,8 @@ impl Plugin for WorldMenuPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::World)))
             .add_systems(
                 (
+                    Self::family_node_system,
+                    Self::city_node_system,
                     Self::family_button_system,
                     Self::city_button_system,
                     Self::create_button_system,
@@ -43,8 +45,6 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         world_name: Res<WorldName>,
-        families: Query<(Entity, &Name), With<FamilyActors>>,
-        cities: Query<(Entity, &Name), With<City>>,
     ) {
         commands
             .spawn((
@@ -88,18 +88,6 @@ impl WorldMenuPlugin {
                             },
                             ..Default::default()
                         })
-                        .with_children(|parent| match tab {
-                            WorldTab::Families => {
-                                for (entity, name) in &families {
-                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
-                                }
-                            }
-                            WorldTab::Cities => {
-                                for (entity, name) in &cities {
-                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
-                                }
-                            }
-                        })
                         .id();
 
                     tab_commands
@@ -129,6 +117,40 @@ impl WorldMenuPlugin {
                         ));
                     });
             });
+    }
+
+    fn family_node_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        families: Query<(Entity, &Name), Added<FamilyActors>>,
+        tabs: Query<(&TabContent, &WorldTab)>,
+    ) {
+        for (entity, name) in &families {
+            let (tab_content, _) = tabs
+                .iter()
+                .find(|(_, &tab)| tab == WorldTab::Families)
+                .expect("tab with families should be spawned on state enter");
+            commands.entity(tab_content.0).with_children(|parent| {
+                setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+            });
+        }
+    }
+
+    fn city_node_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        cities: Query<(Entity, &Name), Added<City>>,
+        tabs: Query<(&TabContent, &WorldTab)>,
+    ) {
+        for (entity, name) in &cities {
+            let (tab_content, _) = tabs
+                .iter()
+                .find(|(_, &tab)| tab == WorldTab::Cities)
+                .expect("tab with cities should be spawned on state enter");
+            commands.entity(tab_content.0).with_children(|parent| {
+                setup_entity_node::<CityButton>(parent, &theme, entity, name);
+            });
+        }
     }
 
     fn family_button_system(
@@ -305,7 +327,7 @@ fn setup_entity_node<E>(
         });
 }
 
-#[derive(Clone, Component, Copy, Display, EnumIter)]
+#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum WorldTab {
     Families,
     Cities,
