@@ -264,11 +264,11 @@ impl WorldBrowserPlugin {
     fn create_dialog_button_system(
         mut commands: Commands,
         mut game_state: ResMut<NextState<GameState>>,
-        conflict_buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
+        dialog_buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
         modals: Query<Entity, With<Modal>>,
     ) {
-        for (&interaction, dialog_button) in &conflict_buttons {
+        for (&interaction, dialog_button) in &dialog_buttons {
             if interaction == Interaction::Clicked {
                 if let CreateDialogButton::Create = dialog_button {
                     let mut text = text_edits.single_mut();

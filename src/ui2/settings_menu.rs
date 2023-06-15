@@ -246,11 +246,11 @@ impl SettingsMenuPlugin {
     fn binding_dialog_button_system(
         mut commands: Commands,
         mut mapping_buttons: Query<&mut Mapping>,
-        conflict_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
+        dialog_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
         dialogs: Query<(Option<&ConflictButton>, &BindingButton)>,
         modals: Query<Entity, With<Modal>>,
     ) {
-        for (&interaction, dialog_button) in &conflict_buttons {
+        for (&interaction, dialog_button) in &dialog_buttons {
             if interaction == Interaction::Clicked {
                 match dialog_button {
                     BindingDialogButton::Replace => {
