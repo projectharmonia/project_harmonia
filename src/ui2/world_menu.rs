@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, mem};
 
 use bevy::prelude::*;
 use derive_more::Display;
@@ -10,12 +10,12 @@ use super::{
         button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         text_edit::TextEditBundle,
         ui_root::UiRoot,
-        LabelBundle, ModalBundle,
+        LabelBundle, Modal, ModalBundle,
     },
 };
 use crate::core::{
     actor::ActiveActor,
-    city::{ActiveCity, City},
+    city::{ActiveCity, City, CityBundle},
     family::{FamilyActors, FamilyDespawn},
     game_state::GameState,
     game_world::WorldName,
@@ -33,6 +33,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::family_button_system,
                     Self::city_button_system,
                     Self::create_button_system,
+                    Self::create_dialog_button_system,
                 )
                     .in_set(OnUpdate(GameState::World)),
             );
@@ -271,6 +272,24 @@ impl WorldMenuPlugin {
                             });
                     });
                 }
+            }
+        }
+    }
+
+    fn create_dialog_button_system(
+        mut commands: Commands,
+        dialog_buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
+        mut text_edits: Query<&mut Text, With<CityNameEdit>>,
+        modals: Query<Entity, With<Modal>>,
+    ) {
+        for (&interaction, dialog_button) in &dialog_buttons {
+            if interaction == Interaction::Clicked {
+                if let CityDialogButton::Create = dialog_button {
+                    let mut text = text_edits.single_mut();
+                    let city_name = &mut text.sections[0].value;
+                    commands.spawn(CityBundle::new(mem::take(city_name).into()));
+                }
+                commands.entity(modals.single()).despawn_recursive();
             }
         }
     }
