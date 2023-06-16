@@ -90,7 +90,7 @@ impl ButtonPlugin {
             let children = children.get(parent).unwrap();
             for &child_entity in children.iter().filter(|&&entity| entity != pressed_entity) {
                 if let Ok(mut pressed) = buttons.get_component_mut::<Pressed>(child_entity) {
-                    if pressed.0 == true {
+                    if pressed.0 {
                         pressed.0 = false;
                     }
                 }
