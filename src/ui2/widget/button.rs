@@ -6,14 +6,14 @@ pub(crate) struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ExclusivePress>()
-            .add_systems((
-                Self::init_system,
-                Self::interaction_system,
-                Self::text_update_system,
-                Self::tab_switching_system,
-            ))
-            .add_systems((Self::exclusive_press_system, Self::exclusive_unpress_system).chain());
+        app.add_systems((
+            Self::init_system,
+            Self::interaction_system,
+            Self::toggling_system,
+            Self::exclusive_system,
+            Self::text_update_system,
+            Self::tab_switching_system,
+        ));
     }
 }
 
@@ -50,12 +50,12 @@ impl ButtonPlugin {
         theme: Res<Theme>,
         mut buttons: Query<
             (&Interaction, &mut BackgroundColor, Option<&Pressed>),
-            Or<(Changed<Interaction>, Changed<Pressed>)>,
+            (Or<(Changed<Interaction>, Changed<Pressed>)>, With<Button>),
         >,
     ) {
-        for (&interaction, mut color, pressed) in &mut buttons {
+        for (&interaction, mut background, pressed) in &mut buttons {
             let pressed = pressed.map(|pressed| pressed.0).unwrap_or_default();
-            *color = match (interaction, pressed) {
+            *background = match (interaction, pressed) {
                 (Interaction::Clicked, _) | (Interaction::None, true) => {
                     theme.button.pressed_color.into()
                 }
@@ -66,37 +66,33 @@ impl ButtonPlugin {
         }
     }
 
-    fn exclusive_press_system(
-        mut press_events: EventWriter<ExclusivePress>,
-        mut buttons: Query<
-            (Entity, &Interaction, &mut Pressed),
-            (Changed<Interaction>, With<ExclusiveButton>),
-        >,
-    ) {
-        for (entity, &interaction, mut pressed) in &mut buttons {
-            if interaction == Interaction::Clicked {
-                pressed.0 = true;
-                press_events.send(ExclusivePress(entity));
+    fn toggling_system(mut buttons: Query<(&Interaction, &mut Pressed), Changed<Interaction>>) {
+        for (&interation, mut pressed) in &mut buttons {
+            if interation == Interaction::Clicked {
+                pressed.0 = !pressed.0
             }
         }
     }
 
-    fn exclusive_unpress_system(
-        mut press_events: EventReader<ExclusivePress>,
+    fn exclusive_system(
+        mut buttons: Query<
+            (Entity, &Parent, &mut Pressed),
+            (Changed<Pressed>, With<ExclusiveButton>),
+        >,
         children: Query<&Children>,
-        parents: Query<&Parent>,
-        mut buttons: Query<(Entity, &mut Pressed)>,
     ) {
-        for event in &mut press_events {
-            let parent = parents
-                .get(event.0)
-                .expect("exclusive buttons should always have a parent");
-            let children = children.get(**parent).unwrap();
-            let mut iter = buttons.iter_many_mut(children);
-            while let Some((entity, mut pressed)) = iter.fetch_next() {
-                if pressed.0 && entity != event.0 {
-                    pressed.0 = false;
-                    break;
+        let pressed_entities: Vec<_> = buttons
+            .iter()
+            .filter_map(|(entity, parent, pressed)| pressed.0.then_some((entity, **parent)))
+            .collect();
+
+        for (pressed_entity, parent) in pressed_entities {
+            let children = children.get(parent).unwrap();
+            for &child_entity in children.iter().filter(|&&entity| entity != pressed_entity) {
+                if let Ok(mut pressed) = buttons.get_component_mut::<Pressed>(child_entity) {
+                    if pressed.0 == true {
+                        pressed.0 = false;
+                    }
                 }
             }
         }
@@ -120,8 +116,6 @@ impl ButtonPlugin {
 }
 
 /// Makes the button togglable.
-///
-/// Used in combination with [`ExclusiveButton`].
 #[derive(Component)]
 pub(crate) struct Pressed(pub(crate) bool);
 
@@ -134,11 +128,6 @@ pub(crate) struct ExclusiveButton;
 /// Makes button behave like tab by changing visibility of the stored entity depending on the value of [`Pressed`].
 #[derive(Component)]
 pub(crate) struct TabContent(pub(crate) Entity);
-
-/// An event that triggered when button with [`ExclusiveButton`] is clicked.
-///
-/// Used to unpress the other checked button.
-struct ExclusivePress(Entity);
 
 #[derive(Component)]
 enum ButtonSize {
