@@ -78,7 +78,10 @@ impl FromWorld for Theme {
                     font_size: 30.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
-                background_color: Color::rgb(0.6, 0.6, 0.6),
+                normal_color: Color::rgb(0.5, 0.5, 0.5),
+                hovered_color: Color::rgb(0.55, 0.55, 0.55),
+                active_color: Color::rgb(0.6, 0.6, 0.6),
+                hovered_active_color: Color::rgb(0.65, 0.65, 0.65),
             },
             checkbox: CheckboxTheme {
                 node: Style {
@@ -132,7 +135,10 @@ pub(crate) struct LabelTheme {
 pub(crate) struct TextEditTheme {
     pub(crate) style: Style,
     pub(crate) text: TextStyle,
-    pub(crate) background_color: Color,
+    pub(crate) normal_color: Color,
+    pub(crate) hovered_color: Color,
+    pub(crate) active_color: Color,
+    pub(crate) hovered_active_color: Color,
 }
 
 pub(crate) struct CheckboxTheme {

@@ -247,7 +247,7 @@ impl WorldMenuPlugin {
                                         parent.spawn(LabelBundle::normal(&theme, "Create city"));
                                         parent.spawn((
                                             CityNameEdit,
-                                            TextEditBundle::new(&theme, "New city"),
+                                            TextEditBundle::new(&theme, "New city").active(),
                                         ));
                                         parent
                                             .spawn(NodeBundle {

@@ -234,7 +234,7 @@ impl WorldBrowserPlugin {
                                 parent.spawn(LabelBundle::normal(&theme, "Create world"));
                                 parent.spawn((
                                     WorldNameEdit,
-                                    TextEditBundle::new(&theme, "New world"),
+                                    TextEditBundle::new(&theme, "New world").active(),
                                 ));
                                 parent
                                     .spawn(NodeBundle {
