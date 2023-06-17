@@ -63,7 +63,17 @@ pub(crate) struct FirstName(pub(crate) String);
 pub(crate) struct LastName(pub(crate) String);
 
 #[derive(
-    Clone, EnumIter, Component, Copy, Debug, Default, Deserialize, PartialEq, Reflect, Serialize,
+    Display,
+    Clone,
+    EnumIter,
+    Component,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    PartialEq,
+    Reflect,
+    Serialize,
 )]
 #[reflect(Component)]
 pub(crate) enum Sex {

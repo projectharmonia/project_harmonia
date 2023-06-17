@@ -1,4 +1,5 @@
 mod camera_2d;
+mod family_editor_menu;
 mod main_menu;
 mod settings_menu;
 mod theme;
@@ -9,6 +10,7 @@ mod world_menu;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use camera_2d::Camera2dPlugin;
+use family_editor_menu::FamilyEditorMenuPlugin;
 use main_menu::MainMenuPlugin;
 use settings_menu::SettingsMenuPlugin;
 use theme::ThemePlugin;
@@ -22,6 +24,7 @@ impl PluginGroup for UiPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(Camera2dPlugin)
+            .add(FamilyEditorMenuPlugin)
             .add(WidgetPlugin)
             .add(MainMenuPlugin)
             .add(SettingsMenuPlugin)

@@ -1,12 +1,11 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::core::game_state::GameState;
-
 use super::{
     theme::Theme,
     widget::{button::TextButtonBundle, ui_root::UiRoot},
 };
+use crate::core::game_state::GameState;
 
 pub(super) struct MainMenuPlugin;
 

@@ -100,6 +100,10 @@ impl TextEditBundle {
         }
     }
 
+    pub(crate) fn empty(theme: &Theme) -> Self {
+        Self::new(theme, String::new())
+    }
+
     pub(crate) fn active(mut self) -> Self {
         self.text_edit.active = true;
         self
