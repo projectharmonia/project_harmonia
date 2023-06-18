@@ -44,6 +44,9 @@ impl FamilyEditorPlugin {
                     ..Default::default()
                 });
                 parent.spawn(PlayerCameraBundle::default());
+            })
+            .with_children(|parent| {
+                parent.spawn((EditableActorBundle::default(), SelectedActor));
             });
     }
 
