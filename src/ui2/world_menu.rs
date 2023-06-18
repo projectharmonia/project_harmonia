@@ -46,6 +46,8 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         world_name: Res<WorldName>,
+        families: Query<(Entity, &Name), With<FamilyActors>>,
+        cities: Query<(Entity, &Name), With<City>>,
     ) {
         commands
             .spawn((
@@ -89,6 +91,18 @@ impl WorldMenuPlugin {
                             },
                             ..Default::default()
                         })
+                        .with_children(|parent| match tab {
+                            WorldTab::Families => {
+                                for (entity, name) in &families {
+                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+                                }
+                            }
+                            WorldTab::Cities => {
+                                for (entity, name) in &cities {
+                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+                                }
+                            }
+                        })
                         .id();
 
                     tab_commands
@@ -125,15 +139,18 @@ impl WorldMenuPlugin {
         theme: Res<Theme>,
         families: Query<(Entity, &Name), Added<FamilyActors>>,
         tabs: Query<(&TabContent, &WorldTab)>,
+        buttons: Query<&WorldEntity>,
     ) {
         for (entity, name) in &families {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
-            commands.entity(tab_content.0).with_children(|parent| {
-                setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
-            });
+            if !buttons.iter().any(|world_entity| world_entity.0 == entity) {
+                commands.entity(tab_content.0).with_children(|parent| {
+                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+                });
+            }
         }
     }
 
@@ -142,15 +159,18 @@ impl WorldMenuPlugin {
         theme: Res<Theme>,
         cities: Query<(Entity, &Name), Added<City>>,
         tabs: Query<(&TabContent, &WorldTab)>,
+        buttons: Query<&WorldEntity>,
     ) {
         for (entity, name) in &cities {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Cities)
                 .expect("tab with cities should be spawned on state enter");
-            commands.entity(tab_content.0).with_children(|parent| {
-                setup_entity_node::<CityButton>(parent, &theme, entity, name);
-            });
+            if !buttons.iter().any(|world_entity| world_entity.0 == entity) {
+                commands.entity(tab_content.0).with_children(|parent| {
+                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+                });
+            }
         }
     }
 
