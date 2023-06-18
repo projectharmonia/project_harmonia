@@ -17,6 +17,7 @@ use super::{
 use crate::core::{
     actor::{race::Race, ActorScene, FirstName, LastName, Sex},
     city::City,
+    error,
     family::{FamilyScene, FamilySpawn},
     family_editor::{
         EditableActor, EditableActorBundle, EditableFamily, FamilyReset, SelectedActor,
@@ -40,7 +41,7 @@ impl Plugin for FamilyEditorMenuPlugin {
                     Self::first_name_edit_system,
                     Self::last_name_edit_system,
                     Self::family_menu_button_system,
-                    Self::save_family_button_system.pipe(error),
+                    Self::save_family_button_system.pipe(error::report),
                     Self::place_dialog_button_system,
                     Self::city_place_button_system,
                 )
