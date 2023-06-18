@@ -11,7 +11,7 @@ use super::{
         button::{ExclusiveButton, ImageButtonBundle, Pressed, TextButtonBundle},
         text_edit::TextEditBundle,
         ui_root::UiRoot,
-        LabelBundle, Modal, ModalBundle,
+        Dialog, DialogBundle, LabelBundle,
     },
 };
 use crate::core::{
@@ -194,7 +194,7 @@ impl FamilyEditorMenuPlugin {
         >,
         mut text_edits: Query<&mut Text, With<FamilyNameEdit>>,
         buttons: Query<(&Interaction, &SaveDialogButton), Changed<Interaction>>,
-        modals: Query<Entity, With<Modal>>,
+        dialogs: Query<Entity, With<Dialog>>,
         cities: Query<(Entity, &Name), With<City>>,
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
@@ -235,7 +235,7 @@ impl FamilyEditorMenuPlugin {
                 );
             }
 
-            commands.entity(modals.single()).despawn_recursive();
+            commands.entity(dialogs.single()).despawn_recursive();
         }
 
         Ok(())
@@ -244,7 +244,7 @@ impl FamilyEditorMenuPlugin {
     fn place_dialog_button_system(
         mut commands: Commands,
         mut reset_events: EventWriter<FamilyReset>,
-        modals: Query<Entity, With<Modal>>,
+        dialogs: Query<Entity, With<Dialog>>,
         buttons: Query<(&Interaction, &PlaceDialogButton), Changed<Interaction>>,
     ) {
         for (&interaction, &button) in &buttons {
@@ -252,7 +252,7 @@ impl FamilyEditorMenuPlugin {
                 if button == PlaceDialogButton::CreateNew {
                     reset_events.send_default();
                 }
-                commands.entity(modals.single()).despawn_recursive()
+                commands.entity(dialogs.single()).despawn_recursive()
             }
         }
     }
@@ -262,11 +262,11 @@ impl FamilyEditorMenuPlugin {
         mut spawn_events: EventWriter<FamilySpawn>,
         mut reset_events: EventWriter<FamilyReset>,
         buttons: Query<(&Interaction, &CityPlaceButton, &PlaceCity), Changed<Interaction>>,
-        mut modals: Query<(Entity, &mut FamilyScene)>,
+        mut dialogs: Query<(Entity, &mut FamilyScene)>,
     ) {
         for (&interaction, button, place_city) in &buttons {
             if interaction == Interaction::Clicked {
-                let (modal_entity, mut scene) = modals.single_mut();
+                let (dialog_entity, mut scene) = dialogs.single_mut();
                 match button {
                     CityPlaceButton::PlaceAndPlay => {
                         spawn_events.send(FamilySpawn {
@@ -281,7 +281,7 @@ impl FamilyEditorMenuPlugin {
                             scene: mem::take(&mut scene),
                             select: false,
                         });
-                        commands.entity(modal_entity).despawn_recursive();
+                        commands.entity(dialog_entity).despawn_recursive();
                         reset_events.send_default();
                     }
                 }
@@ -407,7 +407,7 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
 fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn(ModalBundle::new(theme))
+            .spawn(DialogBundle::new(theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {
@@ -459,7 +459,7 @@ fn setup_place_family_dialog(
 ) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn((family_scene, ModalBundle::new(theme)))
+            .spawn((family_scene, DialogBundle::new(theme)))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {

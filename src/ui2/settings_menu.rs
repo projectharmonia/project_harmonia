@@ -11,7 +11,7 @@ use super::{
         button::{ButtonText, ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         checkbox::{Checkbox, CheckboxBundle},
         ui_root::UiRoot,
-        LabelBundle, Modal, ModalBundle,
+        DialogBundle, LabelBundle,
     },
 };
 use crate::core::{
@@ -122,9 +122,9 @@ impl SettingsMenuPlugin {
     }
 
     fn mapping_button_text_system(
-        mut modals: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
+        mut dialogs: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
     ) {
-        for (mapping, mut text) in &mut modals {
+        for (mapping, mut text) in &mut dialogs {
             text.0 = match mapping.input_kind {
                 Some(InputKind::GamepadButton(gamepad_button)) => {
                     format!("{gamepad_button:?}")
@@ -153,23 +153,20 @@ impl SettingsMenuPlugin {
 
             commands.entity(roots.single()).with_children(|parent| {
                 parent
-                    .spawn(ModalBundle::new(&theme))
+                    .spawn((BindingButton(entity), DialogBundle::new(&theme)))
                     .with_children(|parent| {
                         parent
-                            .spawn((
-                                BindingButton(entity),
-                                NodeBundle {
-                                    style: Style {
-                                        size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
-                                        flex_direction: FlexDirection::Column,
-                                        justify_content: JustifyContent::Center,
-                                        align_items: AlignItems::Center,
-                                        ..Default::default()
-                                    },
-                                    background_color: theme.panel_color.into(),
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
+                                    flex_direction: FlexDirection::Column,
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
                                     ..Default::default()
                                 },
-                            ))
+                                background_color: theme.panel_color.into(),
+                                ..Default::default()
+                            })
                             .with_children(|parent| {
                                 parent.spawn((
                                     BindingLabel,
@@ -209,7 +206,6 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut input_events: InputEvents,
         dialogs: Query<(Entity, &BindingButton)>,
-        modals: Query<Entity, With<Modal>>,
         mut mapping_buttons: Query<(Entity, &mut Mapping)>,
         mut binding_labels: Query<&mut Text, With<BindingLabel>>,
         mut dialog_buttons: Query<(&mut Style, &BindingDialogButton)>,
@@ -240,7 +236,7 @@ impl SettingsMenuPlugin {
                     .get_component_mut::<Mapping>(binding_button.0)
                     .expect("binding dialog should point to a button with mapping");
                 mapping.input_kind = Some(input_kind);
-                commands.entity(modals.single()).despawn_recursive();
+                commands.entity(dialog_entity).despawn_recursive();
             }
         }
     }
@@ -249,14 +245,13 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut mapping_buttons: Query<&mut Mapping>,
         dialog_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
-        dialogs: Query<(Option<&ConflictButton>, &BindingButton)>,
-        modals: Query<Entity, With<Modal>>,
+        dialogs: Query<(Entity, Option<&ConflictButton>, &BindingButton)>,
     ) {
         for (&interaction, dialog_button) in &dialog_buttons {
             if interaction == Interaction::Clicked {
+                let (entity, conflict_button, binding_button) = dialogs.single();
                 match dialog_button {
                     BindingDialogButton::Replace => {
-                        let (conflict_button, binding_button) = dialogs.single();
                         let conflict_button = conflict_button
                             .expect("replace button should be clickable only with conflict");
                         let mut conflict_mapping = mapping_buttons
@@ -271,7 +266,6 @@ impl SettingsMenuPlugin {
                         mapping.input_kind = input_kind;
                     }
                     BindingDialogButton::Delete => {
-                        let (_, binding_button) = dialogs.single();
                         let mut mapping = mapping_buttons
                             .get_mut(binding_button.0)
                             .expect("binding should point to a button");
@@ -279,7 +273,7 @@ impl SettingsMenuPlugin {
                     }
                     BindingDialogButton::Cancel => (),
                 }
-                commands.entity(modals.single()).despawn_recursive();
+                commands.entity(entity).despawn_recursive();
             }
         }
     }

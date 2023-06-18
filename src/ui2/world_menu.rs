@@ -10,7 +10,7 @@ use super::{
         button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         text_edit::TextEditBundle,
         ui_root::UiRoot,
-        LabelBundle, Modal, ModalBundle,
+        Dialog, DialogBundle, LabelBundle,
     },
 };
 use crate::core::{
@@ -255,7 +255,7 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
-        modals: Query<Entity, With<Modal>>,
+        dialogs: Query<Entity, With<Dialog>>,
     ) {
         for (&interaction, dialog_button) in &buttons {
             if interaction == Interaction::Clicked {
@@ -264,7 +264,7 @@ impl WorldMenuPlugin {
                     let city_name = &mut text.sections[0].value;
                     commands.spawn(CityBundle::new(mem::take(city_name).into()));
                 }
-                commands.entity(modals.single()).despawn_recursive();
+                commands.entity(dialogs.single()).despawn_recursive();
             }
         }
     }
@@ -324,7 +324,7 @@ fn setup_entity_node<E>(
 fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn(ModalBundle::new(&theme))
+            .spawn(DialogBundle::new(&theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {

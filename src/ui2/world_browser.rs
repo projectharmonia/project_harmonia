@@ -14,8 +14,8 @@ use crate::core::{
 use super::{
     theme::Theme,
     widget::{
-        button::TextButtonBundle, text_edit::TextEditBundle, ui_root::UiRoot, LabelBundle, Modal,
-        ModalBundle,
+        button::TextButtonBundle, text_edit::TextEditBundle, ui_root::UiRoot, Dialog, DialogBundle,
+        LabelBundle,
     },
 };
 
@@ -135,7 +135,7 @@ impl WorldBrowserPlugin {
     fn remove_dialog_button_system(
         mut commands: Commands,
         game_paths: Res<GamePaths>,
-        dialogs: Query<(Entity, &WorldNode), With<Modal>>,
+        dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
         buttons: Query<(&Interaction, &RemoveDialogButton)>,
         labels: Query<&Text>,
     ) -> Result<()> {
@@ -175,7 +175,7 @@ impl WorldBrowserPlugin {
 
             commands.entity(roots.single()).with_children(|parent| {
                 parent
-                    .spawn(ModalBundle::new(&theme))
+                    .spawn(DialogBundle::new(&theme))
                     .with_children(|parent| {
                         parent
                             .spawn(NodeBundle {
@@ -227,7 +227,7 @@ impl WorldBrowserPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         dialog_buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
-        modals: Query<Entity, With<Modal>>,
+        dialogs: Query<Entity, With<Dialog>>,
     ) {
         for (&interaction, dialog_button) in &dialog_buttons {
             if interaction == Interaction::Clicked {
@@ -237,7 +237,7 @@ impl WorldBrowserPlugin {
                     commands.insert_resource(WorldName(mem::take(world_name)));
                     game_state.set(GameState::World);
                 }
-                commands.entity(modals.single()).despawn_recursive();
+                commands.entity(dialogs.single()).despawn_recursive();
             }
         }
     }
@@ -299,7 +299,7 @@ fn setup_remove_world_dialog(
 ) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn((ModalBundle::new(theme), world_node))
+            .spawn((DialogBundle::new(theme), world_node))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {

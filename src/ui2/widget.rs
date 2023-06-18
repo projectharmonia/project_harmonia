@@ -47,17 +47,17 @@ impl LabelBundle {
 }
 
 #[derive(Bundle)]
-pub(super) struct ModalBundle {
-    modal: Modal,
+pub(super) struct DialogBundle {
+    dialog: Dialog,
 
     #[bundle]
     node_bundle: NodeBundle,
 }
 
-impl ModalBundle {
+impl DialogBundle {
     pub(super) fn new(theme: &Theme) -> Self {
         Self {
-            modal: Modal,
+            dialog: Dialog,
             node_bundle: NodeBundle {
                 style: Style {
                     position_type: PositionType::Absolute,
@@ -75,4 +75,4 @@ impl ModalBundle {
 }
 
 #[derive(Component)]
-pub(super) struct Modal;
+pub(super) struct Dialog;
