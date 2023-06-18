@@ -253,11 +253,11 @@ impl WorldMenuPlugin {
 
     fn city_dialog_button_system(
         mut commands: Commands,
-        dialog_buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
+        buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
         modals: Query<Entity, With<Modal>>,
     ) {
-        for (&interaction, dialog_button) in &dialog_buttons {
+        for (&interaction, dialog_button) in &buttons {
             if interaction == Interaction::Clicked {
                 if let CityDialogButton::Create = dialog_button {
                     let mut text = text_edits.single_mut();
