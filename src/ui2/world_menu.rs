@@ -225,52 +225,7 @@ impl WorldMenuPlugin {
             match current_tab {
                 WorldTab::Families => game_state.set(GameState::FamilyEditor),
                 WorldTab::Cities => {
-                    commands.entity(roots.single()).with_children(|parent| {
-                        parent
-                            .spawn(ModalBundle::new(&theme))
-                            .with_children(|parent| {
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: Style {
-                                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
-                                            flex_direction: FlexDirection::Column,
-                                            justify_content: JustifyContent::Center,
-                                            align_items: AlignItems::Center,
-                                            padding: theme.padding.normal,
-                                            gap: theme.gap.normal,
-                                            ..Default::default()
-                                        },
-                                        background_color: theme.panel_color.into(),
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        parent.spawn(LabelBundle::normal(&theme, "Create city"));
-                                        parent.spawn((
-                                            CityNameEdit,
-                                            TextEditBundle::new(&theme, "New city").active(),
-                                        ));
-                                        parent
-                                            .spawn(NodeBundle {
-                                                style: Style {
-                                                    gap: theme.gap.normal,
-                                                    ..Default::default()
-                                                },
-                                                ..Default::default()
-                                            })
-                                            .with_children(|parent| {
-                                                for dialog_button in CityDialogButton::iter() {
-                                                    parent.spawn((
-                                                        dialog_button,
-                                                        TextButtonBundle::normal(
-                                                            &theme,
-                                                            dialog_button.to_string(),
-                                                        ),
-                                                    ));
-                                                }
-                                            });
-                                    });
-                            });
-                    });
+                    setup_create_city_dialog(&mut commands, roots.single(), &theme);
                 }
             }
         }
@@ -344,6 +299,52 @@ fn setup_entity_node<E>(
                     }
                 });
         });
+}
+
+fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    commands.entity(root_entity).with_children(|parent| {
+        parent
+            .spawn(ModalBundle::new(&theme))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(LabelBundle::normal(&theme, "Create city"));
+                        parent.spawn((
+                            CityNameEdit,
+                            TextEditBundle::new(&theme, "New city").active(),
+                        ));
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                for dialog_button in CityDialogButton::iter() {
+                                    parent.spawn((
+                                        dialog_button,
+                                        TextButtonBundle::normal(&theme, dialog_button.to_string()),
+                                    ));
+                                }
+                            });
+                    });
+            });
+    });
 }
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]

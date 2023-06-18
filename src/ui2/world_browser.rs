@@ -119,53 +119,14 @@ impl WorldBrowserPlugin {
                     load_events.send_default();
                 }
                 WorldButton::Host => todo!(),
-                WorldButton::Delete => {
-                    commands.entity(roots.single()).with_children(|parent| {
-                        parent
-                            .spawn((ModalBundle::new(&theme), world_node))
-                            .with_children(|parent| {
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: Style {
-                                            size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
-                                            flex_direction: FlexDirection::Column,
-                                            justify_content: JustifyContent::Center,
-                                            align_items: AlignItems::Center,
-                                            ..Default::default()
-                                        },
-                                        background_color: theme.panel_color.into(),
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        parent.spawn(LabelBundle::normal(
-                                            &theme,
-                                            format!(
-                                                "Are you sure you want to remove world {world_name}?",
-                                            ),
-                                        ));
-
-                                        parent
-                                            .spawn(NodeBundle {
-                                                style: Style {
-                                                    gap: theme.gap.normal,
-                                                    ..Default::default()
-                                                },
-                                                ..Default::default()
-                                            })
-                                            .with_children(|parent| {
-                                                for dialog_button in RemoveDialogButton::iter() {
-                                                    parent.spawn((
-                                                        dialog_button,
-                                                        TextButtonBundle::normal(
-                                                            &theme,
-                                                            dialog_button.to_string(),
-                                                        ),
-                                                    ));
-                                                }
-                                            });
-                                    });
-                            });
-                    });
+                WorldButton::Remove => {
+                    setup_remove_world_dialog(
+                        &mut commands,
+                        roots.single(),
+                        &theme,
+                        world_node,
+                        &world_name,
+                    );
                 }
             }
         }
@@ -329,11 +290,61 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
         });
 }
 
+fn setup_remove_world_dialog(
+    commands: &mut Commands,
+    root_entity: Entity,
+    theme: &Theme,
+    world_node: WorldNode,
+    world_name: &str,
+) {
+    commands.entity(root_entity).with_children(|parent| {
+        parent
+            .spawn((ModalBundle::new(theme), world_node))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(LabelBundle::normal(
+                            theme,
+                            format!("Are you sure you want to remove world {world_name}?",),
+                        ));
+
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                for dialog_button in RemoveDialogButton::iter() {
+                                    parent.spawn((
+                                        dialog_button,
+                                        TextButtonBundle::normal(theme, dialog_button.to_string()),
+                                    ));
+                                }
+                            });
+                    });
+            });
+    });
+}
+
 #[derive(Component, EnumIter, Clone, Copy, Display)]
 enum WorldButton {
     Play,
     Host,
-    Delete,
+    Remove,
 }
 
 #[derive(Component, EnumIter, Clone, Copy, Display)]
