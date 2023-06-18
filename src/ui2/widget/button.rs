@@ -87,9 +87,18 @@ impl ButtonPlugin {
         }
     }
 
-    fn toggling_system(mut buttons: Query<(&Interaction, &mut Pressed), Changed<Interaction>>) {
-        for (&interation, mut pressed) in &mut buttons {
+    fn toggling_system(
+        mut buttons: Query<
+            (&Interaction, &mut Pressed, Option<&ExclusiveButton>),
+            Changed<Interaction>,
+        >,
+    ) {
+        for (&interation, mut pressed, exclusive) in &mut buttons {
             if interation == Interaction::Clicked {
+                if exclusive.is_some() && pressed.0 {
+                    // Button is already prewssed, if it's exclusive button, do not toggle it.
+                    continue;
+                }
                 pressed.0 = !pressed.0
             }
         }
