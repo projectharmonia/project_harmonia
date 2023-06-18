@@ -264,7 +264,7 @@ impl MapEntities for FamilySpawn {
 }
 
 /// Serializable family scene for gallery.
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Component)]
 pub(crate) struct FamilyScene {
     pub(crate) name: Name,
     budget: Budget,
