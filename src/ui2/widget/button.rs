@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
 
 use crate::ui2::theme::Theme;
 
@@ -7,7 +7,8 @@ pub(crate) struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems((
-            Self::init_system,
+            Self::text_init_system,
+            Self::image_init_system,
             Self::interaction_system,
             Self::toggling_system,
             Self::exclusive_system,
@@ -18,7 +19,7 @@ impl Plugin for ButtonPlugin {
 }
 
 impl ButtonPlugin {
-    fn init_system(
+    fn text_init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &ButtonText, &ButtonKind), Added<ButtonText>>,
@@ -31,6 +32,25 @@ impl ButtonPlugin {
                     ButtonKind::Square => theme.button.square_text.clone(),
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
+            });
+        }
+    }
+
+    fn image_init_system(
+        mut commmands: Commands,
+        theme: Res<Theme>,
+        buttons: Query<(Entity, &Handle<Image>), Added<Button>>,
+    ) {
+        for (entity, image_handle) in &buttons {
+            commmands.entity(entity).with_children(|parent| {
+                parent.spawn(ImageBundle {
+                    style: theme.button.image.clone(),
+                    image: UiImage {
+                        texture: image_handle.clone(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
             });
         }
     }
@@ -173,6 +193,31 @@ impl TextButtonBundle {
             button_text: ButtonText(text.into()),
             button_bundle: ButtonBundle {
                 style,
+                background_color: theme.button.normal_color.into(),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub(crate) struct ImageButtonBundle {
+    image_handle: Handle<Image>,
+
+    #[bundle]
+    button_bundle: ButtonBundle,
+}
+
+impl ImageButtonBundle {
+    pub(crate) fn placeholder(theme: &Theme) -> Self {
+        Self::new(&theme, DEFAULT_IMAGE_HANDLE.typed())
+    }
+
+    pub(crate) fn new(theme: &Theme, image_handle: Handle<Image>) -> Self {
+        Self {
+            image_handle,
+            button_bundle: ButtonBundle {
+                style: theme.button.image_button.clone(),
                 background_color: theme.button.normal_color.into(),
                 ..Default::default()
             },

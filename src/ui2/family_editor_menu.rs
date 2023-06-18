@@ -4,7 +4,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     widget::{
-        button::{ExclusiveButton, Pressed, TextButtonBundle},
+        button::{ExclusiveButton, ImageButtonBundle, Pressed, TextButtonBundle},
         text_edit::TextEditBundle,
         ui_root::UiRoot,
         LabelBundle,
@@ -104,6 +104,7 @@ impl FamilyEditorMenuPlugin {
                     .spawn(NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
+                            align_items: AlignItems::Center,
                             position: UiRect::new(
                                 Val::Px(0.0),
                                 Val::Undefined,
@@ -118,6 +119,7 @@ impl FamilyEditorMenuPlugin {
                         ..Default::default()
                     })
                     .with_children(|parent| {
+                        parent.spawn(ImageButtonBundle::placeholder(&theme));
                         parent.spawn(TextButtonBundle::square(&theme, "➕"));
                     });
 

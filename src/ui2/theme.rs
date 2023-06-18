@@ -48,6 +48,16 @@ impl FromWorld for Theme {
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
+                image_button: Style {
+                    size: Size::new(Val::Px(60.0), Val::Px(60.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                image: Style {
+                    min_size: Size::all(Val::Px(50.0)),
+                    ..Default::default()
+                },
                 normal_text: TextStyle {
                     font: text_handle.clone(),
                     font_size: 35.0,
@@ -132,6 +142,8 @@ pub(crate) struct ButtonTheme {
     pub(crate) normal: Style,
     pub(crate) large: Style,
     pub(crate) square: Style,
+    pub(crate) image_button: Style,
+    pub(crate) image: Style,
     pub(crate) normal_text: TextStyle,
     pub(crate) large_text: TextStyle,
     pub(crate) square_text: TextStyle,
