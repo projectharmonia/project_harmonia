@@ -33,7 +33,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::family_button_system,
                     Self::city_button_system,
                     Self::create_button_system,
-                    Self::create_dialog_button_system,
+                    Self::city_dialog_button_system,
                 )
                     .in_set(OnUpdate(GameState::World)),
             );
@@ -251,7 +251,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn create_dialog_button_system(
+    fn city_dialog_button_system(
         mut commands: Commands,
         dialog_buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
