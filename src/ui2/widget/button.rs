@@ -21,13 +21,14 @@ impl ButtonPlugin {
     fn init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
-        buttons: Query<(Entity, &ButtonText, &ButtonSize), Added<ButtonText>>,
+        buttons: Query<(Entity, &ButtonText, &ButtonKind), Added<ButtonText>>,
     ) {
-        for (entity, text, size) in &buttons {
+        for (entity, text, button_kind) in &buttons {
             commmands.entity(entity).with_children(|parent| {
-                let style = match size {
-                    ButtonSize::Normal => theme.button.normal_text.clone(),
-                    ButtonSize::Large => theme.button.large_text.clone(),
+                let style = match button_kind {
+                    ButtonKind::Normal => theme.button.normal_text.clone(),
+                    ButtonKind::Large => theme.button.large_text.clone(),
+                    ButtonKind::Square => theme.button.square_text.clone(),
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
             });
@@ -130,9 +131,10 @@ pub(crate) struct ExclusiveButton;
 pub(crate) struct TabContent(pub(crate) Entity);
 
 #[derive(Component)]
-enum ButtonSize {
+enum ButtonKind {
     Normal,
     Large,
+    Square,
 }
 
 #[derive(Component)]
@@ -140,7 +142,7 @@ pub(crate) struct ButtonText(pub(crate) String);
 
 #[derive(Bundle)]
 pub(crate) struct TextButtonBundle {
-    button_size: ButtonSize,
+    button_kind: ButtonKind,
     button_text: ButtonText,
 
     #[bundle]
@@ -149,20 +151,25 @@ pub(crate) struct TextButtonBundle {
 
 impl TextButtonBundle {
     pub(crate) fn normal(theme: &Theme, text: impl Into<String>) -> Self {
-        Self::new(theme, ButtonSize::Normal, text)
+        Self::new(theme, ButtonKind::Normal, text)
     }
 
     pub(crate) fn large(theme: &Theme, text: impl Into<String>) -> Self {
-        Self::new(theme, ButtonSize::Large, text)
+        Self::new(theme, ButtonKind::Large, text)
     }
 
-    fn new(theme: &Theme, button_size: ButtonSize, text: impl Into<String>) -> Self {
-        let style = match button_size {
-            ButtonSize::Normal => theme.button.normal.clone(),
-            ButtonSize::Large => theme.button.large.clone(),
+    pub(crate) fn square(theme: &Theme, text: impl Into<String>) -> Self {
+        Self::new(theme, ButtonKind::Square, text)
+    }
+
+    fn new(theme: &Theme, button_kind: ButtonKind, text: impl Into<String>) -> Self {
+        let style = match button_kind {
+            ButtonKind::Normal => theme.button.normal.clone(),
+            ButtonKind::Large => theme.button.large.clone(),
+            ButtonKind::Square => theme.button.square.clone(),
         };
         Self {
-            button_size,
+            button_kind,
             button_text: ButtonText(text.into()),
             button_bundle: ButtonBundle {
                 style,

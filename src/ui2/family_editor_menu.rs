@@ -105,6 +105,27 @@ impl FamilyEditorMenuPlugin {
                         style: Style {
                             position_type: PositionType::Absolute,
                             position: UiRect::new(
+                                Val::Px(0.0),
+                                Val::Undefined,
+                                Val::Undefined,
+                                Val::Px(0.0),
+                            ),
+                            gap: theme.gap.normal,
+                            padding: theme.padding.global,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(TextButtonBundle::square(&theme, "➕"));
+                    });
+
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            position_type: PositionType::Absolute,
+                            position: UiRect::new(
                                 Val::Undefined,
                                 Val::Px(0.0),
                                 Val::Undefined,

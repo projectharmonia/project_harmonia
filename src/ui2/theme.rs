@@ -26,7 +26,8 @@ pub(crate) struct Theme {
 impl FromWorld for Theme {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
-        let font_handle = asset_server.load("base/fonts/FiraSans-Bold.ttf");
+        let text_handle = asset_server.load("base/fonts/FiraSans-Bold.ttf");
+        let symbol_handle = asset_server.load("base/fonts/NotoEmoji-Regular.ttf");
         Self {
             button: ButtonTheme {
                 normal: Style {
@@ -41,14 +42,25 @@ impl FromWorld for Theme {
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
+                square: Style {
+                    size: Size::new(Val::Px(40.0), Val::Px(40.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
                 normal_text: TextStyle {
-                    font: font_handle.clone(),
+                    font: text_handle.clone(),
                     font_size: 35.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 large_text: TextStyle {
-                    font: font_handle.clone(),
+                    font: text_handle.clone(),
                     font_size: 40.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
+                },
+                square_text: TextStyle {
+                    font: symbol_handle,
+                    font_size: 35.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 normal_color: Color::rgb(0.15, 0.15, 0.15),
@@ -58,12 +70,12 @@ impl FromWorld for Theme {
             },
             label: LabelTheme {
                 normal: TextStyle {
-                    font: font_handle.clone(),
+                    font: text_handle.clone(),
                     font_size: 35.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
                 large: TextStyle {
-                    font: font_handle.clone(),
+                    font: text_handle.clone(),
                     font_size: 45.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
@@ -74,7 +86,7 @@ impl FromWorld for Theme {
                     ..Default::default()
                 },
                 text: TextStyle {
-                    font: font_handle,
+                    font: text_handle,
                     font_size: 30.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
@@ -119,8 +131,10 @@ impl FromWorld for Theme {
 pub(crate) struct ButtonTheme {
     pub(crate) normal: Style,
     pub(crate) large: Style,
+    pub(crate) square: Style,
     pub(crate) normal_text: TextStyle,
     pub(crate) large_text: TextStyle,
+    pub(crate) square_text: TextStyle,
     pub(crate) normal_color: Color,
     pub(crate) hovered_color: Color,
     pub(crate) pressed_color: Color,
