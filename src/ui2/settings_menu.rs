@@ -28,8 +28,8 @@ impl Plugin for SettingsMenuPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::Settings)))
             .add_systems(
                 (
+                    Self::mapping_button_text_system,
                     Self::mapping_button_system,
-                    Self::binding_dialog_system,
                     Self::binding_system.run_if(any_with_component::<BindingButton>()),
                     Self::binding_dialog_button_system,
                     Self::settings_button_system,
@@ -121,7 +121,9 @@ impl SettingsMenuPlugin {
             });
     }
 
-    fn mapping_button_system(mut modals: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>) {
+    fn mapping_button_text_system(
+        mut modals: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
+    ) {
         for (mapping, mut text) in &mut modals {
             text.0 = match mapping.input_kind {
                 Some(InputKind::GamepadButton(gamepad_button)) => {
@@ -138,7 +140,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn binding_dialog_system(
+    fn mapping_button_system(
         mut commands: Commands,
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
