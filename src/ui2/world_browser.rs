@@ -2,6 +2,7 @@ use std::{fs, mem};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use derive_more::Display;
 use strum::{EnumIter, IntoEnumIterator};
 
@@ -10,6 +11,7 @@ use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorldPlugin, WorldName},
+    network::ServerSettings,
 };
 
 use super::{
@@ -27,7 +29,10 @@ impl Plugin for WorldBrowserPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::WorldBrowser)))
             .add_systems(
                 (
-                    Self::world_button_system.after(GameWorldPlugin::loading_system),
+                    Self::world_button_system,
+                    Self::host_dialog_button_system
+                        .pipe(error::report)
+                        .after(GameWorldPlugin::loading_system),
                     Self::remove_dialog_button_system.pipe(error::report),
                     Self::create_button_system,
                     Self::create_dialog_button_system,
@@ -119,7 +124,13 @@ impl WorldBrowserPlugin {
                     commands.insert_resource(WorldName(mem::take(world_name)));
                     load_events.send_default();
                 }
-                WorldButton::Host => todo!(),
+                WorldButton::Host => setup_host_world_dialog(
+                    &mut commands,
+                    roots.single(),
+                    &theme,
+                    world_node,
+                    &world_name,
+                ),
                 WorldButton::Remove => {
                     setup_remove_world_dialog(
                         &mut commands,
@@ -131,6 +142,44 @@ impl WorldBrowserPlugin {
                 }
             }
         }
+    }
+
+    fn host_dialog_button_system(
+        mut commands: Commands,
+        mut load_events: EventWriter<GameLoad>,
+        mut server_settings: ResMut<ServerSettings>,
+        network_channels: Res<NetworkChannels>,
+        dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
+        buttons: Query<(&Interaction, &HostDialogButton)>,
+        port_edits: Query<&Text, With<PortEdit>>,
+        mut labels: Query<&mut Text, Without<PortEdit>>,
+    ) -> Result<()> {
+        for (&interaction, &button) in &buttons {
+            if interaction == Interaction::Clicked {
+                let (dialog_entity, world_node) = dialogs.single();
+                let mut text = labels
+                    .get_mut(world_node.label_entity)
+                    .expect("world label should contain text");
+                let world_name = &mut text.sections[0].value;
+                if button == HostDialogButton::Host {
+                    commands.insert_resource(WorldName(mem::take(world_name)));
+                    load_events.send_default();
+                    // TODO: Maybe remove settings resource.
+                    server_settings.port = port_edits.single().sections[0].value.parse()?;
+                    let (server, transport) = server_settings
+                        .create_server(
+                            network_channels.server_channels(),
+                            network_channels.client_channels(),
+                        )
+                        .context("unable to create server")?;
+                    commands.insert_resource(server);
+                    commands.insert_resource(transport);
+                }
+                commands.entity(dialog_entity).despawn_recursive();
+            }
+        }
+
+        Ok(())
     }
 
     fn remove_dialog_button_system(
@@ -288,6 +337,69 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
         });
 }
 
+fn setup_host_world_dialog(
+    commands: &mut Commands,
+    root_entity: Entity,
+    theme: &Theme,
+    world_node: WorldNode,
+    world_name: &str,
+) {
+    commands.entity(root_entity).with_children(|parent| {
+        parent
+            .spawn((DialogBundle::new(theme), world_node))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(LabelBundle::normal(&theme, format!("Host {world_name}")));
+
+                        // TODO: Use or remove world name.
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    justify_content: JustifyContent::Center,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                parent.spawn(LabelBundle::normal(theme, "Port:"));
+                                parent.spawn((PortEdit, TextEditBundle::empty(theme)));
+                            });
+
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                for button in HostDialogButton::iter() {
+                                    parent.spawn((
+                                        button,
+                                        TextButtonBundle::normal(theme, button.to_string()),
+                                    ));
+                                }
+                            });
+                    });
+            });
+    });
+}
+
 fn setup_remove_world_dialog(
     commands: &mut Commands,
     root_entity: Entity,
@@ -369,3 +481,12 @@ enum CreateDialogButton {
 
 #[derive(Component)]
 struct WorldNameEdit;
+
+#[derive(Component)]
+struct PortEdit;
+
+#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
+enum HostDialogButton {
+    Host,
+    Cancel,
+}
