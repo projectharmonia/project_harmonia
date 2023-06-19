@@ -400,7 +400,7 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
         })
         .with_children(|parent| {
             for button in FamilyMenuButton::iter() {
-                parent.spawn((button, TextButtonBundle::normal(&theme, button.to_string())));
+                parent.spawn((button, TextButtonBundle::normal(theme, button.to_string())));
             }
         });
 }

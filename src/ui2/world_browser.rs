@@ -129,7 +129,7 @@ impl WorldBrowserPlugin {
                     roots.single(),
                     &theme,
                     world_node,
-                    &world_name,
+                    world_name,
                 ),
                 WorldButton::Remove => {
                     setup_remove_world_dialog(
@@ -137,7 +137,7 @@ impl WorldBrowserPlugin {
                         roots.single(),
                         &theme,
                         world_node,
-                        &world_name,
+                        world_name,
                     );
                 }
             }
@@ -362,7 +362,7 @@ fn setup_host_world_dialog(
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(&theme, format!("Host {world_name}")));
+                        parent.spawn(LabelBundle::normal(theme, format!("Host {world_name}")));
 
                         // TODO: Use or remove world name.
                         parent

@@ -219,7 +219,7 @@ pub(crate) struct ImageButtonBundle {
 
 impl ImageButtonBundle {
     pub(crate) fn placeholder(theme: &Theme) -> Self {
-        Self::new(&theme, DEFAULT_IMAGE_HANDLE.typed())
+        Self::new(theme, DEFAULT_IMAGE_HANDLE.typed())
     }
 
     pub(crate) fn new(theme: &Theme, image_handle: Handle<Image>) -> Self {

@@ -324,7 +324,7 @@ fn setup_entity_node<E>(
 fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn(DialogBundle::new(&theme))
+            .spawn(DialogBundle::new(theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {
@@ -341,10 +341,10 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(&theme, "Create city"));
+                        parent.spawn(LabelBundle::normal(theme, "Create city"));
                         parent.spawn((
                             CityNameEdit,
-                            TextEditBundle::new(&theme, "New city").active(),
+                            TextEditBundle::new(theme, "New city").active(),
                         ));
                         parent
                             .spawn(NodeBundle {
@@ -358,7 +358,7 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                                 for dialog_button in CityDialogButton::iter() {
                                     parent.spawn((
                                         dialog_button,
-                                        TextButtonBundle::normal(&theme, dialog_button.to_string()),
+                                        TextButtonBundle::normal(theme, dialog_button.to_string()),
                                     ));
                                 }
                             });
