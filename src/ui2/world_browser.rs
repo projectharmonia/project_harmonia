@@ -140,21 +140,18 @@ impl WorldBrowserPlugin {
         buttons: Query<(&Interaction, &RemoveDialogButton)>,
         labels: Query<&Text>,
     ) -> Result<()> {
-        for (&interaction, dialog_button) in &buttons {
+        for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
                 let (dialog_entity, world_node) = dialogs.single();
                 let text = labels
                     .get(world_node.label_entity)
                     .expect("world label should contain text");
                 let world_name = &text.sections[0].value;
-                match dialog_button {
-                    RemoveDialogButton::Remove => {
-                        let world_path = game_paths.world_path(world_name);
-                        fs::remove_file(&world_path)
-                            .with_context(|| format!("unable to remove {world_path:?}"))?;
-                        commands.entity(world_node.node_entity).despawn_recursive();
-                    }
-                    RemoveDialogButton::Cancel => (),
+                if button == RemoveDialogButton::Remove {
+                    let world_path = game_paths.world_path(world_name);
+                    fs::remove_file(&world_path)
+                        .with_context(|| format!("unable to remove {world_path:?}"))?;
+                    commands.entity(world_node.node_entity).despawn_recursive();
                 }
                 commands.entity(dialog_entity).despawn_recursive();
             }
@@ -207,12 +204,12 @@ impl WorldBrowserPlugin {
                                         ..Default::default()
                                     })
                                     .with_children(|parent| {
-                                        for dialog_button in CreateDialogButton::iter() {
+                                        for button in CreateDialogButton::iter() {
                                             parent.spawn((
-                                                dialog_button,
+                                                button,
                                                 TextButtonBundle::normal(
                                                     &theme,
-                                                    dialog_button.to_string(),
+                                                    button.to_string(),
                                                 ),
                                             ));
                                         }
@@ -226,13 +223,13 @@ impl WorldBrowserPlugin {
     fn create_dialog_button_system(
         mut commands: Commands,
         mut game_state: ResMut<NextState<GameState>>,
-        dialog_buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
+        buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for (&interaction, dialog_button) in &dialog_buttons {
+        for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
-                if let CreateDialogButton::Create = dialog_button {
+                if button == CreateDialogButton::Create {
                     let mut text = text_edits.single_mut();
                     let world_name = &mut text.sections[0].value;
                     commands.insert_resource(WorldName(mem::take(world_name)));
@@ -329,10 +326,10 @@ fn setup_remove_world_dialog(
                                 ..Default::default()
                             })
                             .with_children(|parent| {
-                                for dialog_button in RemoveDialogButton::iter() {
+                                for button in RemoveDialogButton::iter() {
                                     parent.spawn((
-                                        dialog_button,
-                                        TextButtonBundle::normal(theme, dialog_button.to_string()),
+                                        button,
+                                        TextButtonBundle::normal(theme, button.to_string()),
                                     ));
                                 }
                             });
@@ -348,7 +345,7 @@ enum WorldButton {
     Remove,
 }
 
-#[derive(Component, EnumIter, Clone, Copy, Display)]
+#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
 enum RemoveDialogButton {
     Remove,
     Cancel,
@@ -364,7 +361,7 @@ struct WorldNode {
 #[derive(Component)]
 struct CreateWorldButton;
 
-#[derive(Component, EnumIter, Clone, Copy, Display)]
+#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
 enum CreateDialogButton {
     Create,
     Cancel,
