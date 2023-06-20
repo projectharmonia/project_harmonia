@@ -260,9 +260,10 @@ impl WorldMenuPlugin {
         for (&interaction, dialog_button) in &buttons {
             if interaction == Interaction::Clicked {
                 if let CityDialogButton::Create = dialog_button {
-                    let mut text = text_edits.single_mut();
-                    let city_name = &mut text.sections[0].value;
-                    commands.spawn(CityBundle::new(mem::take(city_name).into()));
+                    let mut city_name = text_edits.single_mut();
+                    commands.spawn(CityBundle::new(
+                        mem::take(&mut city_name.sections[0].value).into(),
+                    ));
                 }
                 commands.entity(dialogs.single()).despawn_recursive();
             }

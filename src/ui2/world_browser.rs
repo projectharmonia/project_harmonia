@@ -115,13 +115,13 @@ impl WorldBrowserPlugin {
                 continue;
             }
 
-            let mut text = labels
+            let mut world_name = labels
                 .get_mut(world_node.label_entity)
                 .expect("world label should contain text");
-            let world_name = &mut text.sections[0].value;
             match world_button {
                 WorldButton::Play => {
-                    commands.insert_resource(WorldName(mem::take(world_name)));
+                    commands
+                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
                     load_events.send_default();
                 }
                 WorldButton::Host => setup_host_world_dialog(
@@ -129,7 +129,7 @@ impl WorldBrowserPlugin {
                     roots.single(),
                     &theme,
                     world_node,
-                    world_name,
+                    &mut world_name.sections[0].value,
                 ),
                 WorldButton::Remove => {
                     setup_remove_world_dialog(
@@ -137,7 +137,7 @@ impl WorldBrowserPlugin {
                         roots.single(),
                         &theme,
                         world_node,
-                        world_name,
+                        &mut world_name.sections[0].value,
                     );
                 }
             }
@@ -151,21 +151,23 @@ impl WorldBrowserPlugin {
         network_channels: Res<NetworkChannels>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
         buttons: Query<(&Interaction, &HostDialogButton)>,
-        port_edits: Query<&Text, With<PortEdit>>,
+        text_edits: Query<&Text, With<PortEdit>>,
         mut labels: Query<&mut Text, Without<PortEdit>>,
     ) -> Result<()> {
         for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
                 let (dialog_entity, world_node) = dialogs.single();
-                let mut text = labels
-                    .get_mut(world_node.label_entity)
-                    .expect("world label should contain text");
-                let world_name = &mut text.sections[0].value;
                 if button == HostDialogButton::Host {
-                    commands.insert_resource(WorldName(mem::take(world_name)));
+                    let mut world_name = labels
+                        .get_mut(world_node.label_entity)
+                        .expect("world label should contain text");
+                    commands
+                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
                     load_events.send_default();
+
                     // TODO: Maybe remove settings resource.
-                    server_settings.port = port_edits.single().sections[0].value.parse()?;
+                    let port = text_edits.single();
+                    server_settings.port = port.sections[0].value.parse()?;
                     let (server, transport) = server_settings
                         .create_server(
                             network_channels.server_channels(),
@@ -192,12 +194,11 @@ impl WorldBrowserPlugin {
         for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
                 let (dialog_entity, world_node) = dialogs.single();
-                let text = labels
+                let world_name = labels
                     .get(world_node.label_entity)
                     .expect("world label should contain text");
-                let world_name = &text.sections[0].value;
                 if button == RemoveDialogButton::Remove {
-                    let world_path = game_paths.world_path(world_name);
+                    let world_path = game_paths.world_path(&world_name.sections[0].value);
                     fs::remove_file(&world_path)
                         .with_context(|| format!("unable to remove {world_path:?}"))?;
                     commands.entity(world_node.node_entity).despawn_recursive();
@@ -279,9 +280,9 @@ impl WorldBrowserPlugin {
         for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
                 if button == CreateDialogButton::Create {
-                    let mut text = text_edits.single_mut();
-                    let world_name = &mut text.sections[0].value;
-                    commands.insert_resource(WorldName(mem::take(world_name)));
+                    let mut world_name = text_edits.single_mut();
+                    commands
+                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
                     game_state.set(GameState::World);
                 }
                 commands.entity(dialogs.single()).despawn_recursive();
