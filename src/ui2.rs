@@ -1,4 +1,5 @@
 mod camera_2d;
+mod connection_dialog;
 mod error_message;
 mod family_editor_menu;
 mod main_menu;
@@ -11,6 +12,7 @@ mod world_menu;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use camera_2d::Camera2dPlugin;
+use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
 use family_editor_menu::FamilyEditorMenuPlugin;
 use main_menu::MainMenuPlugin;
@@ -26,6 +28,7 @@ impl PluginGroup for UiPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(Camera2dPlugin)
+            .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
             .add(FamilyEditorMenuPlugin)
             .add(WidgetPlugin)
