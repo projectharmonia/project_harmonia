@@ -11,7 +11,7 @@ use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorldPlugin, WorldName},
-    network::ServerSettings,
+    network::{ConnectionSettings, ServerSettings},
 };
 
 use super::{
@@ -34,8 +34,9 @@ impl Plugin for WorldBrowserPlugin {
                         .pipe(error::report)
                         .after(GameWorldPlugin::loading_system),
                     Self::remove_dialog_button_system.pipe(error::report),
-                    Self::create_button_system,
+                    Self::world_browser_button_system,
                     Self::create_dialog_button_system,
+                    Self::join_dialog_button_system.pipe(error::report),
                 )
                     .in_set(OnUpdate(GameState::WorldBrowser)),
             );
@@ -89,15 +90,18 @@ impl WorldBrowserPlugin {
                         style: Style {
                             size: Size::new(Val::Percent(100.0), Val::Auto),
                             justify_content: JustifyContent::FlexStart,
+                            gap: theme.gap.normal,
                             ..Default::default()
                         },
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent.spawn((
-                            CreateWorldButton,
-                            TextButtonBundle::normal(&theme, "Create new"),
-                        ));
+                        for button in WorldBrowserButton::iter() {
+                            parent.spawn((
+                                button,
+                                TextButtonBundle::normal(&theme, button.to_string()),
+                            ));
+                        }
                     });
             });
     }
@@ -210,63 +214,23 @@ impl WorldBrowserPlugin {
         Ok(())
     }
 
-    fn create_button_system(
+    fn world_browser_button_system(
         mut commands: Commands,
         theme: Res<Theme>,
-        buttons: Query<&Interaction, (Changed<Interaction>, With<CreateWorldButton>)>,
+        buttons: Query<(&Interaction, &WorldBrowserButton), Changed<Interaction>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        if let Ok(&interaction) = buttons.get_single() {
+        if let Ok((&interaction, button)) = buttons.get_single() {
             if interaction != Interaction::Clicked {
                 return;
             }
 
-            commands.entity(roots.single()).with_children(|parent| {
-                parent
-                    .spawn(DialogBundle::new(&theme))
-                    .with_children(|parent| {
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
-                                    flex_direction: FlexDirection::Column,
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
-                                background_color: theme.panel_color.into(),
-                                ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(LabelBundle::normal(&theme, "Create world"));
-                                parent.spawn((
-                                    WorldNameEdit,
-                                    TextEditBundle::new(&theme, "New world").active(),
-                                ));
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: Style {
-                                            gap: theme.gap.normal,
-                                            ..Default::default()
-                                        },
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        for button in CreateDialogButton::iter() {
-                                            parent.spawn((
-                                                button,
-                                                TextButtonBundle::normal(
-                                                    &theme,
-                                                    button.to_string(),
-                                                ),
-                                            ));
-                                        }
-                                    });
-                            });
-                    });
-            });
+            match button {
+                WorldBrowserButton::Create => {
+                    setup_create_world_dialog(&mut commands, &theme, &roots)
+                }
+                WorldBrowserButton::Join => setup_join_world_dialog(&mut commands, &theme, &roots),
+            }
         }
     }
 
@@ -288,6 +252,44 @@ impl WorldBrowserPlugin {
                 commands.entity(dialogs.single()).despawn_recursive();
             }
         }
+    }
+
+    fn join_dialog_button_system(
+        mut commands: Commands,
+        mut connection_settings: ResMut<ConnectionSettings>,
+        network_channels: Res<NetworkChannels>,
+        buttons: Query<(&Interaction, &JoinDialogButton), Changed<Interaction>>,
+        port_edits: Query<&Text, With<PortEdit>>,
+        mut ip_edits: Query<&mut Text, (With<IpEdit>, Without<PortEdit>)>,
+        dialogs: Query<Entity, With<Dialog>>,
+    ) -> Result<()> {
+        for (&interaction, &button) in &buttons {
+            if interaction == Interaction::Clicked {
+                match button {
+                    JoinDialogButton::Join => {
+                        let mut ip = ip_edits.single_mut();
+                        let port = port_edits.single();
+                        connection_settings.port = port.sections[0].value.parse()?;
+                        connection_settings.ip = mem::take(&mut ip.sections[0].value);
+
+                        // TODO: Maybe remove settings resource.
+                        let (client, transport) = connection_settings
+                            .create_client(
+                                network_channels.server_channels(),
+                                network_channels.client_channels(),
+                            )
+                            .context("unable to create connection")?;
+                        commands.insert_resource(client);
+                        commands.insert_resource(transport);
+                    }
+                    JoinDialogButton::Cancel => {
+                        commands.entity(dialogs.single()).despawn_recursive()
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -451,6 +453,142 @@ fn setup_remove_world_dialog(
     });
 }
 
+fn setup_create_world_dialog(
+    commands: &mut Commands,
+    theme: &Theme,
+    roots: &Query<Entity, With<UiRoot>>,
+) {
+    commands.entity(roots.single()).with_children(|parent| {
+        parent
+            .spawn(DialogBundle::new(&theme))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(LabelBundle::normal(&theme, "Create world"));
+                        parent.spawn((
+                            WorldNameEdit,
+                            TextEditBundle::new(&theme, "New world").active(),
+                        ));
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                for button in CreateDialogButton::iter() {
+                                    parent.spawn((
+                                        button,
+                                        TextButtonBundle::normal(&theme, button.to_string()),
+                                    ));
+                                }
+                            });
+                    });
+            });
+    });
+}
+
+fn setup_join_world_dialog(
+    commands: &mut Commands,
+    theme: &Theme,
+    roots: &Query<Entity, With<UiRoot>>,
+) {
+    commands.entity(roots.single()).with_children(|parent| {
+        parent
+            .spawn(DialogBundle::new(&theme))
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(50.0), Val::Percent(30.0)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent.spawn(LabelBundle::normal(&theme, "Join world"));
+
+                        // TODO 0.11: Use grid layout
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                const GRID_GAP: Size = Size::all(Val::Px(10.0));
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            flex_direction: FlexDirection::Column,
+                                            gap: GRID_GAP,
+                                            ..Default::default()
+                                        },
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        parent.spawn(LabelBundle::normal(theme, "IP:"));
+                                        parent.spawn(LabelBundle::normal(theme, "Port:"));
+                                    });
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            flex_direction: FlexDirection::Column,
+                                            gap: theme.gap.normal,
+                                            ..Default::default()
+                                        },
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        parent.spawn((IpEdit, TextEditBundle::empty(theme)));
+                                        parent.spawn((PortEdit, TextEditBundle::empty(theme)));
+                                    });
+                            });
+
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                for button in JoinDialogButton::iter() {
+                                    parent.spawn((
+                                        button,
+                                        TextButtonBundle::normal(theme, button.to_string()),
+                                    ));
+                                }
+                            });
+                    });
+            });
+    });
+}
+
 #[derive(Component, EnumIter, Clone, Copy, Display)]
 enum WorldButton {
     Play,
@@ -471,8 +609,11 @@ struct WorldNode {
     node_entity: Entity,
 }
 
-#[derive(Component)]
-struct CreateWorldButton;
+#[derive(Component, EnumIter, Clone, Copy, Display)]
+enum WorldBrowserButton {
+    Create,
+    Join,
+}
 
 #[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
 enum CreateDialogButton {
@@ -486,8 +627,17 @@ struct WorldNameEdit;
 #[derive(Component)]
 struct PortEdit;
 
+#[derive(Component)]
+struct IpEdit;
+
 #[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
 enum HostDialogButton {
     Host,
+    Cancel,
+}
+
+#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
+enum JoinDialogButton {
+    Join,
     Cancel,
 }
