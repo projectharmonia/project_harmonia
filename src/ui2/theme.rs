@@ -1,13 +1,17 @@
 use bevy::prelude::*;
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-
 pub(crate) struct ThemePlugin;
 
 impl Plugin for ThemePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Theme>()
-            .insert_resource(ClearColor(BACKGROUND_COLOR));
+            .add_startup_system(Self::clear_color_system);
+    }
+}
+
+impl ThemePlugin {
+    fn clear_color_system(mut commands: Commands, theme: Res<Theme>) {
+        commands.insert_resource(ClearColor(theme.background_color));
     }
 }
 
@@ -19,6 +23,7 @@ pub(crate) struct Theme {
     pub(crate) checkbox: CheckboxTheme,
     pub(crate) gap: GapTheme,
     pub(crate) padding: PaddingTheme,
+    pub(crate) background_color: Color,
     pub(crate) modal_color: Color,
     pub(crate) panel_color: Color,
 }
@@ -132,6 +137,7 @@ impl FromWorld for Theme {
                 normal: UiRect::all(Val::Px(10.0)),
                 global: UiRect::all(Val::Px(20.0)),
             },
+            background_color: Color::rgb(0.9, 0.9, 0.9),
             modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
             panel_color: Color::rgb(0.8, 0.8, 0.8),
         }
