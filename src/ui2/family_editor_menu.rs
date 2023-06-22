@@ -363,7 +363,7 @@ fn setup_actors_node(parent: &mut ChildBuilder, theme: &Theme) {
             style: Style {
                 position_type: PositionType::Absolute,
                 align_items: AlignItems::Center,
-                position: UiRect::new(Val::Px(0.0), Val::Undefined, Val::Undefined, Val::Px(0.0)),
+                align_self: AlignSelf::FlexEnd,
                 gap: theme.gap.normal,
                 padding: theme.padding.global,
                 ..Default::default()
@@ -391,7 +391,8 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
         .spawn(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                position: UiRect::new(Val::Undefined, Val::Px(0.0), Val::Undefined, Val::Px(0.0)),
+                align_self: AlignSelf::FlexEnd,
+                position: UiRect::right(Val::Px(0.0)),
                 gap: theme.gap.normal,
                 padding: theme.padding.global,
                 ..Default::default()
