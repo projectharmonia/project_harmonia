@@ -29,7 +29,7 @@ impl Plugin for WorldBrowserPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::WorldBrowser)))
             .add_systems(
                 (
-                    Self::world_button_system,
+                    Self::world_button_system.after(GameWorldPlugin::loading_system),
                     Self::host_dialog_button_system
                         .pipe(error::report)
                         .after(GameWorldPlugin::loading_system),
