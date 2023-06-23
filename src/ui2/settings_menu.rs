@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::GetPath};
+use bevy::{prelude::*, reflect::GetPath, ui::FocusPolicy};
 use leafwing_input_manager::{
     user_input::{InputKind, UserInput},
     Actionlike,
@@ -25,7 +25,8 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::Settings)))
+        app.add_event::<SettingsMenuOpen>()
+            .add_system(Self::setup_system.run_if(on_event::<SettingsMenuOpen>()))
             .add_systems(
                 (
                     Self::mapping_button_text_system,
@@ -34,7 +35,7 @@ impl Plugin for SettingsMenuPlugin {
                     Self::binding_dialog_button_system,
                     Self::settings_button_system,
                 )
-                    .in_set(OnUpdate(GameState::Settings)),
+                    .distributive_run_if(any_with_component::<SettingsMenu>()), // TODO 0.11: Replace with run_if
             );
     }
 }
@@ -45,80 +46,89 @@ impl SettingsMenuPlugin {
         mut tab_commands: Commands,
         settings: Res<Settings>,
         theme: Res<Theme>,
+        roots: Query<Entity, With<UiRoot>>,
     ) {
-        commands
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        size: Size::all(Val::Percent(100.0)),
-                        padding: theme.padding.global,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-                UiRoot,
-            ))
-            .with_children(|parent| {
-                let tabs_entity = parent
-                    .spawn(NodeBundle {
+        commands.entity(roots.single()).with_children(|parent| {
+            parent
+                .spawn((
+                    SettingsMenu,
+                    NodeBundle {
                         style: Style {
-                            justify_content: JustifyContent::Center,
+                            position_type: PositionType::Absolute,
+                            flex_direction: FlexDirection::Column,
+                            align_self: AlignSelf::Center,
+                            size: Size::all(Val::Percent(100.0)),
+                            padding: theme.padding.global,
                             ..Default::default()
                         },
+                        focus_policy: FocusPolicy::Block,
+                        background_color: theme.background_color.into(),
                         ..Default::default()
-                    })
-                    .id();
-
-                for (index, tab) in SettingsTab::iter().enumerate() {
-                    let content_entity = parent
+                    },
+                ))
+                .with_children(|parent| {
+                    let tabs_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
-                                padding: theme.padding.normal,
+                                justify_content: JustifyContent::Center,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
+                        .id();
+
+                    for (index, tab) in SettingsTab::iter().enumerate() {
+                        let content_entity = parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    padding: theme.padding.normal,
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| match tab {
+                                SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
+                                SettingsTab::Controls => {
+                                    setup_controls_tab(parent, &theme, &settings)
+                                }
+                                SettingsTab::Developer => {
+                                    setup_developer_tab(parent, &theme, &settings)
+                                }
+                            })
+                            .id();
+
+                        tab_commands
+                            .spawn((
+                                TabContent(content_entity),
+                                ExclusiveButton,
+                                Pressed(index == 0),
+                                TextButtonBundle::normal(&theme, tab.to_string()),
+                            ))
+                            .set_parent(tabs_entity);
+                    }
+
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                align_items: AlignItems::End,
+                                size: Size::all(Val::Percent(100.0)),
+                                justify_content: JustifyContent::End,
                                 gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             ..Default::default()
                         })
-                        .with_children(|parent| match tab {
-                            SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
-                            SettingsTab::Controls => setup_controls_tab(parent, &theme, &settings),
-                            SettingsTab::Developer => {
-                                setup_developer_tab(parent, &theme, &settings)
+                        .with_children(|parent| {
+                            for button in SettingsButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(&theme, button.to_string()),
+                                ));
                             }
-                        })
-                        .id();
-
-                    tab_commands
-                        .spawn((
-                            TabContent(content_entity),
-                            ExclusiveButton,
-                            Pressed(index == 0),
-                            TextButtonBundle::normal(&theme, tab.to_string()),
-                        ))
-                        .set_parent(tabs_entity);
-                }
-
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            align_items: AlignItems::End,
-                            size: Size::all(Val::Percent(100.0)),
-                            justify_content: JustifyContent::End,
-                            gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        for button in SettingsButton::iter() {
-                            parent.spawn((
-                                button,
-                                TextButtonBundle::normal(&theme, button.to_string()),
-                            ));
-                        }
-                    });
-            });
+                        });
+                });
+        });
     }
 
     fn mapping_button_text_system(
@@ -279,9 +289,11 @@ impl SettingsMenuPlugin {
     }
 
     fn settings_button_system(
+        mut commands: Commands,
         mut apply_events: EventWriter<SettingsApply>,
         mut settings: ResMut<Settings>,
         mut game_state: ResMut<NextState<GameState>>,
+        settings_menus: Query<Entity, With<SettingsMenu>>,
         settings_buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
@@ -316,7 +328,9 @@ impl SettingsMenuPlugin {
                     apply_events.send_default();
                     game_state.set(GameState::MainMenu);
                 }
-                SettingsButton::Cancel => game_state.set(GameState::MainMenu),
+                SettingsButton::Cancel => {
+                    commands.entity(settings_menus.single()).despawn_recursive()
+                }
             }
         }
     }
@@ -434,6 +448,13 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
             ));
         });
 }
+
+// Creates a settings menu node.
+#[derive(Default)]
+pub(super) struct SettingsMenuOpen;
+
+#[derive(Component)]
+struct SettingsMenu;
 
 #[derive(Display, EnumIter)]
 enum SettingsTab {

@@ -2,6 +2,7 @@ use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
+    settings_menu::SettingsMenuOpen,
     theme::Theme,
     widget::{button::TextButtonBundle, ui_root::UiRoot},
 };
@@ -44,6 +45,7 @@ impl MainMenuPlugin {
     }
 
     fn button_system(
+        mut settings_events: EventWriter<SettingsMenuOpen>,
         mut exit_events: EventWriter<AppExit>,
         mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<(&Interaction, &MainMenuButton), Changed<Interaction>>,
@@ -52,7 +54,7 @@ impl MainMenuPlugin {
             if *interaction == Interaction::Clicked {
                 match button {
                     MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
-                    MainMenuButton::Settings => game_state.set(GameState::Settings),
+                    MainMenuButton::Settings => settings_events.send_default(),
                     MainMenuButton::Exit => exit_events.send_default(),
                 }
             }

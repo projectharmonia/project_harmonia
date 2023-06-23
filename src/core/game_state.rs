@@ -13,7 +13,6 @@ impl Plugin for GameStatePlugin {
 pub(crate) enum GameState {
     #[default]
     MainMenu,
-    Settings,
     WorldBrowser,
     FamilyEditor,
     World,
