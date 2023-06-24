@@ -227,9 +227,11 @@ impl WorldBrowserPlugin {
 
             match button {
                 WorldBrowserButton::Create => {
-                    setup_create_world_dialog(&mut commands, &theme, &roots)
+                    setup_create_world_dialog(&mut commands, roots.single(), &theme)
                 }
-                WorldBrowserButton::Join => setup_join_world_dialog(&mut commands, &theme, &roots),
+                WorldBrowserButton::Join => {
+                    setup_join_world_dialog(&mut commands, roots.single(), &theme)
+                }
             }
         }
     }
@@ -454,12 +456,8 @@ fn setup_remove_world_dialog(
     });
 }
 
-fn setup_create_world_dialog(
-    commands: &mut Commands,
-    theme: &Theme,
-    roots: &Query<Entity, With<UiRoot>>,
-) {
-    commands.entity(roots.single()).with_children(|parent| {
+fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn(DialogBundle::new(&theme))
             .with_children(|parent| {
@@ -504,12 +502,8 @@ fn setup_create_world_dialog(
     });
 }
 
-fn setup_join_world_dialog(
-    commands: &mut Commands,
-    theme: &Theme,
-    roots: &Query<Entity, With<UiRoot>>,
-) {
-    commands.entity(roots.single()).with_children(|parent| {
+fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn(DialogBundle::new(&theme))
             .with_children(|parent| {
