@@ -2,6 +2,8 @@ mod camera_2d;
 mod connection_dialog;
 mod error_message;
 mod family_editor_menu;
+mod hud;
+mod ingame_menu;
 mod main_menu;
 mod settings_menu;
 mod theme;
@@ -15,6 +17,8 @@ use camera_2d::Camera2dPlugin;
 use connection_dialog::ConnectionDialogPlugin;
 use error_message::ErrorMessagePlugin;
 use family_editor_menu::FamilyEditorMenuPlugin;
+use hud::HudPlugin;
+use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
 use settings_menu::SettingsMenuPlugin;
 use theme::ThemePlugin;
@@ -31,6 +35,8 @@ impl PluginGroup for UiPlugins {
             .add(ConnectionDialogPlugin)
             .add(ErrorMessagePlugin)
             .add(FamilyEditorMenuPlugin)
+            .add(HudPlugin)
+            .add(InGameMenuPlugin)
             .add(WidgetPlugin)
             .add(MainMenuPlugin)
             .add(SettingsMenuPlugin)
