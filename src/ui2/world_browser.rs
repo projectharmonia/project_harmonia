@@ -133,7 +133,7 @@ impl WorldBrowserPlugin {
                     roots.single(),
                     &theme,
                     world_node,
-                    &mut world_name.sections[0].value,
+                    &world_name.sections[0].value,
                 ),
                 WorldButton::Remove => {
                     setup_remove_world_dialog(
@@ -141,7 +141,7 @@ impl WorldBrowserPlugin {
                         roots.single(),
                         &theme,
                         world_node,
-                        &mut world_name.sections[0].value,
+                        &world_name.sections[0].value,
                     );
                 }
             }
@@ -459,7 +459,7 @@ fn setup_remove_world_dialog(
 fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn(DialogBundle::new(&theme))
+            .spawn(DialogBundle::new(theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {
@@ -476,10 +476,10 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(&theme, "Create world"));
+                        parent.spawn(LabelBundle::normal(theme, "Create world"));
                         parent.spawn((
                             WorldNameEdit,
-                            TextEditBundle::new(&theme, "New world").active(),
+                            TextEditBundle::new(theme, "New world").active(),
                         ));
                         parent
                             .spawn(NodeBundle {
@@ -493,7 +493,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                                 for button in CreateDialogButton::iter() {
                                     parent.spawn((
                                         button,
-                                        TextButtonBundle::normal(&theme, button.to_string()),
+                                        TextButtonBundle::normal(theme, button.to_string()),
                                     ));
                                 }
                             });
@@ -505,7 +505,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
 fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn(DialogBundle::new(&theme))
+            .spawn(DialogBundle::new(theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {
@@ -522,7 +522,7 @@ fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: 
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(&theme, "Join world"));
+                        parent.spawn(LabelBundle::normal(theme, "Join world"));
 
                         // TODO 0.11: Use grid layout
                         parent
