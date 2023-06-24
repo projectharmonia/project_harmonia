@@ -182,23 +182,21 @@ impl WorldMenuPlugin {
         families: Query<&FamilyActors>,
     ) {
         for (&interaction, world_entity, family_button) in &buttons {
-            if interaction != Interaction::Clicked {
-                continue;
-            }
+            if interaction == Interaction::Clicked {
+                match family_button {
+                    FamilyButton::Play => {
+                        let actors = families
+                            .get(world_entity.0)
+                            .expect("world entity with family buttons should reference a family");
+                        let actor_entity = *actors
+                            .first()
+                            .expect("family always have at least one member");
 
-            match family_button {
-                FamilyButton::Play => {
-                    let actors = families
-                        .get(world_entity.0)
-                        .expect("world entity with family buttons should reference a family");
-                    let actor_entity = *actors
-                        .first()
-                        .expect("family always have at least one member");
-
-                    commands.entity(actor_entity).insert(ActiveActor);
-                    game_state.set(GameState::Family);
+                        commands.entity(actor_entity).insert(ActiveActor);
+                        game_state.set(GameState::Family);
+                    }
+                    FamilyButton::Delete => despawn_events.send(FamilyDespawn(world_entity.0)),
                 }
-                FamilyButton::Delete => despawn_events.send(FamilyDespawn(world_entity.0)),
             }
         }
     }
@@ -209,17 +207,15 @@ impl WorldMenuPlugin {
         buttons: Query<(&Interaction, &WorldEntity, &CityButton), Changed<Interaction>>,
     ) {
         for (&interaction, world_entity, family_button) in &buttons {
-            if interaction != Interaction::Clicked {
-                continue;
-            }
-
-            // TODO: use event for despawn, otherwise client will despawn the city locally.
-            match family_button {
-                CityButton::Edit => {
-                    commands.entity(world_entity.0).insert(ActiveCity);
-                    game_state.set(GameState::City);
+            if interaction == Interaction::Clicked {
+                // TODO: use event for despawn, otherwise client will despawn the city locally.
+                match family_button {
+                    CityButton::Edit => {
+                        commands.entity(world_entity.0).insert(ActiveCity);
+                        game_state.set(GameState::City);
+                    }
+                    CityButton::Delete => commands.entity(world_entity.0).despawn(),
                 }
-                CityButton::Delete => commands.entity(world_entity.0).despawn(),
             }
         }
     }
@@ -233,19 +229,17 @@ impl WorldMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
     ) {
         if let Ok(&interaction) = buttons.get_single() {
-            if interaction != Interaction::Clicked {
-                return;
-            }
+            if interaction == Interaction::Clicked {
+                let current_tab = tabs
+                    .iter()
+                    .find_map(|(pressed, world_tab)| pressed.0.then_some(world_tab))
+                    .expect("one tab should always be active");
 
-            let current_tab = tabs
-                .iter()
-                .find_map(|(pressed, world_tab)| pressed.0.then_some(world_tab))
-                .expect("one tab should always be active");
-
-            match current_tab {
-                WorldTab::Families => game_state.set(GameState::FamilyEditor),
-                WorldTab::Cities => {
-                    setup_create_city_dialog(&mut commands, roots.single(), &theme);
+                match current_tab {
+                    WorldTab::Families => game_state.set(GameState::FamilyEditor),
+                    WorldTab::Cities => {
+                        setup_create_city_dialog(&mut commands, roots.single(), &theme);
+                    }
                 }
             }
         }
