@@ -126,11 +126,11 @@ impl FamilyEditorMenuPlugin {
 
     fn actor_buttons_system(
         mut commands: Commands,
-        buttons: Query<(&Interaction, &EditActor), Changed<Interaction>>,
+        buttons: Query<(&Pressed, &EditActor), Changed<Pressed>>,
         actors: Query<Entity, With<SelectedActor>>,
     ) {
-        for (&interaction, edit_actor) in &buttons {
-            if interaction == Interaction::Clicked && actors.get(edit_actor.0).is_err() {
+        for (pressed, edit_actor) in &buttons {
+            if pressed.0 && actors.get(edit_actor.0).is_err() {
                 commands.entity(actors.single()).remove::<SelectedActor>();
                 commands.entity(edit_actor.0).insert(SelectedActor);
             }
@@ -138,11 +138,11 @@ impl FamilyEditorMenuPlugin {
     }
 
     fn sex_buttons_system(
-        buttons: Query<(&Interaction, &Sex), (Changed<Interaction>, Without<SelectedActor>)>,
+        buttons: Query<(&Pressed, &Sex), (Changed<Pressed>, Without<SelectedActor>)>,
         mut actors: Query<&mut Sex, With<SelectedActor>>,
     ) {
-        for (&interaction, &sex) in &buttons {
-            if interaction == Interaction::Clicked {
+        for (pressed, &sex) in &buttons {
+            if pressed.0 {
                 *actors.single_mut() = sex;
             }
         }
