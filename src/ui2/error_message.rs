@@ -36,6 +36,7 @@ impl ErrorMessagePlugin {
                                 flex_direction: FlexDirection::Column,
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
+                                gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             background_color: theme.panel_color.into(),
