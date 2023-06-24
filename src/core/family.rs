@@ -176,7 +176,9 @@ impl FamilyBundle {
     }
 }
 
-#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default)]
+#[derive(
+    States, Component, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default,
+)]
 pub(crate) enum FamilyMode {
     #[default]
     Life,
