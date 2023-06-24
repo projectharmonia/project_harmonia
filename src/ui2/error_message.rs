@@ -56,11 +56,11 @@ impl ErrorMessagePlugin {
     fn button_system(
         mut commands: Commands,
         buttons: Query<&Interaction, (Changed<Interaction>, With<OkButton>)>,
-        dialogs: Query<Entity, With<ErrorDialog>>,
+        error_dialogs: Query<Entity, With<ErrorDialog>>,
     ) {
         for &interaction in &buttons {
             if interaction == Interaction::Clicked {
-                commands.entity(dialogs.single()).despawn_recursive();
+                commands.entity(error_dialogs.single()).despawn_recursive();
             }
         }
     }
