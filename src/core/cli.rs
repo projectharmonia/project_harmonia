@@ -1,3 +1,5 @@
+use std::net::{IpAddr, Ipv4Addr};
+
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -10,7 +12,7 @@ use super::{
     family::FamilySync,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
-    network::{ConnectionSettings, ServerSettings},
+    network::{self, DEFAULT_PORT},
 };
 
 /// Logic for command line interface.
@@ -44,33 +46,29 @@ impl CliPlugin {
                     load_events.send_default();
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
                 }
-                GameCommand::Host {
-                    world_load,
-                    server_settings,
-                } => {
-                    let (server, transport) = server_settings
-                        .create_server(
-                            network_channels.server_channels(),
-                            network_channels.client_channels(),
-                        )
-                        .context("unable to create server")?;
+                GameCommand::Host { world_load, port } => {
+                    let (server, transport) = network::create_server(
+                        *port,
+                        network_channels.server_channels(),
+                        network_channels.client_channels(),
+                    )
+                    .context("unable to create server")?;
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
-                    commands.insert_resource(server_settings.clone());
 
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
                     load_events.send_default();
                 }
-                GameCommand::Join(connection_settings) => {
-                    let (client, transport) = connection_settings
-                        .create_client(
-                            network_channels.server_channels(),
-                            network_channels.client_channels(),
-                        )
-                        .context("unable to create client")?;
+                GameCommand::Join { ip, port } => {
+                    let (client, transport) = network::create_client(
+                        *ip,
+                        *port,
+                        network_channels.server_channels(),
+                        network_channels.client_channels(),
+                    )
+                    .context("unable to create client")?;
                     commands.insert_resource(client);
                     commands.insert_resource(transport);
-                    commands.insert_resource(connection_settings.clone());
                 }
             }
         }
@@ -174,10 +172,19 @@ enum GameCommand {
         #[command(flatten)]
         world_load: WorldLoad,
 
-        #[command(flatten)]
-        server_settings: ServerSettings,
+        /// Port to use.
+        #[clap(short, long, default_value_t = DEFAULT_PORT)]
+        port: u16,
     },
-    Join(ConnectionSettings),
+    Join {
+        /// Server IP address.
+        #[clap(short, long, default_value_t = Ipv4Addr::LOCALHOST.into())]
+        ip: IpAddr,
+
+        /// Server port.
+        #[clap(short, long, default_value_t = DEFAULT_PORT)]
+        port: u16,
+    },
 }
 
 /// Arguments for quick load.

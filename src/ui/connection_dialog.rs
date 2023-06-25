@@ -5,7 +5,6 @@ use super::{
     theme::Theme,
     widget::{button::TextButtonBundle, ui_root::UiRoot, DialogBundle, LabelBundle},
 };
-use crate::core::network::ConnectionSettings;
 
 pub(super) struct ConnectionDialogPlugin;
 
@@ -20,12 +19,7 @@ impl Plugin for ConnectionDialogPlugin {
 }
 
 impl ConnectionDialogPlugin {
-    fn setup_system(
-        mut commands: Commands,
-        theme: Res<Theme>,
-        roots: Query<Entity, With<UiRoot>>,
-        connection_setting: Res<ConnectionSettings>,
-    ) {
+    fn setup_system(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((ConnectionDialog, DialogBundle::new(&theme)))
@@ -44,13 +38,7 @@ impl ConnectionDialogPlugin {
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn(LabelBundle::normal(
-                                &theme,
-                                format!(
-                                    "Connecting to {}:{}...",
-                                    connection_setting.ip, connection_setting.port
-                                ),
-                            ));
+                            parent.spawn(LabelBundle::normal(&theme, "Connecting to server"));
                             parent
                                 .spawn((CancelButton, TextButtonBundle::normal(&theme, "Cancel")));
                         });

@@ -1,4 +1,4 @@
-use std::{fs, mem};
+use std::{fs, mem, net::Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
@@ -11,7 +11,7 @@ use crate::core::{
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorldPlugin, WorldName},
-    network::{ConnectionSettings, ServerSettings},
+    network::{self, DEFAULT_PORT},
 };
 
 use super::{
@@ -151,7 +151,6 @@ impl WorldBrowserPlugin {
     fn host_dialog_button_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
-        mut server_settings: ResMut<ServerSettings>,
         network_channels: Res<NetworkChannels>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
         buttons: Query<(&Interaction, &HostDialogButton)>,
@@ -169,15 +168,13 @@ impl WorldBrowserPlugin {
                         .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
                     load_events.send_default();
 
-                    // TODO: Maybe remove settings resource.
                     let port = text_edits.single();
-                    server_settings.port = port.sections[0].value.parse()?;
-                    let (server, transport) = server_settings
-                        .create_server(
-                            network_channels.server_channels(),
-                            network_channels.client_channels(),
-                        )
-                        .context("unable to create server")?;
+                    let (server, transport) = network::create_server(
+                        port.sections[0].value.parse()?,
+                        network_channels.server_channels(),
+                        network_channels.client_channels(),
+                    )
+                    .context("unable to create server")?;
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
                 }
@@ -258,29 +255,25 @@ impl WorldBrowserPlugin {
 
     fn join_dialog_button_system(
         mut commands: Commands,
-        mut connection_settings: ResMut<ConnectionSettings>,
         network_channels: Res<NetworkChannels>,
         buttons: Query<(&Interaction, &JoinDialogButton), Changed<Interaction>>,
         port_edits: Query<&Text, With<PortEdit>>,
-        mut ip_edits: Query<&mut Text, (With<IpEdit>, Without<PortEdit>)>,
+        ip_edits: Query<&Text, With<IpEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) -> Result<()> {
         for (&interaction, &button) in &buttons {
             if interaction == Interaction::Clicked {
                 match button {
                     JoinDialogButton::Join => {
-                        let mut ip = ip_edits.single_mut();
+                        let ip = ip_edits.single();
                         let port = port_edits.single();
-                        connection_settings.port = port.sections[0].value.parse()?;
-                        connection_settings.ip = mem::take(&mut ip.sections[0].value);
-
-                        // TODO: Maybe remove settings resource.
-                        let (client, transport) = connection_settings
-                            .create_client(
-                                network_channels.server_channels(),
-                                network_channels.client_channels(),
-                            )
-                            .context("unable to create connection")?;
+                        let (client, transport) = network::create_client(
+                            ip.sections[0].value.parse()?,
+                            port.sections[0].value.parse()?,
+                            network_channels.server_channels(),
+                            network_channels.client_channels(),
+                        )
+                        .context("unable to create connection")?;
                         commands.insert_resource(client);
                         commands.insert_resource(transport);
                     }
@@ -381,7 +374,10 @@ fn setup_host_world_dialog(
                             })
                             .with_children(|parent| {
                                 parent.spawn(LabelBundle::normal(theme, "Port:"));
-                                parent.spawn((PortEdit, TextEditBundle::empty(theme)));
+                                parent.spawn((
+                                    PortEdit,
+                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                                ));
                             });
 
                         parent
@@ -558,8 +554,17 @@ fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: 
                                         ..Default::default()
                                     })
                                     .with_children(|parent| {
-                                        parent.spawn((IpEdit, TextEditBundle::empty(theme)));
-                                        parent.spawn((PortEdit, TextEditBundle::empty(theme)));
+                                        parent.spawn((
+                                            IpEdit,
+                                            TextEditBundle::new(
+                                                theme,
+                                                Ipv4Addr::LOCALHOST.to_string(),
+                                            ),
+                                        ));
+                                        parent.spawn((
+                                            PortEdit,
+                                            TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                                        ));
                                     });
                             });
 
