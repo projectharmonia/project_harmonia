@@ -362,7 +362,6 @@ fn setup_host_world_dialog(
                     .with_children(|parent| {
                         parent.spawn(LabelBundle::normal(theme, format!("Host {world_name}")));
 
-                        // TODO: Use or remove world name.
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
