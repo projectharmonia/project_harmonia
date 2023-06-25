@@ -23,7 +23,6 @@ mod navigation;
 pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
-pub(super) mod preview;
 pub(super) mod settings;
 pub(super) mod task;
 pub(super) mod wall;
@@ -49,7 +48,6 @@ use navigation::NavigationPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
-use preview::PreviewPlugin;
 use settings::SettingsPlugin;
 use task::TaskPlugin;
 use wall::WallPlugin;
@@ -76,7 +74,6 @@ impl PluginGroup for CorePlugins {
             .add(FamilyPlugin)
             .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)
-            .add(PreviewPlugin)
             .add(PlayerCameraPlugin)
             .add(SettingsPlugin)
             .add(ObjectPlugin)

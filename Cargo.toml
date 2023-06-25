@@ -12,20 +12,19 @@ bevy = { version = "0.10", default-features = false, features = [
   "filesystem_watcher",
   "png",
   "x11",
+  "bevy_ui",
+  "bevy_sprite",
+  "bevy_text",
 ] }
 bevy_atmosphere = "0.6"
 bevy_replicon = "0.4"
 bevy_rapier3d = "0.21"
 bevy_mod_outline = { version = "0.4", default-features = false }
-bevy_egui = "0.20"
 bevy_polyline = "0.6"
-bevy-inspector-egui = "0.18"
 bevy-scene-hook = "6.0"
 bevy-trait-query = "0.2"
 oxidized_navigation = "0.4"
-leafwing-input-manager = { version = "0.9", default-features = false, features = [
-  "egui",
-] }
+leafwing-input-manager = "0.9"
 serde = "1.0"
 strum = { version = "0.24", features = ["derive"] }
 num_enum = "0.5"
@@ -47,9 +46,6 @@ futures-lite = "1.13"
 [dev-dependencies]
 fastrand = "1.9.0"
 serde_test = "1.0"
-
-[features]
-bevy_ui = ["bevy/bevy_ui", "bevy/bevy_sprite", "bevy/bevy_text"]
 
 [patch.crates-io]
 bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "dynamic-scene-entity-0.10" }

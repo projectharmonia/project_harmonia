@@ -3,9 +3,6 @@
 #![allow(clippy::too_many_arguments)] // Do not warn about big systems
 
 mod core;
-#[cfg(not(feature = "bevy_ui"))]
-mod ui;
-#[cfg(feature = "bevy_ui")]
 mod ui2;
 
 use bevy::{
@@ -18,8 +15,6 @@ use bevy::{
     },
 };
 use bevy_atmosphere::prelude::*;
-use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
@@ -29,9 +24,6 @@ use leafwing_input_manager::prelude::*;
 use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
 
 use crate::core::{action::Action, cli::Cli, CorePlugins};
-#[cfg(not(feature = "bevy_ui"))]
-use ui::UiPlugins;
-#[cfg(feature = "bevy_ui")]
 use ui2::UiPlugins;
 
 fn main() {
@@ -83,8 +75,6 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(OutlinePlugin)
         .add_plugin(PolylinePlugin)
-        .add_plugin(EguiPlugin)
-        .add_plugin(DefaultInspectorConfigPlugin)
         .add_plugins(CorePlugins)
         .add_plugins(UiPlugins)
         .run();
