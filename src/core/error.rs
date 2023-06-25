@@ -1,18 +1,29 @@
 use anyhow::{Error, Result};
 use bevy::prelude::*;
 
+pub(super) struct ErrorPlugin;
+
+impl Plugin for ErrorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<ErrorReport>();
+    }
+}
+
 /// System adapter that logs errors and creates [`LastError`] resource.
-pub(crate) fn report(In(result): In<Result<()>>, mut commands: Commands) {
+pub(crate) fn report(
+    In(result): In<Result<()>>,
+    #[cfg(not(test))] mut error_events: EventWriter<ErrorReport>,
+) {
     if let Err(error) = result {
-        if cfg!(test) {
-            eprintln!("{error}");
-        } else {
+        #[cfg(test)]
+        eprintln!("{error}");
+        #[cfg(not(test))]
+        {
             error!("{error}");
-            commands.insert_resource(LastError(error));
+            error_events.send(ErrorReport(error));
         }
     }
 }
 
-/// Contains last error that was reported using [`report`] adapter.
-#[derive(Resource)]
-pub(crate) struct LastError(pub(crate) Error);
+/// Contains error that was reported using [`report`] adapter.
+pub(crate) struct ErrorReport(pub(crate) Error);

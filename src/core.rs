@@ -38,6 +38,7 @@ use city::CityPlugin;
 use cli::CliPlugin;
 use cursor_hover::CursorHoverPlugin;
 use developer::DeveloperPlugin;
+use error::ErrorPlugin;
 use family::FamilyPlugin;
 use family_editor::FamilyEditorPlugin;
 use game_paths::GamePathsPlugin;
@@ -72,6 +73,7 @@ impl PluginGroup for CorePlugins {
             .add(GroundPlugin)
             .add(ActionPlugin)
             .add(DeveloperPlugin)
+            .add(ErrorPlugin)
             .add(FamilyPlugin)
             .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)

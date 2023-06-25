@@ -6,7 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use super::{
     actor::ActiveActor,
     city::{ActiveCity, City},
-    error::{self, LastError},
+    error::{self, ErrorReport},
     family::FamilySync,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
@@ -121,7 +121,7 @@ impl CliPlugin {
 /// Returns `true` for the first full world load (including first update tick to apply components like [`FamilyActors`])
 fn first_world_load(
     mut was_loaded: Local<bool>,
-    error_message: Option<Res<LastError>>,
+    error_events: EventReader<ErrorReport>,
     world_state: Res<State<WorldState>>,
 ) -> bool {
     if *was_loaded {
@@ -129,7 +129,7 @@ fn first_world_load(
     }
 
     // Mark as loaded when an error was occurred.
-    if error_message.is_some() {
+    if !error_events.is_empty() {
         *was_loaded = true;
         return false;
     }
