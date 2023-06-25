@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::ui2::theme::Theme;
+use crate::ui::theme::Theme;
 
 /// A simple stub just to being able to type text.
 pub(super) struct TextEditPlugin;

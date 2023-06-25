@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::ui2::theme::Theme;
+use crate::ui::theme::Theme;
 
 pub(crate) struct CheckboxPlugin;
 

@@ -1,6 +1,6 @@
 use bevy::{prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
 
-use crate::ui2::theme::Theme;
+use crate::ui::theme::Theme;
 
 pub(crate) struct ButtonPlugin;
 
