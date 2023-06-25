@@ -8,7 +8,6 @@ ignore = ["RUSTSEC-2020-0168", "RUSTSEC-2023-0040"]
 [licenses]
 copyleft = "allow"
 allow-osi-fsf-free = "either"
-allow = ["LicenseRef-UFL-1.0"] # For Ubuntu Light font from egui.
 
 [[licenses.clarify]]
 name = "stretch"
@@ -21,8 +20,6 @@ wildcards = "allow"
 skip = [
   { name = "syn", version = "1.0" },
   { name = "ahash", version = "0.7.6" },
-  { name = "memoffset", version = "0.6.5" },
-  { name = "nix", version = "0.24" },
   { name = "redox_syscall", version = "0.2" },
   { name = "windows-sys", version = "0.42" },
   { name = "windows-sys", version = "0.45" },
