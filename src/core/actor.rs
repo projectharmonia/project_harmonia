@@ -82,15 +82,6 @@ pub(crate) enum Sex {
     Female,
 }
 
-impl Sex {
-    pub(crate) fn glyph(self) -> &'static str {
-        match self {
-            Self::Male => "♂",
-            Self::Female => "♀",
-        }
-    }
-}
-
 /// Indicates locally controlled actor.
 #[derive(Component)]
 pub(crate) struct ActiveActor;

@@ -1,4 +1,5 @@
 pub(super) mod mirror;
+#[allow(dead_code)] // TODO: Remove after full UI migration.
 pub(crate) mod placing_object;
 
 use std::path::PathBuf;

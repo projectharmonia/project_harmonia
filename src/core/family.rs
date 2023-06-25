@@ -201,6 +201,7 @@ pub(crate) enum BuildingMode {
     Walls,
 }
 
+#[allow(dead_code)] // TODO: Remove after full UI migration.
 impl BuildingMode {
     pub(crate) fn glyph(self) -> &'static str {
         match self {

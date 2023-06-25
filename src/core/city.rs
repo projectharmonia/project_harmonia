@@ -114,6 +114,7 @@ pub(crate) enum CityMode {
     Lots,
 }
 
+#[allow(dead_code)] // TODO: Remove after full UI migration.
 impl CityMode {
     pub(crate) fn glyph(self) -> &'static str {
         match self {

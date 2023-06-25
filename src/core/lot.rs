@@ -137,6 +137,7 @@ pub(crate) enum LotTool {
     Move,
 }
 
+#[allow(dead_code)] // TODO: Remove after full UI migration.
 impl LotTool {
     pub(crate) fn glyph(self) -> &'static str {
         match self {

@@ -2,6 +2,7 @@ pub(super) mod action;
 pub(super) mod actor;
 mod animation;
 mod asset_handles;
+#[allow(dead_code)] // TODO: Remove after full UI migration.
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
