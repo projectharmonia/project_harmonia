@@ -19,9 +19,7 @@ use crate::core::{
     city::City,
     error,
     family::{FamilyScene, FamilySpawn},
-    family_editor::{
-        EditableActor, EditableActorBundle, EditableFamily, FamilyReset, SelectedActor,
-    },
+    family_editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
     game_paths::GamePaths,
     game_state::GameState,
 };
@@ -37,15 +35,20 @@ impl Plugin for FamilyEditorMenuPlugin {
                     Self::actor_buttons_spawn_system,
                     Self::actor_buttons_despawn_system,
                     Self::actor_buttons_system,
-                    Self::sex_buttons_system,
-                    Self::first_name_edit_system,
-                    Self::last_name_edit_system,
                     Self::family_menu_button_system,
                     Self::save_family_button_system.pipe(error::report),
                     Self::place_dialog_button_system,
                     Self::city_place_button_system,
                 )
                     .in_set(OnUpdate(GameState::FamilyEditor)),
+            )
+            .add_systems(
+                (
+                    Self::sex_buttons_system,
+                    Self::first_name_edit_system,
+                    Self::last_name_edit_system,
+                )
+                    .after(Self::actor_buttons_system),
             );
     }
 }
@@ -70,21 +73,15 @@ impl FamilyEditorMenuPlugin {
             });
     }
 
-    // TODO: use visibility instead of `SelectedActor`.
     fn plus_button_system(
         mut commands: Commands,
         buttons: Query<&Interaction, (Changed<Interaction>, With<PlusButton>)>,
-        actors: Query<Entity, With<SelectedActor>>,
         families: Query<Entity, With<EditableFamily>>,
     ) {
         if let Ok(&interaction) = buttons.get_single() {
             if interaction == Interaction::Clicked {
-                if let Ok(entity) = actors.get_single() {
-                    commands.entity(entity).remove::<SelectedActor>();
-                }
-
                 commands.entity(families.single()).with_children(|parent| {
-                    parent.spawn((EditableActorBundle::default(), SelectedActor));
+                    parent.spawn(EditableActorBundle::default());
                 });
             }
         }
@@ -125,44 +122,87 @@ impl FamilyEditorMenuPlugin {
     }
 
     fn actor_buttons_system(
-        mut commands: Commands,
-        buttons: Query<(&Pressed, &EditActor), Changed<Pressed>>,
-        actors: Query<Entity, With<SelectedActor>>,
+        actor_buttons: Query<(&Pressed, &EditActor), Changed<Pressed>>,
+        mut actors: Query<(&mut Visibility, &Sex, &FirstName, &LastName), With<EditableActor>>,
+        mut sex_buttons: Query<(&mut Pressed, &Sex), Without<EditActor>>,
+        mut first_name_edits: Query<&mut Text, With<FirstNameEdit>>,
+        mut last_name_edits: Query<&mut Text, (With<LastNameEdit>, Without<FirstNameEdit>)>,
     ) {
-        for (pressed, edit_actor) in &buttons {
-            if pressed.0 && actors.get(edit_actor.0).is_err() {
-                commands.entity(actors.single()).remove::<SelectedActor>();
-                commands.entity(edit_actor.0).insert(SelectedActor);
+        for (actor_pressed, edit_actor) in &actor_buttons {
+            if actor_pressed.0 {
+                // Hide previous.
+                if let Some((mut visibility, ..)) = actors
+                    .iter_mut()
+                    .find(|(visibility, ..)| **visibility == Visibility::Visible)
+                {
+                    *visibility = Visibility::Hidden;
+                }
+
+                // Update UI with parameters of the current actor.
+                let (mut visibility, &actor_sex, first_name, last_name) = actors
+                    .get_mut(edit_actor.0)
+                    .expect("actor button should point to a valid actor");
+                *visibility = Visibility::Visible;
+                first_name_edits.single_mut().sections[0]
+                    .value
+                    .clone_from(first_name);
+                last_name_edits.single_mut().sections[0]
+                    .value
+                    .clone_from(last_name);
+
+                let (mut sex_pressed, ..) = sex_buttons
+                    .iter_mut()
+                    .find(|(_, &sex)| sex == actor_sex)
+                    .expect("sex buttons should be spawned for each variant");
+                sex_pressed.0 = true;
             }
         }
     }
 
     fn sex_buttons_system(
-        buttons: Query<(&Pressed, &Sex), (Changed<Pressed>, Without<SelectedActor>)>,
-        mut actors: Query<&mut Sex, With<SelectedActor>>,
+        buttons: Query<(&Pressed, &Sex), (Changed<Pressed>, Without<EditableActor>)>,
+        mut actors: Query<(&mut Sex, &Visibility), With<EditableActor>>,
     ) {
-        for (pressed, &sex) in &buttons {
+        for (pressed, &button_sex) in &buttons {
             if pressed.0 {
-                *actors.single_mut() = sex;
+                if let Some((mut actor_sex, _)) = actors
+                    .iter_mut()
+                    .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
+                    .find(|(_, &visibility)| visibility == Visibility::Visible)
+                {
+                    *actor_sex = button_sex;
+                }
             }
         }
     }
 
     fn first_name_edit_system(
         text_edits: Query<&Text, (Changed<Text>, With<FirstNameEdit>)>,
-        mut actors: Query<&mut FirstName, With<SelectedActor>>,
+        mut actors: Query<(&mut FirstName, &Visibility), With<EditableActor>>,
     ) {
         for text in &text_edits {
-            actors.single_mut().0.clone_from(&text.sections[0].value);
+            if let Some((mut first_name, _)) = actors
+                .iter_mut()
+                .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
+                .find(|(_, &visibility)| visibility == Visibility::Visible)
+            {
+                first_name.0.clone_from(&text.sections[0].value);
+            }
         }
     }
 
     fn last_name_edit_system(
         text_edits: Query<&Text, (Changed<Text>, With<LastNameEdit>)>,
-        mut actors: Query<&mut LastName, With<SelectedActor>>,
+        mut actors: Query<(&mut LastName, &Visibility), With<EditableActor>>,
     ) {
         for text in &text_edits {
-            actors.single_mut().0.clone_from(&text.sections[0].value);
+            if let Some((mut last_name, _)) = actors
+                .iter_mut()
+                .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
+                .find(|(_, &visibility)| visibility == Visibility::Visible)
+            {
+                last_name.0.clone_from(&text.sections[0].value);
+            }
         }
     }
 

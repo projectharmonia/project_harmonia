@@ -17,19 +17,17 @@ impl Plugin for FamilyEditorPlugin {
             .add_systems(
                 (
                     Self::selection_system,
-                    Self::visibility_enable_system,
-                    Self::visibility_disable_system,
                     Self::reset_family_system.run_if(on_event::<FamilyReset>()),
                 )
                     .in_set(OnUpdate(GameState::FamilyEditor)),
             )
-            .add_system(Self::spawn_system.in_schedule(OnEnter(GameState::FamilyEditor)))
+            .add_system(Self::setup_system.in_schedule(OnEnter(GameState::FamilyEditor)))
             .add_system(Self::cleanup_system.in_schedule(OnExit(GameState::FamilyEditor)));
     }
 }
 
 impl FamilyEditorPlugin {
-    fn spawn_system(mut commands: Commands) {
+    fn setup_system(mut commands: Commands) {
         commands
             .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
@@ -46,26 +44,8 @@ impl FamilyEditorPlugin {
                 parent.spawn(PlayerCameraBundle::default());
             })
             .with_children(|parent| {
-                parent.spawn((EditableActorBundle::default(), SelectedActor));
+                parent.spawn(EditableActorBundle::default());
             });
-    }
-
-    fn visibility_enable_system(mut selected_actors: Query<&mut Visibility, Added<SelectedActor>>) {
-        for mut visibility in &mut selected_actors {
-            *visibility = Visibility::Visible;
-        }
-    }
-
-    fn visibility_disable_system(
-        mut deselected_actors: RemovedComponents<SelectedActor>,
-        mut visibility: Query<&mut Visibility>,
-    ) {
-        for entity in &mut deselected_actors {
-            // Entity could be despawned before.
-            if let Ok(mut visibility) = visibility.get_mut(entity) {
-                *visibility = Visibility::Hidden;
-            }
-        }
     }
 
     fn selection_system(
@@ -86,11 +66,8 @@ impl FamilyEditorPlugin {
         }
     }
 
-    fn reset_family_system(
-        mut commands: Commands,
-        editable_actors: Query<Entity, With<EditableActor>>,
-    ) {
-        for entity in &editable_actors {
+    fn reset_family_system(mut commands: Commands, actors: Query<Entity, With<EditableActor>>) {
+        for entity in &actors {
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -146,6 +123,7 @@ impl Default for EditableActorBundle {
             editable_actor: EditableActor,
             spatial_bundle: SpatialBundle {
                 transform: Transform::from_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
+                visibility: Visibility::Hidden,
                 ..Default::default()
             },
         }
@@ -154,9 +132,6 @@ impl Default for EditableActorBundle {
 
 #[derive(Component, Default)]
 pub(crate) struct EditableActor;
-
-#[derive(Component)]
-pub(crate) struct SelectedActor;
 
 /// Event that resets currently editing family.
 #[derive(Default)]
