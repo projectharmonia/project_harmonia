@@ -24,7 +24,7 @@ bevy_polyline = "0.6"
 bevy-scene-hook = "6.0"
 bevy-trait-query = "0.2"
 oxidized_navigation = "0.4"
-leafwing-input-manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager" }
+leafwing-input-manager = "0.9"
 serde = "1.0"
 strum = { version = "0.25", features = ["derive"] }
 num_enum = "0.5"
