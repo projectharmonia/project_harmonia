@@ -71,13 +71,13 @@ impl ButtonPlugin {
     fn interaction_system(
         theme: Res<Theme>,
         mut buttons: Query<
-            (&Interaction, &mut BackgroundColor, Option<&Pressed>),
-            (Or<(Changed<Interaction>, Changed<Pressed>)>, With<Button>),
+            (&Interaction, &mut BackgroundColor, Option<&Toggled>),
+            (Or<(Changed<Interaction>, Changed<Toggled>)>, With<Button>),
         >,
     ) {
-        for (&interaction, mut background, pressed) in &mut buttons {
-            let pressed = pressed.map(|pressed| pressed.0).unwrap_or_default();
-            *background = match (interaction, pressed) {
+        for (&interaction, mut background, toggled) in &mut buttons {
+            let toggled = toggled.map(|toggled| toggled.0).unwrap_or_default();
+            *background = match (interaction, toggled) {
                 (Interaction::Clicked, _) | (Interaction::None, true) => {
                     theme.button.pressed_color.into()
                 }
@@ -90,37 +90,37 @@ impl ButtonPlugin {
 
     fn toggling_system(
         mut click_events: EventReader<Click>,
-        mut buttons: Query<(&mut Pressed, Option<&ExclusiveButton>)>,
+        mut buttons: Query<(&mut Toggled, Option<&ExclusiveButton>)>,
     ) {
         for event in &mut click_events {
-            if let Ok((mut pressed, exclusive)) = buttons.get_mut(event.0) {
-                if exclusive.is_some() && pressed.0 {
+            if let Ok((mut toggled, exclusive)) = buttons.get_mut(event.0) {
+                if exclusive.is_some() && toggled.0 {
                     // Button is already pressed, if it's exclusive button, do not toggle it.
                     continue;
                 }
-                pressed.0 = !pressed.0
+                toggled.0 = !toggled.0
             }
         }
     }
 
     fn exclusive_system(
         mut buttons: Query<
-            (Entity, &Parent, &mut Pressed),
-            (Changed<Pressed>, With<ExclusiveButton>),
+            (Entity, &Parent, &mut Toggled),
+            (Changed<Toggled>, With<ExclusiveButton>),
         >,
         children: Query<&Children>,
     ) {
-        let pressed_entities: Vec<_> = buttons
+        let toggled_entities: Vec<_> = buttons
             .iter()
-            .filter_map(|(entity, parent, pressed)| pressed.0.then_some((entity, **parent)))
+            .filter_map(|(entity, parent, toggled)| toggled.0.then_some((entity, **parent)))
             .collect();
 
-        for (pressed_entity, parent) in pressed_entities {
+        for (toggled_entity, parent) in toggled_entities {
             let children = children.get(parent).unwrap();
-            for &child_entity in children.iter().filter(|&&entity| entity != pressed_entity) {
-                if let Ok(mut pressed) = buttons.get_component_mut::<Pressed>(child_entity) {
-                    if pressed.0 {
-                        pressed.0 = false;
+            for &child_entity in children.iter().filter(|&&entity| entity != toggled_entity) {
+                if let Ok(mut toggled) = buttons.get_component_mut::<Toggled>(child_entity) {
+                    if toggled.0 {
+                        toggled.0 = false;
                     }
                 }
             }
@@ -128,14 +128,14 @@ impl ButtonPlugin {
     }
 
     fn tab_switching_system(
-        tabs: Query<(&Pressed, &TabContent), Changed<Pressed>>,
+        tabs: Query<(&Toggled, &TabContent), Changed<Toggled>>,
         mut tab_nodes: Query<&mut Style>,
     ) {
-        for (pressed, tab_content) in &tabs {
+        for (toggled, tab_content) in &tabs {
             let mut style = tab_nodes
                 .get_mut(tab_content.0)
                 .expect("tabs should point to nodes with style component");
-            style.display = if pressed.0 {
+            style.display = if toggled.0 {
                 Display::Flex
             } else {
                 Display::None
@@ -146,9 +146,9 @@ impl ButtonPlugin {
 
 /// Makes the button togglable.
 #[derive(Component)]
-pub(crate) struct Pressed(pub(crate) bool);
+pub(crate) struct Toggled(pub(crate) bool);
 
-/// If present, then only one button that belongs to the parent node can be pressed at any given time.
+/// If present, then only one button that belongs to the parent node can be toggled at any given time.
 ///
 /// The user can click on any button to check it, and that button will replace the existing one as the checked button in the parent node.
 #[derive(Component)]

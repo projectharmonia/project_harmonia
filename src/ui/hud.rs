@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 use super::{
     theme::Theme,
     widget::{
-        button::{ExclusiveButton, Pressed, TextButtonBundle},
+        button::{ExclusiveButton, TextButtonBundle, Toggled},
         ui_root::UiRoot,
     },
 };
@@ -57,7 +57,7 @@ impl HudPlugin {
                             parent.spawn((
                                 mode,
                                 ExclusiveButton,
-                                Pressed(index == 0),
+                                Toggled(index == 0),
                                 TextButtonBundle::square(&theme, mode.glyph()),
                             ));
                         }
@@ -67,10 +67,10 @@ impl HudPlugin {
 
     fn mode_button_system(
         mut family_mode: ResMut<NextState<FamilyMode>>,
-        buttons: Query<(&Pressed, &FamilyMode), Changed<Pressed>>,
+        buttons: Query<(&Toggled, &FamilyMode), Changed<Toggled>>,
     ) {
-        for (pressed, &mode) in &buttons {
-            if pressed.0 {
+        for (toggled, &mode) in &buttons {
+            if toggled.0 {
                 family_mode.set(mode);
             }
         }

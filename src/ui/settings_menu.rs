@@ -8,7 +8,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     widget::{
-        button::{ButtonText, ExclusiveButton, Pressed, TabContent, TextButtonBundle},
+        button::{ButtonText, ExclusiveButton, TabContent, TextButtonBundle, Toggled},
         checkbox::{Checkbox, CheckboxBundle},
         click::Click,
         ui_root::UiRoot,
@@ -103,7 +103,7 @@ impl SettingsMenuPlugin {
                             .spawn((
                                 TabContent(content_entity),
                                 ExclusiveButton,
-                                Pressed(index == 0),
+                                Toggled(index == 0),
                                 TextButtonBundle::normal(&theme, tab.to_string()),
                             ))
                             .set_parent(tabs_entity);

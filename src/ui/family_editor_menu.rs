@@ -8,7 +8,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     widget::{
-        button::{ExclusiveButton, ImageButtonBundle, Pressed, TextButtonBundle},
+        button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
         click::Click,
         text_edit::TextEditBundle,
         ui_root::UiRoot,
@@ -102,7 +102,7 @@ impl FamilyEditorMenuPlugin {
                     parent.spawn((
                         EditActor(entity),
                         ExclusiveButton,
-                        Pressed(true),
+                        Toggled(true),
                         ImageButtonBundle::placeholder(&theme),
                     ));
                 });
@@ -124,14 +124,14 @@ impl FamilyEditorMenuPlugin {
     }
 
     fn actor_buttons_system(
-        actor_buttons: Query<(&Pressed, &EditActor), Changed<Pressed>>,
+        actor_buttons: Query<(&Toggled, &EditActor), Changed<Toggled>>,
         mut actors: Query<(&mut Visibility, &Sex, &FirstName, &LastName), With<EditableActor>>,
-        mut sex_buttons: Query<(&mut Pressed, &Sex), Without<EditActor>>,
+        mut sex_buttons: Query<(&mut Toggled, &Sex), Without<EditActor>>,
         mut first_name_edits: Query<&mut Text, With<FirstNameEdit>>,
         mut last_name_edits: Query<&mut Text, (With<LastNameEdit>, Without<FirstNameEdit>)>,
     ) {
-        for (actor_pressed, edit_actor) in &actor_buttons {
-            if actor_pressed.0 {
+        for (actor_toggled, edit_actor) in &actor_buttons {
+            if actor_toggled.0 {
                 // Hide previous.
                 if let Some((mut visibility, ..)) = actors
                     .iter_mut()
@@ -152,21 +152,21 @@ impl FamilyEditorMenuPlugin {
                     .value
                     .clone_from(last_name);
 
-                let (mut sex_pressed, ..) = sex_buttons
+                let (mut sex_toggled, ..) = sex_buttons
                     .iter_mut()
                     .find(|(_, &sex)| sex == actor_sex)
                     .expect("sex buttons should be spawned for each variant");
-                sex_pressed.0 = true;
+                sex_toggled.0 = true;
             }
         }
     }
 
     fn sex_buttons_system(
-        buttons: Query<(&Pressed, &Sex), (Changed<Pressed>, Without<EditableActor>)>,
+        buttons: Query<(&Toggled, &Sex), (Changed<Toggled>, Without<EditableActor>)>,
         mut actors: Query<(&mut Sex, &Visibility), With<EditableActor>>,
     ) {
-        for (pressed, &button_sex) in &buttons {
-            if pressed.0 {
+        for (toggled, &button_sex) in &buttons {
+            if toggled.0 {
                 if let Some((mut actor_sex, _)) = actors
                     .iter_mut()
                     .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
@@ -395,7 +395,7 @@ fn setup_personality_node(parent: &mut ChildBuilder, theme: &Theme) {
                     parent.spawn((
                         sex,
                         ExclusiveButton,
-                        Pressed(index == 0),
+                        Toggled(index == 0),
                         TextButtonBundle::normal(theme, sex.to_string()),
                     ));
                 }

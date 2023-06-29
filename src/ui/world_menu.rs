@@ -7,7 +7,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use super::{
     theme::Theme,
     widget::{
-        button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
+        button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
         click::Click,
         text_edit::TextEditBundle,
         ui_root::UiRoot,
@@ -111,7 +111,7 @@ impl WorldMenuPlugin {
                             tab,
                             TabContent(content_entity),
                             ExclusiveButton,
-                            Pressed(index == 0),
+                            Toggled(index == 0),
                             TextButtonBundle::normal(&theme, tab.to_string()),
                         ))
                         .set_parent(tabs_entity);
@@ -229,14 +229,14 @@ impl WorldMenuPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         theme: Res<Theme>,
         buttons: Query<(), With<CreateEntityButton>>,
-        tabs: Query<(&Pressed, &WorldTab)>,
+        tabs: Query<(&Toggled, &WorldTab)>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
         for event in &mut click_events {
             if buttons.get(event.0).is_ok() {
                 let current_tab = tabs
                     .iter()
-                    .find_map(|(pressed, world_tab)| pressed.0.then_some(world_tab))
+                    .find_map(|(toggled, world_tab)| toggled.0.then_some(world_tab))
                     .expect("one tab should always be active");
 
                 match current_tab {
