@@ -281,8 +281,8 @@ fn setup_entity_node<E>(
     parent
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
                 padding: theme.padding.normal,
+                gap: theme.gap.normal,
                 ..Default::default()
             },
             background_color: theme.panel_color.into(),
@@ -329,7 +329,6 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                 parent
                     .spawn(NodeBundle {
                         style: Style {
-                            size: Size::new(Val::Percent(50.0), Val::Percent(25.0)),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,

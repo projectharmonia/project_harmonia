@@ -77,7 +77,6 @@ impl TaskMenuPlugin {
                                 Val::Auto,
                                 Val::Px(cursor_position.y),
                             ),
-                            size: Size::new(Val::Percent(20.0), Val::Percent(40.0)),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,

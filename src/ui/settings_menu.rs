@@ -170,10 +170,10 @@ impl SettingsMenuPlugin {
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    size: Size::new(Val::Percent(50.0), Val::Percent(20.0)),
                                     flex_direction: FlexDirection::Column,
                                     justify_content: JustifyContent::Center,
                                     align_items: AlignItems::Center,
+                                    padding: theme.padding.normal,
                                     gap: theme.gap.normal,
                                     ..Default::default()
                                 },
