@@ -10,6 +10,7 @@ use super::{
     widget::{
         button::{ButtonText, ExclusiveButton, Pressed, TabContent, TextButtonBundle},
         checkbox::{Checkbox, CheckboxBundle},
+        click::Click,
         ui_root::UiRoot,
         DialogBundle, LabelBundle,
     },
@@ -152,14 +153,15 @@ impl SettingsMenuPlugin {
 
     fn mapping_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
-        buttons: Query<(Entity, &Interaction, &Mapping), Changed<Interaction>>,
+        buttons: Query<(Entity, &Mapping)>,
     ) {
-        for (entity, &interaction, mapping) in &buttons {
-            if interaction != Interaction::Clicked {
+        for event in &mut click_events {
+            let Ok((entity, mapping)) = buttons.get(event.0) else {
                 continue;
-            }
+            };
 
             commands.entity(roots.single()).with_children(|parent| {
                 parent
@@ -254,12 +256,13 @@ impl SettingsMenuPlugin {
 
     fn binding_dialog_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         mut mapping_buttons: Query<&mut Mapping>,
-        dialog_buttons: Query<(&Interaction, &BindingDialogButton), Changed<Interaction>>,
+        dialog_buttons: Query<&BindingDialogButton>,
         dialogs: Query<(Entity, Option<&ConflictButton>, &BindingButton)>,
     ) {
-        for (&interaction, dialog_button) in &dialog_buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(dialog_button) = dialog_buttons.get(event.0) {
                 let (entity, conflict_button, binding_button) = dialogs.single();
                 match dialog_button {
                     BindingDialogButton::Replace => {
@@ -292,17 +295,18 @@ impl SettingsMenuPlugin {
     fn settings_button_system(
         mut commands: Commands,
         mut apply_events: EventWriter<SettingsApply>,
+        mut click_events: EventReader<Click>,
         mut settings: ResMut<Settings>,
         mut game_state: ResMut<NextState<GameState>>,
         settings_menus: Query<Entity, With<SettingsMenu>>,
-        settings_buttons: Query<(&Interaction, &SettingsButton), Changed<Interaction>>,
+        settings_buttons: Query<&SettingsButton>,
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
-        for (&interaction, &settings_button) in &settings_buttons {
-            if interaction != Interaction::Clicked {
+        for event in &mut click_events {
+            let Ok(&settings_button) = settings_buttons.get(event.0) else {
                 continue;
-            }
+            };
 
             match settings_button {
                 SettingsButton::Ok => {

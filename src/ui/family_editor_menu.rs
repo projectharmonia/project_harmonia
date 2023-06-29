@@ -9,6 +9,7 @@ use super::{
     theme::Theme,
     widget::{
         button::{ExclusiveButton, ImageButtonBundle, Pressed, TextButtonBundle},
+        click::Click,
         text_edit::TextEditBundle,
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
@@ -75,11 +76,12 @@ impl FamilyEditorMenuPlugin {
 
     fn plus_button_system(
         mut commands: Commands,
-        buttons: Query<&Interaction, (Changed<Interaction>, With<PlusButton>)>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<(), With<PlusButton>>,
         families: Query<Entity, With<EditableFamily>>,
     ) {
-        if let Ok(&interaction) = buttons.get_single() {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if buttons.get(event.0).is_ok() {
                 commands.entity(families.single()).with_children(|parent| {
                     parent.spawn(EditableActorBundle::default());
                 });
@@ -208,13 +210,14 @@ impl FamilyEditorMenuPlugin {
 
     fn family_menu_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
         theme: Res<Theme>,
-        buttons: Query<(&Interaction, &FamilyMenuButton), Changed<Interaction>>,
+        buttons: Query<&FamilyMenuButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(button) = buttons.get(event.0) {
                 match button {
                     FamilyMenuButton::Confirm => {
                         setup_save_family_dialog(&mut commands, roots.single(), &theme);
@@ -227,6 +230,7 @@ impl FamilyEditorMenuPlugin {
 
     fn save_family_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         game_paths: Res<GamePaths>,
         theme: Res<Theme>,
         mut actors: Query<
@@ -234,15 +238,15 @@ impl FamilyEditorMenuPlugin {
             With<EditableActor>,
         >,
         mut text_edits: Query<&mut Text, With<FamilyNameEdit>>,
-        buttons: Query<(&Interaction, &SaveDialogButton), Changed<Interaction>>,
+        buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
         cities: Query<(Entity, &Name), With<City>>,
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
-        for (&interaction, &button) in &buttons {
-            if interaction != Interaction::Clicked {
+        for event in &mut click_events {
+            let Ok(&button) = buttons.get(event.0) else {
                 continue;
-            }
+            };
 
             if button == SaveDialogButton::Save {
                 let mut actor_scenes = Vec::new();
@@ -285,11 +289,12 @@ impl FamilyEditorMenuPlugin {
     fn place_dialog_button_system(
         mut commands: Commands,
         mut reset_events: EventWriter<FamilyReset>,
+        mut click_events: EventReader<Click>,
         dialogs: Query<Entity, With<Dialog>>,
-        buttons: Query<(&Interaction, &PlaceDialogButton), Changed<Interaction>>,
+        buttons: Query<&PlaceDialogButton>,
     ) {
-        for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(&button) = buttons.get(event.0) {
                 if button == PlaceDialogButton::CreateNew {
                     reset_events.send_default();
                 }
@@ -302,11 +307,12 @@ impl FamilyEditorMenuPlugin {
         mut commands: Commands,
         mut spawn_events: EventWriter<FamilySpawn>,
         mut reset_events: EventWriter<FamilyReset>,
-        buttons: Query<(&Interaction, &CityPlaceButton, &PlaceCity), Changed<Interaction>>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<(&CityPlaceButton, &PlaceCity)>,
         mut dialogs: Query<(Entity, &mut FamilyScene)>,
     ) {
-        for (&interaction, button, place_city) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok((button, place_city)) = buttons.get(event.0) {
                 let (dialog_entity, mut scene) = dialogs.single_mut();
                 match button {
                     CityPlaceButton::PlaceAndPlay => {

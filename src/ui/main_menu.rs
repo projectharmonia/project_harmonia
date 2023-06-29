@@ -4,7 +4,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     settings_menu::SettingsMenuOpen,
     theme::Theme,
-    widget::{button::TextButtonBundle, ui_root::UiRoot},
+    widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot},
 };
 use crate::core::game_state::GameState;
 
@@ -47,11 +47,12 @@ impl MainMenuPlugin {
     fn button_system(
         mut settings_events: EventWriter<SettingsMenuOpen>,
         mut exit_events: EventWriter<AppExit>,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &MainMenuButton), Changed<Interaction>>,
+        buttons: Query<&MainMenuButton>,
     ) {
-        for (interaction, button) in &buttons {
-            if *interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(button) = buttons.get(event.0) {
                 match button {
                     MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
                     MainMenuButton::Settings => settings_events.send_default(),

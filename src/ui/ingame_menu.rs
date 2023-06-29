@@ -5,7 +5,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::{
     settings_menu::SettingsMenuOpen,
     theme::Theme,
-    widget::{button::TextButtonBundle, ui_root::UiRoot, DialogBundle, LabelBundle},
+    widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot, DialogBundle, LabelBundle},
 };
 use crate::core::{
     action::Action,
@@ -78,14 +78,15 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut settings_events: EventWriter<SettingsMenuOpen>,
+        mut click_events: EventReader<Click>,
         theme: Res<Theme>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &IngameMenuButton), Changed<Interaction>>,
+        buttons: Query<&IngameMenuButton>,
         roots: Query<Entity, With<UiRoot>>,
         ingame_menus: Query<Entity, With<IngameMenu>>,
     ) {
-        for (interaction, button) in &buttons {
-            if *interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(button) = buttons.get(event.0) {
                 match button {
                     IngameMenuButton::Resume => {
                         commands.entity(ingame_menus.single()).despawn_recursive()
@@ -111,12 +112,13 @@ impl InGameMenuPlugin {
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut exit_events: EventWriter<AppExit>,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &ExitDialogButton), Changed<Interaction>>,
+        buttons: Query<&ExitDialogButton>,
         exit_dialogs: Query<(Entity, &ExitDialog)>,
     ) {
-        for (interaction, button) in &buttons {
-            if *interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(button) = buttons.get(event.0) {
                 let (dialog_entity, exit_dialog) = exit_dialogs.single();
                 match button {
                     ExitDialogButton::SaveAndExit => {

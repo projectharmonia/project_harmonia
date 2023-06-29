@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     theme::Theme,
-    widget::{button::TextButtonBundle, ui_root::UiRoot, DialogBundle, LabelBundle},
+    widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot, DialogBundle, LabelBundle},
 };
 use crate::core::error::ErrorReport;
 
@@ -53,11 +53,12 @@ impl ErrorMessagePlugin {
 
     fn button_system(
         mut commands: Commands,
-        buttons: Query<&Interaction, (Changed<Interaction>, With<OkButton>)>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<(), With<OkButton>>,
         error_dialogs: Query<Entity, With<ErrorDialog>>,
     ) {
-        for &interaction in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if buttons.get(event.0).is_ok() {
                 commands.entity(error_dialogs.single()).despawn_recursive();
             }
         }

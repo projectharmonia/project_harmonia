@@ -8,6 +8,7 @@ use super::{
     theme::Theme,
     widget::{
         button::{ExclusiveButton, Pressed, TabContent, TextButtonBundle},
+        click::Click,
         text_edit::TextEditBundle,
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
@@ -177,12 +178,13 @@ impl WorldMenuPlugin {
     fn family_button_system(
         mut commands: Commands,
         mut despawn_events: EventWriter<FamilyDespawn>,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &WorldEntity, &FamilyButton), Changed<Interaction>>,
+        buttons: Query<(&WorldEntity, &FamilyButton)>,
         families: Query<&FamilyActors>,
     ) {
-        for (&interaction, world_entity, family_button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok((world_entity, family_button)) = buttons.get(event.0) {
                 match family_button {
                     FamilyButton::Play => {
                         let actors = families
@@ -203,11 +205,12 @@ impl WorldMenuPlugin {
 
     fn city_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &WorldEntity, &CityButton), Changed<Interaction>>,
+        buttons: Query<(&WorldEntity, &CityButton)>,
     ) {
-        for (&interaction, world_entity, family_button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok((world_entity, family_button)) = buttons.get(event.0) {
                 // TODO: use event for despawn, otherwise client will despawn the city locally.
                 match family_button {
                     CityButton::Edit => {
@@ -222,14 +225,15 @@ impl WorldMenuPlugin {
 
     fn create_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
         theme: Res<Theme>,
-        buttons: Query<&Interaction, (Changed<Interaction>, With<CreateEntityButton>)>,
+        buttons: Query<(), With<CreateEntityButton>>,
         tabs: Query<(&Pressed, &WorldTab)>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        if let Ok(&interaction) = buttons.get_single() {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if buttons.get(event.0).is_ok() {
                 let current_tab = tabs
                     .iter()
                     .find_map(|(pressed, world_tab)| pressed.0.then_some(world_tab))
@@ -247,12 +251,13 @@ impl WorldMenuPlugin {
 
     fn city_dialog_button_system(
         mut commands: Commands,
-        buttons: Query<(&Interaction, &CityDialogButton), Changed<Interaction>>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<&CityDialogButton>,
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for (&interaction, dialog_button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(dialog_button) = buttons.get(event.0) {
                 if let CityDialogButton::Create = dialog_button {
                     let mut city_name = text_edits.single_mut();
                     commands.spawn(CityBundle::new(

@@ -17,8 +17,8 @@ use crate::core::{
 use super::{
     theme::Theme,
     widget::{
-        button::TextButtonBundle, text_edit::TextEditBundle, ui_root::UiRoot, Dialog, DialogBundle,
-        LabelBundle,
+        button::TextButtonBundle, click::Click, text_edit::TextEditBundle, ui_root::UiRoot, Dialog,
+        DialogBundle, LabelBundle,
     },
 };
 
@@ -109,15 +109,16 @@ impl WorldBrowserPlugin {
     fn world_button_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
+        mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        buttons: Query<(&Interaction, &WorldButton, &WorldNode), Changed<Interaction>>,
+        buttons: Query<(&WorldButton, &WorldNode)>,
         mut labels: Query<&mut Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, world_button, &world_node) in &buttons {
-            if interaction != Interaction::Clicked {
+        for event in &mut click_events {
+            let Ok((world_button, &world_node)) = buttons.get(event.0) else {
                 continue;
-            }
+            };
 
             let mut world_name = labels
                 .get_mut(world_node.label_entity)
@@ -151,14 +152,15 @@ impl WorldBrowserPlugin {
     fn host_dialog_button_system(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
+        mut click_events: EventReader<Click>,
         network_channels: Res<NetworkChannels>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
-        buttons: Query<(&Interaction, &HostDialogButton)>,
+        buttons: Query<&HostDialogButton>,
         text_edits: Query<&Text, With<PortEdit>>,
         mut labels: Query<&mut Text, Without<PortEdit>>,
     ) -> Result<()> {
-        for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(&button) = buttons.get(event.0) {
                 let (dialog_entity, world_node) = dialogs.single();
                 if button == HostDialogButton::Host {
                     let mut world_name = labels
@@ -187,13 +189,14 @@ impl WorldBrowserPlugin {
 
     fn remove_dialog_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         game_paths: Res<GamePaths>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
-        buttons: Query<(&Interaction, &RemoveDialogButton)>,
+        buttons: Query<&RemoveDialogButton>,
         labels: Query<&Text>,
     ) -> Result<()> {
-        for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(&button) = buttons.get(event.0) {
                 let (dialog_entity, world_node) = dialogs.single();
                 let world_name = labels
                     .get(world_node.label_entity)
@@ -213,21 +216,20 @@ impl WorldBrowserPlugin {
 
     fn world_browser_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        buttons: Query<(&Interaction, &WorldBrowserButton), Changed<Interaction>>,
+        buttons: Query<&WorldBrowserButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        if let Ok((&interaction, button)) = buttons.get_single() {
-            if interaction != Interaction::Clicked {
-                return;
-            }
-
-            match button {
-                WorldBrowserButton::Create => {
-                    setup_create_world_dialog(&mut commands, roots.single(), &theme)
-                }
-                WorldBrowserButton::Join => {
-                    setup_join_world_dialog(&mut commands, roots.single(), &theme)
+        for event in &mut click_events {
+            if let Ok(button) = buttons.get(event.0) {
+                match button {
+                    WorldBrowserButton::Create => {
+                        setup_create_world_dialog(&mut commands, roots.single(), &theme)
+                    }
+                    WorldBrowserButton::Join => {
+                        setup_join_world_dialog(&mut commands, roots.single(), &theme)
+                    }
                 }
             }
         }
@@ -235,13 +237,14 @@ impl WorldBrowserPlugin {
 
     fn create_dialog_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&Interaction, &CreateDialogButton), Changed<Interaction>>,
+        buttons: Query<&CreateDialogButton>,
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(&button) = buttons.get(event.0) {
                 if button == CreateDialogButton::Create {
                     let mut world_name = text_edits.single_mut();
                     commands
@@ -255,14 +258,15 @@ impl WorldBrowserPlugin {
 
     fn join_dialog_button_system(
         mut commands: Commands,
+        mut click_events: EventReader<Click>,
         network_channels: Res<NetworkChannels>,
-        buttons: Query<(&Interaction, &JoinDialogButton), Changed<Interaction>>,
+        buttons: Query<&JoinDialogButton>,
         port_edits: Query<&Text, With<PortEdit>>,
         ip_edits: Query<&Text, With<IpEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) -> Result<()> {
-        for (&interaction, &button) in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(&button) = buttons.get(event.0) {
                 match button {
                     JoinDialogButton::Join => {
                         let ip = ip_edits.single();

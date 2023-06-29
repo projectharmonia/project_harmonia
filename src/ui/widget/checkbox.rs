@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use super::click::{Click, LastInteraction};
 use crate::ui::theme::Theme;
 
 pub(crate) struct CheckboxPlugin;
@@ -45,11 +46,12 @@ impl CheckboxPlugin {
     }
 
     fn interaction_system(
+        mut click_events: EventReader<Click>,
         mut checkboxes: Query<&mut Checkbox>,
-        interactions: Query<(&Parent, &Interaction), Changed<Interaction>>,
+        parents: Query<&Parent>,
     ) {
-        for (parent, interaction) in &interactions {
-            if *interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok(parent) = parents.get(event.0) {
                 if let Ok(mut checkbox) = checkboxes.get_mut(**parent) {
                     checkbox.0 = !checkbox.0;
                 }
@@ -94,6 +96,7 @@ pub(crate) struct CheckboxText(pub(crate) String);
 pub(crate) struct CheckboxBundle {
     checkbox: Checkbox,
     checkbox_text: CheckboxText,
+    last_interaction: LastInteraction,
 
     #[bundle]
     node_bundle: NodeBundle,
@@ -104,6 +107,7 @@ impl CheckboxBundle {
         Self {
             checkbox: Checkbox(checked),
             checkbox_text: CheckboxText(text.into()),
+            last_interaction: Default::default(),
             node_bundle: NodeBundle {
                 style: theme.checkbox.node.clone(),
                 ..Default::default()

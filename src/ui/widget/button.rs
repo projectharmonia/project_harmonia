@@ -1,5 +1,6 @@
 use bevy::{prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
 
+use super::click::{Click, LastInteraction};
 use crate::ui::theme::Theme;
 
 pub(crate) struct ButtonPlugin;
@@ -88,15 +89,13 @@ impl ButtonPlugin {
     }
 
     fn toggling_system(
-        mut buttons: Query<
-            (&Interaction, &mut Pressed, Option<&ExclusiveButton>),
-            Changed<Interaction>,
-        >,
+        mut click_events: EventReader<Click>,
+        mut buttons: Query<(&mut Pressed, Option<&ExclusiveButton>)>,
     ) {
-        for (&interation, mut pressed, exclusive) in &mut buttons {
-            if interation == Interaction::Clicked {
+        for event in &mut click_events {
+            if let Ok((mut pressed, exclusive)) = buttons.get_mut(event.0) {
                 if exclusive.is_some() && pressed.0 {
-                    // Button is already prewssed, if it's exclusive button, do not toggle it.
+                    // Button is already pressed, if it's exclusive button, do not toggle it.
                     continue;
                 }
                 pressed.0 = !pressed.0
@@ -173,6 +172,7 @@ pub(crate) struct ButtonText(pub(crate) String);
 pub(crate) struct TextButtonBundle {
     button_kind: ButtonKind,
     button_text: ButtonText,
+    last_interaction: LastInteraction,
 
     #[bundle]
     pub(crate) button_bundle: ButtonBundle,
@@ -200,6 +200,7 @@ impl TextButtonBundle {
         Self {
             button_kind,
             button_text: ButtonText(text.into()),
+            last_interaction: Default::default(),
             button_bundle: ButtonBundle {
                 style,
                 background_color: theme.button.normal_color.into(),
@@ -212,6 +213,7 @@ impl TextButtonBundle {
 #[derive(Bundle)]
 pub(crate) struct ImageButtonBundle {
     image_handle: Handle<Image>,
+    last_interaction: LastInteraction,
 
     #[bundle]
     button_bundle: ButtonBundle,
@@ -225,6 +227,7 @@ impl ImageButtonBundle {
     pub(crate) fn new(theme: &Theme, image_handle: Handle<Image>) -> Self {
         Self {
             image_handle,
+            last_interaction: Default::default(),
             button_bundle: ButtonBundle {
                 style: theme.button.image_button.clone(),
                 background_color: theme.button.normal_color.into(),

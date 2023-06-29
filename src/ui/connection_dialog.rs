@@ -3,7 +3,7 @@ use bevy_replicon::prelude::*;
 
 use super::{
     theme::Theme,
-    widget::{button::TextButtonBundle, ui_root::UiRoot, DialogBundle, LabelBundle},
+    widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot, DialogBundle, LabelBundle},
 };
 
 pub(super) struct ConnectionDialogPlugin;
@@ -48,11 +48,12 @@ impl ConnectionDialogPlugin {
 
     fn button_system(
         mut commands: Commands,
-        buttons: Query<&Interaction, (Changed<Interaction>, With<CancelButton>)>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<(), With<CancelButton>>,
         dialogs: Query<Entity, With<ConnectionDialog>>,
     ) {
-        for &interaction in &buttons {
-            if interaction == Interaction::Clicked {
+        for event in &mut click_events {
+            if buttons.get(event.0).is_ok() {
                 commands.remove_resource::<RenetClient>();
                 commands.entity(dialogs.single()).despawn_recursive();
             }
