@@ -3,6 +3,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
+    hud::task_menu::TaskMenu,
     settings_menu::SettingsMenuOpen,
     theme::Theme,
     widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot, DialogBundle, LabelBundle},
@@ -23,6 +24,7 @@ impl Plugin for InGameMenuPlugin {
             Self::setup_system
                 .run_if(action_just_pressed(Action::Cancel))
                 .run_if(not(any_with_component::<IngameMenu>()))
+                .run_if(not(any_with_component::<TaskMenu>()))
                 .run_if(not(any_with_component::<PlacingObject>()))
                 .run_if(not(any_with_component::<CreatingLot>()))
                 .run_if(not(any_with_component::<MovingLot>()))

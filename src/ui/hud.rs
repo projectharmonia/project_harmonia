@@ -1,3 +1,5 @@
+pub(super) mod task_menu;
+
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
@@ -9,12 +11,13 @@ use super::{
     },
 };
 use crate::core::{family::FamilyMode, game_state::GameState};
+use task_menu::TaskMenuPlugin;
 
 pub(super) struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
+        app.add_plugin(TaskMenuPlugin).add_systems((
             Self::setup_system
                 .run_if(not(any_with_component::<UiRoot>()))
                 .in_schedule(OnEnter(GameState::Family)),

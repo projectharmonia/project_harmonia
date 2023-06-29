@@ -8,10 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     cursor_hover::CursorHover,
-    family::{ActorFamily, FamilyMode},
-    game_state::GameState,
+    family::ActorFamily,
     ground::Ground,
-    task::{ActiveTask, AppTaskExt, Task, TaskList},
+    task::{ActiveTask, AppTaskExt, Task, TaskList, TaskListSet},
 };
 
 use super::{LotFamily, LotVertices};
@@ -21,27 +20,24 @@ pub(super) struct BuyLotPlugin;
 impl Plugin for BuyLotPlugin {
     fn build(&self, app: &mut App) {
         app.register_task::<BuyLot>()
-            .add_system(
-                Self::list_system
-                    .in_set(OnUpdate(GameState::Family))
-                    .in_set(OnUpdate(FamilyMode::Life)),
-            )
+            .add_system(Self::list_system.in_set(TaskListSet))
             .add_system(Self::buying_system.in_set(ServerSet::Authority));
     }
 }
 
 impl BuyLotPlugin {
     fn list_system(
-        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
+        mut list_events: EventWriter<TaskList>,
+        mut grounds: Query<&CursorHover, With<Ground>>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
+        if let Ok(hover) = grounds.get_single_mut() {
             let position = hover.xz();
             if let Some((lot_entity, _)) = lots
                 .iter()
                 .find(|(_, vertices)| vertices.contains_point(position))
             {
-                task_list.push(Box::new(BuyLot(lot_entity)));
+                list_events.send(BuyLot(lot_entity).into());
             }
         }
     }

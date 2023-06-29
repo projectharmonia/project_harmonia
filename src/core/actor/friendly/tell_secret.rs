@@ -8,11 +8,10 @@ use crate::core::{
     },
     animation::AnimationEnded,
     asset_handles::AssetHandles,
-    family::FamilyMode,
-    game_state::GameState,
+    cursor_hover::CursorHover,
     game_world::WorldState,
     navigation::{following::Following, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList},
+    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList, TaskListSet},
 };
 
 pub(super) struct TellSecretPlugin;
@@ -21,11 +20,7 @@ impl Plugin for TellSecretPlugin {
     fn build(&self, app: &mut App) {
         app.register_task::<TellSecret>()
             .replicate::<ListenSecret>()
-            .add_system(
-                Self::list_system
-                    .in_set(OnUpdate(GameState::Family))
-                    .in_set(OnUpdate(FamilyMode::Life)),
-            )
+            .add_system(Self::list_system.in_set(TaskListSet))
             .add_systems(
                 (
                     Self::tell_activation_system,
@@ -42,9 +37,12 @@ impl Plugin for TellSecretPlugin {
 }
 
 impl TellSecretPlugin {
-    fn list_system(mut actors: Query<(Entity, &mut TaskList), (With<Actor>, Added<TaskList>)>) {
-        if let Ok((entity, mut task_list)) = actors.get_single_mut() {
-            task_list.push(Box::new(TellSecret(entity)));
+    fn list_system(
+        mut list_events: EventWriter<TaskList>,
+        mut actors: Query<Entity, (With<Actor>, With<CursorHover>)>,
+    ) {
+        if let Ok(entity) = actors.get_single_mut() {
+            list_events.send(TellSecret(entity).into());
         }
     }
 

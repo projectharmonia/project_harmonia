@@ -23,8 +23,8 @@ use serde::{
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use super::{
-    action::Action, actor::Actor, component_commands::ComponentCommandsExt,
-    cursor_hover::CursorHover, family::FamilyMode, game_state::GameState,
+    action::Action, actor::Actor, component_commands::ComponentCommandsExt, family::FamilyMode,
+    game_state::GameState,
 };
 
 pub(super) struct TaskPlugin;
@@ -35,8 +35,10 @@ impl Plugin for TaskPlugin {
             .replicate::<ActiveTask>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<TaskCancel>()
-            .add_system(
-                    Self::list_system.run_if(action_just_pressed(Action::Confirm))
+            .add_event::<TaskList>()
+            .configure_set(
+                TaskListSet
+                    .run_if(action_just_pressed(Action::Confirm))
                     .in_set(OnUpdate(GameState::Family))
                     .in_set(OnUpdate(FamilyMode::Life)),
             )
@@ -52,20 +54,6 @@ impl Plugin for TaskPlugin {
 }
 
 impl TaskPlugin {
-    fn list_system(
-        mut commands: Commands,
-        hovered: Query<Entity, With<CursorHover>>,
-        task_lists: Query<Entity, With<TaskList>>,
-    ) {
-        if let Ok(hovered_entity) = hovered.get_single() {
-            if let Ok(previous_entity) = task_lists.get_single() {
-                commands.entity(previous_entity).remove::<TaskList>();
-            }
-
-            commands.entity(hovered_entity).insert(TaskList::default());
-        }
-    }
-
     fn queue_system(
         mut commands: Commands,
         mut task_events: ResMut<Events<FromClient<TaskRequest>>>,
@@ -132,15 +120,23 @@ impl TaskPlugin {
     }
 }
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub(crate) struct TaskListSet;
+
+// Contains a task that should be listed.
+///
+/// Emitted when clicking on objects.
+pub(crate) struct TaskList(pub(crate) Box<dyn Task>);
+
+impl<T: Task> From<T> for TaskList {
+    fn from(value: T) -> Self {
+        Self(Box::new(value))
+    }
+}
+
 /// List of tasks assigned to entity.
 #[derive(Component, Default, Deref, DerefMut)]
 struct Tasks(Vec<Entity>);
-
-/// Contains list of possible tasks.
-///
-/// Added when clicking on objects.
-#[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct TaskList(Vec<Box<dyn Task>>);
 
 /// Marker for a task that was queued.
 #[derive(Component, Reflect, Default)]

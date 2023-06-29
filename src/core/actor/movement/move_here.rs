@@ -6,12 +6,10 @@ use crate::core::{
     actor::ActorAnimation,
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
-    family::FamilyMode,
-    game_state::GameState,
     game_world::WorldState,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList},
+    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList, TaskListSet},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -19,11 +17,7 @@ pub(super) struct MoveHerePlugin;
 impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
         app.register_task::<MoveHere>()
-            .add_system(
-                Self::list_system
-                    .in_set(OnUpdate(GameState::Family))
-                    .in_set(OnUpdate(FamilyMode::Life)),
-            )
+            .add_system(Self::list_system.in_set(TaskListSet))
             .add_systems(
                 (
                     Self::activation_system,
@@ -37,17 +31,24 @@ impl Plugin for MoveHerePlugin {
 
 impl MoveHerePlugin {
     fn list_system(
-        mut grounds: Query<(&CursorHover, &mut TaskList), (With<Ground>, Added<TaskList>)>,
+        mut list_events: EventWriter<TaskList>,
+        mut grounds: Query<&CursorHover, With<Ground>>,
     ) {
-        if let Ok((hover, mut task_list)) = grounds.get_single_mut() {
-            task_list.push(Box::new(MoveHere {
-                endpoint: hover.0,
-                movement: Movement::Walk,
-            }));
-            task_list.push(Box::new(MoveHere {
-                endpoint: hover.0,
-                movement: Movement::Run,
-            }));
+        if let Ok(hover) = grounds.get_single_mut() {
+            list_events.send(
+                MoveHere {
+                    endpoint: hover.0,
+                    movement: Movement::Walk,
+                }
+                .into(),
+            );
+            list_events.send(
+                MoveHere {
+                    endpoint: hover.0,
+                    movement: Movement::Run,
+                }
+                .into(),
+            );
         }
     }
 
