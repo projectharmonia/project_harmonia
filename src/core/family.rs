@@ -30,6 +30,7 @@ impl Plugin for FamilyPlugin {
             .add_mapped_client_event::<FamilySpawn>()
             .add_mapped_client_event::<FamilyDespawn>()
             .add_mapped_server_event::<SelectedFamilySpawned>()
+            .add_system(Self::reset_mode_system.in_schedule(OnEnter(GameState::Family)))
             .add_systems((Self::spawn_system, Self::despawn_system).in_set(ServerSet::Authority))
             .add_systems((
                 Self::activation_system.in_schedule(OnEnter(GameState::Family)),
@@ -41,6 +42,10 @@ impl Plugin for FamilyPlugin {
 }
 
 impl FamilyPlugin {
+    fn reset_mode_system(mut family_mode: ResMut<NextState<FamilyMode>>) {
+        family_mode.set(FamilyMode::Life);
+    }
+
     fn family_sync_system(
         mut commands: Commands,
         actors: Query<(Entity, Option<&ActorFamily>, &FamilySync), Changed<FamilySync>>,

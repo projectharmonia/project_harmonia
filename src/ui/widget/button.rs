@@ -37,7 +37,7 @@ impl ButtonPlugin {
         }
     }
 
-    fn image_init_system(
+    pub(crate) fn image_init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &Handle<Image>), Added<Button>>,
