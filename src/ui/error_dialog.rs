@@ -6,15 +6,15 @@ use super::{
 };
 use crate::core::error::ErrorReport;
 
-pub(super) struct ErrorMessagePlugin;
+pub(super) struct ErrorDialogPlugin;
 
-impl Plugin for ErrorMessagePlugin {
+impl Plugin for ErrorDialogPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems((Self::setup_system, Self::button_system));
     }
 }
 
-impl ErrorMessagePlugin {
+impl ErrorDialogPlugin {
     fn setup_system(
         mut commands: Commands,
         mut error_events: EventReader<ErrorReport>,
