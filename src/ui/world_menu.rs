@@ -52,6 +52,7 @@ impl WorldMenuPlugin {
     ) {
         commands
             .spawn((
+                UiRoot,
                 NodeBundle {
                     style: Style {
                         size: Size::all(Val::Percent(100.0)),
@@ -63,7 +64,6 @@ impl WorldMenuPlugin {
                     },
                     ..Default::default()
                 },
-                UiRoot,
             ))
             .with_children(|parent| {
                 parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));

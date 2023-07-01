@@ -47,6 +47,7 @@ impl WorldBrowserPlugin {
     fn setup_system(mut commands: Commands, theme: Res<Theme>, game_paths: Res<GamePaths>) {
         commands
             .spawn((
+                UiRoot,
                 NodeBundle {
                     style: Style {
                         size: Size::all(Val::Percent(100.0)),
@@ -58,7 +59,6 @@ impl WorldBrowserPlugin {
                     },
                     ..Default::default()
                 },
-                UiRoot,
             ))
             .with_children(|parent| {
                 parent.spawn(LabelBundle::large(&theme, "World browser"));

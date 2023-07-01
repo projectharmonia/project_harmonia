@@ -58,6 +58,7 @@ impl FamilyEditorMenuPlugin {
     fn setup_system(mut commands: Commands, theme: Res<Theme>) {
         commands
             .spawn((
+                UiRoot,
                 NodeBundle {
                     style: Style {
                         size: Size::all(Val::Percent(100.0)),
@@ -65,7 +66,6 @@ impl FamilyEditorMenuPlugin {
                     },
                     ..Default::default()
                 },
-                UiRoot,
             ))
             .with_children(|parent| {
                 setup_personality_node(parent, &theme);

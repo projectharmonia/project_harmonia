@@ -23,6 +23,7 @@ impl MainMenuPlugin {
     fn setup_system(mut commands: Commands, theme: Res<Theme>) {
         commands
             .spawn((
+                UiRoot,
                 NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
@@ -35,7 +36,6 @@ impl MainMenuPlugin {
                     },
                     ..Default::default()
                 },
-                UiRoot,
             ))
             .with_children(|parent| {
                 for button in MainMenuButton::iter() {
