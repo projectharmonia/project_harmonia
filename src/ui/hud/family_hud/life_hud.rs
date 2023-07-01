@@ -29,7 +29,7 @@ impl Plugin for LifeHudPlugin {
         )
         .add_systems(
             (
-                Self::task_button_state_system,
+                Self::task_button_setup_system,
                 Self::task_button_system,
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
@@ -59,17 +59,30 @@ impl LifeHudPlugin {
         });
     }
 
-    fn task_button_state_system(
+    fn task_button_setup_system(
         mut commands: Commands,
         theme: Res<Theme>,
-        actors: Query<&Children, With<ActiveActor>>,
-        tasks: Query<(Entity, &TaskState), Changed<TaskState>>,
+        actors: Query<(&Children, Ref<ActiveActor>)>,
+        tasks: Query<(Entity, Ref<TaskState>)>,
         queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
         active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        for (task_entity, &state) in tasks.iter_many(actors.single()) {
-            match state {
+        let (children, active_actor) = actors.single();
+        if active_actor.is_added() {
+            commands
+                .entity(queued_task_nodes.single())
+                .despawn_descendants();
+            commands
+                .entity(active_task_nodes.single())
+                .despawn_descendants();
+        }
+
+        for (task_entity, state) in tasks
+            .iter_many(children)
+            .filter(|(_, state)| active_actor.is_added() || state.is_changed())
+        {
+            match *state {
                 TaskState::Queued => {
                     commands
                         .entity(queued_task_nodes.single())
@@ -81,13 +94,24 @@ impl LifeHudPlugin {
                         });
                 }
                 TaskState::Active => {
-                    let (button_entity, _) = buttons
+                    if let Some((button_entity, _)) = buttons
                         .iter()
                         .find(|(_, button_task)| button_task.0 == task_entity)
-                        .expect("all active tasks should have corresponding buttons");
-                    commands
-                        .entity(button_entity)
-                        .set_parent(active_task_nodes.single());
+                    {
+                        // Already exists, move to active tasks node.
+                        commands
+                            .entity(button_entity)
+                            .set_parent(active_task_nodes.single());
+                    } else {
+                        commands
+                            .entity(active_task_nodes.single())
+                            .with_children(|parent| {
+                                parent.spawn((
+                                    ButtonTask(task_entity),
+                                    ImageButtonBundle::placeholder(&theme),
+                                ));
+                            });
+                    }
                 }
                 TaskState::Cancelled => continue,
             };
