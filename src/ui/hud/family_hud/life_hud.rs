@@ -208,6 +208,7 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
                 NodeBundle {
                     style: Style {
                         min_size: Size::new(min_width, min_height),
+                        flex_direction: FlexDirection::Column,
                         gap: theme.gap.normal,
                         padding: theme.padding.normal,
                         ..Default::default()
