@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::FamilyHudRoot;
 use crate::{
     core::{
-        family::FamilyMode,
+        family::{ActiveFamily, Budget, FamilyMode},
         game_state::GameState,
         task::{ActiveTask, QueuedTask, TaskCancel},
     },
@@ -12,6 +12,7 @@ use crate::{
         widget::{
             button::{ButtonPlugin, ImageButtonBundle},
             click::Click,
+            LabelBundle,
         },
     },
 };
@@ -32,6 +33,7 @@ impl Plugin for LifeHudPlugin {
                 Self::task_button_system,
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
+                Self::budget_system,
             )
                 .in_set(OnUpdate(GameState::Family))
                 .in_set(OnUpdate(FamilyMode::Life)),
@@ -44,9 +46,11 @@ impl LifeHudPlugin {
         mut commands: Commands,
         theme: Res<Theme>,
         roots: Query<Entity, With<FamilyHudRoot>>,
+        families: Query<&Budget, With<ActiveFamily>>,
     ) {
         commands.entity(roots.single()).with_children(|parent| {
             setup_tasks_node(parent, &theme);
+            setup_portrait_node(parent, &theme, *families.single());
         });
     }
 
@@ -106,6 +110,15 @@ impl LifeHudPlugin {
             commands.entity(button_entity).despawn_recursive();
         }
     }
+
+    fn budget_system(
+        families: Query<&Budget, (With<ActiveFamily>, Changed<Budget>)>,
+        mut labels: Query<&mut Text, With<BudgetLabel>>,
+    ) {
+        if let Ok(budget) = families.get_single() {
+            labels.single_mut().sections[0].value = budget.to_string();
+        }
+    }
 }
 
 fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
@@ -161,6 +174,23 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
         });
 }
 
+fn setup_portrait_node(parent: &mut ChildBuilder, theme: &Theme, budget: Budget) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Px(180.0), Val::Px(30.0)),
+                align_self: AlignSelf::FlexEnd,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn((BudgetLabel, LabelBundle::normal(theme, budget.to_string())));
+        });
+}
+
 #[derive(Component)]
 struct ActiveTasksNode;
 
@@ -169,3 +199,6 @@ struct QueuedTasksNode;
 
 #[derive(Component)]
 struct ButtonTask(Entity);
+
+#[derive(Component)]
+struct BudgetLabel;
