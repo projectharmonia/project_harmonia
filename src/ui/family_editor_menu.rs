@@ -258,8 +258,9 @@ impl FamilyEditorMenuPlugin {
                         race_name: race.type_name().to_string(),
                     })
                 }
+                let mut family_name = text_edits.single_mut();
                 let family_scene = FamilyScene::new(
-                    mem::take(&mut text_edits.single_mut().sections[0].value).into(),
+                    mem::take(&mut family_name.sections[0].value).into(),
                     actor_scenes,
                 );
 

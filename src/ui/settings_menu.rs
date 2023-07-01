@@ -220,7 +220,7 @@ impl SettingsMenuPlugin {
         mut input_events: InputEvents,
         dialogs: Query<(Entity, &BindingButton)>,
         mut mapping_buttons: Query<(Entity, &mut Mapping)>,
-        mut binding_labels: Query<&mut Text, With<BindingLabel>>,
+        mut labels: Query<&mut Text, With<BindingLabel>>,
         mut dialog_buttons: Query<(&mut Style, &BindingDialogButton)>,
     ) {
         if let Some(input_kind) = input_events.input_kind() {
@@ -229,8 +229,7 @@ impl SettingsMenuPlugin {
                 .iter()
                 .find(|(_, mapping)| mapping.input_kind == Some(input_kind))
             {
-                let mut text = binding_labels.single_mut();
-                text.sections[0].value = format!(
+                labels.single_mut().sections[0].value = format!(
                     "\"{input_kind}\" is already used by \"{:?}\"",
                     mapping.action
                 );
