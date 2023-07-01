@@ -31,8 +31,7 @@ pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<QueuedTask>()
-            .replicate::<ActiveTask>()
+        app.replicate::<TaskState>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
             .add_client_event::<TaskCancel>()
             .add_event::<TaskList>()
@@ -67,7 +66,7 @@ impl TaskPlugin {
                             Name::new(event.task.name().to_string()),
                             event.task.groups(),
                             Replication,
-                            QueuedTask,
+                            TaskState::Queued,
                         ))
                         .insert_reflect([event.task.into_reflect()]);
                 });
@@ -78,26 +77,23 @@ impl TaskPlugin {
     }
 
     fn activation_system(
-        mut commands: Commands,
-        active_tasks: Query<&TaskGroups, With<ActiveTask>>,
-        queued_tasks: Query<(Entity, &TaskGroups), With<QueuedTask>>,
+        mut tasks: Query<(&TaskGroups, &mut TaskState)>,
         actors: Query<&Children, With<Actor>>,
     ) {
         for children in &actors {
-            let current_groups = active_tasks
+            let current_groups = tasks
                 .iter_many(children)
-                .copied()
+                .filter(|(_, &state)| state == TaskState::Active)
+                .map(|(&groups, _)| groups)
                 .reduce(|acc, groups| acc & groups)
                 .unwrap_or_default();
 
-            if let Some((task_entity, _)) = queued_tasks
-                .iter_many(children)
-                .find(|(_, groups)| !groups.intersects(current_groups))
-            {
-                commands
-                    .entity(task_entity)
-                    .remove::<QueuedTask>()
-                    .insert(ActiveTask);
+            let mut iter = tasks.iter_many_mut(children);
+            while let Some((groups, mut state)) = iter.fetch_next() {
+                if *state == TaskState::Queued && !groups.intersects(current_groups) {
+                    *state = TaskState::Active;
+                    break;
+                }
             }
         }
     }
@@ -105,14 +101,15 @@ impl TaskPlugin {
     fn cancelation_system(
         mut commands: Commands,
         mut cancel_events: EventReader<FromClient<TaskCancel>>,
-        queued_tasks: Query<(), With<QueuedTask>>,
-        active_tasks: Query<(), With<ActiveTask>>,
+        mut tasks: Query<&mut TaskState>,
     ) {
         for event in cancel_events.iter().map(|event| &event.event) {
-            if queued_tasks.get(event.0).is_ok() {
-                commands.entity(event.0).despawn();
-            } else if active_tasks.get(event.0).is_ok() {
-                commands.entity(event.0).insert(CancelledTask);
+            if let Ok(mut state) = tasks.get_mut(event.0) {
+                match *state {
+                    TaskState::Queued => commands.entity(event.0).despawn(),
+                    TaskState::Active => *state = TaskState::Cancelled,
+                    TaskState::Cancelled => (),
+                }
             } else {
                 error!("entity {:?} is not a task", event.0);
             }
@@ -134,20 +131,14 @@ impl<T: Task> From<T> for TaskList {
     }
 }
 
-/// Marker for a task that was queued.
-#[derive(Component, Reflect, Default)]
+#[derive(Clone, Component, Copy, Default, PartialEq, Reflect)]
 #[reflect(Component)]
-pub(crate) struct QueuedTask;
-
-/// Marker for a task that is currently active.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-pub(crate) struct ActiveTask;
-
-/// Marker for a task that was cancelled.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-pub(super) struct CancelledTask;
+pub(crate) enum TaskState {
+    #[default]
+    Queued,
+    Active,
+    Cancelled,
+}
 
 bitflags! {
     #[derive(Default, Component)]

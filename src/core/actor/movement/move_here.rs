@@ -9,7 +9,7 @@ use crate::core::{
     game_world::WorldState,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList, TaskListSet},
+    task::{AppTaskExt, Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -54,19 +54,26 @@ impl MoveHerePlugin {
 
     fn activation_system(
         mut commands: Commands,
-        tasks: Query<(&Parent, &MoveHere), Added<ActiveTask>>,
+        tasks: Query<(&Parent, &MoveHere, &TaskState), Changed<TaskState>>,
     ) {
-        for (parent, move_here) in &tasks {
-            commands.entity(**parent).insert((
-                MovementBundle::new(move_here.movement),
-                Endpoint::new(move_here.endpoint),
-            ));
+        for (parent, move_here, &state) in &tasks {
+            if state == TaskState::Active {
+                commands.entity(**parent).insert((
+                    MovementBundle::new(move_here.movement),
+                    Endpoint::new(move_here.endpoint),
+                ));
+            }
         }
     }
 
-    fn cancellation_system(mut commands: Commands, tasks: Query<&Parent, Added<CancelledTask>>) {
-        for parent in &tasks {
-            commands.entity(**parent).remove::<Navigation>();
+    fn cancellation_system(
+        mut commands: Commands,
+        tasks: Query<(&Parent, &TaskState), Changed<TaskState>>,
+    ) {
+        for (parent, &state) in &tasks {
+            if state == TaskState::Cancelled {
+                commands.entity(**parent).remove::<Navigation>();
+            }
         }
     }
 
@@ -75,11 +82,14 @@ impl MoveHerePlugin {
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut removed_movements: RemovedComponents<Movement>,
         mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
-        tasks: Query<Entity, (With<MoveHere>, With<ActiveTask>)>,
+        tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
         for actor_entity in &mut removed_movements {
             if let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) {
-                if let Some(task_entity) = tasks.iter_many(children).next() {
+                if let Some((task_entity, _)) = tasks
+                    .iter_many(children)
+                    .find(|(_, &state)| state == TaskState::Active)
+                {
                     commands.entity(task_entity).despawn();
                     *animation_handle = actor_animations.handle(ActorAnimation::Idle);
                 }

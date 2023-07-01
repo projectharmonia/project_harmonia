@@ -10,7 +10,7 @@ use crate::core::{
     cursor_hover::CursorHover,
     family::ActorFamily,
     ground::Ground,
-    task::{ActiveTask, AppTaskExt, Task, TaskList, TaskListSet},
+    task::{AppTaskExt, Task, TaskList, TaskListSet, TaskState},
 };
 
 use super::{LotFamily, LotVertices};
@@ -46,18 +46,20 @@ impl BuyLotPlugin {
         mut commands: Commands,
         lots: Query<(), Without<LotFamily>>,
         actors: Query<&ActorFamily>,
-        tasks: Query<(Entity, &Parent, &BuyLot), Added<ActiveTask>>,
+        tasks: Query<(Entity, &Parent, &BuyLot, &TaskState), Changed<TaskState>>,
     ) {
-        for (entity, parent, buy) in &tasks {
-            let family = actors
-                .get(**parent)
-                .expect("actors should have assigned family");
-            if lots.get(buy.0).is_ok() {
-                commands.entity(buy.0).insert(LotFamily(family.0));
-            } else {
-                error!("{buy:?} from actor {entity:?} points to not a lot");
+        for (entity, parent, buy, &state) in &tasks {
+            if state == TaskState::Active {
+                let family = actors
+                    .get(**parent)
+                    .expect("actors should have assigned family");
+                if lots.get(buy.0).is_ok() {
+                    commands.entity(buy.0).insert(LotFamily(family.0));
+                } else {
+                    error!("{buy:?} from actor {entity:?} points to not a lot");
+                }
+                commands.entity(entity).despawn();
             }
-            commands.entity(entity).despawn();
         }
     }
 }

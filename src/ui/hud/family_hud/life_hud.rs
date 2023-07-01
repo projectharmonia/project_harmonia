@@ -6,7 +6,7 @@ use crate::{
         actor::ActiveActor,
         family::{ActiveFamily, Budget, FamilyActors, FamilyMode},
         game_state::GameState,
-        task::{ActiveTask, QueuedTask, TaskCancel},
+        task::{TaskCancel, TaskState},
     },
     ui::{
         theme::Theme,
@@ -29,8 +29,7 @@ impl Plugin for LifeHudPlugin {
         )
         .add_systems(
             (
-                Self::task_queue_system,
-                Self::task_activation_system,
+                Self::task_button_state_system,
                 Self::task_button_system,
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
@@ -60,35 +59,38 @@ impl LifeHudPlugin {
         });
     }
 
-    fn task_queue_system(
+    fn task_button_state_system(
         mut commands: Commands,
         theme: Res<Theme>,
         actors: Query<&Children, With<ActiveActor>>,
-        tasks: Query<Entity, Added<QueuedTask>>,
-        task_nodes: Query<Entity, With<QueuedTasksNode>>,
+        tasks: Query<(Entity, &TaskState), Changed<TaskState>>,
+        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
+        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
+        buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        for entity in tasks.iter_many(actors.single()) {
-            commands
-                .entity(task_nodes.single())
-                .with_children(|parent| {
-                    parent.spawn((ButtonTask(entity), ImageButtonBundle::placeholder(&theme)));
-                });
-        }
-    }
-
-    fn task_activation_system(
-        mut commands: Commands,
-        theme: Res<Theme>,
-        actors: Query<&Children, With<ActiveActor>>,
-        tasks: Query<Entity, Added<ActiveTask>>,
-        task_nodes: Query<Entity, With<ActiveTasksNode>>,
-    ) {
-        for entity in tasks.iter_many(actors.single()) {
-            commands
-                .entity(task_nodes.single())
-                .with_children(|parent| {
-                    parent.spawn((ButtonTask(entity), ImageButtonBundle::placeholder(&theme)));
-                });
+        for (task_entity, &state) in tasks.iter_many(actors.single()) {
+            match state {
+                TaskState::Queued => {
+                    commands
+                        .entity(queued_task_nodes.single())
+                        .with_children(|parent| {
+                            parent.spawn((
+                                ButtonTask(task_entity),
+                                ImageButtonBundle::placeholder(&theme),
+                            ));
+                        });
+                }
+                TaskState::Active => {
+                    let (button_entity, _) = buttons
+                        .iter()
+                        .find(|(_, button_task)| button_task.0 == task_entity)
+                        .expect("all active tasks should have corresponding buttons");
+                    commands
+                        .entity(button_entity)
+                        .set_parent(active_task_nodes.single());
+                }
+                TaskState::Cancelled => continue,
+            };
         }
     }
 
@@ -106,16 +108,16 @@ impl LifeHudPlugin {
 
     fn task_cleanup_system(
         mut commands: Commands,
-        mut unqueued_tasks: RemovedComponents<QueuedTask>,
-        mut deactivated_tasks: RemovedComponents<ActiveTask>,
+        mut removed_tasks: RemovedComponents<TaskState>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        for task_entity in unqueued_tasks.iter().chain(&mut deactivated_tasks) {
-            let (button_entity, _) = buttons
+        for task_entity in &mut removed_tasks {
+            if let Some((button_entity, _)) = buttons
                 .iter()
                 .find(|(_, button_task)| button_task.0 == task_entity)
-                .expect("all tasks should have corresponding buttons");
-            commands.entity(button_entity).despawn_recursive();
+            {
+                commands.entity(button_entity).despawn_recursive();
+            }
         }
     }
 

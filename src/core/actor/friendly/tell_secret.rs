@@ -11,7 +11,7 @@ use crate::core::{
     cursor_hover::CursorHover,
     game_world::WorldState,
     navigation::{following::Following, Navigation},
-    task::{ActiveTask, AppTaskExt, CancelledTask, Task, TaskGroups, TaskList, TaskListSet},
+    task::{AppTaskExt, Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct TellSecretPlugin;
@@ -48,13 +48,15 @@ impl TellSecretPlugin {
 
     fn tell_activation_system(
         mut commands: Commands,
-        tasks: Query<(&TellSecret, &Parent), Added<ActiveTask>>,
+        tasks: Query<(&TellSecret, &Parent, &TaskState), Changed<TaskState>>,
     ) {
-        for (tell_secret, parent) in &tasks {
-            commands.entity(**parent).insert((
-                MovementBundle::new(Movement::Walk).with_offset(0.5),
-                Following(tell_secret.0),
-            ));
+        for (tell_secret, parent, &state) in &tasks {
+            if state == TaskState::Active {
+                commands.entity(**parent).insert((
+                    MovementBundle::new(Movement::Walk).with_offset(0.5),
+                    Following(tell_secret.0),
+                ));
+            }
         }
     }
 
@@ -63,14 +65,14 @@ impl TellSecretPlugin {
         mut removed_navigations: RemovedComponents<Navigation>,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
-        tasks: Query<&TellSecret, (With<ActiveTask>, Without<CancelledTask>)>,
+        tasks: Query<(&TellSecret, &TaskState)>,
     ) {
         for entity in &mut removed_navigations {
             let Ok((children, mut animation_handle)) = actors.get_mut(entity) else {
                 continue;
             };
 
-            let Some(tell_secret) = tasks.iter_many(children).next() else {
+            let Some((tell_secret, _)) = tasks.iter_many(children).find(|(_, &state)| state == TaskState::Active) else {
                 continue;
             };
 
@@ -79,7 +81,7 @@ impl TellSecretPlugin {
 
             // TODO: Handle cancellation of currently active tasks.
             commands.entity(tell_secret.0).with_children(|parent| {
-                parent.spawn((ActiveTask, ListenSecret(entity)));
+                parent.spawn((TaskState::Active, ListenSecret(entity)));
             });
         }
     }
@@ -124,26 +126,29 @@ impl TellSecretPlugin {
     }
 
     fn listen_cancellation_system(
-        mut commands: Commands,
-        tasks: Query<&Parent, (Added<CancelledTask>, With<ListenSecret>)>,
-        actors: Query<(Entity, &TellSecret)>,
+        tasks: Query<(&Parent, &TaskState), (Changed<TaskState>, With<ListenSecret>)>,
+        mut actors: Query<(&mut TaskState, &TellSecret), Without<ListenSecret>>,
     ) {
-        for parent in &tasks {
-            if let Some((entity, _)) = actors
-                .iter()
-                .find(|(_, tell_secret)| tell_secret.0 == **parent)
-            {
-                commands.entity(entity).insert(CancelledTask);
+        for (parent, &listen_state) in &tasks {
+            if listen_state == TaskState::Cancelled {
+                if let Some((mut tell_state, _)) = actors
+                    .iter_mut()
+                    .find(|(_, tell_secret)| tell_secret.0 == **parent)
+                {
+                    *tell_state = TaskState::Cancelled;
+                }
             }
         }
     }
 
     fn tell_cancellation_system(
         mut commands: Commands,
-        tasks: Query<&Parent, (Added<CancelledTask>, With<TellSecret>)>,
+        tasks: Query<(&Parent, &TaskState), (Changed<TaskState>, With<TellSecret>)>,
     ) {
-        for parent in &tasks {
-            commands.entity(**parent).insert(ToldSecret);
+        for (parent, &state) in &tasks {
+            if state == TaskState::Cancelled {
+                commands.entity(**parent).insert(ToldSecret);
+            }
         }
     }
 
@@ -152,13 +157,14 @@ impl TellSecretPlugin {
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut tell_actors: Query<(Entity, &Children, &mut Handle<AnimationClip>), Added<ToldSecret>>,
         mut listen_actors: Query<&mut Handle<AnimationClip>, Without<ToldSecret>>,
-        listen_tasks: Query<(Entity, &Parent, &ListenSecret), With<ActiveTask>>,
-        tell_tasks: Query<Entity, (With<TellSecret>, With<ActiveTask>)>,
+        listen_tasks: Query<(Entity, &Parent, &ListenSecret, &TaskState)>,
+        tell_tasks: Query<(Entity, &TaskState), With<TellSecret>>,
     ) {
         for (teller_entity, children, mut animation_handle) in &mut tell_actors {
-            if let Some((listen_entity, parent, _)) = listen_tasks
-                .iter()
-                .find(|(.., listen_secret)| listen_secret.0 == teller_entity)
+            if let Some((listen_entity, parent, ..)) =
+                listen_tasks.iter().find(|(.., listen_secret, &state)| {
+                    listen_secret.0 == teller_entity && state == TaskState::Cancelled
+                })
             {
                 commands.entity(listen_entity).despawn();
                 let mut animation_handle = listen_actors
@@ -173,9 +179,9 @@ impl TellSecretPlugin {
                 .entity(teller_entity)
                 .remove::<(Navigation, TellingSecret, ToldSecret)>();
 
-            let tell_entity = tell_tasks
+            let (tell_entity, _) = tell_tasks
                 .iter_many(children)
-                .next()
+                .find(|(_, &state)| state == TaskState::Cancelled)
                 .expect("actor should have tell secret task as a child");
             commands.entity(tell_entity).despawn();
         }
