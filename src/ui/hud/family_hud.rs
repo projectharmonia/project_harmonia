@@ -75,10 +75,10 @@ impl FamilyHudPlugin {
 
     fn mode_button_system(
         mut family_mode: ResMut<NextState<FamilyMode>>,
-        buttons: Query<(Ref<Toggled>, &FamilyMode)>,
+        buttons: Query<(Ref<Toggled>, &FamilyMode), Changed<Toggled>>,
     ) {
         for (toggled, &mode) in &buttons {
-            if toggled.0 && toggled.is_changed() && !toggled.is_added() {
+            if toggled.0 && !toggled.is_added() {
                 family_mode.set(mode);
             }
         }
