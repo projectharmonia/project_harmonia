@@ -29,8 +29,8 @@ impl Plugin for WorldMenuPlugin {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::World)))
             .add_systems(
                 (
-                    Self::family_node_system,
-                    Self::city_node_system,
+                    Self::family_node_spawn_system,
+                    Self::city_node_spawn_system,
                     Self::family_button_system,
                     Self::city_button_system,
                     Self::create_button_system,
@@ -135,7 +135,7 @@ impl WorldMenuPlugin {
             });
     }
 
-    fn family_node_system(
+    fn family_node_spawn_system(
         mut commands: Commands,
         theme: Res<Theme>,
         families: Query<(Entity, &Name), Added<FamilyActors>>,
@@ -155,7 +155,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn city_node_system(
+    fn city_node_spawn_system(
         mut commands: Commands,
         theme: Res<Theme>,
         cities: Query<(Entity, &Name), Added<City>>,
