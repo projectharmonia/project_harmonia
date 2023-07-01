@@ -134,10 +134,6 @@ impl<T: Task> From<T> for TaskList {
     }
 }
 
-/// List of tasks assigned to entity.
-#[derive(Component, Default, Deref, DerefMut)]
-struct Tasks(Vec<Entity>);
-
 /// Marker for a task that was queued.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
