@@ -139,22 +139,12 @@ impl FamilyPlugin {
         }
     }
 
-    fn activation_system(
-        mut commands: Commands,
-        activated_actors: Query<&ActorFamily, With<ActiveActor>>,
-    ) {
-        commands
-            .entity(activated_actors.single().0)
-            .insert(ActiveFamily);
+    fn activation_system(mut commands: Commands, actors: Query<&ActorFamily, With<ActiveActor>>) {
+        commands.entity(actors.single().0).insert(ActiveFamily);
     }
 
-    fn deactivation_system(
-        mut commands: Commands,
-        active_actors: Query<&ActorFamily, With<ActiveActor>>,
-    ) {
-        commands
-            .entity(active_actors.single().0)
-            .remove::<ActiveFamily>();
+    fn deactivation_system(mut commands: Commands, actors: Query<&ActorFamily, With<ActiveActor>>) {
+        commands.entity(actors.single().0).remove::<ActiveFamily>();
     }
 
     fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<FamilyActors>>) {

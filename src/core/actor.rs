@@ -34,7 +34,10 @@ impl Plugin for ActorPlugin {
             .replicate::<Sex>()
             .replicate::<LastName>()
             .not_replicate_if_present::<Name, FirstName>()
-            .add_system(Self::name_update_system.in_set(OnUpdate(WorldState::InWorld)));
+            .add_systems((
+                Self::name_update_system.in_set(OnUpdate(WorldState::InWorld)),
+                Self::exclusive_system.in_base_set(CoreSet::PostUpdate),
+            ));
     }
 }
 
@@ -50,6 +53,21 @@ impl ActorPlugin {
             commands
                 .entity(entity)
                 .insert(Name::new(format!("{first_name} {last_name}")));
+        }
+    }
+
+    fn exclusive_system(
+        mut commands: Commands,
+        actors: Query<Entity, Added<ActiveActor>>,
+        active_actors: Query<Entity, With<ActiveActor>>,
+    ) {
+        for activated_entity in &actors {
+            if let Some(actor_entity) = active_actors
+                .iter()
+                .find(|&entity| entity != activated_entity)
+            {
+                commands.entity(actor_entity).remove::<ActiveActor>();
+            }
         }
     }
 }

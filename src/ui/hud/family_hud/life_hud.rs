@@ -3,14 +3,15 @@ use bevy::prelude::*;
 use super::FamilyHudRoot;
 use crate::{
     core::{
-        family::{ActiveFamily, Budget, FamilyMode},
+        actor::ActiveActor,
+        family::{ActiveFamily, Budget, FamilyActors, FamilyMode},
         game_state::GameState,
         task::{ActiveTask, QueuedTask, TaskCancel},
     },
     ui::{
         theme::Theme,
         widget::{
-            button::{ButtonPlugin, ImageButtonBundle},
+            button::{ButtonPlugin, ExclusiveButton, ImageButtonBundle, Toggled},
             click::Click,
             LabelBundle,
         },
@@ -34,6 +35,7 @@ impl Plugin for LifeHudPlugin {
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
                 Self::budget_system,
+                Self::actor_buttons_system,
             )
                 .in_set(OnUpdate(GameState::Family))
                 .in_set(OnUpdate(FamilyMode::Life)),
@@ -46,21 +48,26 @@ impl LifeHudPlugin {
         mut commands: Commands,
         theme: Res<Theme>,
         roots: Query<Entity, With<FamilyHudRoot>>,
-        families: Query<&Budget, With<ActiveFamily>>,
+        families: Query<(&Budget, &FamilyActors), With<ActiveFamily>>,
+        actors: Query<Entity, With<ActiveActor>>,
     ) {
         commands.entity(roots.single()).with_children(|parent| {
             setup_tasks_node(parent, &theme);
-            setup_portrait_node(parent, &theme, *families.single());
+
+            let (&budget, family_actors) = families.single();
+            setup_portrait_node(parent, &theme, budget);
+            setup_members_node(parent, &theme, family_actors, actors.single());
         });
     }
 
     fn task_queue_system(
         mut commands: Commands,
         theme: Res<Theme>,
+        actors: Query<&Children, With<ActiveActor>>,
         tasks: Query<Entity, Added<QueuedTask>>,
         task_nodes: Query<Entity, With<QueuedTasksNode>>,
     ) {
-        for entity in &tasks {
+        for entity in tasks.iter_many(actors.single()) {
             commands
                 .entity(task_nodes.single())
                 .with_children(|parent| {
@@ -72,10 +79,11 @@ impl LifeHudPlugin {
     fn task_activation_system(
         mut commands: Commands,
         theme: Res<Theme>,
+        actors: Query<&Children, With<ActiveActor>>,
         tasks: Query<Entity, Added<ActiveTask>>,
         task_nodes: Query<Entity, With<ActiveTasksNode>>,
     ) {
-        for entity in &tasks {
+        for entity in tasks.iter_many(actors.single()) {
             commands
                 .entity(task_nodes.single())
                 .with_children(|parent| {
@@ -117,6 +125,17 @@ impl LifeHudPlugin {
     ) {
         if let Ok(budget) = families.get_single() {
             labels.single_mut().sections[0].value = budget.to_string();
+        }
+    }
+
+    fn actor_buttons_system(
+        mut commands: Commands,
+        actor_buttons: Query<(Ref<Toggled>, &PlayActor), Changed<Toggled>>,
+    ) {
+        for (toggled, play_actor) in &actor_buttons {
+            if toggled.0 && !toggled.is_added() {
+                commands.entity(play_actor.0).insert(ActiveActor);
+            }
         }
     }
 }
@@ -191,6 +210,35 @@ fn setup_portrait_node(parent: &mut ChildBuilder, theme: &Theme, budget: Budget)
         });
 }
 
+fn setup_members_node(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    actors: &FamilyActors,
+    active_entity: Entity,
+) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                gap: theme.gap.normal,
+                padding: theme.padding.normal,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            for &entity in actors.iter() {
+                parent.spawn((
+                    PlayActor(entity),
+                    ExclusiveButton,
+                    Toggled(entity == active_entity),
+                    ImageButtonBundle::placeholder(theme),
+                ));
+            }
+        });
+}
+
 #[derive(Component)]
 struct ActiveTasksNode;
 
@@ -202,3 +250,6 @@ struct ButtonTask(Entity);
 
 #[derive(Component)]
 struct BudgetLabel;
+
+#[derive(Component)]
+struct PlayActor(Entity);
