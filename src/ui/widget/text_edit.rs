@@ -11,8 +11,8 @@ impl Plugin for TextEditPlugin {
             Self::input_system,
             Self::interaction_system,
             Self::activation_system,
-            Self::exclusive_system,
-        ));
+        ))
+        .add_system(Self::exclusive_system.in_base_set(CoreSet::PostUpdate));
     }
 }
 
@@ -20,12 +20,9 @@ impl TextEditPlugin {
     fn input_system(
         mut char_events: EventReader<ReceivedCharacter>,
         keys: Res<Input<KeyCode>>,
-        mut text_edits: Query<(&mut Text, &TextEdit)>,
+        mut text_edits: Query<&mut Text, With<ActiveEdit>>,
     ) {
-        if let Some(mut text) = text_edits
-            .iter_mut()
-            .find_map(|(text, text_edit)| text_edit.active.then_some(text))
-        {
+        if let Ok(mut text) = text_edits.get_single_mut() {
             for event in &mut char_events {
                 text.sections[0].value.push(event.char);
             }
@@ -38,12 +35,15 @@ impl TextEditPlugin {
     fn interaction_system(
         theme: Res<Theme>,
         mut text_edits: Query<
-            (&Interaction, &mut BackgroundColor, &TextEdit),
-            Or<(Changed<Interaction>, Changed<TextEdit>)>,
+            (&Interaction, &mut BackgroundColor, Option<&ActiveEdit>),
+            (
+                Or<(Changed<Interaction>, Added<ActiveEdit>)>,
+                With<TextEdit>,
+            ),
         >,
     ) {
-        for (&interaction, mut background, text_edit) in &mut text_edits {
-            *background = match (interaction, text_edit.active) {
+        for (&interaction, mut background, active_edit) in &mut text_edits {
+            *background = match (interaction, active_edit.is_some()) {
                 (Interaction::Clicked, _) | (Interaction::None, true) => {
                     theme.text_edit.active_color.into()
                 }
@@ -55,24 +55,27 @@ impl TextEditPlugin {
     }
 
     fn activation_system(
-        mut text_edits: Query<(&Interaction, &mut TextEdit), Changed<Interaction>>,
+        mut commands: Commands,
+        mut text_edits: Query<(Entity, &Interaction), (Changed<Interaction>, With<TextEdit>)>,
     ) {
-        for (&interaction, mut text_edit) in &mut text_edits {
+        for (entity, &interaction) in &mut text_edits {
             if interaction == Interaction::Clicked {
-                text_edit.active = true;
+                commands.entity(entity).insert(ActiveEdit);
             }
         }
     }
 
-    fn exclusive_system(mut text_edits: Query<(Entity, &mut TextEdit)>) {
-        if let Some((active_entity, _)) = text_edits
-            .iter_mut()
-            .find(|(_, text_edit)| text_edit.is_changed() && text_edit.active)
-        {
-            for (text_entity, mut text_edit) in &mut text_edits {
-                if text_edit.active && text_entity != active_entity {
-                    text_edit.active = false;
-                }
+    fn exclusive_system(
+        mut commands: Commands,
+        text_edits: Query<Entity, Added<ActiveEdit>>,
+        active_edits: Query<Entity, With<ActiveEdit>>,
+    ) {
+        for activated_entity in &text_edits {
+            if let Some(edit_entity) = active_edits
+                .iter()
+                .find(|&entity| entity != activated_entity)
+            {
+                commands.entity(edit_entity).remove::<ActiveEdit>();
             }
         }
     }
@@ -90,7 +93,7 @@ pub(crate) struct TextEditBundle {
 impl TextEditBundle {
     pub(crate) fn new(theme: &Theme, text: impl Into<String>) -> Self {
         Self {
-            text_edit: Default::default(),
+            text_edit: TextEdit,
             interaction: Default::default(),
             button_bundle: TextBundle {
                 style: theme.text_edit.style.clone(),
@@ -103,14 +106,10 @@ impl TextEditBundle {
     pub(crate) fn empty(theme: &Theme) -> Self {
         Self::new(theme, String::new())
     }
-
-    pub(crate) fn active(mut self) -> Self {
-        self.text_edit.active = true;
-        self
-    }
 }
 
-#[derive(Component, Default)]
-struct TextEdit {
-    active: bool,
-}
+#[derive(Component)]
+struct TextEdit;
+
+#[derive(Component)]
+pub(crate) struct ActiveEdit;

@@ -17,8 +17,11 @@ use crate::core::{
 use super::{
     theme::Theme,
     widget::{
-        button::TextButtonBundle, click::Click, text_edit::TextEditBundle, ui_root::UiRoot, Dialog,
-        DialogBundle, LabelBundle,
+        button::TextButtonBundle,
+        click::Click,
+        text_edit::{ActiveEdit, TextEditBundle},
+        ui_root::UiRoot,
+        Dialog, DialogBundle, LabelBundle,
     },
 };
 
@@ -477,7 +480,8 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                         parent.spawn(LabelBundle::normal(theme, "Create world"));
                         parent.spawn((
                             WorldNameEdit,
-                            TextEditBundle::new(theme, "New world").active(),
+                            ActiveEdit,
+                            TextEditBundle::new(theme, "New world"),
                         ));
                         parent
                             .spawn(NodeBundle {

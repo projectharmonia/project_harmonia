@@ -10,7 +10,7 @@ use super::{
     widget::{
         button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
         click::Click,
-        text_edit::TextEditBundle,
+        text_edit::{ActiveEdit, TextEditBundle},
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
     },
@@ -474,7 +474,8 @@ fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme:
                         parent.spawn(LabelBundle::normal(theme, "Save family"));
                         parent.spawn((
                             FamilyNameEdit,
-                            TextEditBundle::new(theme, "New family").active(),
+                            ActiveEdit,
+                            TextEditBundle::new(theme, "New family"),
                         ));
                         parent
                             .spawn(NodeBundle {

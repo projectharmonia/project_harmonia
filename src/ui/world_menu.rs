@@ -9,7 +9,7 @@ use super::{
     widget::{
         button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
         click::Click,
-        text_edit::TextEditBundle,
+        text_edit::{ActiveEdit, TextEditBundle},
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
     },
@@ -343,7 +343,8 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                         parent.spawn(LabelBundle::normal(theme, "Create city"));
                         parent.spawn((
                             CityNameEdit,
-                            TextEditBundle::new(theme, "New city").active(),
+                            ActiveEdit,
+                            TextEditBundle::new(theme, "New city"),
                         ));
                         parent
                             .spawn(NodeBundle {
