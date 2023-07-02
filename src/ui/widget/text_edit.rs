@@ -67,15 +67,14 @@ impl TextEditPlugin {
 
     fn exclusive_system(
         mut commands: Commands,
-        text_edits: Query<Entity, Added<ActiveEdit>>,
-        active_edits: Query<Entity, With<ActiveEdit>>,
+        activated_edits: Query<Entity, Added<ActiveEdit>>,
+        text_edits: Query<Entity, With<ActiveEdit>>,
     ) {
-        for activated_entity in &text_edits {
-            if let Some(edit_entity) = active_edits
-                .iter()
-                .find(|&entity| entity != activated_entity)
+        for activated_entity in &activated_edits {
+            if let Some(current_entity) =
+                text_edits.iter().find(|&entity| entity != activated_entity)
             {
-                commands.entity(edit_entity).remove::<ActiveEdit>();
+                commands.entity(current_entity).remove::<ActiveEdit>();
             }
         }
     }

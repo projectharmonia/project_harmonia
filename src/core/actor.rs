@@ -58,15 +58,12 @@ impl ActorPlugin {
 
     fn exclusive_system(
         mut commands: Commands,
-        actors: Query<Entity, Added<ActiveActor>>,
-        active_actors: Query<Entity, With<ActiveActor>>,
+        activated_actors: Query<Entity, Added<ActiveActor>>,
+        actors: Query<Entity, With<ActiveActor>>,
     ) {
-        for activated_entity in &actors {
-            if let Some(actor_entity) = active_actors
-                .iter()
-                .find(|&entity| entity != activated_entity)
-            {
-                commands.entity(actor_entity).remove::<ActiveActor>();
+        for activated_entity in &activated_actors {
+            if let Some(current_entity) = actors.iter().find(|&entity| entity != activated_entity) {
+                commands.entity(current_entity).remove::<ActiveActor>();
             }
         }
     }
