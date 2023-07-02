@@ -29,7 +29,8 @@ impl Plugin for LifeHudPlugin {
         )
         .add_systems(
             (
-                Self::task_button_setup_system,
+                Self::tasks_node_setup_system,
+                Self::tasks_node_system,
                 Self::task_button_system,
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
@@ -59,29 +60,61 @@ impl LifeHudPlugin {
         });
     }
 
-    fn task_button_setup_system(
+    fn tasks_node_setup_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        actors: Query<&Children, Added<ActiveActor>>,
+        tasks: Query<(Entity, &TaskState)>,
+        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
+        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
+    ) {
+        let Ok(children) = actors.get_single() else {
+            return;
+        };
+
+        let queued_entity = queued_task_nodes.single();
+        let active_entity = active_task_nodes.single();
+        commands.entity(queued_entity).despawn_descendants();
+        commands.entity(active_entity).despawn_descendants();
+
+        for (task_entity, state) in tasks.iter_many(children) {
+            match *state {
+                TaskState::Queued => {
+                    commands.entity(queued_entity).with_children(|parent| {
+                        parent.spawn((
+                            ButtonTask(task_entity),
+                            ImageButtonBundle::placeholder(&theme),
+                        ));
+                    });
+                }
+                TaskState::Active => {
+                    commands.entity(active_entity).with_children(|parent| {
+                        parent.spawn((
+                            ButtonTask(task_entity),
+                            ImageButtonBundle::placeholder(&theme),
+                        ));
+                    });
+                }
+                TaskState::Cancelled => continue,
+            };
+        }
+    }
+
+    fn tasks_node_system(
         mut commands: Commands,
         theme: Res<Theme>,
         actors: Query<(&Children, Ref<ActiveActor>)>,
-        tasks: Query<(Entity, Ref<TaskState>)>,
+        tasks: Query<(Entity, &TaskState), Changed<TaskState>>,
         queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
         active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
         let (children, active_actor) = actors.single();
         if active_actor.is_added() {
-            commands
-                .entity(queued_task_nodes.single())
-                .despawn_descendants();
-            commands
-                .entity(active_task_nodes.single())
-                .despawn_descendants();
+            return;
         }
 
-        for (task_entity, state) in tasks
-            .iter_many(children)
-            .filter(|(_, state)| active_actor.is_added() || state.is_changed())
-        {
+        for (task_entity, state) in tasks.iter_many(children) {
             match *state {
                 TaskState::Queued => {
                     commands
@@ -94,24 +127,14 @@ impl LifeHudPlugin {
                         });
                 }
                 TaskState::Active => {
-                    if let Some((button_entity, _)) = buttons
+                    let (button_entity, _) = buttons
                         .iter()
                         .find(|(_, button_task)| button_task.0 == task_entity)
-                    {
-                        // Already exists, move to active tasks node.
-                        commands
-                            .entity(button_entity)
-                            .set_parent(active_task_nodes.single());
-                    } else {
-                        commands
-                            .entity(active_task_nodes.single())
-                            .with_children(|parent| {
-                                parent.spawn((
-                                    ButtonTask(task_entity),
-                                    ImageButtonBundle::placeholder(&theme),
-                                ));
-                            });
-                    }
+                        .expect("all tasks should be queued first");
+
+                    commands
+                        .entity(button_entity)
+                        .set_parent(active_task_nodes.single());
                 }
                 TaskState::Cancelled => continue,
             };
