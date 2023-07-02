@@ -42,8 +42,12 @@ impl Plugin for FamilyPlugin {
 }
 
 impl FamilyPlugin {
-    fn reset_mode_system(mut family_mode: ResMut<NextState<FamilyMode>>) {
-        family_mode.set(FamilyMode::Life);
+    fn reset_mode_system(
+        mut family_mode: ResMut<NextState<FamilyMode>>,
+        mut building_mode: ResMut<NextState<BuildingMode>>,
+    ) {
+        family_mode.set(Default::default());
+        building_mode.set(Default::default());
     }
 
     fn family_sync_system(
