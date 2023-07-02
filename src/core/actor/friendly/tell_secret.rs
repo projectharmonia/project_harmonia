@@ -81,22 +81,26 @@ impl TellSecretPlugin {
 
             // TODO: Handle cancellation of currently active tasks.
             commands.entity(tell_secret.0).with_children(|parent| {
-                parent.spawn((TaskState::Active, ListenSecret(entity)));
+                parent.spawn((
+                    Name::new("Listen secret"),
+                    TaskGroups::LEGS,
+                    TaskState::Queued,
+                    ListenSecret(entity),
+                ));
             });
         }
     }
 
     fn listen_activation_system(
-        mut commands: Commands,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        tasks: Query<(Entity, &ListenSecret, &Parent), Added<ListenSecret>>,
+        tasks: Query<(&ListenSecret, &Parent), Added<ListenSecret>>,
         mut listen_actors: Query<
             (&mut Transform, &mut Handle<AnimationClip>),
             Without<TellingSecret>,
         >,
         tell_actors: Query<&Transform, With<TellingSecret>>,
     ) {
-        for (entity, tell_secret, parent) in &tasks {
+        for (tell_secret, parent) in &tasks {
             let (mut listen_transform, mut animation_handle) = listen_actors
                 .get_mut(**parent)
                 .expect("listener should have animation");
@@ -106,10 +110,6 @@ impl TellSecretPlugin {
 
             listen_transform.look_at(tell_transform.translation, Vec3::Y);
             *animation_handle = actor_animations.handle(ActorAnimation::ThoughtfulNod);
-
-            commands
-                .entity(entity)
-                .insert((Name::new("Listen secret"), TaskGroups::LEGS));
         }
     }
 
