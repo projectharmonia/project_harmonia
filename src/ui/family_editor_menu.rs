@@ -391,11 +391,11 @@ fn setup_personality_node(parent: &mut ChildBuilder, theme: &Theme) {
                 });
 
             parent.spawn(NodeBundle::default()).with_children(|parent| {
-                for (index, sex) in Sex::iter().enumerate() {
+                for sex in Sex::iter() {
                     parent.spawn((
                         sex,
                         ExclusiveButton,
-                        Toggled(index == 0),
+                        Toggled(sex == Default::default()),
                         TextButtonBundle::normal(theme, sex.to_string()),
                     ));
                 }

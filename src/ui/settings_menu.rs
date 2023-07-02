@@ -78,7 +78,7 @@ impl SettingsMenuPlugin {
                         })
                         .id();
 
-                    for (index, tab) in SettingsTab::iter().enumerate() {
+                    for tab in SettingsTab::iter() {
                         let content_entity = parent
                             .spawn(NodeBundle {
                                 style: Style {
@@ -103,7 +103,7 @@ impl SettingsMenuPlugin {
                             .spawn((
                                 TabContent(content_entity),
                                 ExclusiveButton,
-                                Toggled(index == 0),
+                                Toggled(tab == Default::default()),
                                 TextButtonBundle::normal(&theme, tab.to_string()),
                             ))
                             .set_parent(tabs_entity);
@@ -460,8 +460,9 @@ pub(super) struct SettingsMenuOpen;
 #[derive(Component)]
 struct SettingsMenu;
 
-#[derive(Display, EnumIter)]
+#[derive(Default, Display, EnumIter, PartialEq)]
 enum SettingsTab {
+    #[default]
     Video,
     Controls,
     Developer,

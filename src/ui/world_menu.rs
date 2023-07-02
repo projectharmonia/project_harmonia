@@ -78,7 +78,7 @@ impl WorldMenuPlugin {
                     })
                     .id();
 
-                for (index, tab) in WorldTab::iter().enumerate() {
+                for tab in WorldTab::iter() {
                     let content_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
@@ -111,7 +111,7 @@ impl WorldMenuPlugin {
                             tab,
                             TabContent(content_entity),
                             ExclusiveButton,
-                            Toggled(index == 0),
+                            Toggled(tab == Default::default()),
                             TextButtonBundle::normal(&theme, tab.to_string()),
                         ))
                         .set_parent(tabs_entity);
@@ -367,8 +367,9 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
     });
 }
 
-#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
+#[derive(Clone, Component, Copy, Default, Display, EnumIter, PartialEq)]
 enum WorldTab {
+    #[default]
     Families,
     Cities,
 }

@@ -61,11 +61,11 @@ impl FamilyHudPlugin {
                         ..Default::default()
                     })
                     .with_children(|parent| {
-                        for (index, mode) in FamilyMode::iter().enumerate() {
+                        for mode in FamilyMode::iter() {
                             parent.spawn((
                                 mode,
                                 ExclusiveButton,
-                                Toggled(index == 0),
+                                Toggled(mode == Default::default()),
                                 TextButtonBundle::square(&theme, mode.glyph()),
                             ));
                         }
