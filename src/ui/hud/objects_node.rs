@@ -16,15 +16,21 @@ use crate::{
     },
 };
 
+// TODO 0.11: Use `run_if`.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+struct ObjectsNodeSet;
+
 pub(super) struct ObjectsNodePlugin;
 
 impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            (Self::button_system, Self::toggle_system)
-                .in_set(OnUpdate(GameState::Family))
-                .in_set(OnUpdate(FamilyMode::Building)),
-        );
+        app.configure_set(
+            ObjectsNodeSet.run_if(
+                in_state(GameState::City)
+                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
+            ),
+        )
+        .add_systems((Self::button_system, Self::toggle_system).in_set(ObjectsNodeSet));
     }
 }
 

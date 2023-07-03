@@ -107,14 +107,15 @@ impl CityPlugin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States)]
+#[derive(
+    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States,
+)]
 pub(crate) enum CityMode {
     #[default]
     Objects,
     Lots,
 }
 
-#[allow(dead_code)] // TODO: Remove after full UI migration.
 impl CityMode {
     pub(crate) fn glyph(self) -> &'static str {
         match self {
