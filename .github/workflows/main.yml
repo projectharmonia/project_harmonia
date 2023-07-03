@@ -79,7 +79,7 @@ jobs:
         run: cargo install grcov
 
       - name: Test
-        run: cargo xtask coverage -- -o lcov.info
+        run: cargo tarpaulin --engine llvm --exclude-files */main.rs --out Lcov
 
       - name: Upload code coverage results
         if: github.actor != 'dependabot[bot]'
