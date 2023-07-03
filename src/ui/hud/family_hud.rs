@@ -1,3 +1,4 @@
+mod building_hud;
 mod life_hud;
 
 use bevy::prelude::*;
@@ -13,13 +14,15 @@ use crate::{
         },
     },
 };
+use building_hud::BuildingHudPlugin;
 use life_hud::LifeHudPlugin;
 
 pub(super) struct FamilyHudPlugin;
 
 impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(LifeHudPlugin)
+        app.add_plugin(BuildingHudPlugin)
+            .add_plugin(LifeHudPlugin)
             .add_system(Self::setup_system.in_schedule(OnEnter(GameState::Family)))
             .add_system(Self::mode_button_system.in_set(OnUpdate(GameState::Family)));
 

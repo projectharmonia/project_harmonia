@@ -193,19 +193,20 @@ impl FamilyMode {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States)]
+#[derive(
+    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States,
+)]
 pub(crate) enum BuildingMode {
     #[default]
     Objects,
     Walls,
 }
 
-#[allow(dead_code)] // TODO: Remove after full UI migration.
 impl BuildingMode {
     pub(crate) fn glyph(self) -> &'static str {
         match self {
             Self::Objects => "💺",
-            Self::Walls => "◧",
+            Self::Walls => "🔰",
         }
     }
 }

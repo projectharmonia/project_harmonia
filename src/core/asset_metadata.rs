@@ -142,7 +142,7 @@ enum ObjectMetadataField {
     Components,
 }
 
-#[derive(Deserialize, Clone, Copy, PartialEq, Display)]
+#[derive(Clone, Component, Copy, Deserialize, Display, PartialEq)]
 pub(crate) enum ObjectCategory {
     Rocks,
     Foliage,

@@ -71,6 +71,7 @@ impl Plugin for PlacingObjectPlugin {
                 .in_set(PlacingObjectSet),
         )
         .add_systems((
+            Self::exclusive_system.in_base_set(CoreSet::PostUpdate),
             Self::cleanup_system.in_schedule(OnExit(CityMode::Objects)),
             Self::cleanup_system.in_schedule(OnExit(FamilyMode::Building)),
         ));
@@ -163,6 +164,20 @@ impl PlacingObjectPlugin {
                         .map(|component| component.clone_value())
                         .collect::<Vec<_>>(),
                 );
+        }
+    }
+
+    fn exclusive_system(
+        mut commands: Commands,
+        new_placing_objects: Query<Entity, Added<PlacingObject>>,
+        placing_objects: Query<Entity, With<PlacingObject>>,
+    ) {
+        for new_entity in &new_placing_objects {
+            if let Some(current_entity) =
+                placing_objects.iter().find(|&entity| entity != new_entity)
+            {
+                commands.entity(current_entity).despawn_recursive();
+            }
         }
     }
 
