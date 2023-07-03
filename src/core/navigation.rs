@@ -121,11 +121,8 @@ impl ComputePath {
         let thread_pool = AsyncComputeTaskPool::get();
         let task = thread_pool.spawn(async move {
             let tiles = tiles.read().expect("tiles shouldn't be poisoned");
-            let path = query::find_path(&tiles, &settings, start, end, None, None)
-                .expect("navigation should happen only inside the city");
-
-            query::perform_string_pulling_on_path(&tiles, start, end, &path)
-                .expect("passed tiles should be valid and connected")
+            query::find_path(&tiles, &settings, start, end, None, None)
+                .expect("navigation should happen only inside the city")
         });
 
         Self(task)
