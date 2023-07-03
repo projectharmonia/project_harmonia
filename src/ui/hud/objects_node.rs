@@ -57,12 +57,11 @@ impl ObjectsNodePlugin {
         mut buttons: Query<&mut Toggled, With<MetadataId>>,
     ) {
         if removed_objects.iter().count() != 0 {
-            let mut toggled = buttons
-                .iter_mut()
-                .find(|toggled| toggled.0)
-                .expect("buttons should be toggled with placement");
-            if placing_objects.is_empty() {
-                toggled.0 = false;
+            // If there is no button, then the object was moved.
+            if let Some(mut toggled) = buttons.iter_mut().find(|toggled| toggled.0) {
+                if placing_objects.is_empty() {
+                    toggled.0 = false;
+                }
             }
         }
     }
