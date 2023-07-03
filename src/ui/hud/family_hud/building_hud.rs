@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
-use super::FamilyHudRoot;
+use super::FamilyHud;
 use crate::{
     core::{
         asset_metadata::{ObjectCategory, ObjectMetadata},
@@ -38,9 +38,9 @@ impl BuildingHudPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        roots: Query<Entity, With<FamilyHudRoot>>,
+        huds: Query<Entity, With<FamilyHud>>,
     ) {
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(huds.single()).with_children(|parent| {
             parent
                 .spawn(NodeBundle {
                     style: Style {

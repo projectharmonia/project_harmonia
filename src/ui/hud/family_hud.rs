@@ -50,7 +50,7 @@ impl FamilyHudPlugin {
                 },
             ))
             .with_children(|parent| {
-                parent.spawn((FamilyHudRoot, NodeBundle::default()));
+                parent.spawn((FamilyHud, NodeBundle::default()));
 
                 parent
                     .spawn(NodeBundle {
@@ -87,10 +87,10 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, roots: Query<Entity, With<FamilyHudRoot>>) {
-        commands.entity(roots.single()).despawn_descendants();
+    fn cleanup_system(mut commands: Commands, huds: Query<Entity, With<FamilyHud>>) {
+        commands.entity(huds.single()).despawn_descendants();
     }
 }
 
 #[derive(Component)]
-struct FamilyHudRoot;
+struct FamilyHud;

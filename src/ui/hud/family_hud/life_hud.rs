@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::FamilyHudRoot;
+use super::FamilyHud;
 use crate::{
     core::{
         actor::ActiveActor,
@@ -47,11 +47,11 @@ impl LifeHudPlugin {
     fn setup_system(
         mut commands: Commands,
         theme: Res<Theme>,
-        roots: Query<Entity, With<FamilyHudRoot>>,
+        huds: Query<Entity, With<FamilyHud>>,
         families: Query<(&Budget, &FamilyActors), With<ActiveFamily>>,
         actors: Query<Entity, With<ActiveActor>>,
     ) {
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(huds.single()).with_children(|parent| {
             setup_tasks_node(parent, &theme);
 
             let (&budget, family_actors) = families.single();
