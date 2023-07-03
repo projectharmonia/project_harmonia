@@ -89,7 +89,6 @@ pub(super) fn setup_objects_node(
         let content_entity = parent
             .spawn(NodeBundle {
                 style: Style {
-                    flex_direction: FlexDirection::Column,
                     gap: theme.gap.normal,
                     ..Default::default()
                 },
