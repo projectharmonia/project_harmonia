@@ -64,16 +64,22 @@ impl Plugin for PlacingObjectPlugin {
                     .after(Self::collision_system)
                     .run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                Self::cleanup_system.run_if(
+                Self::cancel_system.pipe(Self::cleanup_system).run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<ObjectEventConfirmed>()),
                 ),
             )
                 .in_set(PlacingObjectSet),
         )
         .add_systems((
-            Self::exclusive_system.in_base_set(CoreSet::PostUpdate),
-            Self::cleanup_system.in_schedule(OnExit(CityMode::Objects)),
-            Self::cleanup_system.in_schedule(OnExit(FamilyMode::Building)),
+            Self::exclusive_system
+                .pipe(Self::cleanup_system)
+                .in_base_set(CoreSet::PostUpdate),
+            Self::cancel_system
+                .pipe(Self::cleanup_system)
+                .in_schedule(OnExit(CityMode::Objects)),
+            Self::cancel_system
+                .pipe(Self::cleanup_system)
+                .in_schedule(OnExit(FamilyMode::Building)),
         ));
     }
 }
@@ -164,21 +170,6 @@ impl PlacingObjectPlugin {
                         .map(|component| component.clone_value())
                         .collect::<Vec<_>>(),
                 );
-        }
-    }
-
-    fn exclusive_system(
-        mut commands: Commands,
-        new_placing_objects: Query<Entity, Added<PlacingObject>>,
-        placing_objects: Query<Entity, With<PlacingObject>>,
-    ) {
-        if let Some(new_entity) = new_placing_objects.iter().last() {
-            for placing_entity in placing_objects
-                .iter()
-                .filter(|&entity| entity != new_entity)
-            {
-                commands.entity(placing_entity).despawn_recursive();
-            }
         }
     }
 
@@ -378,18 +369,42 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn cleanup_system(
-        mut commands: Commands,
+    fn exclusive_system(
+        new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<(Entity, &PlacingObject)>,
+    ) -> Vec<(Entity, PlacingObjectKind)> {
+        if let Some(new_entity) = new_placing_objects.iter().last() {
+            return placing_objects
+                .iter()
+                .filter(|&(entity, _)| entity != new_entity)
+                .map(|(entity, placing_object)| (entity, placing_object.kind))
+                .collect();
+        }
+
+        Vec::new()
+    }
+
+    fn cancel_system(
+        placing_objects: Query<(Entity, &PlacingObject)>,
+    ) -> Vec<(Entity, PlacingObjectKind)> {
+        placing_objects
+            .iter()
+            .map(|(entity, placing_object)| (entity, placing_object.kind))
+            .collect()
+    }
+
+    fn cleanup_system(
+        In(placing_objects): In<Vec<(Entity, PlacingObjectKind)>>,
+        mut commands: Commands,
         mut visibility: Query<&mut Visibility>,
         children: Query<&Children>,
         mut groups: Query<&mut CollisionGroups>,
     ) {
-        if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
-            debug!("despawned placing object {placing_object:?}");
+        for (placing_entity, kind) in placing_objects {
+            debug!("despawned placing object {kind:?}");
             commands.entity(placing_entity).despawn_recursive();
 
-            if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
+            if let PlacingObjectKind::Moving(object_entity) = kind {
                 // Object could be invalid in case of removal.
                 if let Ok(mut visibility) = visibility.get_mut(object_entity) {
                     *visibility = Visibility::Visible;
