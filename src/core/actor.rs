@@ -61,9 +61,9 @@ impl ActorPlugin {
         activated_actors: Query<Entity, Added<ActiveActor>>,
         actors: Query<Entity, With<ActiveActor>>,
     ) {
-        for activated_entity in &activated_actors {
-            if let Some(current_entity) = actors.iter().find(|&entity| entity != activated_entity) {
-                commands.entity(current_entity).remove::<ActiveActor>();
+        if let Some(activated_entity) = activated_actors.iter().last() {
+            for actor_entity in actors.iter().filter(|&entity| entity != activated_entity) {
+                commands.entity(actor_entity).remove::<ActiveActor>();
             }
         }
     }

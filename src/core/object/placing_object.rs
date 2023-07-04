@@ -172,11 +172,12 @@ impl PlacingObjectPlugin {
         new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
-        for new_entity in &new_placing_objects {
-            if let Some(current_entity) =
-                placing_objects.iter().find(|&entity| entity != new_entity)
+        if let Some(new_entity) = new_placing_objects.iter().last() {
+            for placing_entity in placing_objects
+                .iter()
+                .filter(|&entity| entity != new_entity)
             {
-                commands.entity(current_entity).despawn_recursive();
+                commands.entity(placing_entity).despawn_recursive();
             }
         }
     }

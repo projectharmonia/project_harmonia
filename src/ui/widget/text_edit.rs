@@ -70,11 +70,12 @@ impl TextEditPlugin {
         activated_edits: Query<Entity, Added<ActiveEdit>>,
         text_edits: Query<Entity, With<ActiveEdit>>,
     ) {
-        for activated_entity in &activated_edits {
-            if let Some(current_entity) =
-                text_edits.iter().find(|&entity| entity != activated_entity)
+        if let Some(activated_entity) = activated_edits.iter().last() {
+            for edit_entity in text_edits
+                .iter()
+                .filter(|&entity| entity != activated_entity)
             {
-                commands.entity(current_entity).remove::<ActiveEdit>();
+                commands.entity(edit_entity).remove::<ActiveEdit>();
             }
         }
     }
