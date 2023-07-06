@@ -40,10 +40,12 @@ impl ButtonPlugin {
     pub(crate) fn image_init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
-        buttons: Query<(Entity, &Handle<Image>), Added<Button>>,
+        buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
     ) {
         for (entity, image_handle) in &buttons {
-            commmands.entity(entity).with_children(|parent| {
+            let mut entity = commmands.entity(entity);
+            entity.despawn_descendants();
+            entity.with_children(|parent| {
                 parent.spawn(ImageBundle {
                     style: theme.button.image.clone(),
                     image: UiImage {

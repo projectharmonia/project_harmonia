@@ -60,7 +60,7 @@ impl FromWorld for Theme {
                     ..Default::default()
                 },
                 image: Style {
-                    min_size: Size::all(Val::Px(50.0)),
+                    size: Size::all(Val::Px(50.0)),
                     ..Default::default()
                 },
                 normal_text: TextStyle {
