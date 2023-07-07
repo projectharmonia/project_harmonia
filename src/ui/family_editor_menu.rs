@@ -6,6 +6,7 @@ use bevy_trait_query::One;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
+    preview::Preview,
     theme::Theme,
     widget::{
         button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
@@ -101,6 +102,7 @@ impl FamilyEditorMenuPlugin {
                 .with_children(|parent| {
                     parent.spawn((
                         EditActor(entity),
+                        Preview::actor(entity, theme.button.image.size),
                         ExclusiveButton,
                         Toggled(true),
                         ImageButtonBundle::placeholder(&theme),

@@ -5,6 +5,7 @@ mod family_editor_menu;
 mod hud;
 mod ingame_menu;
 mod main_menu;
+mod preview;
 mod settings_menu;
 mod theme;
 mod widget;
@@ -20,6 +21,7 @@ use family_editor_menu::FamilyEditorMenuPlugin;
 use hud::HudPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
+use preview::PreviewPlugin;
 use settings_menu::SettingsMenuPlugin;
 use theme::ThemePlugin;
 use widget::WidgetPlugin;
@@ -39,6 +41,7 @@ impl PluginGroup for UiPlugins {
             .add(InGameMenuPlugin)
             .add(WidgetPlugin)
             .add(MainMenuPlugin)
+            .add(PreviewPlugin)
             .add(SettingsMenuPlugin)
             .add(ThemePlugin)
             .add(WorldBrowserPlugin)

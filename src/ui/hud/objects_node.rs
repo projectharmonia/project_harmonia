@@ -9,6 +9,7 @@ use crate::{
         object::placing_object::PlacingObject,
     },
     ui::{
+        preview::Preview,
         theme::Theme,
         widget::button::{
             ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled,
@@ -101,6 +102,7 @@ pub(super) fn setup_objects_node(
                 {
                     parent.spawn((
                         MetadataId(id),
+                        Preview::object(id, theme.button.image.size),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),

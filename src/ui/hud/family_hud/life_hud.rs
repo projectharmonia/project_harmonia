@@ -9,6 +9,7 @@ use crate::{
         task::{TaskCancel, TaskState},
     },
     ui::{
+        preview::Preview,
         theme::Theme,
         widget::{
             button::{ButtonPlugin, ExclusiveButton, ImageButtonBundle, Toggled},
@@ -281,6 +282,7 @@ fn setup_members_node(
             for &entity in actors.iter() {
                 parent.spawn((
                     PlayActor(entity),
+                    Preview::actor(entity, theme.button.image.size),
                     ExclusiveButton,
                     Toggled(entity == active_entity),
                     ImageButtonBundle::placeholder(theme),
