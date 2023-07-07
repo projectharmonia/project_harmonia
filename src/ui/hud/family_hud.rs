@@ -69,7 +69,7 @@ impl FamilyHudPlugin {
                                 mode,
                                 ExclusiveButton,
                                 Toggled(mode == Default::default()),
-                                TextButtonBundle::square(&theme, mode.glyph()),
+                                TextButtonBundle::symbol(&theme, mode.glyph()),
                             ));
                         }
                     });

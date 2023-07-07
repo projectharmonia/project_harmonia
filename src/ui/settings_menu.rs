@@ -133,9 +133,9 @@ impl SettingsMenuPlugin {
     }
 
     fn mapping_button_text_system(
-        mut dialogs: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
+        mut buttons: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
     ) {
-        for (mapping, mut text) in &mut dialogs {
+        for (mapping, mut text) in &mut buttons {
             text.0 = match mapping.input_kind {
                 Some(InputKind::GamepadButton(gamepad_button)) => {
                     format!("{gamepad_button:?}")

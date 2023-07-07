@@ -23,14 +23,14 @@ impl ButtonPlugin {
     fn text_init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
-        buttons: Query<(Entity, &ButtonText, &ButtonKind), Added<ButtonText>>,
+        buttons: Query<(Entity, &ButtonText, &TextButtonKind), Added<ButtonText>>,
     ) {
-        for (entity, text, button_kind) in &buttons {
+        for (entity, text, kind) in &buttons {
             commmands.entity(entity).with_children(|parent| {
-                let style = match button_kind {
-                    ButtonKind::Normal => theme.button.normal_text.clone(),
-                    ButtonKind::Large => theme.button.large_text.clone(),
-                    ButtonKind::Square => theme.button.square_text.clone(),
+                let style = match kind {
+                    TextButtonKind::Normal => theme.button.normal_text.clone(),
+                    TextButtonKind::Large => theme.button.large_text.clone(),
+                    TextButtonKind::Symbol => theme.button.square_text.clone(),
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
             });
@@ -161,10 +161,10 @@ pub(crate) struct ExclusiveButton;
 pub(crate) struct TabContent(pub(crate) Entity);
 
 #[derive(Component)]
-enum ButtonKind {
+enum TextButtonKind {
     Normal,
     Large,
-    Square,
+    Symbol,
 }
 
 #[derive(Component)]
@@ -172,8 +172,8 @@ pub(crate) struct ButtonText(pub(crate) String);
 
 #[derive(Bundle)]
 pub(crate) struct TextButtonBundle {
-    button_kind: ButtonKind,
-    button_text: ButtonText,
+    kind: TextButtonKind,
+    text: ButtonText,
     last_interaction: LastInteraction,
 
     #[bundle]
@@ -182,26 +182,26 @@ pub(crate) struct TextButtonBundle {
 
 impl TextButtonBundle {
     pub(crate) fn normal(theme: &Theme, text: impl Into<String>) -> Self {
-        Self::new(theme, ButtonKind::Normal, text)
+        Self::new(theme, TextButtonKind::Normal, text)
     }
 
     pub(crate) fn large(theme: &Theme, text: impl Into<String>) -> Self {
-        Self::new(theme, ButtonKind::Large, text)
+        Self::new(theme, TextButtonKind::Large, text)
     }
 
-    pub(crate) fn square(theme: &Theme, text: impl Into<String>) -> Self {
-        Self::new(theme, ButtonKind::Square, text)
+    pub(crate) fn symbol(theme: &Theme, text: impl Into<String>) -> Self {
+        Self::new(theme, TextButtonKind::Symbol, text)
     }
 
-    fn new(theme: &Theme, button_kind: ButtonKind, text: impl Into<String>) -> Self {
-        let style = match button_kind {
-            ButtonKind::Normal => theme.button.normal.clone(),
-            ButtonKind::Large => theme.button.large.clone(),
-            ButtonKind::Square => theme.button.square.clone(),
+    fn new(theme: &Theme, kind: TextButtonKind, text: impl Into<String>) -> Self {
+        let style = match kind {
+            TextButtonKind::Normal => theme.button.normal.clone(),
+            TextButtonKind::Large => theme.button.large.clone(),
+            TextButtonKind::Symbol => theme.button.square.clone(),
         };
         Self {
-            button_kind,
-            button_text: ButtonText(text.into()),
+            kind,
+            text: ButtonText(text.into()),
             last_interaction: Default::default(),
             button_bundle: ButtonBundle {
                 style,

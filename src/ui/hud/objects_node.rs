@@ -115,7 +115,7 @@ pub(super) fn setup_objects_node(
                 TabContent(content_entity),
                 ExclusiveButton,
                 Toggled(index == 0),
-                TextButtonBundle::square(theme, category.glyph()),
+                TextButtonBundle::symbol(theme, category.glyph()),
             ))
             .set_parent(tabs_entity);
     }

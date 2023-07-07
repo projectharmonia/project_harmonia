@@ -428,7 +428,7 @@ fn setup_actors_node(parent: &mut ChildBuilder, theme: &Theme) {
                     ..Default::default()
                 },
             ));
-            parent.spawn((PlusButton, TextButtonBundle::square(theme, "➕")));
+            parent.spawn((PlusButton, TextButtonBundle::symbol(theme, "➕")));
         });
 }
 

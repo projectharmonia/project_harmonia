@@ -88,7 +88,7 @@ impl CityHudPlugin {
                             TabContent(content_entity),
                             ExclusiveButton,
                             Toggled(mode == Default::default()),
-                            TextButtonBundle::square(&theme, mode.glyph()),
+                            TextButtonBundle::symbol(&theme, mode.glyph()),
                         ))
                         .set_parent(tabs_entity);
                 }
@@ -133,7 +133,7 @@ fn setup_lots_node(parent: &mut ChildBuilder, theme: &Theme) {
                     tool,
                     ExclusiveButton,
                     Toggled(true),
-                    TextButtonBundle::square(theme, tool.glyph()),
+                    TextButtonBundle::symbol(theme, tool.glyph()),
                 ));
             }
         });

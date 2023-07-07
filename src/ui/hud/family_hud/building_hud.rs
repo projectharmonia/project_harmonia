@@ -95,7 +95,7 @@ impl BuildingHudPlugin {
                                 TabContent(content_entity),
                                 ExclusiveButton,
                                 Toggled(mode == Default::default()),
-                                TextButtonBundle::square(&theme, mode.glyph()),
+                                TextButtonBundle::symbol(&theme, mode.glyph()),
                             ))
                             .set_parent(tabs_entity);
                     }
@@ -129,7 +129,7 @@ fn setup_walls_node(parent: &mut ChildBuilder, theme: &Theme) {
             parent.spawn((
                 ExclusiveButton,
                 Toggled(true),
-                TextButtonBundle::square(theme, "➕"),
+                TextButtonBundle::symbol(theme, "➕"),
             ));
         });
 }
