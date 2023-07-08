@@ -164,6 +164,7 @@ struct PreviewCameraBundle {
     name: Name,
     preview_camera: PreviewCamera,
     render_layer: RenderLayers,
+    ui_config: UiCameraConfig,
 
     #[bundle]
     camera_bundle: Camera3dBundle,
@@ -180,12 +181,12 @@ impl Default for PreviewCameraBundle {
             render_layer: PREVIEW_RENDER_LAYER,
             camera_bundle: Camera3dBundle {
                 camera: Camera {
-                    order: -1,
                     is_active: false,
                     ..Default::default()
                 },
                 ..Default::default()
             },
+            ui_config: UiCameraConfig { show_ui: false },
             // Preview scenes will be spawned as children so this component is necessary in order to have scenes visible.
             visibility_bundle: Default::default(),
         }
