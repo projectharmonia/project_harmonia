@@ -11,11 +11,10 @@ impl Plugin for ButtonPlugin {
             Self::text_init_system,
             Self::image_init_system,
             Self::interaction_system,
-            Self::toggling_system,
-            Self::exclusive_system,
             Self::text_update_system,
             Self::tab_switching_system,
-        ));
+        ))
+        .add_systems((Self::toggling_system, Self::exclusive_system).chain());
     }
 }
 
