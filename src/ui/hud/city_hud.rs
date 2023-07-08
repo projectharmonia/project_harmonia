@@ -11,7 +11,10 @@ use crate::{
     ui::{
         hud::objects_node,
         theme::Theme,
-        widget::button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
+        widget::{
+            button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
+            ui_root::UiRoot,
+        },
     },
 };
 
@@ -35,14 +38,16 @@ impl CityHudPlugin {
         object_metadata: Res<Assets<ObjectMetadata>>,
     ) {
         commands
-            .spawn(NodeBundle {
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    align_self: AlignSelf::FlexEnd,
+            .spawn((
+                UiRoot,
+                NodeBundle {
+                    style: Style {
+                        size: Size::all(Val::Percent(100.0)),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
-                ..Default::default()
-            })
+            ))
             .with_children(|parent| {
                 let tabs_entity = parent
                     .spawn(NodeBundle {
@@ -61,6 +66,7 @@ impl CityHudPlugin {
                     let content_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
+                                align_self: AlignSelf::FlexEnd,
                                 padding: theme.padding.normal,
                                 gap: theme.gap.normal,
                                 ..Default::default()
