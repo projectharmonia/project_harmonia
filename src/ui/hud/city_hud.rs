@@ -138,7 +138,7 @@ fn setup_lots_node(parent: &mut ChildBuilder, theme: &Theme) {
                 parent.spawn((
                     tool,
                     ExclusiveButton,
-                    Toggled(true),
+                    Toggled(tool == Default::default()),
                     TextButtonBundle::symbol(theme, tool.glyph()),
                 ));
             }
