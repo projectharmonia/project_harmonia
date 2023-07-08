@@ -41,65 +41,55 @@ impl BuildingHudPlugin {
         huds: Query<Entity, With<FamilyHud>>,
     ) {
         commands.entity(huds.single()).with_children(|parent| {
-            parent
+            let tabs_entity = parent
                 .spawn(NodeBundle {
                     style: Style {
-                        position_type: PositionType::Absolute,
+                        flex_direction: FlexDirection::Column,
                         align_self: AlignSelf::FlexEnd,
+                        padding: theme.padding.normal,
                         ..Default::default()
                     },
+                    background_color: theme.panel_color.into(),
                     ..Default::default()
                 })
-                .with_children(|parent| {
-                    let tabs_entity = parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Column,
-                                align_self: AlignSelf::FlexEnd,
-                                padding: theme.padding.normal,
-                                ..Default::default()
-                            },
-                            background_color: theme.panel_color.into(),
+                .id();
+
+            for mode in BuildingMode::iter() {
+                let content_entity = parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            align_self: AlignSelf::FlexEnd,
+                            padding: theme.padding.normal,
+                            gap: theme.gap.normal,
                             ..Default::default()
-                        })
-                        .id();
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .with_children(|parent| match mode {
+                        BuildingMode::Objects => {
+                            objects_node::setup_objects_node(
+                                parent,
+                                &mut tab_commands,
+                                &theme,
+                                &object_metadata,
+                                ObjectCategory::FAMILY_CATEGORIES,
+                            );
+                        }
+                        BuildingMode::Walls => setup_walls_node(parent, &theme),
+                    })
+                    .id();
 
-                    for mode in BuildingMode::iter() {
-                        let content_entity = parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
-                                background_color: theme.panel_color.into(),
-                                ..Default::default()
-                            })
-                            .with_children(|parent| match mode {
-                                BuildingMode::Objects => {
-                                    objects_node::setup_objects_node(
-                                        parent,
-                                        &mut tab_commands,
-                                        &theme,
-                                        &object_metadata,
-                                        ObjectCategory::FAMILY_CATEGORIES,
-                                    );
-                                }
-                                BuildingMode::Walls => setup_walls_node(parent, &theme),
-                            })
-                            .id();
-
-                        tab_commands
-                            .spawn((
-                                mode,
-                                TabContent(content_entity),
-                                ExclusiveButton,
-                                Toggled(mode == Default::default()),
-                                TextButtonBundle::symbol(&theme, mode.glyph()),
-                            ))
-                            .set_parent(tabs_entity);
-                    }
-                });
+                tab_commands
+                    .spawn((
+                        mode,
+                        TabContent(content_entity),
+                        ExclusiveButton,
+                        Toggled(mode == Default::default()),
+                        TextButtonBundle::symbol(&theme, mode.glyph()),
+                    ))
+                    .set_parent(tabs_entity);
+            }
         });
     }
 
