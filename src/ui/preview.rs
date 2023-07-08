@@ -102,9 +102,12 @@ impl PreviewPlugin {
             LoadState::Loaded => {
                 debug!("asset for preview was sucessfully loaded");
 
-                let preview = previews
-                    .get(preview_target.0)
-                    .expect("preview target should point to a valid entity with preview");
+                let Ok(preview) = previews.get(preview_target.0) else {
+                    // Entity target is longer valid.
+                    preview_state.set(PreviewState::Inactive);
+                    return;
+                };
+
                 let mut image = Image::default();
                 image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
                 image.resize(Extent3d {
