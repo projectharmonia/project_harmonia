@@ -27,7 +27,6 @@ impl Plugin for CliPlugin {
             .add_system(
                 Self::quick_loading_system
                     .pipe(error::report)
-                    .in_set(OnUpdate(WorldState::InWorld))
                     .run_if(first_world_load),
             );
     }
@@ -116,7 +115,7 @@ impl CliPlugin {
     }
 }
 
-/// Returns `true` for the first full world load (including first update tick to apply components like [`FamilyActors`])
+/// Returns `true` for the first full world load.
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_events: EventReader<ErrorReport>,
@@ -132,11 +131,11 @@ fn first_world_load(
         return false;
     }
 
-    if world_state.0 == WorldState::NoWorld {
-        false
-    } else {
+    if world_state.0 == WorldState::InWorld {
         *was_loaded = true;
         true
+    } else {
+        false
     }
 }
 

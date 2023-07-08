@@ -5,7 +5,7 @@ use bevy::{
     ecs::archetype::ArchetypeId,
     prelude::*,
     reflect::TypeRegistryArc,
-    scene::{serde::SceneDeserializer, DynamicEntity},
+    scene::{self, serde::SceneDeserializer, DynamicEntity},
 };
 use bevy_replicon::prelude::*;
 use bevy_trait_query::imports::ComponentId;
@@ -31,7 +31,8 @@ impl Plugin for GameWorldPlugin {
             .add_systems((
                 Self::loading_system
                     .pipe(error::report)
-                    .run_if(on_event::<GameLoad>()),
+                    .run_if(on_event::<GameLoad>())
+                    .before(scene::scene_spawner_system),
                 Self::saving_system
                     .pipe(error::report)
                     .run_if(on_event::<GameSave>()),
