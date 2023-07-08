@@ -92,7 +92,10 @@ impl InGameMenuPlugin {
                     IngameMenuButton::Resume => {
                         commands.entity(ingame_menus.single()).despawn_recursive()
                     }
-                    IngameMenuButton::Save => save_events.send_default(),
+                    IngameMenuButton::Save => {
+                        save_events.send_default();
+                        commands.entity(ingame_menus.single()).despawn_recursive();
+                    }
                     IngameMenuButton::Settings => settings_events.send_default(),
                     IngameMenuButton::World => game_state.set(GameState::World),
                     IngameMenuButton::MainMenu => setup_exit_dialog(
