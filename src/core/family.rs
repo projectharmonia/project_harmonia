@@ -27,9 +27,9 @@ impl Plugin for FamilyPlugin {
             .add_state::<BuildingMode>()
             .replicate::<FamilySync>()
             .replicate::<Budget>()
-            .add_mapped_client_event::<FamilySpawn>()
-            .add_mapped_client_event::<FamilyDespawn>()
-            .add_mapped_server_event::<SelectedFamilySpawned>()
+            .add_mapped_client_event::<FamilySpawn>(SendPolicy::Unordered)
+            .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
+            .add_mapped_server_event::<SelectedFamilySpawned>(SendPolicy::Unordered)
             .add_system(Self::reset_mode_system.in_schedule(OnEnter(GameState::Family)))
             .add_systems((Self::spawn_system, Self::despawn_system).in_set(ServerSet::Authority))
             .add_systems((
@@ -108,13 +108,11 @@ impl FamilyPlugin {
                     continue;
                 };
 
-                commands
-                    .spawn(ActorBundle::new(
-                        actor_scene,
-                        family_entity,
-                        event.city_entity,
-                    ))
-                    .insert_reflect([reflect_default.default()]);
+                commands.entity(event.city_entity).with_children(|parent| {
+                    parent
+                        .spawn(ActorBundle::new(actor_scene, family_entity))
+                        .insert_reflect([reflect_default.default()]);
+                });
             }
             if event.select {
                 spawn_select_events.send(ToClients {

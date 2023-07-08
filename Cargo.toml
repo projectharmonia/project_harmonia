@@ -17,7 +17,7 @@ bevy = { version = "0.10", default-features = false, features = [
   "bevy_text",
 ] }
 bevy_atmosphere = "0.6"
-bevy_replicon = "0.5"
+bevy_replicon = "0.6"
 bevy_rapier3d = "0.21"
 bevy_mod_outline = { version = "0.4", default-features = false }
 bevy_polyline = "0.6"

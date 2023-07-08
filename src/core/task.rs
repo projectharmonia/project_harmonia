@@ -32,8 +32,8 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<TaskState>()
-            .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>()
-            .add_client_event::<TaskCancel>()
+            .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>(SendPolicy::Unordered)
+            .add_client_event::<TaskCancel>(SendPolicy::Unordered)
             .add_event::<TaskList>()
             .configure_set(
                 TaskListSet

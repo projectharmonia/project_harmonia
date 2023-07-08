@@ -25,8 +25,8 @@ impl Plugin for WallPlugin {
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
             .replicate::<WallEdges>()
-            .add_mapped_client_event::<WallCreate>()
-            .add_server_event::<WallEventConfirmed>()
+            .add_mapped_client_event::<WallCreate>(SendPolicy::Unordered)
+            .add_server_event::<WallEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
                 (Self::init_system, Self::mesh_update_system).in_set(OnUpdate(WorldState::InWorld)),
             )
@@ -78,11 +78,9 @@ impl WallPlugin {
             }
 
             // No wall entity found, create a new one
-            commands.spawn((
-                WallEdges(vec![event.edge]),
-                Replication,
-                ParentSync(event.lot_entity),
-            ));
+            commands.entity(event.lot_entity).with_children(|parent| {
+                parent.spawn(WallBundle::new(vec![event.edge]));
+            });
         }
     }
 
@@ -303,6 +301,24 @@ impl FromWorld for WallMaterial {
         Self(handle)
     }
 }
+
+#[derive(Bundle)]
+struct WallBundle {
+    edges: WallEdges,
+    parent_sync: ParentSync,
+    replication: Replication,
+}
+
+impl WallBundle {
+    fn new(edges: Vec<(Vec2, Vec2)>) -> Self {
+        Self {
+            edges: WallEdges(edges),
+            parent_sync: Default::default(),
+            replication: Replication,
+        }
+    }
+}
+
 #[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
 pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);

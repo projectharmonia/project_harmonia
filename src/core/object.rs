@@ -34,10 +34,10 @@ impl Plugin for ObjectPlugin {
         app.add_plugin(PlacingObjectPlugin)
             .add_plugin(MirrorPlugin)
             .replicate::<ObjectPath>()
-            .add_client_event::<ObjectSpawn>()
-            .add_mapped_client_event::<ObjectMove>()
-            .add_mapped_client_event::<ObjectDespawn>()
-            .add_server_event::<ObjectEventConfirmed>()
+            .add_client_event::<ObjectSpawn>(SendPolicy::Unordered)
+            .add_mapped_client_event::<ObjectMove>(SendPolicy::Ordered)
+            .add_mapped_client_event::<ObjectDespawn>(SendPolicy::Unordered)
+            .add_server_event::<ObjectEventConfirmed>(SendPolicy::Unordered)
             .add_system(Self::init_system.in_set(OnUpdate(WorldState::InWorld)))
             .add_systems(
                 (
@@ -127,12 +127,13 @@ impl ObjectPlugin {
                 .map(|(lot_entity, _)| lot_entity)
                 .unwrap_or(city_entity);
 
-            commands.spawn(ObjectBundle::new(
-                event.metadata_path,
-                Vec3::new(event.position.x, 0.0, event.position.y),
-                event.rotation,
-                parent_entity,
-            ));
+            commands.entity(parent_entity).with_children(|parent| {
+                parent.spawn(ObjectBundle::new(
+                    event.metadata_path,
+                    Vec3::new(event.position.x, 0.0, event.position.y),
+                    event.rotation,
+                ));
+            });
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: ObjectEventConfirmed,
@@ -184,13 +185,13 @@ struct ObjectBundle {
 }
 
 impl ObjectBundle {
-    fn new(metadata_path: PathBuf, translation: Vec3, rotation: Quat, parent: Entity) -> Self {
+    fn new(metadata_path: PathBuf, translation: Vec3, rotation: Quat) -> Self {
         Self {
             object_path: ObjectPath(metadata_path),
             transform: Transform::default()
                 .with_translation(translation)
                 .with_rotation(rotation),
-            parent_sync: ParentSync(parent),
+            parent_sync: Default::default(),
             replication: Replication,
         }
     }

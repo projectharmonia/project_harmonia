@@ -29,10 +29,10 @@ impl Plugin for LotPlugin {
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
-            .add_mapped_client_event::<LotSpawn>()
-            .add_mapped_client_event::<LotMove>()
-            .add_mapped_client_event::<LotDespawn>()
-            .add_server_event::<LotEventConfirmed>()
+            .add_mapped_client_event::<LotSpawn>(SendPolicy::Unordered)
+            .add_mapped_client_event::<LotMove>(SendPolicy::Ordered)
+            .add_mapped_client_event::<LotDespawn>(SendPolicy::Unordered)
+            .add_server_event::<LotEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
                 (Self::vertices_update_system, Self::init_system)
                     .in_set(OnUpdate(WorldState::InWorld)),
@@ -86,7 +86,9 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
         for FromClient { client_id, event } in spawn_events.iter().cloned() {
-            commands.spawn(LotBundle::new(event.vertices, event.city_entity));
+            commands.entity(event.city_entity).with_children(|parent| {
+                parent.spawn(LotBundle::new(event.vertices));
+            });
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
@@ -156,10 +158,10 @@ struct LotBundle {
 }
 
 impl LotBundle {
-    fn new(vertices: Vec<Vec2>, city_entity: Entity) -> Self {
+    fn new(vertices: Vec<Vec2>) -> Self {
         Self {
             vertices: LotVertices(vertices),
-            parent_sync: ParentSync(city_entity),
+            parent_sync: Default::default(),
             replication: Replication,
         }
     }

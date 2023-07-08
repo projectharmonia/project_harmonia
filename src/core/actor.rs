@@ -115,13 +115,13 @@ pub(super) struct ActorBundle {
 }
 
 impl ActorBundle {
-    pub(super) fn new(actor_scene: ActorScene, family_entity: Entity, city_entity: Entity) -> Self {
+    pub(super) fn new(actor_scene: ActorScene, family_entity: Entity) -> Self {
         Self {
             first_name: actor_scene.first_name,
             last_name: actor_scene.last_name,
             sex: actor_scene.sex,
             family_sync: FamilySync(family_entity),
-            parent_sync: ParentSync(city_entity),
+            parent_sync: Default::default(),
             transform: Default::default(), // TODO: Get spawn position from world.
             actor: Actor,
             replication: Replication,
