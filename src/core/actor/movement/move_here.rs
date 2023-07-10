@@ -88,7 +88,7 @@ impl MoveHerePlugin {
             if let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) {
                 if let Some((task_entity, _)) = tasks
                     .iter_many(children)
-                    .find(|(_, &state)| state == TaskState::Active)
+                    .find(|(_, &state)| state != TaskState::Queued)
                 {
                     commands.entity(task_entity).despawn();
                     *animation_handle = actor_animations.handle(ActorAnimation::Idle);

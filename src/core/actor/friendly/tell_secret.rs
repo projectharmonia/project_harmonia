@@ -163,7 +163,7 @@ impl TellSecretPlugin {
         for (teller_entity, children, mut animation_handle) in &mut tell_actors {
             if let Some((listen_entity, parent, ..)) =
                 listen_tasks.iter().find(|(.., listen_secret, &state)| {
-                    listen_secret.0 == teller_entity && state == TaskState::Cancelled
+                    listen_secret.0 == teller_entity && state != TaskState::Queued
                 })
             {
                 commands.entity(listen_entity).despawn();
@@ -181,7 +181,7 @@ impl TellSecretPlugin {
 
             let (tell_entity, _) = tell_tasks
                 .iter_many(children)
-                .find(|(_, &state)| state == TaskState::Cancelled)
+                .find(|(_, &state)| state != TaskState::Queued)
                 .expect("actor should have tell secret task as a child");
             commands.entity(tell_entity).despawn();
         }
