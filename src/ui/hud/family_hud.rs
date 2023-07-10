@@ -1,43 +1,76 @@
-mod building_hud;
-mod life_hud;
-
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
+use super::objects_node;
 use crate::{
-    core::{family::FamilyMode, game_state::GameState},
+    core::{
+        actor::ActiveActor,
+        asset_metadata::{ObjectCategory, ObjectMetadata},
+        family::{ActiveFamily, Budget, BuildingMode, FamilyActors, FamilyMode, FamilyPlugin},
+        game_state::GameState,
+        task::{TaskCancel, TaskState},
+    },
     ui::{
+        preview::Preview,
         theme::Theme,
         widget::{
-            button::{ExclusiveButton, TextButtonBundle, Toggled},
+            button::{
+                ButtonPlugin, ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle,
+                Toggled,
+            },
+            click::Click,
             ui_root::UiRoot,
+            LabelBundle,
         },
     },
 };
-use building_hud::BuildingHudPlugin;
-use life_hud::LifeHudPlugin;
 
 pub(super) struct FamilyHudPlugin;
 
 impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(BuildingHudPlugin)
-            .add_plugin(LifeHudPlugin)
-            .add_system(Self::setup_system.in_schedule(OnEnter(GameState::Family)))
-            .add_system(Self::mode_button_system.in_set(OnUpdate(GameState::Family)));
-
-        for state in FamilyMode::iter() {
-            app.add_system(
-                Self::cleanup_system
-                    .run_if(in_state(GameState::Family))
-                    .in_schedule(OnExit(state)),
-            );
-        }
+        app.add_systems(
+            (apply_system_buffers, Self::setup_system)
+                .chain()
+                .after(FamilyPlugin::activation_system)
+                .in_schedule(OnEnter(GameState::Family)),
+        )
+        .add_systems(
+            (
+                Self::mode_button_system,
+                Self::tasks_node_system,
+                // To run despawn commands after image spawns.
+                Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
+                Self::budget_system,
+            )
+                .in_set(OnUpdate(GameState::Family)),
+        )
+        .add_systems(
+            (
+                Self::tasks_node_setup_system,
+                Self::task_button_system,
+                Self::actor_buttons_system,
+            )
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Life)),
+        )
+        .add_system(
+            Self::building_mode_button_system
+                .in_set(OnUpdate(GameState::Family))
+                .in_set(OnUpdate(FamilyMode::Building)),
+        );
     }
 }
 
 impl FamilyHudPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>) {
+    fn setup_system(
+        mut commands: Commands,
+        mut tab_commands: Commands,
+        theme: Res<Theme>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
+        families: Query<(&Budget, &FamilyActors), With<ActiveFamily>>,
+        actors: Query<Entity, With<ActiveActor>>,
+    ) {
         commands
             .spawn((
                 UiRoot,
@@ -50,9 +83,7 @@ impl FamilyHudPlugin {
                 },
             ))
             .with_children(|parent| {
-                parent.spawn((FamilyHud, NodeBundle::default()));
-
-                parent
+                let tabs_entity = parent
                     .spawn(NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
@@ -63,16 +94,38 @@ impl FamilyHudPlugin {
                         background_color: theme.panel_color.into(),
                         ..Default::default()
                     })
-                    .with_children(|parent| {
-                        for mode in FamilyMode::iter() {
-                            parent.spawn((
-                                mode,
-                                ExclusiveButton,
-                                Toggled(mode == Default::default()),
-                                TextButtonBundle::symbol(&theme, mode.glyph()),
-                            ));
-                        }
-                    });
+                    .id();
+
+                for mode in FamilyMode::iter() {
+                    let content_entity = parent
+                        .spawn(NodeBundle::default())
+                        .with_children(|parent| match mode {
+                            FamilyMode::Life => {
+                                setup_tasks_node(parent, &theme);
+
+                                let (&budget, family_actors) = families.single();
+                                setup_portrait_node(parent, &theme, budget);
+                                setup_members_node(parent, &theme, family_actors, actors.single());
+                            }
+                            FamilyMode::Building => setup_building_hud(
+                                parent,
+                                &theme,
+                                &mut tab_commands,
+                                &object_metadata,
+                            ),
+                        })
+                        .id();
+
+                    tab_commands
+                        .spawn((
+                            mode,
+                            TabContent(content_entity),
+                            ExclusiveButton,
+                            Toggled(mode == Default::default()),
+                            TextButtonBundle::symbol(&theme, mode.glyph()),
+                        ))
+                        .set_parent(tabs_entity);
+                }
             });
     }
 
@@ -87,10 +140,334 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, huds: Query<Entity, With<FamilyHud>>) {
-        commands.entity(huds.single()).despawn_descendants();
+    fn tasks_node_setup_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        actors: Query<&Children, Added<ActiveActor>>,
+        tasks: Query<(Entity, &TaskState)>,
+        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
+        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
+    ) {
+        let Ok(children) = actors.get_single() else {
+            return;
+        };
+
+        let queued_entity = queued_task_nodes.single();
+        let active_entity = active_task_nodes.single();
+        commands.entity(queued_entity).despawn_descendants();
+        commands.entity(active_entity).despawn_descendants();
+
+        for (task_entity, state) in tasks.iter_many(children) {
+            match *state {
+                TaskState::Queued => {
+                    commands.entity(queued_entity).with_children(|parent| {
+                        parent.spawn((
+                            ButtonTask(task_entity),
+                            ImageButtonBundle::placeholder(&theme),
+                        ));
+                    });
+                }
+                TaskState::Active => {
+                    commands.entity(active_entity).with_children(|parent| {
+                        parent.spawn((
+                            ButtonTask(task_entity),
+                            ImageButtonBundle::placeholder(&theme),
+                        ));
+                    });
+                }
+                TaskState::Cancelled => continue,
+            };
+        }
+    }
+
+    fn tasks_node_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        actors: Query<(&Children, Ref<ActiveActor>)>,
+        tasks: Query<(Entity, &TaskState), Changed<TaskState>>,
+        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
+        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
+        buttons: Query<(Entity, &ButtonTask)>,
+    ) {
+        let (children, active_actor) = actors.single();
+        if active_actor.is_added() {
+            return;
+        }
+
+        for (task_entity, state) in tasks.iter_many(children) {
+            match *state {
+                TaskState::Queued => {
+                    commands
+                        .entity(queued_task_nodes.single())
+                        .with_children(|parent| {
+                            parent.spawn((
+                                ButtonTask(task_entity),
+                                ImageButtonBundle::placeholder(&theme),
+                            ));
+                        });
+                }
+                TaskState::Active => {
+                    let (button_entity, _) = buttons
+                        .iter()
+                        .find(|(_, button_task)| button_task.0 == task_entity)
+                        .expect("all tasks should be queued first");
+
+                    commands
+                        .entity(button_entity)
+                        .set_parent(active_task_nodes.single());
+                }
+                TaskState::Cancelled => continue,
+            };
+        }
+    }
+
+    fn task_button_system(
+        mut cancel_events: EventWriter<TaskCancel>,
+        mut click_events: EventReader<Click>,
+        buttons: Query<&ButtonTask>,
+    ) {
+        for event in &mut click_events {
+            if let Ok(button_task) = buttons.get(event.0) {
+                cancel_events.send(TaskCancel(button_task.0));
+            }
+        }
+    }
+
+    fn task_cleanup_system(
+        mut commands: Commands,
+        mut removed_tasks: RemovedComponents<TaskState>,
+        buttons: Query<(Entity, &ButtonTask)>,
+    ) {
+        for task_entity in &mut removed_tasks {
+            if let Some((button_entity, _)) = buttons
+                .iter()
+                .find(|(_, button_task)| button_task.0 == task_entity)
+            {
+                commands.entity(button_entity).despawn_recursive();
+            }
+        }
+    }
+
+    fn budget_system(
+        families: Query<&Budget, (With<ActiveFamily>, Changed<Budget>)>,
+        mut labels: Query<&mut Text, With<BudgetLabel>>,
+    ) {
+        if let Ok(budget) = families.get_single() {
+            labels.single_mut().sections[0].value = budget.to_string();
+        }
+    }
+
+    fn actor_buttons_system(
+        mut commands: Commands,
+        actor_buttons: Query<(Ref<Toggled>, &PlayActor), Changed<Toggled>>,
+    ) {
+        for (toggled, play_actor) in &actor_buttons {
+            if toggled.0 && !toggled.is_added() {
+                commands.entity(play_actor.0).insert(ActiveActor);
+            }
+        }
+    }
+
+    fn building_mode_button_system(
+        mut building_mode: ResMut<NextState<BuildingMode>>,
+        buttons: Query<(Ref<Toggled>, &BuildingMode), Changed<Toggled>>,
+    ) {
+        for (toggled, &mode) in &buttons {
+            if toggled.0 && !toggled.is_added() {
+                building_mode.set(mode);
+            }
+        }
     }
 }
 
+fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn((
+                QueuedTasksNode,
+                NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::ColumnReverse,
+                        size: Size::all(Val::Percent(100.0)),
+                        gap: theme.gap.normal,
+                        padding: theme.padding.normal,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ));
+
+            const MAX_TASKS: usize = 4;
+            // Image button is a square
+            let width = theme.button.image_button.size.width;
+            let height = width * MAX_TASKS as f32;
+
+            let min_width = width
+                .try_add(theme.padding.normal.left)
+                .and_then(|val| val.try_add(theme.padding.normal.right))
+                .expect("button size and padding should be set pixels");
+            let min_height = height
+                .try_add(theme.padding.normal.top)
+                .and_then(|val| val.try_add(theme.padding.normal.bottom))
+                .expect("button size and padding should be set pixels");
+            parent.spawn((
+                ActiveTasksNode,
+                NodeBundle {
+                    style: Style {
+                        min_size: Size::new(min_width, min_height),
+                        flex_direction: FlexDirection::Column,
+                        gap: theme.gap.normal,
+                        padding: theme.padding.normal,
+                        ..Default::default()
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                },
+            ));
+        });
+}
+
+fn setup_portrait_node(parent: &mut ChildBuilder, theme: &Theme, budget: Budget) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Px(180.0), Val::Px(30.0)),
+                align_self: AlignSelf::FlexEnd,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn((BudgetLabel, LabelBundle::normal(theme, budget.to_string())));
+        });
+}
+
+fn setup_members_node(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    actors: &FamilyActors,
+    active_entity: Entity,
+) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                gap: theme.gap.normal,
+                padding: theme.padding.normal,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            for &entity in actors.iter() {
+                parent.spawn((
+                    PlayActor(entity),
+                    Preview::actor(entity, theme.button.image.size),
+                    ExclusiveButton,
+                    Toggled(entity == active_entity),
+                    ImageButtonBundle::placeholder(theme),
+                ));
+            }
+        });
+}
+
+pub(super) fn setup_building_hud(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    tab_commands: &mut Commands,
+    object_metadata: &Assets<ObjectMetadata>,
+) {
+    let tabs_entity = parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                align_self: AlignSelf::FlexEnd,
+                padding: theme.padding.normal,
+                ..Default::default()
+            },
+            background_color: theme.panel_color.into(),
+            ..Default::default()
+        })
+        .id();
+
+    for mode in BuildingMode::iter() {
+        let content_entity = parent
+            .spawn(NodeBundle {
+                style: Style {
+                    align_self: AlignSelf::FlexEnd,
+                    padding: theme.padding.normal,
+                    gap: theme.gap.normal,
+                    ..Default::default()
+                },
+                background_color: theme.panel_color.into(),
+                ..Default::default()
+            })
+            .with_children(|parent| match mode {
+                BuildingMode::Objects => {
+                    objects_node::setup_objects_node(
+                        parent,
+                        tab_commands,
+                        theme,
+                        object_metadata,
+                        ObjectCategory::FAMILY_CATEGORIES,
+                    );
+                }
+                BuildingMode::Walls => setup_walls_node(parent, theme),
+            })
+            .id();
+
+        tab_commands
+            .spawn((
+                mode,
+                TabContent(content_entity),
+                ExclusiveButton,
+                Toggled(mode == Default::default()),
+                TextButtonBundle::symbol(theme, mode.glyph()),
+            ))
+            .set_parent(tabs_entity);
+    }
+}
+
+fn setup_walls_node(parent: &mut ChildBuilder, theme: &Theme) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            // Just a stab for instruments.
+            parent.spawn((
+                ExclusiveButton,
+                Toggled(true),
+                TextButtonBundle::symbol(theme, "➕"),
+            ));
+        });
+}
+
 #[derive(Component)]
-struct FamilyHud;
+struct ActiveTasksNode;
+
+#[derive(Component)]
+struct QueuedTasksNode;
+
+#[derive(Component)]
+struct ButtonTask(Entity);
+
+#[derive(Component)]
+struct BudgetLabel;
+
+#[derive(Component)]
+struct PlayActor(Entity);

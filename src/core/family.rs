@@ -19,7 +19,7 @@ use super::{
     game_world::WorldState,
 };
 
-pub(super) struct FamilyPlugin;
+pub(crate) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
@@ -141,7 +141,10 @@ impl FamilyPlugin {
         }
     }
 
-    fn activation_system(mut commands: Commands, actors: Query<&ActorFamily, With<ActiveActor>>) {
+    pub(crate) fn activation_system(
+        mut commands: Commands,
+        actors: Query<&ActorFamily, With<ActiveActor>>,
+    ) {
         commands.entity(actors.single().0).insert(ActiveFamily);
     }
 
