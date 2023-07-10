@@ -35,6 +35,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::city_button_system,
                     Self::create_button_system,
                     Self::city_dialog_button_system,
+                    Self::entity_node_despawn_system,
                 )
                     .in_set(OnUpdate(GameState::World)),
             );
@@ -140,14 +141,14 @@ impl WorldMenuPlugin {
         theme: Res<Theme>,
         families: Query<(Entity, &Name), Added<FamilyActors>>,
         tabs: Query<(&TabContent, &WorldTab)>,
-        buttons: Query<&WorldEntity>,
+        nodes: Query<&WorldEntity>,
     ) {
         for (entity, name) in &families {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
-            if !buttons.iter().any(|world_entity| world_entity.0 == entity) {
+            if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
                 commands.entity(tab_content.0).with_children(|parent| {
                     setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
                 });
@@ -160,14 +161,14 @@ impl WorldMenuPlugin {
         theme: Res<Theme>,
         cities: Query<(Entity, &Name), Added<City>>,
         tabs: Query<(&TabContent, &WorldTab)>,
-        buttons: Query<&WorldEntity>,
+        nodes: Query<&WorldEntity>,
     ) {
         for (entity, name) in &cities {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Cities)
                 .expect("tab with cities should be spawned on state enter");
-            if !buttons.iter().any(|world_entity| world_entity.0 == entity) {
+            if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
                 commands.entity(tab_content.0).with_children(|parent| {
                     setup_entity_node::<CityButton>(parent, &theme, entity, name);
                 });
@@ -180,16 +181,20 @@ impl WorldMenuPlugin {
         mut despawn_events: EventWriter<FamilyDespawn>,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&WorldEntity, &FamilyButton)>,
+        buttons: Query<(&WorldEntityNode, &FamilyButton)>,
+        nodes: Query<&WorldEntity>,
         families: Query<&FamilyActors>,
     ) {
         for event in &mut click_events {
-            if let Ok((world_entity, family_button)) = buttons.get(event.0) {
+            if let Ok((entity_node, family_button)) = buttons.get(event.0) {
+                let world_entity = nodes
+                    .get(entity_node.0)
+                    .expect("family button should reference world entity node");
                 match family_button {
                     FamilyButton::Play => {
                         let actors = families
                             .get(world_entity.0)
-                            .expect("world entity with family buttons should reference a family");
+                            .expect("world entity node should reference a family");
                         let actor_entity = *actors
                             .first()
                             .expect("family always have at least one member");
@@ -207,10 +212,14 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(&WorldEntity, &CityButton)>,
+        buttons: Query<(&WorldEntityNode, &CityButton)>,
+        nodes: Query<&WorldEntity>,
     ) {
         for event in &mut click_events {
-            if let Ok((world_entity, family_button)) = buttons.get(event.0) {
+            if let Ok((entity_node, family_button)) = buttons.get(event.0) {
+                let world_entity = nodes
+                    .get(entity_node.0)
+                    .expect("family button should reference world entity node");
                 // TODO: use event for despawn, otherwise client will despawn the city locally.
                 match family_button {
                     CityButton::Edit => {
@@ -268,6 +277,21 @@ impl WorldMenuPlugin {
             }
         }
     }
+
+    fn entity_node_despawn_system(
+        mut commands: Commands,
+        mut removed_cities: RemovedComponents<City>,
+        mut removed_families: RemovedComponents<FamilyActors>,
+        nodes: Query<(Entity, &WorldEntity)>,
+    ) {
+        for removed_entity in removed_cities.iter().chain(&mut removed_families) {
+            let (node_entity, _) = nodes
+                .iter()
+                .find(|(_, world_entity)| world_entity.0 == removed_entity)
+                .expect("each city and family should have corresponding node");
+            commands.entity(node_entity).despawn_recursive();
+        }
+    }
 }
 
 fn setup_entity_node<E>(
@@ -279,16 +303,21 @@ fn setup_entity_node<E>(
     E: IntoEnumIterator + Clone + Copy + Component + Display,
 {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                padding: theme.padding.normal,
-                gap: theme.gap.normal,
+        .spawn((
+            WorldEntity(entity),
+            NodeBundle {
+                style: Style {
+                    padding: theme.padding.normal,
+                    gap: theme.gap.normal,
+                    ..Default::default()
+                },
+                background_color: theme.panel_color.into(),
                 ..Default::default()
             },
-            background_color: theme.panel_color.into(),
-            ..Default::default()
-        })
+        ))
         .with_children(|parent| {
+            let node_entity = parent.parent_entity();
+
             parent
                 .spawn(NodeBundle {
                     style: Style {
@@ -313,7 +342,7 @@ fn setup_entity_node<E>(
                     for button in E::iter() {
                         parent.spawn((
                             button,
-                            WorldEntity(entity),
+                            WorldEntityNode(node_entity),
                             TextButtonBundle::normal(theme, button.to_string()),
                         ));
                     }
@@ -386,9 +415,13 @@ enum CityButton {
     Delete,
 }
 
-/// References family for [`FamilyButton`] or city for [`CityButton`].
+/// References family or city depending on a node.
 #[derive(Component)]
 struct WorldEntity(Entity);
+
+/// References family node for [`FamilyButton`] or city node for [`CityButton`].
+#[derive(Component)]
+struct WorldEntityNode(Entity);
 
 /// Button that creates family or city depending on the selected [`WorldTab`].
 #[derive(Component)]
