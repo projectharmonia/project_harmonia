@@ -345,7 +345,7 @@ dependencies = [
 [[package]]
 name = "bevy_a11y"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "accesskit",
  "bevy_app",
@@ -356,7 +356,7 @@ dependencies = [
 [[package]]
 name = "bevy_animation"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -373,7 +373,7 @@ dependencies = [
 [[package]]
 name = "bevy_app"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -387,7 +387,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -453,7 +453,7 @@ dependencies = [
 [[package]]
 name = "bevy_core_pipeline"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -472,7 +472,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -482,7 +482,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -496,7 +496,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "async-channel",
  "bevy_ecs_macros",
@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -526,7 +526,7 @@ dependencies = [
 [[package]]
 name = "bevy_encase_derive"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
@@ -535,7 +535,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -547,7 +547,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "anyhow",
  "base64",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "bevy_hierarchy"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -589,7 +589,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -603,7 +603,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_a11y",
  "bevy_animation",
@@ -639,7 +639,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "android_log-sys",
  "bevy_app",
@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "quote",
  "syn 1.0.107",
@@ -664,7 +664,7 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "glam",
  "serde",
@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "bevy_mikktspace"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "glam",
 ]
@@ -694,7 +694,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -726,7 +726,7 @@ dependencies = [
 [[package]]
 name = "bevy_ptr"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 
 [[package]]
 name = "bevy_rapier3d"
@@ -743,7 +743,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_math",
  "bevy_ptr",
@@ -762,7 +762,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_macro_utils",
  "bit-set",
@@ -775,7 +775,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -818,7 +818,7 @@ dependencies = [
 [[package]]
 name = "bevy_render_macros"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -853,7 +853,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -874,7 +874,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -898,7 +898,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "async-channel",
  "async-executor",
@@ -912,7 +912,7 @@ dependencies = [
 [[package]]
 name = "bevy_text"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -934,7 +934,7 @@ dependencies = [
 [[package]]
 name = "bevy_time"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -948,7 +948,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -961,7 +961,7 @@ dependencies = [
 [[package]]
 name = "bevy_ui"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -990,7 +990,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "ahash",
  "bevy_utils_proc_macros",
@@ -1006,7 +1006,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils_proc_macros"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1016,7 +1016,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1031,7 +1031,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.10.1"
-source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#d29dab688c4ae462c50fa3a80f1271178254aaa0"
+source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
 dependencies = [
  "accesskit_winit",
  "approx",
