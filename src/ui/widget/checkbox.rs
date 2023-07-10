@@ -97,8 +97,6 @@ pub(crate) struct CheckboxBundle {
     checkbox: Checkbox,
     checkbox_text: CheckboxText,
     last_interaction: LastInteraction,
-
-    #[bundle]
     node_bundle: NodeBundle,
 }
 

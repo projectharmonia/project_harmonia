@@ -174,8 +174,6 @@ pub(crate) struct TextButtonBundle {
     kind: TextButtonKind,
     text: ButtonText,
     last_interaction: LastInteraction,
-
-    #[bundle]
     pub(crate) button_bundle: ButtonBundle,
 }
 
@@ -215,8 +213,6 @@ impl TextButtonBundle {
 pub(crate) struct ImageButtonBundle {
     image_handle: Handle<Image>,
     last_interaction: LastInteraction,
-
-    #[bundle]
     button_bundle: ButtonBundle,
 }
 

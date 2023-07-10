@@ -28,8 +28,6 @@ impl Plugin for WidgetPlugin {
 #[derive(Bundle)]
 pub(super) struct LabelBundle {
     label: Label,
-
-    #[bundle]
     text_bundle: TextBundle,
 }
 
@@ -52,8 +50,6 @@ impl LabelBundle {
 #[derive(Bundle)]
 pub(super) struct DialogBundle {
     dialog: Dialog,
-
-    #[bundle]
     node_bundle: NodeBundle,
 }
 

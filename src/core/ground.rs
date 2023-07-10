@@ -83,8 +83,6 @@ struct GroundBundle {
     ground: Ground,
     hoverable: Hoverable,
     nav_mesh_affector: NavMeshAffector,
-
-    #[bundle]
     pbr_bundle: PbrBundle,
 }
 

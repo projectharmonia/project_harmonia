@@ -90,8 +90,6 @@ impl FromWorld for PathDebugMaterial {
 struct PathDebugBundle {
     name: Name,
     nav_actor: NavActor,
-
-    #[bundle]
     polyline_bundle: PolylineBundle,
 }
 

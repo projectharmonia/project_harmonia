@@ -109,8 +109,6 @@ struct MirrorReady;
 struct MirrorCameraBundle {
     name: Name,
     mirror_camera: MirrorCamera,
-
-    #[bundle]
     camera_bundle: Camera3dBundle,
 }
 

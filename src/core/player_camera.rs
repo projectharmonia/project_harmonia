@@ -122,8 +122,6 @@ pub(crate) struct PlayerCameraBundle {
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
     player_camera: PlayerCamera,
-
-    #[bundle]
     camera_3d_bundle: Camera3dBundle,
 }
 

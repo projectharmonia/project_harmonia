@@ -85,8 +85,6 @@ impl TextEditPlugin {
 pub(crate) struct TextEditBundle {
     text_edit: TextEdit,
     interaction: Interaction,
-
-    #[bundle]
     button_bundle: TextBundle,
 }
 

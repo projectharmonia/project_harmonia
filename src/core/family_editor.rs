@@ -81,8 +81,6 @@ impl FamilyEditorPlugin {
 struct EditableFamilyBundle {
     name: Name,
     editable_family: EditableFamily,
-
-    #[bundle]
     spatial_bundle: SpatialBundle,
 }
 
@@ -108,8 +106,6 @@ pub(crate) struct EditableActorBundle {
     last_name: LastName,
     sex: Sex,
     editable_actor: EditableActor,
-
-    #[bundle]
     spatial_bundle: SpatialBundle,
 }
 

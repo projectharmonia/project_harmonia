@@ -168,11 +168,7 @@ struct PreviewCameraBundle {
     preview_camera: PreviewCamera,
     render_layer: RenderLayers,
     ui_config: UiCameraConfig,
-
-    #[bundle]
     camera_bundle: Camera3dBundle,
-
-    #[bundle]
     visibility_bundle: VisibilityBundle,
 }
 
@@ -261,8 +257,6 @@ struct PreviewProcessed;
 struct PreviewSceneBundle {
     name: Name,
     preview_target: PreviewTarget,
-
-    #[bundle]
     scene: HookedSceneBundle,
 }
 
