@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
-use bevy_scene_hook::SceneHook;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
 
@@ -15,6 +14,7 @@ use crate::core::{
     collision_groups::LifescapeGroupsExt,
     cursor_hover::{Hoverable, OutlineHoverExt},
     game_world::WorldState,
+    ready_scene::ReadyScene,
 };
 
 pub(super) struct HumanPlugin;
@@ -24,7 +24,12 @@ impl Plugin for HumanPlugin {
         app.register_race::<Human>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
-                (Self::init_system, Self::init_mesh_system).in_set(OnUpdate(WorldState::InWorld)),
+                (
+                    Self::init_system,
+                    Self::init_mesh_system,
+                    Self::scene_init_system,
+                )
+                    .in_set(OnUpdate(WorldState::InWorld)),
             );
     }
 }
@@ -46,11 +51,6 @@ impl HumanPlugin {
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     Hoverable,
-                    SceneHook::new(|entity, commands| {
-                        if entity.contains::<Handle<Mesh>>() {
-                            commands.insert(OutlineBundle::hover());
-                        }
-                    }),
                 ))
                 .with_children(|parent| {
                     parent.spawn((
@@ -61,6 +61,22 @@ impl HumanPlugin {
                         Collider::capsule_y(HALF_HEIGHT, RADIUS),
                     ));
                 });
+        }
+    }
+
+    fn scene_init_system(
+        mut commands: Commands,
+        actors: Query<Entity, (Added<ReadyScene>, With<Human>)>,
+        chidlren: Query<&Children>,
+        meshes: Query<(), With<Handle<Mesh>>>,
+    ) {
+        for actor_entity in &actors {
+            for child_entity in chidlren
+                .iter_descendants(actor_entity)
+                .filter(|&entity| meshes.get(entity).is_ok())
+            {
+                commands.entity(child_entity).insert(OutlineBundle::hover());
+            }
         }
     }
 

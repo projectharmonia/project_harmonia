@@ -10,7 +10,6 @@ use bevy::{
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_scene_hook::SceneHook;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -22,6 +21,7 @@ use super::{
     cursor_hover::OutlineHoverExt,
     game_world::WorldState,
     lot::LotVertices,
+    ready_scene::ReadyScene,
 };
 use mirror::MirrorPlugin;
 use placing_object::PlacingObjectPlugin;
@@ -37,7 +37,9 @@ impl Plugin for ObjectPlugin {
             .add_mapped_client_event::<ObjectMove>(SendPolicy::Ordered)
             .add_mapped_client_event::<ObjectDespawn>(SendPolicy::Unordered)
             .add_server_event::<ObjectEventConfirmed>(SendPolicy::Unordered)
-            .add_system(Self::init_system.in_set(OnUpdate(WorldState::InWorld)))
+            .add_systems(
+                (Self::init_system, Self::scene_init_system).in_set(OnUpdate(WorldState::InWorld)),
+            )
             .add_systems(
                 (
                     Self::spawn_system,
@@ -75,14 +77,6 @@ impl ObjectPlugin {
                     AsyncSceneCollider::default(),
                     GlobalTransform::default(),
                     VisibilityBundle::default(),
-                    SceneHook::new(|entity, commands| {
-                        if entity.contains::<Handle<Mesh>>() {
-                            commands.insert((
-                                CollisionGroups::new(Group::OBJECT, Group::ALL),
-                                OutlineBundle::hover(),
-                            ));
-                        }
-                    }),
                 ))
                 .insert_reflect(
                     object_metadata
@@ -91,6 +85,25 @@ impl ObjectPlugin {
                         .map(|component| component.clone_value())
                         .collect::<Vec<_>>(),
                 );
+        }
+    }
+
+    fn scene_init_system(
+        mut commands: Commands,
+        objects: Query<Entity, (Added<ReadyScene>, With<ObjectPath>)>,
+        chidlren: Query<&Children>,
+        meshes: Query<(), With<Handle<Mesh>>>,
+    ) {
+        for object_entity in &objects {
+            for child_entity in chidlren
+                .iter_descendants(object_entity)
+                .filter(|&entity| meshes.get(entity).is_ok())
+            {
+                commands.entity(child_entity).insert((
+                    CollisionGroups::new(Group::OBJECT, Group::ALL),
+                    OutlineBundle::hover(),
+                ));
+            }
         }
     }
 

@@ -19,7 +19,6 @@ use bevy_mod_outline::OutlinePlugin;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_scene_hook::HookPlugin;
 use leafwing_input_manager::prelude::*;
 use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
 
@@ -53,7 +52,6 @@ fn main() {
         .add_plugins(ReplicationPlugins)
         .add_plugin(WireframePlugin)
         .add_plugin(AtmospherePlugin)
-        .add_plugin(HookPlugin)
         .add_plugin(InputManagerPlugin::<Action>::default())
         .add_plugin(OxidizedNavigationPlugin {
             settings: NavMeshSettings {

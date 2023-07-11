@@ -9,7 +9,6 @@ use bevy::{
         view::{NoFrustumCulling, RenderLayers},
     },
 };
-use bevy_scene_hook::{HookedSceneBundle, SceneHook};
 
 use crate::core::asset_metadata::{self, ObjectMetadata};
 
@@ -23,7 +22,7 @@ impl Plugin for PreviewPlugin {
                 Self::deactivation_system.in_schedule(OnEnter(PreviewState::Inactive)),
                 Self::scene_spawning_system.in_set(OnUpdate(PreviewState::Inactive)),
                 Self::loading_system.in_set(OnUpdate(PreviewState::LoadingAsset)),
-                Self::finish_system.in_schedule(OnEnter(PreviewState::Rendering)),
+                Self::rendering_system.in_set(OnUpdate(PreviewState::Rendering)),
             ));
     }
 }
@@ -143,9 +142,24 @@ impl PreviewPlugin {
         }
     }
 
-    fn finish_system(mut preview_state: ResMut<NextState<PreviewState>>) {
-        debug!("requested inactive state after rendering");
+    fn rendering_system(
+        mut commands: Commands,
+        mut preview_state: ResMut<NextState<PreviewState>>,
+        preview_scenes: Query<Entity, With<PreviewTarget>>,
+        chidlren: Query<&Children>,
+        meshes: Query<(), With<Handle<Mesh>>>,
+    ) {
+        for child_entity in chidlren
+            .iter_descendants(preview_scenes.single())
+            .filter(|&entity| meshes.get(entity).is_ok())
+        {
+            commands
+                .entity(child_entity)
+                .insert((PREVIEW_RENDER_LAYER, NoFrustumCulling));
+        }
+
         preview_state.set(PreviewState::Inactive);
+        debug!("rendering preview");
     }
 
     fn deactivation_system(
@@ -257,7 +271,7 @@ struct PreviewProcessed;
 struct PreviewSceneBundle {
     name: Name,
     preview_target: PreviewTarget,
-    scene: HookedSceneBundle,
+    scene_bundle: SceneBundle,
 }
 
 impl PreviewSceneBundle {
@@ -265,18 +279,11 @@ impl PreviewSceneBundle {
         Self {
             name: "Preview scene".into(),
             preview_target: PreviewTarget(preview_entity),
-            scene: HookedSceneBundle {
-                scene: SceneBundle {
-                    scene: scene_handle,
-                    transform: Transform::from_translation(translation)
-                        .with_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
-                    ..Default::default()
-                },
-                hook: SceneHook::new(|entity, commands| {
-                    if entity.contains::<Handle<Mesh>>() {
-                        commands.insert((PREVIEW_RENDER_LAYER, NoFrustumCulling));
-                    }
-                }),
+            scene_bundle: SceneBundle {
+                scene: scene_handle,
+                transform: Transform::from_translation(translation)
+                    .with_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
+                ..Default::default()
             },
         }
     }

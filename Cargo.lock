@@ -312,15 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy-scene-hook"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ea933f5f27917141567371c60312f34ed048789f1795270f7da407d54df4baa"
-dependencies = [
- "bevy",
-]
-
-[[package]]
 name = "bevy-trait-query"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2169,7 +2160,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
- "bevy-scene-hook",
  "bevy-trait-query",
  "bevy_atmosphere",
  "bevy_mod_outline",

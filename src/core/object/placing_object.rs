@@ -5,7 +5,6 @@ use std::{
 
 use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_rapier3d::prelude::*;
-use bevy_scene_hook::{HookedSceneBundle, SceneHook};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
@@ -19,6 +18,7 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
+    ready_scene::ReadyScene,
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
@@ -50,6 +50,7 @@ impl Plugin for PlacingObjectPlugin {
         .add_systems(
             (
                 Self::init_system,
+                Self::scene_init_system,
                 Self::picking_system
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<PlacingObject>())),
@@ -102,7 +103,7 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        mut objects: Query<(&Transform, &Handle<Scene>, &ObjectPath, &mut Visibility)>,
+        objects: Query<(&Transform, &Handle<Scene>, &ObjectPath)>,
         new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
     ) {
         for (placing_entity, placing_object) in &new_placing_objects {
@@ -126,10 +127,9 @@ impl PlacingObjectPlugin {
                     (transform, scene_handle, object_metadata)
                 }
                 PlacingObjectKind::Moving(object_entity) => {
-                    let (transform, scene_handle, object_path, mut visibility) = objects
-                        .get_mut(object_entity)
+                    let (transform, scene_handle, object_path) = objects
+                        .get(object_entity)
                         .expect("moving object should exist with these components");
-                    *visibility = Visibility::Hidden;
                     let metadata_handle = asset_server.load(&*object_path.0);
                     let object_metadata = object_metadata
                         .get(&metadata_handle)
@@ -143,17 +143,10 @@ impl PlacingObjectPlugin {
                 .insert((
                     Name::new("Placing object"),
                     AsyncSceneCollider::default(),
-                    HookedSceneBundle {
-                        scene: SceneBundle {
-                            scene: scene_handle,
-                            transform,
-                            ..Default::default()
-                        },
-                        hook: SceneHook::new(|entity, commands| {
-                            if entity.contains::<Handle<Mesh>>() {
-                                commands.insert(CollisionGroups::new(Group::NONE, Group::NONE));
-                            }
-                        }),
+                    SceneBundle {
+                        scene: scene_handle,
+                        transform,
+                        ..Default::default()
                     },
                 ))
                 .insert_reflect(
@@ -163,6 +156,32 @@ impl PlacingObjectPlugin {
                         .map(|component| component.clone_value())
                         .collect::<Vec<_>>(),
                 );
+        }
+    }
+
+    fn scene_init_system(
+        mut commands: Commands,
+        placing_objects: Query<(Entity, &PlacingObject), Added<ReadyScene>>,
+        chidlren: Query<&Children>,
+        mut objects: Query<&mut Visibility>,
+        meshes: Query<(), With<Handle<Mesh>>>,
+    ) {
+        for (scene_entity, placing_object) in &placing_objects {
+            if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
+                let mut visibility = objects
+                    .get_mut(object_entity)
+                    .expect("moving object reference a valid object");
+                *visibility = Visibility::Hidden;
+            }
+
+            for child_entity in chidlren
+                .iter_descendants(scene_entity)
+                .filter(|&entity| meshes.get(entity).is_ok())
+            {
+                commands
+                    .entity(child_entity)
+                    .insert(CollisionGroups::new(Group::NONE, Group::NONE));
+            }
         }
     }
 
