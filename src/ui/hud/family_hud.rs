@@ -109,8 +109,8 @@ impl FamilyHudPlugin {
                             }
                             FamilyMode::Building => setup_building_hud(
                                 parent,
-                                &theme,
                                 &mut tab_commands,
+                                &theme,
                                 &object_metadata,
                             ),
                         })
@@ -381,10 +381,10 @@ fn setup_members_node(
         });
 }
 
-pub(super) fn setup_building_hud(
+fn setup_building_hud(
     parent: &mut ChildBuilder,
-    theme: &Theme,
     tab_commands: &mut Commands,
+    theme: &Theme,
     object_metadata: &Assets<ObjectMetadata>,
 ) {
     let tabs_entity = parent
