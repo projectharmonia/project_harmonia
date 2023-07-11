@@ -22,8 +22,6 @@ use crate::core::{
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
-use super::ObjectPlugin;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 struct PlacingObjectSet;
 
@@ -39,12 +37,6 @@ impl Plugin for PlacingObjectPlugin {
             ),
         )
         .add_systems(
-            (apply_system_buffers, Self::init_system)
-                .chain()
-                .after(ObjectPlugin::spawn_system)
-                .in_set(PlacingObjectSet),
-        )
-        .add_systems(
             (
                 Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
                 Self::movement_system,
@@ -57,6 +49,7 @@ impl Plugin for PlacingObjectPlugin {
         )
         .add_systems(
             (
+                Self::init_system,
                 Self::picking_system
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<PlacingObject>())),
