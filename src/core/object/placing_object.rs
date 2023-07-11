@@ -57,6 +57,9 @@ impl Plugin for PlacingObjectPlugin {
                     .after(Self::collision_system)
                     .run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                Self::exclusive_system
+                    .pipe(Self::cleanup_system)
+                    .in_base_set(CoreSet::PostUpdate),
                 Self::cancel_system.pipe(Self::cleanup_system).run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<ObjectEventConfirmed>()),
                 ),
@@ -64,9 +67,6 @@ impl Plugin for PlacingObjectPlugin {
                 .in_set(PlacingObjectSet),
         )
         .add_systems((
-            Self::exclusive_system
-                .pipe(Self::cleanup_system)
-                .in_base_set(CoreSet::PostUpdate),
             Self::cancel_system
                 .pipe(Self::cleanup_system)
                 .in_schedule(OnExit(CityMode::Objects)),
