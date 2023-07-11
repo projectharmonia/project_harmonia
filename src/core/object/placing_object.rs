@@ -445,13 +445,6 @@ impl PlacingObject {
             allowed_place: true,
         }
     }
-
-    pub(crate) fn spawning_id(&self) -> Option<HandleId> {
-        match self.kind {
-            PlacingObjectKind::Spawning(id) => Some(id),
-            PlacingObjectKind::Moving(_) => None,
-        }
-    }
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.

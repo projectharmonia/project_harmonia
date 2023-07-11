@@ -81,7 +81,7 @@ impl CityHudPlugin {
                                     &mut tab_commands,
                                     &theme,
                                     &object_metadata,
-                                    ObjectCategory::FAMILY_CATEGORIES,
+                                    ObjectCategory::CITY_CATEGORIES,
                                 );
                             }
                             CityMode::Lots => setup_lots_node(parent, &theme),
