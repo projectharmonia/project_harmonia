@@ -1,86 +1,156 @@
-use bevy::{prelude::*, reflect::GetTypeRegistration};
+use std::time::Duration;
+
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, RegisterExt};
+
+use crate::core::game_world::WorldState;
 
 pub(super) struct NeedsPlugin;
 
 impl Plugin for NeedsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_need::<Hunger>()
-            .register_need::<Social>()
-            .register_need::<Hygiene>()
-            .register_need::<Fun>()
-            .register_need::<Energy>()
-            .register_need::<Bladder>()
-            .add_system(Self::tick_system.in_set(ServerSet::Authority));
+        app.replicate::<Hunger>()
+            .replicate::<Social>()
+            .replicate::<Hygiene>()
+            .replicate::<Fun>()
+            .replicate::<Energy>()
+            .replicate::<Bladder>()
+            .replicate::<Need>()
+            .not_replicate_if_present::<Name, Need>()
+            .add_systems(
+                (
+                    Self::hunger_init_system,
+                    Self::social_init_system,
+                    Self::hygiene_init_system,
+                    Self::fun_init_system,
+                    Self::energy_init_system,
+                    Self::bladder_init_system,
+                )
+                    .in_set(OnUpdate(WorldState::InWorld)),
+            )
+            .add_system(
+                Self::tick_system
+                    .run_if(on_timer(Duration::from_secs(1)))
+                    .in_set(ServerSet::Authority),
+            );
     }
 }
 
 impl NeedsPlugin {
-    fn tick_system(time: Res<Time>, mut actors: Query<&mut dyn Need>) {
-        for needs in &mut actors {
-            for mut need in needs {
-                need.update(time.delta_seconds());
+    fn hunger_init_system(mut commands: Commands, needs: Query<Entity, Added<Hunger>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Hunger"), NeedGlyph("🍴"), NeedRate(-0.4)));
+        }
+    }
+
+    fn social_init_system(mut commands: Commands, needs: Query<Entity, Added<Social>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Social"), NeedGlyph("💬"), NeedRate(-0.1)));
+        }
+    }
+
+    fn hygiene_init_system(mut commands: Commands, needs: Query<Entity, Added<Hygiene>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Hygiene"), NeedGlyph("🚿"), NeedRate(-0.3)));
+        }
+    }
+
+    fn fun_init_system(mut commands: Commands, needs: Query<Entity, Added<Fun>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Fun"), NeedGlyph("🎉"), NeedRate(-0.1)));
+        }
+    }
+
+    fn energy_init_system(mut commands: Commands, needs: Query<Entity, Added<Energy>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Energy"), NeedGlyph("🔋"), NeedRate(-0.2)));
+        }
+    }
+
+    fn bladder_init_system(mut commands: Commands, needs: Query<Entity, Added<Bladder>>) {
+        for entity in &needs {
+            commands
+                .entity(entity)
+                .insert((Name::new("Bladder"), NeedGlyph("🚽"), NeedRate(-0.5)));
+        }
+    }
+
+    fn tick_system(mut needs: Query<(&mut Need, &NeedRate)>) {
+        for (mut need, rate) in &mut needs {
+            if need.0 > rate.0 {
+                need.0 += rate.0;
+            } else {
+                need.0 = 0.0;
             }
         }
     }
 }
 
-trait AppNeedExt {
-    fn register_need<T: Need + GetTypeRegistration + Component>(&mut self) -> &mut Self;
+#[derive(Bundle)]
+pub(crate) struct NeedBundle<T: Component> {
+    need: Need,
+    marker: T,
+    parent_sync: ParentSync,
+    replication: Replication,
 }
 
-impl AppNeedExt for App {
-    fn register_need<T: Need + GetTypeRegistration + Component>(&mut self) -> &mut Self {
-        self.replicate::<T>().register_component_as::<dyn Need, T>()
+impl<T: Component + Default> Default for NeedBundle<T> {
+    fn default() -> Self {
+        Self {
+            need: Default::default(),
+            marker: T::default(),
+            parent_sync: Default::default(),
+            replication: Replication,
+        }
     }
 }
 
-#[queryable]
-pub(crate) trait Need {
-    fn glyph(&self) -> &'static str;
-    fn value(&self) -> f32;
-    fn update(&mut self, delta: f32);
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Hunger;
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Social;
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Hygiene;
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Fun;
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Energy;
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Bladder;
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Need(pub(crate) f32);
+
+impl Default for Need {
+    fn default() -> Self {
+        Self(100.0)
+    }
 }
 
-#[macro_export]
-macro_rules! define_need {
-    ($name: ident, $rate: literal, $glyph: literal) => {
-        #[derive(Component, Reflect)]
-        #[reflect(Component)]
-        pub(crate) struct $name {
-            value: f32,
-            rate: f32,
-        }
+#[derive(Component)]
+struct NeedRate(f32);
 
-        impl Default for $name {
-            fn default() -> Self {
-                $name {
-                    value: 100.0,
-                    rate: $rate,
-                }
-            }
-        }
-
-        impl Need for $name {
-            fn glyph(&self) -> &'static str {
-                $glyph
-            }
-
-            fn value(&self) -> f32 {
-                self.value
-            }
-
-            fn update(&mut self, delta_secs: f32) {
-                self.value += self.rate * delta_secs;
-            }
-        }
-    };
-}
-
-define_need!(Hunger, -1.0, "🍽");
-define_need!(Social, -1.0, "💬");
-define_need!(Hygiene, -1.0, "🚿");
-define_need!(Fun, -1.0, "🎉");
-define_need!(Energy, -1.0, "🔋");
-define_need!(Bladder, -1.0, "🚽");
+#[derive(Component)]
+pub(crate) struct NeedGlyph(pub(crate) &'static str);

@@ -7,7 +7,7 @@ use strum::EnumIter;
 use super::{AppRaceExt, Race, ReflectRace};
 use crate::core::{
     actor::{
-        needs::{Bladder, Energy, Fun, Hunger, Hygiene, Social},
+        needs::{Bladder, Energy, Fun, Hunger, Hygiene, NeedBundle, Social},
         Actor, ActorAnimation, Sex,
     },
     asset_handles::{AssetCollection, AssetHandles},
@@ -38,21 +38,30 @@ impl HumanPlugin {
     fn init_system(
         mut commands: Commands,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        actors: Query<Entity, (Added<Human>, With<Actor>)>,
+        actors: Query<(Entity, Option<&Children>), (Added<Human>, With<Actor>)>,
     ) {
-        for entity in &actors {
+        for (entity, children) in &actors {
             const HALF_HEIGHT: f32 = 0.6;
             const RADIUS: f32 = 0.3;
             commands
                 .entity(entity)
                 .insert((
-                    HumanBundle::default(),
                     actor_animations.handle(ActorAnimation::Idle),
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     Hoverable,
                 ))
                 .with_children(|parent| {
+                    // Was spawned from spawn event, initialize needs.
+                    if children.is_none() {
+                        parent.spawn(NeedBundle::<Bladder>::default());
+                        parent.spawn(NeedBundle::<Energy>::default());
+                        parent.spawn(NeedBundle::<Fun>::default());
+                        parent.spawn(NeedBundle::<Hunger>::default());
+                        parent.spawn(NeedBundle::<Hygiene>::default());
+                        parent.spawn(NeedBundle::<Social>::default());
+                    }
+
                     parent.spawn((
                         SpatialBundle::from_transform(Transform::from_translation(
                             Vec3::Y * (HALF_HEIGHT + RADIUS),
@@ -92,17 +101,6 @@ impl HumanPlugin {
                 .insert(human_scenes.handle(sex.into()));
         }
     }
-}
-
-/// Components specific to the human race.
-#[derive(Bundle, Default)]
-struct HumanBundle {
-    hunger: Hunger,
-    social: Social,
-    hygiene: Hygiene,
-    fun: Fun,
-    energy: Energy,
-    bladder: Bladder,
 }
 
 #[derive(Component, Reflect, Default)]
