@@ -1,10 +1,14 @@
 use bevy::prelude::*;
-use strum::IntoEnumIterator;
+use itertools::Itertools;
+use strum::{EnumIter, IntoEnumIterator};
 
 use super::objects_node;
 use crate::{
     core::{
-        actor::ActiveActor,
+        actor::{
+            needs::{Need, NeedGlyph},
+            ActiveActor,
+        },
         asset_metadata::{ObjectCategory, ObjectMetadata},
         family::{ActiveFamily, Budget, BuildingMode, FamilyActors, FamilyMode, FamilyPlugin},
         game_state::GameState,
@@ -19,6 +23,7 @@ use crate::{
                 Toggled,
             },
             click::Click,
+            progress_bar::{ProgressBar, ProgressBarBundle},
             ui_root::UiRoot,
             LabelBundle,
         },
@@ -41,6 +46,7 @@ impl Plugin for FamilyHudPlugin {
                 Self::tasks_node_system,
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
+                Self::need_bars_system,
                 Self::budget_system,
             )
                 .in_set(OnUpdate(GameState::Family)),
@@ -50,6 +56,7 @@ impl Plugin for FamilyHudPlugin {
                 Self::tasks_node_setup_system,
                 Self::task_button_system,
                 Self::actor_buttons_system,
+                Self::needs_node_setup_system,
             )
                 .in_set(OnUpdate(GameState::Family))
                 .in_set(OnUpdate(FamilyMode::Life)),
@@ -98,7 +105,13 @@ impl FamilyHudPlugin {
 
                 for mode in FamilyMode::iter() {
                     let content_entity = parent
-                        .spawn(NodeBundle::default())
+                        .spawn(NodeBundle {
+                            style: Style {
+                                size: Size::width(Val::Percent(100.0)),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
                         .with_children(|parent| match mode {
                             FamilyMode::Life => {
                                 setup_tasks_node(parent, &theme);
@@ -106,6 +119,7 @@ impl FamilyHudPlugin {
                                 let (&budget, family_actors) = families.single();
                                 setup_portrait_node(parent, &theme, budget);
                                 setup_members_node(parent, &theme, family_actors, actors.single());
+                                setup_info_node(parent, &mut tab_commands, &theme);
                             }
                             FamilyMode::Building => setup_building_hud(
                                 parent,
@@ -268,6 +282,72 @@ impl FamilyHudPlugin {
         }
     }
 
+    fn needs_node_setup_system(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        actors: Query<&Children, Added<ActiveActor>>,
+        tabs: Query<(&TabContent, &InfoTab)>,
+        needs: Query<(Entity, &NeedGlyph, &Need)>,
+    ) {
+        let Ok(children) = actors.get_single() else {
+            return;
+        };
+
+        let (tab_content, _) = tabs
+            .iter()
+            .find(|(_, &tab)| tab == InfoTab::Needs)
+            .expect("tab with cities should be spawned on state enter");
+
+        let mut content_entity = commands.entity(tab_content.0);
+        content_entity.despawn_descendants();
+        content_entity.with_children(|parent| {
+            // TODO 0.11: Use grid layout.
+            const COLUMNS_COUNT: usize = 2;
+            for chunk in &needs.iter_many(children).chunks(COLUMNS_COUNT) {
+                parent.spawn(NodeBundle::default()).with_children(|parent| {
+                    for (need_entity, glyph, need) in chunk {
+                        parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    size: Size::all(Val::Percent(100.0)),
+                                    padding: theme.padding.normal,
+                                    gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| {
+                                parent.spawn(LabelBundle::symbol(&theme, glyph.0));
+                                parent.spawn((
+                                    BarNeed(need_entity),
+                                    ProgressBarBundle::new(&theme, need.0),
+                                ));
+                            });
+                    }
+                });
+            }
+        });
+    }
+
+    fn need_bars_system(
+        needs: Query<(Entity, &Need), Changed<Need>>,
+        actors: Query<(&Children, Ref<ActiveActor>)>,
+        mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
+    ) {
+        let (children, active_actor) = actors.single();
+        if active_actor.is_added() {
+            return;
+        }
+
+        for (entity, need) in needs.iter_many(children) {
+            let (mut progress_bar, _) = progress_bars
+                .iter_mut()
+                .find(|(_, bar_need)| bar_need.0 == entity)
+                .expect("each need should have a bar");
+            progress_bar.0 = need.0;
+        }
+    }
+
     fn building_mode_button_system(
         mut building_mode: ResMut<NextState<BuildingMode>>,
         buttons: Query<(Ref<Toggled>, &BuildingMode), Changed<Toggled>>,
@@ -381,6 +461,57 @@ fn setup_members_node(
         });
 }
 
+fn setup_info_node(parent: &mut ChildBuilder, tab_commands: &mut Commands, theme: &Theme) {
+    parent
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::ColumnReverse,
+                position_type: PositionType::Absolute,
+                align_self: AlignSelf::FlexEnd,
+                position: UiRect::right(Val::Px(0.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            let tabs_entity = parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        padding: theme.padding.normal,
+                        align_self: AlignSelf::FlexEnd,
+                        ..Default::default()
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .id();
+
+            for (index, tab) in InfoTab::iter().enumerate() {
+                let tab_content = parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Column,
+                            size: Size::width(Val::Px(400.0)),
+                            ..Default::default()
+                        },
+                        background_color: theme.panel_color.into(),
+                        ..Default::default()
+                    })
+                    .id();
+
+                tab_commands
+                    .spawn((
+                        tab,
+                        TabContent(tab_content),
+                        ExclusiveButton,
+                        Toggled(index == 0),
+                        TextButtonBundle::symbol(theme, tab.glyph()),
+                    ))
+                    .set_parent(tabs_entity);
+            }
+        });
+}
+
 fn setup_building_hud(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
@@ -471,3 +602,21 @@ struct BudgetLabel;
 
 #[derive(Component)]
 struct PlayActor(Entity);
+
+#[derive(Component)]
+struct BarNeed(Entity);
+
+#[derive(Component, EnumIter, Clone, Copy, PartialEq)]
+enum InfoTab {
+    Needs,
+    Skills,
+}
+
+impl InfoTab {
+    fn glyph(self) -> &'static str {
+        match self {
+            InfoTab::Needs => "📈",
+            InfoTab::Skills => "💡",
+        }
+    }
+}

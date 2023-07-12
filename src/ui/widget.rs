@@ -1,6 +1,7 @@
 pub(super) mod button;
 pub(super) mod checkbox;
 pub(super) mod click;
+pub(super) mod progress_bar;
 pub(super) mod text_edit;
 pub(super) mod ui_root;
 
@@ -10,6 +11,7 @@ use super::theme::Theme;
 use button::ButtonPlugin;
 use checkbox::CheckboxPlugin;
 use click::ClickPlugin;
+use progress_bar::ProgressBarPlugin;
 use text_edit::TextEditPlugin;
 use ui_root::UiRootPlugin;
 
@@ -20,6 +22,7 @@ impl Plugin for WidgetPlugin {
         app.add_plugin(ButtonPlugin)
             .add_plugin(CheckboxPlugin)
             .add_plugin(ClickPlugin)
+            .add_plugin(ProgressBarPlugin)
             .add_plugin(TextEditPlugin)
             .add_plugin(UiRootPlugin);
     }
@@ -43,6 +46,13 @@ impl LabelBundle {
         Self {
             label: Label,
             text_bundle: TextBundle::from_section(text, theme.label.large.clone()),
+        }
+    }
+
+    pub(super) fn symbol(theme: &Theme, text: impl Into<String>) -> Self {
+        Self {
+            label: Label,
+            text_bundle: TextBundle::from_section(text, theme.label.symbol.clone()),
         }
     }
 }

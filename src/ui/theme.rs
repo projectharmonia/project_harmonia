@@ -23,6 +23,7 @@ pub(crate) struct Theme {
     pub(crate) checkbox: CheckboxTheme,
     pub(crate) gap: GapTheme,
     pub(crate) padding: PaddingTheme,
+    pub(crate) progress_bar: ProgressBarTheme,
     pub(crate) background_color: Color,
     pub(crate) modal_color: Color,
     pub(crate) panel_color: Color,
@@ -74,7 +75,7 @@ impl FromWorld for Theme {
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 symbol_text: TextStyle {
-                    font: symbol_handle,
+                    font: symbol_handle.clone(),
                     font_size: 35.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
@@ -92,6 +93,11 @@ impl FromWorld for Theme {
                 large: TextStyle {
                     font: text_handle.clone(),
                     font_size: 45.0,
+                    color: Color::rgb(0.1, 0.1, 0.1),
+                },
+                symbol: TextStyle {
+                    font: symbol_handle,
+                    font_size: 30.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
             },
@@ -137,6 +143,14 @@ impl FromWorld for Theme {
                 normal: UiRect::all(Val::Px(10.0)),
                 global: UiRect::all(Val::Px(20.0)),
             },
+            progress_bar: ProgressBarTheme {
+                node: Style {
+                    size: Size::all(Val::Percent(100.0)),
+                    ..Default::default()
+                },
+                background_color: Color::rgb(0.5, 0.5, 0.5),
+                fill_color: Color::rgb(0.35, 0.75, 0.35),
+            },
             background_color: Color::rgb(0.9, 0.9, 0.9),
             modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
             panel_color: Color::rgb(0.8, 0.8, 0.8),
@@ -162,6 +176,7 @@ pub(crate) struct ButtonTheme {
 pub(crate) struct LabelTheme {
     pub(crate) normal: TextStyle,
     pub(crate) large: TextStyle,
+    pub(crate) symbol: TextStyle,
 }
 
 pub(crate) struct TextEditTheme {
@@ -188,4 +203,10 @@ pub(crate) struct GapTheme {
 pub(crate) struct PaddingTheme {
     pub(crate) normal: UiRect,
     pub(crate) global: UiRect,
+}
+
+pub(crate) struct ProgressBarTheme {
+    pub(crate) node: Style,
+    pub(crate) background_color: Color,
+    pub(crate) fill_color: Color,
 }
