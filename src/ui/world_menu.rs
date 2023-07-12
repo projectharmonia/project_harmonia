@@ -17,7 +17,7 @@ use super::{
 use crate::core::{
     actor::ActiveActor,
     city::{ActiveCity, City, CityBundle},
-    family::{FamilyActors, FamilyDespawn},
+    family::{Family, FamilyDespawn, FamilyMembers},
     game_state::GameState,
     game_world::WorldName,
 };
@@ -48,7 +48,7 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         world_name: Res<WorldName>,
-        families: Query<(Entity, &Name), With<FamilyActors>>,
+        families: Query<(Entity, &Name), With<Family>>,
         cities: Query<(Entity, &Name), With<City>>,
     ) {
         commands
@@ -139,7 +139,7 @@ impl WorldMenuPlugin {
     fn family_node_spawn_system(
         mut commands: Commands,
         theme: Res<Theme>,
-        families: Query<(Entity, &Name), Added<FamilyActors>>,
+        families: Query<(Entity, &Name), Added<Family>>,
         tabs: Query<(&TabContent, &WorldTab)>,
         nodes: Query<&WorldEntity>,
     ) {
@@ -183,7 +183,7 @@ impl WorldMenuPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<(&WorldEntityNode, &FamilyButton)>,
         nodes: Query<&WorldEntity>,
-        families: Query<&FamilyActors>,
+        families: Query<&FamilyMembers>,
     ) {
         for event in &mut click_events {
             if let Ok((entity_node, family_button)) = buttons.get(event.0) {
@@ -192,10 +192,10 @@ impl WorldMenuPlugin {
                     .expect("family button should reference world entity node");
                 match family_button {
                     FamilyButton::Play => {
-                        let actors = families
+                        let members = families
                             .get(world_entity.0)
                             .expect("world entity node should reference a family");
-                        let actor_entity = *actors
+                        let actor_entity = *members
                             .first()
                             .expect("family always have at least one member");
 
@@ -281,7 +281,7 @@ impl WorldMenuPlugin {
     fn entity_node_despawn_system(
         mut commands: Commands,
         mut removed_cities: RemovedComponents<City>,
-        mut removed_families: RemovedComponents<FamilyActors>,
+        mut removed_families: RemovedComponents<Family>,
         nodes: Query<(Entity, &WorldEntity)>,
     ) {
         for removed_entity in removed_cities.iter().chain(&mut removed_families) {

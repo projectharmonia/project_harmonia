@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::{
     actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
-    family::{FamilyActors, SelectedFamilySpawned},
+    family::{FamilyMembers, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
@@ -52,13 +52,13 @@ impl FamilyEditorPlugin {
         mut commands: Commands,
         mut spawn_select_events: EventReader<SelectedFamilySpawned>,
         mut game_state: ResMut<NextState<GameState>>,
-        actors: Query<&FamilyActors>,
+        families: Query<&FamilyMembers>,
     ) {
         for event in &mut spawn_select_events {
-            let actors = actors
+            let members = families
                 .get(event.0)
                 .expect("spawned family should have actors");
-            let actor_entity = *actors
+            let actor_entity = *members
                 .first()
                 .expect("family should always have at least one member");
             commands.entity(actor_entity).insert(ActiveActor);

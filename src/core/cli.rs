@@ -9,7 +9,7 @@ use super::{
     actor::ActiveActor,
     city::{ActiveCity, City},
     error::{self, ErrorReport},
-    family::FamilySync,
+    family::ActorFamily,
     game_state::GameState,
     game_world::{GameLoad, WorldName, WorldState},
     network::{self, DEFAULT_PORT},
@@ -81,7 +81,7 @@ impl CliPlugin {
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
         families: Query<(Entity, &Name)>,
-        actors: Query<(Entity, &FamilySync)>,
+        actors: Query<(Entity, &ActorFamily)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
@@ -100,10 +100,10 @@ impl CliPlugin {
                         .find(|(_, family_name)| family_name.as_str() == name)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
-                    // Search using `FamilySync` because `Actors` component inserted to family on update.
+                    // Search using `ActorFamily` because `FamilyMembers` component inserted to family on update.
                     let (actor_entity, _) = actors
                         .iter()
-                        .find(|(_, family_sync)| family_sync.0 == family_entity)
+                        .find(|(_, family)| family.0 == family_entity)
                         .expect("family should contain at least one actor");
                     commands.entity(actor_entity).insert(ActiveActor);
                     game_state.set(GameState::Family);

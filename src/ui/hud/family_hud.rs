@@ -10,7 +10,7 @@ use crate::{
             ActiveActor,
         },
         asset_metadata::{ObjectCategory, ObjectMetadata},
-        family::{ActiveFamily, Budget, BuildingMode, FamilyActors, FamilyMode, FamilyPlugin},
+        family::{ActiveFamily, Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin},
         game_state::GameState,
         task::{TaskCancel, TaskState},
     },
@@ -75,7 +75,7 @@ impl FamilyHudPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        families: Query<(&Budget, &FamilyActors), With<ActiveFamily>>,
+        families: Query<(&Budget, &FamilyMembers), With<ActiveFamily>>,
         actors: Query<Entity, With<ActiveActor>>,
     ) {
         commands
@@ -116,9 +116,9 @@ impl FamilyHudPlugin {
                             FamilyMode::Life => {
                                 setup_tasks_node(parent, &theme);
 
-                                let (&budget, family_actors) = families.single();
+                                let (&budget, members) = families.single();
                                 setup_portrait_node(parent, &theme, budget);
-                                setup_members_node(parent, &theme, family_actors, actors.single());
+                                setup_members_node(parent, &theme, members, actors.single());
                                 setup_info_node(parent, &mut tab_commands, &theme);
                             }
                             FamilyMode::Building => setup_building_hud(
@@ -434,7 +434,7 @@ fn setup_portrait_node(parent: &mut ChildBuilder, theme: &Theme, budget: Budget)
 fn setup_members_node(
     parent: &mut ChildBuilder,
     theme: &Theme,
-    actors: &FamilyActors,
+    members: &FamilyMembers,
     active_entity: Entity,
 ) {
     parent
@@ -449,7 +449,7 @@ fn setup_members_node(
             ..Default::default()
         })
         .with_children(|parent| {
-            for &entity in actors.iter() {
+            for &entity in members.iter() {
                 parent.spawn((
                     PlayActor(entity),
                     Preview::actor(entity, theme.button.image.size),

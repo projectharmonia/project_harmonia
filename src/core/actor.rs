@@ -12,7 +12,7 @@ use strum::EnumIter;
 
 use super::{
     asset_handles::{AssetCollection, AssetHandles},
-    family::FamilySync,
+    family::ActorFamily,
     game_world::WorldState,
 };
 use friendly::FriendlyPlugins;
@@ -107,7 +107,7 @@ pub(super) struct ActorBundle {
     first_name: FirstName,
     last_name: LastName,
     sex: Sex,
-    family_sync: FamilySync,
+    actor_family: ActorFamily,
     parent_sync: ParentSync,
     transform: Transform,
     actor: Actor,
@@ -120,7 +120,7 @@ impl ActorBundle {
             first_name: actor_scene.first_name,
             last_name: actor_scene.last_name,
             sex: actor_scene.sex,
-            family_sync: FamilySync(family_entity),
+            actor_family: ActorFamily(family_entity),
             parent_sync: Default::default(),
             transform: Default::default(), // TODO: Get spawn position from world.
             actor: Actor,

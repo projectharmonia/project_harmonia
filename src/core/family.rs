@@ -25,7 +25,8 @@ impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<FamilyMode>()
             .add_state::<BuildingMode>()
-            .replicate::<FamilySync>()
+            .replicate::<ActorFamily>()
+            .replicate::<Family>()
             .replicate::<Budget>()
             .add_mapped_client_event::<FamilySpawn>(SendPolicy::Unordered)
             .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
@@ -34,7 +35,7 @@ impl Plugin for FamilyPlugin {
             .add_systems((Self::spawn_system, Self::despawn_system).in_set(ServerSet::Authority))
             .add_systems((
                 Self::activation_system.in_schedule(OnEnter(GameState::Family)),
-                Self::family_sync_system.in_set(OnUpdate(WorldState::InWorld)),
+                Self::members_update_system.in_set(OnUpdate(WorldState::InWorld)),
                 Self::deactivation_system.in_schedule(OnExit(GameState::Family)),
                 Self::cleanup_system.in_schedule(OnExit(WorldState::InWorld)),
             ));
@@ -50,36 +51,34 @@ impl FamilyPlugin {
         building_mode.set(Default::default());
     }
 
-    fn family_sync_system(
+    fn members_update_system(
         mut commands: Commands,
-        actors: Query<(Entity, Option<&ActorFamily>, &FamilySync), Changed<FamilySync>>,
-        mut families: Query<&mut FamilyActors>,
+        actors: Query<(Entity, &ActorFamily), Changed<ActorFamily>>,
+        mut families: Query<&mut FamilyMembers>,
     ) {
-        let mut new_actors = HashMap::<_, Vec<_>>::new();
-        for (entity, family, family_sync) in &actors {
+        let mut new_families = HashMap::<_, Vec<_>>::new();
+        for (actor_entity, family) in &actors {
             // Remove previous.
-            if let Some(family) = family {
-                if let Ok(mut actors) = families.get_mut(family.0) {
-                    let index = actors
-                        .iter()
-                        .position(|&actor_entity| actor_entity == entity)
-                        .expect("actors should contain referenced entity");
-                    actors.swap_remove(index);
+            for mut members in &mut families {
+                if let Some(position) = members.iter().position(|&entity| entity == actor_entity) {
+                    members.0.swap_remove(position);
+                    break;
                 }
             }
 
-            commands.entity(entity).insert(ActorFamily(family_sync.0));
-            if let Ok(mut actors) = families.get_mut(family_sync.0) {
-                actors.push(entity);
+            if let Ok(mut family) = families.get_mut(family.0) {
+                family.0.push(actor_entity);
             } else {
-                new_actors.entry(family_sync.0).or_default().push(entity);
+                new_families.entry(family.0).or_default().push(actor_entity);
             }
         }
 
-        // Apply accumulated `FamilyActors` at once in case there was no such component otherwise
-        // multiple `FamilyActors` insertion with a single entity will overwrite each other.
-        for (family, actors) in new_actors {
-            commands.entity(family).insert(FamilyActors(actors));
+        // Apply accumulated `FamilyMembers` at once in case there was no such component otherwise
+        // multiple `FamilyMembers` insertion with a single entity will overwrite each other.
+        for (family_entity, members) in new_families {
+            commands
+                .entity(family_entity)
+                .insert(FamilyMembers(members));
         }
     }
 
@@ -126,13 +125,13 @@ impl FamilyPlugin {
     fn despawn_system(
         mut commands: Commands,
         mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
-        families: Query<(Entity, &mut FamilyActors)>,
+        families: Query<(Entity, &mut FamilyMembers)>,
     ) {
         for event in despawn_events.iter().map(|event| event.event) {
             match families.get(event.0) {
-                Ok((family_entity, actors)) => {
+                Ok((family_entity, members)) => {
                     commands.entity(family_entity).despawn();
-                    for &entity in actors.iter() {
+                    for &entity in &members.0 {
                         commands.entity(entity).despawn_recursive();
                     }
                 }
@@ -148,30 +147,18 @@ impl FamilyPlugin {
         commands.entity(actors.single().0).insert(ActiveFamily);
     }
 
-    fn deactivation_system(mut commands: Commands, actors: Query<&ActorFamily, With<ActiveActor>>) {
-        commands.entity(actors.single().0).remove::<ActiveFamily>();
+    fn deactivation_system(
+        mut commands: Commands,
+        families: Query<&ActorFamily, With<ActiveActor>>,
+    ) {
+        commands
+            .entity(families.single().0)
+            .remove::<ActiveFamily>();
     }
 
-    fn cleanup_system(mut commands: Commands, actors: Query<Entity, With<FamilyActors>>) {
-        for entity in &actors {
+    fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {
+        for entity in &families {
             commands.entity(entity).despawn();
-        }
-    }
-}
-
-#[derive(Bundle)]
-struct FamilyBundle {
-    name: Name,
-    budget: Budget,
-    replication: Replication,
-}
-
-impl FamilyBundle {
-    fn new(name: Name, budget: Budget) -> Self {
-        Self {
-            name,
-            budget,
-            replication: Replication,
         }
     }
 }
@@ -212,35 +199,28 @@ impl BuildingMode {
     }
 }
 
-/// Contains the family entity to which the actor belongs.
-#[derive(Component)]
-pub(crate) struct ActorFamily(pub(crate) Entity);
+#[derive(Bundle)]
+struct FamilyBundle {
+    name: Name,
+    family: Family,
+    budget: Budget,
+    replication: Replication,
+}
 
-/// Contains the entities of all the actors that belong to the family.
-#[derive(Component, Default, Deref, DerefMut)]
-pub(crate) struct FamilyActors(Vec<Entity>);
-
-/// Contains the family entity to which the actor belongs.
-///
-/// Automatically updates [`ActorFamily`] and [`FamilyActors`] components after insertion.
-#[derive(Component, Reflect)]
-#[reflect(Component, MapEntities)]
-pub(crate) struct FamilySync(pub(crate) Entity);
-
-// We need to impl either [`FromWorld`] or [`Default`] so [`FamilySync`] can be registered as [`Reflect`].
-// Same technique is used in Bevy for [`Parent`]
-impl FromWorld for FamilySync {
-    fn from_world(_world: &mut World) -> Self {
-        Self(Entity::PLACEHOLDER)
+impl FamilyBundle {
+    fn new(name: Name, budget: Budget) -> Self {
+        Self {
+            name,
+            family: Family,
+            budget,
+            replication: Replication,
+        }
     }
 }
 
-impl MapEntities for FamilySync {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
-    }
-}
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(crate) struct Family;
 
 /// Indicates locally controlled family.
 ///
@@ -251,6 +231,32 @@ pub(crate) struct ActiveFamily;
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
+
+/// Contains the entities of all the actors that belong to the family.
+///
+/// Automatically created and updated based on [`ActorFamily`].
+#[derive(Component, Default, Deref)]
+pub(crate) struct FamilyMembers(Vec<Entity>);
+
+/// Contains the family entity to which the actor belongs.
+#[derive(Component, Reflect)]
+#[reflect(Component, MapEntities)]
+pub(crate) struct ActorFamily(pub(crate) Entity);
+
+impl MapEntities for ActorFamily {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
+        self.0 = entity_map.get(self.0)?;
+        Ok(())
+    }
+}
+
+// We need to impl either [`FromWorld`] or [`Default`] so [`ActorFamily`] can be registered as [`Reflect`].
+// Same technique is used in Bevy for [`Parent`]
+impl FromWorld for ActorFamily {
+    fn from_world(_world: &mut World) -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
 
 /// Event that spawns a family.
 #[derive(Debug, Serialize, Deserialize)]
