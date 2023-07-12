@@ -29,7 +29,7 @@ impl ButtonPlugin {
                 let style = match kind {
                     TextButtonKind::Normal => theme.button.normal_text.clone(),
                     TextButtonKind::Large => theme.button.large_text.clone(),
-                    TextButtonKind::Symbol => theme.button.square_text.clone(),
+                    TextButtonKind::Symbol => theme.button.symbol_text.clone(),
                 };
                 parent.spawn(TextBundle::from_section(text.0.clone(), style));
             });
@@ -194,7 +194,7 @@ impl TextButtonBundle {
         let style = match kind {
             TextButtonKind::Normal => theme.button.normal.clone(),
             TextButtonKind::Large => theme.button.large.clone(),
-            TextButtonKind::Symbol => theme.button.square.clone(),
+            TextButtonKind::Symbol => theme.button.symbol.clone(),
         };
         Self {
             kind,

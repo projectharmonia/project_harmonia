@@ -47,7 +47,7 @@ impl FromWorld for Theme {
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
-                square: Style {
+                symbol: Style {
                     size: Size::new(Val::Px(40.0), Val::Px(40.0)),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -73,7 +73,7 @@ impl FromWorld for Theme {
                     font_size: 40.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
-                square_text: TextStyle {
+                symbol_text: TextStyle {
                     font: symbol_handle,
                     font_size: 35.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
@@ -147,12 +147,12 @@ impl FromWorld for Theme {
 pub(crate) struct ButtonTheme {
     pub(crate) normal: Style,
     pub(crate) large: Style,
-    pub(crate) square: Style,
+    pub(crate) symbol: Style,
     pub(crate) image_button: Style,
     pub(crate) image: Style,
     pub(crate) normal_text: TextStyle,
     pub(crate) large_text: TextStyle,
-    pub(crate) square_text: TextStyle,
+    pub(crate) symbol_text: TextStyle,
     pub(crate) normal_color: Color,
     pub(crate) hovered_color: Color,
     pub(crate) pressed_color: Color,
