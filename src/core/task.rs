@@ -191,8 +191,8 @@ enum TaskRequestField {
 }
 
 struct TaskRequestSerializer<'a> {
-    registry: &'a TypeRegistryInternal,
     event: &'a TaskRequest,
+    registry: &'a TypeRegistryInternal,
 }
 
 impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
@@ -202,7 +202,7 @@ impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
         event: &'a TaskRequest,
         registry: &'a TypeRegistryInternal,
     ) -> Self::EventSerializer<'a> {
-        Self::EventSerializer { registry, event }
+        Self::EventSerializer { event, registry }
     }
 }
 
