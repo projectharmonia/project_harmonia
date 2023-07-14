@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{Movement, MovementBundle};
@@ -9,14 +10,14 @@ use crate::core::{
     game_world::WorldState,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
-    task::{AppTaskExt, Task, TaskGroups, TaskList, TaskListSet, TaskState},
+    task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct MoveHerePlugin;
 
 impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
-        app.register_task::<MoveHere>()
+        app.replicate::<MoveHere>()
             .add_system(Self::list_system.in_set(TaskListSet))
             .add_systems(
                 (

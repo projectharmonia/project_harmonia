@@ -10,7 +10,7 @@ use crate::core::{
     cursor_hover::CursorHover,
     family::ActorFamily,
     ground::Ground,
-    task::{AppTaskExt, Task, TaskList, TaskListSet, TaskState},
+    task::{Task, TaskList, TaskListSet, TaskState},
 };
 
 use super::{LotFamily, LotVertices};
@@ -19,7 +19,7 @@ pub(super) struct BuyLotPlugin;
 
 impl Plugin for BuyLotPlugin {
     fn build(&self, app: &mut App) {
-        app.register_task::<BuyLot>()
+        app.replicate::<BuyLot>()
             .add_system(Self::list_system.in_set(TaskListSet))
             .add_system(Self::buying_system.in_set(ServerSet::Authority));
     }

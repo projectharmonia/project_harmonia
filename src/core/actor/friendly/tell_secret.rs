@@ -11,14 +11,14 @@ use crate::core::{
     cursor_hover::CursorHover,
     game_world::WorldState,
     navigation::{following::Following, Navigation},
-    task::{AppTaskExt, Task, TaskGroups, TaskList, TaskListSet, TaskState},
+    task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct TellSecretPlugin;
 
 impl Plugin for TellSecretPlugin {
     fn build(&self, app: &mut App) {
-        app.register_task::<TellSecret>()
+        app.replicate::<TellSecret>()
             .replicate::<ListenSecret>()
             .add_system(Self::list_system.in_set(TaskListSet))
             .add_systems(

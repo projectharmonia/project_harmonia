@@ -8,11 +8,10 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        GetTypeRegistration, TypeRegistryInternal,
+        TypeRegistryInternal,
     },
 };
 use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, RegisterExt};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{
@@ -150,17 +149,6 @@ bitflags! {
     }
 }
 
-pub(super) trait AppTaskExt {
-    fn register_task<T: Component + Task + GetTypeRegistration>(&mut self) -> &mut Self;
-}
-
-impl AppTaskExt for App {
-    fn register_task<T: Component + Task + GetTypeRegistration>(&mut self) -> &mut Self {
-        self.replicate::<T>().register_component_as::<dyn Task, T>()
-    }
-}
-
-#[queryable]
 #[reflect_trait]
 pub(crate) trait Task: Reflect + Debug {
     fn name(&self) -> &str;
