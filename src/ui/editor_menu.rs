@@ -20,15 +20,17 @@ use crate::core::{
     actor::{race::Race, ActorScene, FirstName, LastName, Sex},
     city::City,
     error,
-    family::{FamilyScene, FamilySpawn},
-    family_editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
+    family::{
+        editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
+        FamilyScene, FamilySpawn,
+    },
     game_paths::GamePaths,
     game_state::GameState,
 };
 
-pub(super) struct FamilyEditorMenuPlugin;
+pub(super) struct EditorMenuPlugin;
 
-impl Plugin for FamilyEditorMenuPlugin {
+impl Plugin for EditorMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::FamilyEditor)))
             .add_systems(
@@ -55,7 +57,7 @@ impl Plugin for FamilyEditorMenuPlugin {
     }
 }
 
-impl FamilyEditorMenuPlugin {
+impl EditorMenuPlugin {
     fn setup_system(mut commands: Commands, theme: Res<Theme>) {
         commands
             .spawn((

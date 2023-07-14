@@ -12,7 +12,6 @@ pub(super) mod cursor_hover;
 pub(super) mod developer;
 pub(super) mod error;
 pub(super) mod family;
-pub(super) mod family_editor;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
@@ -40,7 +39,6 @@ use cursor_hover::CursorHoverPlugin;
 use developer::DeveloperPlugin;
 use error::ErrorPlugin;
 use family::FamilyPlugin;
-use family_editor::FamilyEditorPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
@@ -76,7 +74,6 @@ impl PluginGroup for CorePlugins {
             .add(DeveloperPlugin)
             .add(ErrorPlugin)
             .add(FamilyPlugin)
-            .add(FamilyEditorPlugin)
             .add(GamePathsPlugin)
             .add(PlayerCameraPlugin)
             .add(ReadyScenePlugin)

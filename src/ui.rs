@@ -1,7 +1,7 @@
 mod camera_2d;
 mod connection_dialog;
+mod editor_menu;
 mod error_dialog;
-mod family_editor_menu;
 mod hud;
 mod ingame_menu;
 mod main_menu;
@@ -16,8 +16,8 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use camera_2d::Camera2dPlugin;
 use connection_dialog::ConnectionDialogPlugin;
+use editor_menu::EditorMenuPlugin;
 use error_dialog::ErrorDialogPlugin;
-use family_editor_menu::FamilyEditorMenuPlugin;
 use hud::HudPlugin;
 use ingame_menu::InGameMenuPlugin;
 use main_menu::MainMenuPlugin;
@@ -36,7 +36,7 @@ impl PluginGroup for UiPlugins {
             .add(Camera2dPlugin)
             .add(ConnectionDialogPlugin)
             .add(ErrorDialogPlugin)
-            .add(FamilyEditorMenuPlugin)
+            .add(EditorMenuPlugin)
             .add(HudPlugin)
             .add(InGameMenuPlugin)
             .add(WidgetPlugin)

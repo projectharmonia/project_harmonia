@@ -2,16 +2,16 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use super::{
+use crate::core::{
     actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
     family::{FamilyMembers, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
 
-pub(super) struct FamilyEditorPlugin;
+pub(super) struct EditorPlugin;
 
-impl Plugin for FamilyEditorPlugin {
+impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
             .add_systems(
@@ -26,7 +26,7 @@ impl Plugin for FamilyEditorPlugin {
     }
 }
 
-impl FamilyEditorPlugin {
+impl EditorPlugin {
     fn setup_system(mut commands: Commands) {
         commands
             .spawn(EditableFamilyBundle::default())

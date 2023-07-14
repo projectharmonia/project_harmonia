@@ -1,3 +1,5 @@
+pub(crate) mod editor;
+
 use anyhow::Result;
 use bevy::{
     ecs::{
@@ -18,12 +20,14 @@ use super::{
     game_state::GameState,
     game_world::WorldState,
 };
+use editor::EditorPlugin;
 
 pub(crate) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<FamilyMode>()
+        app.add_plugin(EditorPlugin)
+            .add_state::<FamilyMode>()
             .add_state::<BuildingMode>()
             .replicate::<ActorFamily>()
             .replicate::<Family>()
