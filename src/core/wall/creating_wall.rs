@@ -75,7 +75,7 @@ impl CreatingWallPlugin {
         if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
             let (mut edges, parent) = creating_walls.single_mut();
             let children = children.get(**parent).unwrap();
-            let mut edge = edges
+            let edge = edges
                 .last_mut()
                 .expect("creating wall should always consist of one edge");
 
