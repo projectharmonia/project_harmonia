@@ -1,4 +1,5 @@
 pub(crate) mod editor;
+pub(crate) mod family_spawn;
 
 use anyhow::Result;
 use bevy::{
@@ -15,12 +16,13 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    actor::{race::ReflectRace, ActiveActor, ActorBundle, ActorScene},
+    actor::{ActiveActor, ActorBundle},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldState,
 };
 use editor::EditorPlugin;
+use family_spawn::{FamilySpawn, FamilySpawnDeserializer, FamilySpawnSerializer};
 
 pub(crate) struct FamilyPlugin;
 
@@ -32,7 +34,7 @@ impl Plugin for FamilyPlugin {
             .replicate::<ActorFamily>()
             .replicate::<Family>()
             .replicate::<Budget>()
-            .add_mapped_client_event::<FamilySpawn>(SendPolicy::Unordered)
+            .add_mapped_client_reflect_event::<FamilySpawn, FamilySpawnSerializer, FamilySpawnDeserializer>(SendPolicy::Unordered)
             .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
             .add_mapped_server_event::<SelectedFamilySpawned>(SendPolicy::Unordered)
             .add_system(Self::reset_mode_system.in_schedule(OnEnter(GameState::Family)))
@@ -90,31 +92,16 @@ impl FamilyPlugin {
         mut commands: Commands,
         mut spawn_select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
         mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
-        registry: Res<AppTypeRegistry>,
     ) {
-        let registry = registry.read();
         for FromClient { client_id, event } in spawn_events.drain() {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            for actor_scene in event.scene.actor_scenes {
-                let Some(registration) = registry.get_with_name(&actor_scene.race_name) else {
-                    error!("{:?} is not registered", actor_scene.race_name);
-                    continue;
-                };
-                if registration.data::<ReflectRace>().is_none() {
-                    error!("{:?} doesn't have reflect(Race)", actor_scene.race_name);
-                    continue;
-                }
-                let Some(reflect_default) = registration.data::<ReflectDefault>() else {
-                    error!("{:?} doesn't have reflect(Default)", actor_scene.race_name);
-                    continue;
-                };
-
+            for race_bundle in event.scene.actors {
                 commands.entity(event.city_entity).with_children(|parent| {
                     parent
-                        .spawn(ActorBundle::new(actor_scene, family_entity))
-                        .insert_reflect([reflect_default.default()]);
+                        .spawn(ActorBundle::new(family_entity))
+                        .insert_reflect_bundle(race_bundle.into_reflect());
                 });
             }
             if event.select {
@@ -259,39 +246,6 @@ impl MapEntities for ActorFamily {
 impl FromWorld for ActorFamily {
     fn from_world(_world: &mut World) -> Self {
         Self(Entity::PLACEHOLDER)
-    }
-}
-
-/// Event that spawns a family.
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct FamilySpawn {
-    pub(crate) city_entity: Entity,
-    pub(crate) scene: FamilyScene,
-    pub(crate) select: bool,
-}
-
-impl MapEntities for FamilySpawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.city_entity = entity_map.get(self.city_entity)?;
-        Ok(())
-    }
-}
-
-/// Serializable family scene for gallery.
-#[derive(Debug, Default, Deserialize, Serialize, Component)]
-pub(crate) struct FamilyScene {
-    pub(crate) name: Name,
-    budget: Budget,
-    actor_scenes: Vec<ActorScene>,
-}
-
-impl FamilyScene {
-    pub(crate) fn new(name: Name, actor_scenes: Vec<ActorScene>) -> Self {
-        Self {
-            name,
-            budget: Default::default(),
-            actor_scenes,
-        }
     }
 }
 

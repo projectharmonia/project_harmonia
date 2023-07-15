@@ -312,28 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy-trait-query"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7719167dcccafd74b9a095040b0ec607b4122c456997bb4627a077327d28efd7"
-dependencies = [
- "bevy",
- "bevy-trait-query-impl",
-]
-
-[[package]]
-name = "bevy-trait-query-impl"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94409af279211961a171e773c66b8c174dcfc17929d884ac9826531601912986"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn 1.0.107",
-]
-
-[[package]]
 name = "bevy_a11y"
 version = "0.10.1"
 source = "git+https://github.com/lifescapegame/bevy?branch=dynamic-scene-entity-0.10#c1f4f26b5aca4e31a7eee46db1263de0fe0f571a"
@@ -2160,7 +2138,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
- "bevy-trait-query",
  "bevy_atmosphere",
  "bevy_mod_outline",
  "bevy_polyline",

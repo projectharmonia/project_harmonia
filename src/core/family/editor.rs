@@ -1,15 +1,20 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, fs};
 
+use anyhow::{Context, Result};
 use bevy::prelude::*;
 
 use crate::core::{
     actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
+    error,
     family::{FamilyMembers, SelectedFamilySpawned},
+    game_paths::GamePaths,
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
 
-pub(super) struct EditorPlugin;
+use super::family_spawn::{FamilyScene, FamilySceneSerializer};
+
+pub(crate) struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
@@ -18,6 +23,7 @@ impl Plugin for EditorPlugin {
                 (
                     Self::selection_system,
                     Self::reset_family_system.run_if(on_event::<FamilyReset>()),
+                    Self::scene_save_system.pipe(error::report),
                 )
                     .in_set(OnUpdate(GameState::FamilyEditor)),
             )
@@ -64,6 +70,26 @@ impl EditorPlugin {
             commands.entity(actor_entity).insert(ActiveActor);
             game_state.set(GameState::Family);
         }
+    }
+
+    pub(crate) fn scene_save_system(
+        registry: Res<AppTypeRegistry>,
+        game_paths: Res<GamePaths>,
+        family_scenes: Query<&FamilyScene, Added<FamilyScene>>,
+    ) -> Result<()> {
+        if let Ok(family_scene) = family_scenes.get_single() {
+            fs::create_dir_all(&game_paths.families)
+                .with_context(|| format!("unable to create {:?}", game_paths.families))?;
+
+            let registry = registry.read();
+            let serializer = FamilySceneSerializer::new(family_scene, &registry);
+            let ron = ron::to_string(&serializer).expect("unable to serialize family scene");
+            let family_path = game_paths.family_path(&family_scene.name);
+            fs::write(&family_path, ron)
+                .with_context(|| format!("unable to save game to {family_path:?}"))?;
+        }
+
+        Ok(())
     }
 
     fn reset_family_system(mut commands: Commands, actors: Query<Entity, With<EditableActor>>) {

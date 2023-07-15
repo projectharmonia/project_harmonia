@@ -1,8 +1,7 @@
-use std::{fs, mem};
+use std::mem;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bevy::prelude::*;
-use bevy_trait_query::One;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
@@ -17,14 +16,13 @@ use super::{
     },
 };
 use crate::core::{
-    actor::{race::Race, ActorScene, FirstName, LastName, Sex},
+    actor::{FirstName, LastName, Sex},
     city::City,
     error,
     family::{
         editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
-        FamilyScene, FamilySpawn,
+        family_spawn::{FamilyScene, FamilySpawn},
     },
-    game_paths::GamePaths,
     game_state::GameState,
 };
 
@@ -235,12 +233,7 @@ impl EditorMenuPlugin {
     fn save_family_button_system(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
-        game_paths: Res<GamePaths>,
         theme: Res<Theme>,
-        mut actors: Query<
-            (&mut FirstName, &mut LastName, &Sex, One<&dyn Race>),
-            With<EditableActor>,
-        >,
         mut text_edits: Query<&mut Text, With<FamilyNameEdit>>,
         buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
@@ -253,28 +246,9 @@ impl EditorMenuPlugin {
             };
 
             if button == SaveDialogButton::Save {
-                let mut actor_scenes = Vec::new();
-                for (mut first_name, mut last_name, &sex, race) in &mut actors {
-                    actor_scenes.push(ActorScene {
-                        first_name: mem::take(&mut first_name),
-                        last_name: mem::take(&mut last_name),
-                        sex,
-                        race_name: race.type_name().to_string(),
-                    })
-                }
                 let mut family_name = text_edits.single_mut();
-                let family_scene = FamilyScene::new(
-                    mem::take(&mut family_name.sections[0].value).into(),
-                    actor_scenes,
-                );
-
-                fs::create_dir_all(&game_paths.families)
-                    .with_context(|| format!("unable to create {:?}", game_paths.families))?;
-
-                let ron = ron::to_string(&family_scene).expect("unable to serialize family scene");
-                let family_path = game_paths.family_path(&family_scene.name);
-                fs::write(&family_path, ron)
-                    .with_context(|| format!("unable to save game to {family_path:?}"))?;
+                let family_scene =
+                    FamilyScene::new(mem::take(&mut family_name.sections[0].value).into());
 
                 setup_place_family_dialog(
                     &mut commands,

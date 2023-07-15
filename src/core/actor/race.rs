@@ -1,8 +1,7 @@
 pub(crate) mod human;
 
-use bevy::{app::PluginGroupBuilder, prelude::*, reflect::GetTypeRegistration};
-use bevy_replicon::prelude::*;
-use bevy_trait_query::{queryable, RegisterExt};
+use bevy::{app::PluginGroupBuilder, prelude::*};
+use std::fmt::Debug;
 
 use human::HumanPlugin;
 
@@ -14,18 +13,7 @@ impl PluginGroup for RacePlugins {
     }
 }
 
-#[queryable]
 #[reflect_trait]
-pub(crate) trait Race: Reflect {
+pub(crate) trait RaceBundle: Debug + Reflect {
     fn glyph(&self) -> &'static str;
-}
-
-trait AppRaceExt {
-    fn register_race<T: Race + GetTypeRegistration + Component>(&mut self) -> &mut Self;
-}
-
-impl AppRaceExt for App {
-    fn register_race<T: Race + GetTypeRegistration + Component>(&mut self) -> &mut Self {
-        self.replicate::<T>().register_component_as::<dyn Race, T>()
-    }
 }

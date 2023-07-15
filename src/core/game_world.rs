@@ -2,13 +2,12 @@ use std::fs;
 
 use anyhow::{Context, Result};
 use bevy::{
-    ecs::archetype::ArchetypeId,
+    ecs::{archetype::ArchetypeId, component::ComponentId},
     prelude::*,
     reflect::TypeRegistryArc,
     scene::{self, serde::SceneDeserializer, DynamicEntity},
 };
 use bevy_replicon::prelude::*;
-use bevy_trait_query::imports::ComponentId;
 use serde::de::DeserializeSeed;
 
 use super::{error, game_paths::GamePaths, game_state::GameState};

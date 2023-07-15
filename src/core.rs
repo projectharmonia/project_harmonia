@@ -23,6 +23,7 @@ pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
 pub(super) mod ready_scene;
+mod reflect_bundle;
 pub(super) mod settings;
 pub(super) mod task;
 pub(super) mod wall;

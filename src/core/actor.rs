@@ -4,6 +4,8 @@ pub(crate) mod needs;
 pub(crate) mod race;
 
 use bevy::prelude::*;
+use bevy_mod_outline::OutlineBundle;
+use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
 use num_enum::IntoPrimitive;
@@ -12,9 +14,12 @@ use strum::EnumIter;
 
 use super::{
     asset_handles::{AssetCollection, AssetHandles},
+    cursor_hover::OutlineHoverExt,
     family::ActorFamily,
     game_world::WorldState,
+    ready_scene::ReadyScene,
 };
+use crate::core::{collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable};
 use friendly::FriendlyPlugins;
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
@@ -34,14 +39,63 @@ impl Plugin for ActorPlugin {
             .replicate::<Sex>()
             .replicate::<LastName>()
             .not_replicate_if_present::<Name, FirstName>()
-            .add_systems((
-                Self::name_update_system.in_set(OnUpdate(WorldState::InWorld)),
-                Self::exclusive_system.in_base_set(CoreSet::PostUpdate),
-            ));
+            .add_systems(
+                (
+                    Self::init_system,
+                    Self::scene_init_system,
+                    Self::name_update_system,
+                )
+                    .in_set(OnUpdate(WorldState::InWorld)),
+            )
+            .add_system(Self::exclusive_system.in_base_set(CoreSet::PostUpdate));
     }
 }
 
 impl ActorPlugin {
+    fn init_system(
+        mut commands: Commands,
+        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actors: Query<Entity, Added<Actor>>,
+    ) {
+        for entity in &actors {
+            const HALF_HEIGHT: f32 = 0.6;
+            const RADIUS: f32 = 0.3;
+            commands
+                .entity(entity)
+                .insert((
+                    actor_animations.handle(ActorAnimation::Idle),
+                    VisibilityBundle::default(),
+                    GlobalTransform::default(),
+                    Hoverable,
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        SpatialBundle::from_transform(Transform::from_translation(
+                            Vec3::Y * (HALF_HEIGHT + RADIUS),
+                        )),
+                        CollisionGroups::new(Group::ACTOR, Group::ALL),
+                        Collider::capsule_y(HALF_HEIGHT, RADIUS),
+                    ));
+                });
+        }
+    }
+
+    fn scene_init_system(
+        mut commands: Commands,
+        actors: Query<Entity, (Added<ReadyScene>, With<Actor>)>,
+        chidlren: Query<&Children>,
+        meshes: Query<(), With<Handle<Mesh>>>,
+    ) {
+        for actor_entity in &actors {
+            for child_entity in chidlren
+                .iter_descendants(actor_entity)
+                .filter(|&entity| meshes.get(entity).is_ok())
+            {
+                commands.entity(child_entity).insert(OutlineBundle::hover());
+            }
+        }
+    }
+
     fn name_update_system(
         mut commands: Commands,
         mut changed_names: Query<
@@ -104,9 +158,6 @@ pub(crate) struct ActiveActor;
 /// Minimal actor components without a race.
 #[derive(Bundle)]
 pub(super) struct ActorBundle {
-    first_name: FirstName,
-    last_name: LastName,
-    sex: Sex,
     actor_family: ActorFamily,
     parent_sync: ParentSync,
     transform: Transform,
@@ -115,11 +166,8 @@ pub(super) struct ActorBundle {
 }
 
 impl ActorBundle {
-    pub(super) fn new(actor_scene: ActorScene, family_entity: Entity) -> Self {
+    pub(super) fn new(family_entity: Entity) -> Self {
         Self {
-            first_name: actor_scene.first_name,
-            last_name: actor_scene.last_name,
-            sex: actor_scene.sex,
             actor_family: ActorFamily(family_entity),
             parent_sync: Default::default(),
             transform: Default::default(), // TODO: Get spawn position from world.
@@ -133,15 +181,6 @@ impl ActorBundle {
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub(crate) struct Actor;
-
-/// Serializable actor scene for gallery.
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct ActorScene {
-    pub(crate) first_name: FirstName,
-    pub(crate) last_name: LastName,
-    pub(crate) sex: Sex,
-    pub(crate) race_name: String,
-}
 
 #[derive(Clone, Copy, EnumIter, IntoPrimitive)]
 #[repr(usize)]
