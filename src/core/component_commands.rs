@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::system::{Command, EntityCommands},
+    ecs::system::{EntityCommand, EntityCommands},
     prelude::*,
 };
 
@@ -17,11 +17,7 @@ pub(super) trait ComponentCommandsExt {
 
 impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
     fn remove_by_name(&mut self, name: String) -> &mut Self {
-        let command = RemoveByName {
-            entity: self.id(),
-            name,
-        };
-        self.commands().add(command);
+        self.add(RemoveByName(name));
         self
     }
 
@@ -29,58 +25,44 @@ impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
     where
         T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
     {
-        let command = InsertReflect {
-            entity: self.id(),
-            components,
-        };
-        self.commands().add(command);
+        self.add(InsertReflect(components));
         self
     }
 
     fn insert_reflect_bundle(&mut self, bundle: Box<dyn Reflect>) -> &mut Self {
-        let command = InsertReflectBundle {
-            entity: self.id(),
-            bundle,
-        };
-        self.commands().add(command);
+        self.add(InsertReflectBundle(bundle));
         self
     }
 }
 
-struct RemoveByName {
-    entity: Entity,
-    name: String,
-}
+struct RemoveByName(String);
 
-impl Command for RemoveByName {
-    fn write(self, world: &mut World) {
+impl EntityCommand for RemoveByName {
+    fn write(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let registration = registry
-            .get_with_name(&self.name)
-            .unwrap_or_else(|| panic!("{} should be registered", self.name));
+            .get_with_name(&self.0)
+            .unwrap_or_else(|| panic!("{} should be registered", self.0));
         let reflect_component = registration
             .data::<ReflectComponent>()
-            .unwrap_or_else(|| panic!("{} should have reflect(Component)", self.name));
-        let mut entity = world.entity_mut(self.entity);
+            .unwrap_or_else(|| panic!("{} should have reflect(Component)", self.0));
+        let mut entity = world.entity_mut(entity);
         reflect_component.remove(&mut entity);
     }
 }
 
-struct InsertReflect<T: IntoIterator<Item = Box<dyn Reflect>>> {
-    entity: Entity,
-    components: T,
-}
+struct InsertReflect<T: IntoIterator<Item = Box<dyn Reflect>>>(T);
 
-impl<T> Command for InsertReflect<T>
+impl<T> EntityCommand for InsertReflect<T>
 where
     T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
 {
-    fn write(self, world: &mut World) {
+    fn write(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
-        let mut entity = world.entity_mut(self.entity);
-        for component in self.components {
+        let mut entity = world.entity_mut(entity);
+        for component in self.0 {
             let type_name = component.type_name();
             let registration = registry
                 .get_with_name(type_name)
@@ -94,16 +76,13 @@ where
     }
 }
 
-struct InsertReflectBundle {
-    entity: Entity,
-    bundle: Box<dyn Reflect>,
-}
+struct InsertReflectBundle(Box<dyn Reflect>);
 
-impl Command for InsertReflectBundle {
-    fn write(self, world: &mut World) {
+impl EntityCommand for InsertReflectBundle {
+    fn write(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
-        let type_name = self.bundle.type_name();
+        let type_name = self.0.type_name();
         let registration = registry
             .get_with_name(type_name)
             .unwrap_or_else(|| panic!("{type_name} should be registered"));
@@ -111,7 +90,7 @@ impl Command for InsertReflectBundle {
             .data::<ReflectBundle>()
             .unwrap_or_else(|| panic!("{type_name} should have reflect(Bundle)"));
 
-        reflect_bundle.insert(&mut world.entity_mut(self.entity), &*self.bundle);
+        reflect_bundle.insert(&mut world.entity_mut(entity), &*self.0);
     }
 }
 
