@@ -82,11 +82,14 @@ pub(super) fn setup_objects_node(
         .id();
 
     for (index, &category) in categories.iter().enumerate() {
-        // TODO 0.11: Use grid layout.
         let content_entity = parent
             .spawn(NodeBundle {
                 style: Style {
+                    display: Display::Grid,
                     column_gap: theme.gap.normal,
+                    row_gap: theme.gap.normal,
+                    padding: theme.padding.normal,
+                    grid_template_columns: vec![GridTrack::auto(); 8],
                     ..Default::default()
                 },
                 ..Default::default()

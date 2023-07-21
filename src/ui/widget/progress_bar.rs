@@ -59,7 +59,6 @@ impl ProgressBarBundle {
         Self {
             progress_bar: ProgressBar(value),
             node_bundle: NodeBundle {
-                style: theme.progress_bar.node.clone(),
                 background_color: theme.progress_bar.background_color.into(),
                 ..Default::default()
             },

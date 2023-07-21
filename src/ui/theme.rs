@@ -152,11 +152,6 @@ impl FromWorld for Theme {
                 global: UiRect::all(Val::Px(20.0)),
             },
             progress_bar: ProgressBarTheme {
-                node: Style {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    ..Default::default()
-                },
                 background_color: Color::rgb(0.5, 0.5, 0.5),
                 fill_color: Color::rgb(0.35, 0.75, 0.35),
             },
@@ -215,7 +210,6 @@ pub(crate) struct PaddingTheme {
 }
 
 pub(crate) struct ProgressBarTheme {
-    pub(crate) node: Style,
     pub(crate) background_color: Color,
     pub(crate) fill_color: Color,
 }

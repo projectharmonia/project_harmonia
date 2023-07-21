@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use itertools::Itertools;
 use strum::{EnumIter, IntoEnumIterator};
 
 use super::objects_node;
@@ -296,32 +295,30 @@ impl FamilyHudPlugin {
         let mut content_entity = commands.entity(tab_content.0);
         content_entity.despawn_descendants();
         content_entity.with_children(|parent| {
-            // TODO 0.11: Use grid layout.
-            const COLUMNS_COUNT: usize = 2;
-            for chunk in &needs.iter_many(children).chunks(COLUMNS_COUNT) {
-                parent.spawn(NodeBundle::default()).with_children(|parent| {
-                    for (need_entity, glyph, need) in chunk {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        display: Display::Grid,
+                        column_gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
+                        padding: theme.padding.normal,
+                        grid_template_columns: vec![
+                            GridTrack::auto(),
+                            GridTrack::flex(1.0),
+                            GridTrack::auto(),
+                            GridTrack::flex(1.0),
+                        ],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    for (need_entity, glyph, need) in needs.iter_many(children) {
+                        parent.spawn(LabelBundle::symbol(&theme, glyph.0));
                         parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    width: Val::Percent(100.0),
-                                    height: Val::Percent(100.0),
-                                    padding: theme.padding.normal,
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(LabelBundle::symbol(&theme, glyph.0));
-                                parent.spawn((
-                                    BarNeed(need_entity),
-                                    ProgressBarBundle::new(&theme, need.0),
-                                ));
-                            });
+                            .spawn((BarNeed(need_entity), ProgressBarBundle::new(&theme, need.0)));
                     }
                 });
-            }
         });
     }
 
