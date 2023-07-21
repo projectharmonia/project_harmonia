@@ -14,6 +14,7 @@ use bevy_replicon::{
         },
         ChannelConfig, ConnectionConfig, RenetClient, RenetServer,
     },
+    transport::client_just_connected,
 };
 
 use super::{game_state::GameState, game_world::WorldName};
@@ -22,9 +23,12 @@ pub(super) struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Transform>().replicate::<Name>().add_system(
-            Self::client_connection_system.in_schedule(OnEnter(ClientState::Connected)),
-        );
+        app.replicate::<Transform>()
+            .replicate::<Name>()
+            .add_systems(
+                Update,
+                Self::client_connection_system.run_if(client_just_connected()),
+            );
     }
 }
 

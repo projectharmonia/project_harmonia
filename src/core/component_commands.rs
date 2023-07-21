@@ -38,7 +38,7 @@ impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
 struct RemoveByName(String);
 
 impl EntityCommand for RemoveByName {
-    fn write(self, entity: Entity, world: &mut World) {
+    fn apply(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let registration = registry
@@ -58,7 +58,7 @@ impl<T> EntityCommand for InsertReflect<T>
 where
     T: IntoIterator<Item = Box<dyn Reflect>> + Send + 'static,
 {
-    fn write(self, entity: Entity, world: &mut World) {
+    fn apply(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let mut entity = world.entity_mut(entity);
@@ -79,7 +79,7 @@ where
 struct InsertReflectBundle(Box<dyn Reflect>);
 
 impl EntityCommand for InsertReflectBundle {
-    fn write(self, entity: Entity, world: &mut World) {
+    fn apply(self, entity: Entity, world: &mut World) {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let type_name = self.0.type_name();

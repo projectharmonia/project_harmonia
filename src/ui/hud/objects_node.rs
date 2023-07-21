@@ -17,21 +17,17 @@ use crate::{
     },
 };
 
-// TODO 0.11: Use `run_if`.
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct ObjectsNodeSet;
-
 pub(super) struct ObjectsNodePlugin;
 
 impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            ObjectsNodeSet.run_if(
+        app.add_systems(
+            Update,
+            (Self::button_system, Self::toggle_system).run_if(
                 in_state(GameState::City)
                     .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
             ),
-        )
-        .add_systems((Self::button_system, Self::toggle_system).in_set(ObjectsNodeSet));
+        );
     }
 }
 
@@ -90,7 +86,7 @@ pub(super) fn setup_objects_node(
         let content_entity = parent
             .spawn(NodeBundle {
                 style: Style {
-                    gap: theme.gap.normal,
+                    column_gap: theme.gap.normal,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -102,7 +98,7 @@ pub(super) fn setup_objects_node(
                 {
                     parent.spawn((
                         MetadataId(id),
-                        Preview::object(id, theme.button.image.size),
+                        Preview::object(id, theme.button.image.width, theme.button.image.height),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),

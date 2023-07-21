@@ -3,7 +3,7 @@ pub(crate) mod creating_wall;
 use std::f32::consts::PI;
 
 use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    ecs::entity::EntityMap,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
@@ -13,14 +13,14 @@ use itertools::{Itertools, MinMaxResult};
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::{collision_groups::LifescapeGroupsExt, game_world::WorldState};
+use super::{collision_groups::LifescapeGroupsExt, game_world::WorldName};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(CreatingWallPlugin)
+        app.add_plugins(CreatingWallPlugin)
             .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
@@ -28,9 +28,13 @@ impl Plugin for WallPlugin {
             .add_mapped_client_event::<WallCreate>(SendPolicy::Unordered)
             .add_server_event::<WallEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
-                (Self::init_system, Self::mesh_update_system).in_set(OnUpdate(WorldState::InWorld)),
-            )
-            .add_system(Self::wall_creation_system.in_set(ServerSet::Authority));
+                Update,
+                (
+                    (Self::init_system, Self::mesh_update_system)
+                        .run_if(resource_exists::<WorldName>()),
+                    Self::wall_creation_system.run_if(has_authority()),
+                ),
+            );
     }
 }
 
@@ -324,20 +328,23 @@ impl WallBundle {
 pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
 
 /// Client event to request a wall creation.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
 struct WallCreate {
     lot_entity: Entity,
     edge: (Vec2, Vec2),
 }
 
-impl MapEntities for WallCreate {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.lot_entity = entity_map.get(self.lot_entity)?;
+impl MapEventEntities for WallCreate {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.lot_entity = entity_map
+            .get(self.lot_entity)
+            .ok_or(MapError(self.lot_entity))?;
+
         Ok(())
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Event, Serialize, Deserialize)]
 struct WallEventConfirmed;
 
 /// A component that marks that entity can be placed only on walls.

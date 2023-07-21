@@ -9,24 +9,19 @@ use super::{
     game_state::GameState, object::placing_object::PlacingObject, player_camera::PlayerCamera,
 };
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct CursorHoverSet;
-
 pub(super) struct CursorHoverPlugin;
 
 impl Plugin for CursorHoverPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            CursorHoverSet.run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
-        )
-        .add_systems(
+        app.add_systems(
+            Update,
             (
                 Self::raycast_system,
                 Self::outline_enabling_system,
                 Self::outline_disabling_system,
                 Self::cleanup_system.run_if(condition::any_component_added::<PlacingObject>()),
             )
-                .in_set(CursorHoverSet),
+                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
         );
     }
 }
@@ -53,7 +48,7 @@ impl CursorHoverPlugin {
         };
 
         let mut groups = Group::GROUND | Group::ACTOR;
-        if building_mode.0 != BuildingMode::Walls || city_mode.0 != CityMode::Lots {
+        if *building_mode != BuildingMode::Walls || *city_mode != CityMode::Lots {
             groups |= Group::OBJECT;
         }
 

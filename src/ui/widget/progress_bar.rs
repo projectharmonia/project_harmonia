@@ -6,7 +6,7 @@ pub(super) struct ProgressBarPlugin;
 
 impl Plugin for ProgressBarPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((Self::init_system, Self::progress_update_system));
+        app.add_systems(Update, (Self::init_system, Self::progress_update_system));
     }
 }
 
@@ -20,7 +20,7 @@ impl ProgressBarPlugin {
             commands.entity(entity).with_children(|parent| {
                 parent.spawn(NodeBundle {
                     style: Style {
-                        size: Size::width(Val::Percent(progress_bar.0)),
+                        width: Val::Percent(progress_bar.0),
                         ..Default::default()
                     },
                     background_color: theme.progress_bar.fill_color.into(),
@@ -40,7 +40,7 @@ impl ProgressBarPlugin {
             let mut style = iter
                 .fetch_next()
                 .expect("progress bar should have child fill node");
-            style.size.width = Val::Percent(progress_bar.0);
+            style.width = Val::Percent(progress_bar.0);
         }
     }
 }

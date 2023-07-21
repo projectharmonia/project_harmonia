@@ -19,12 +19,14 @@ pub(super) struct WidgetPlugin;
 
 impl Plugin for WidgetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(ButtonPlugin)
-            .add_plugin(CheckboxPlugin)
-            .add_plugin(ClickPlugin)
-            .add_plugin(ProgressBarPlugin)
-            .add_plugin(TextEditPlugin)
-            .add_plugin(UiRootPlugin);
+        app.add_plugins((
+            ButtonPlugin,
+            CheckboxPlugin,
+            ClickPlugin,
+            ProgressBarPlugin,
+            TextEditPlugin,
+            UiRootPlugin,
+        ));
     }
 }
 
@@ -70,7 +72,8 @@ impl DialogBundle {
             node_bundle: NodeBundle {
                 style: Style {
                     position_type: PositionType::Absolute,
-                    size: Size::all(Val::Percent(100.0)),
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     ..Default::default()

@@ -17,7 +17,7 @@ use crate::core::{
         family_spawn::FamilyScene,
     },
     game_state::GameState,
-    game_world::WorldState,
+    game_world::WorldName,
     reflect_bundle::ReflectBundle,
 };
 
@@ -28,13 +28,15 @@ impl Plugin for HumanPlugin {
         app.replicate::<Human>()
             .register_type::<HumanRaceBundle>()
             .init_resource::<AssetHandles<HumanScene>>()
-            .add_system(
-                Self::scene_setup_system
-                    .before(EditorPlugin::scene_save_system)
-                    .in_set(OnUpdate(GameState::FamilyEditor)),
-            )
             .add_systems(
-                (Self::init_system, Self::needs_init_system).in_set(OnUpdate(WorldState::InWorld)),
+                Update,
+                (
+                    Self::scene_setup_system
+                        .before(EditorPlugin::scene_save_system)
+                        .run_if(in_state(GameState::FamilyEditor)),
+                    (Self::init_system, Self::needs_init_system)
+                        .run_if(resource_exists::<WorldName>()),
+                ),
             );
     }
 }

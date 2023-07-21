@@ -4,7 +4,7 @@ pub(crate) mod family_spawn;
 use anyhow::Result;
 use bevy::{
     ecs::{
-        entity::{EntityMap, MapEntities, MapEntitiesError},
+        entity::{EntityMap, EntityMapper, MapEntities},
         reflect::ReflectMapEntities,
     },
     prelude::*,
@@ -19,7 +19,7 @@ use super::{
     actor::{ActiveActor, ActorBundle},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
-    game_world::WorldState,
+    game_world::WorldName,
 };
 use editor::EditorPlugin;
 use family_spawn::{FamilySpawn, FamilySpawnDeserializer, FamilySpawnSerializer};
@@ -28,7 +28,7 @@ pub(crate) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(EditorPlugin)
+        app.add_plugins(EditorPlugin)
             .add_state::<FamilyMode>()
             .add_state::<BuildingMode>()
             .replicate::<ActorFamily>()
@@ -37,14 +37,16 @@ impl Plugin for FamilyPlugin {
             .add_mapped_client_reflect_event::<FamilySpawn, FamilySpawnSerializer, FamilySpawnDeserializer>(SendPolicy::Unordered)
             .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
             .add_mapped_server_event::<SelectedFamilySpawned>(SendPolicy::Unordered)
-            .add_system(Self::reset_mode_system.in_schedule(OnEnter(GameState::Family)))
-            .add_systems((Self::spawn_system, Self::despawn_system).in_set(ServerSet::Authority))
-            .add_systems((
-                Self::activation_system.in_schedule(OnEnter(GameState::Family)),
-                Self::members_update_system.in_set(OnUpdate(WorldState::InWorld)),
-                Self::deactivation_system.in_schedule(OnExit(GameState::Family)),
-                Self::cleanup_system.in_schedule(OnExit(WorldState::InWorld)),
-            ));
+            .add_systems(OnEnter(GameState::Family), (Self::activation_system, Self::reset_mode_system))
+            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
+            .add_systems(
+                Update,
+                (
+                    (Self::spawn_system, Self::despawn_system).run_if(has_authority()),
+                    Self::members_update_system.run_if(resource_exists::<WorldName>()),
+                    Self::cleanup_system.run_if(resource_removed::<WorldName>())
+                )
+            );
     }
 }
 
@@ -235,9 +237,8 @@ pub(crate) struct FamilyMembers(Vec<Entity>);
 pub(crate) struct ActorFamily(pub(crate) Entity);
 
 impl MapEntities for ActorFamily {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
+    fn map_entities(&mut self, entity_mapper: &mut EntityMapper) {
+        self.0 = entity_mapper.get_or_reserve(self.0);
     }
 }
 
@@ -249,23 +250,23 @@ impl FromWorld for ActorFamily {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
 pub(crate) struct FamilyDespawn(pub(crate) Entity);
 
-impl MapEntities for FamilyDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+impl MapEventEntities for FamilyDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
         Ok(())
     }
 }
 
 /// An event from server which indicates spawn confirmation for the selected family.
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Debug, Deserialize, Event, Serialize)]
 pub(super) struct SelectedFamilySpawned(pub(super) Entity);
 
-impl MapEntities for SelectedFamilySpawned {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+impl MapEventEntities for SelectedFamilySpawned {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
         Ok(())
     }
 }

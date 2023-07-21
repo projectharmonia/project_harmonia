@@ -7,7 +7,10 @@ pub(super) struct ReadyScenePlugin;
 
 impl Plugin for ReadyScenePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::ready_system.after(scene::scene_spawner_system));
+        app.add_systems(
+            Update,
+            Self::ready_system.after(scene::scene_spawner_system),
+        );
     }
 }
 

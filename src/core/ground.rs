@@ -13,14 +13,13 @@ pub(super) struct GroundPlugin;
 
 impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::spawn_system.in_schedule(OnEnter(GameState::City)),
-            Self::despawn_system.in_schedule(OnExit(GameState::City)),
-            Self::spawn_system
-                .after(CityPlugin::activation_system)
-                .in_schedule(OnEnter(GameState::Family)),
-            Self::despawn_system.in_schedule(OnExit(GameState::Family)),
-        ));
+        app.add_systems(OnEnter(GameState::City), Self::spawn_system)
+            .add_systems(OnExit(GameState::City), Self::despawn_system)
+            .add_systems(
+                OnEnter(GameState::Family),
+                Self::spawn_system.after(CityPlugin::activation_system),
+            )
+            .add_systems(OnExit(GameState::Family), Self::despawn_system);
     }
 }
 

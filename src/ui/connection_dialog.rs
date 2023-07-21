@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+use bevy_replicon::{prelude::*, renet::transport::NetcodeClientTransport};
 
 use super::{
     theme::Theme,
@@ -10,11 +10,14 @@ pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::setup_system.in_schedule(OnEnter(ClientState::Connecting)),
-            Self::button_system,
-            Self::cleanup_system.in_schedule(OnExit(ClientState::Connecting)),
-        ));
+        app.add_systems(
+            Update,
+            (
+                Self::setup_system.run_if(resource_added::<RenetClient>()),
+                Self::button_system,
+                Self::cleanup_system.run_if(client_just_diconnected()),
+            ),
+        );
     }
 }
 
@@ -31,7 +34,7 @@ impl ConnectionDialogPlugin {
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
                                 padding: theme.padding.normal,
-                                gap: theme.gap.normal,
+                                row_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             background_color: theme.panel_color.into(),
@@ -62,6 +65,19 @@ impl ConnectionDialogPlugin {
 
     fn cleanup_system(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
         commands.entity(dialogs.single()).despawn_recursive();
+    }
+}
+
+pub fn client_just_diconnected(
+) -> impl FnMut(Local<bool>, Option<Res<NetcodeClientTransport>>) -> bool {
+    |mut last_connected: Local<bool>, transport| {
+        let disconnected = transport
+            .map(|transport| transport.is_disconnected())
+            .unwrap_or(true);
+
+        let just_disconnected = *last_connected && disconnected;
+        *last_connected = !disconnected;
+        just_disconnected
     }
 }
 

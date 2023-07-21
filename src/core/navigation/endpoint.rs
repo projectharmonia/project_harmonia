@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use derive_more::Constructor;
 use oxidized_navigation::{NavMesh, NavMeshSettings};
 
-use crate::core::game_world::WorldState;
+use crate::core::game_world::WorldName;
 
 use super::{ComputePath, Navigation};
 
@@ -11,7 +11,8 @@ pub(super) struct EndpointPlugin;
 impl Plugin for EndpointPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            (Self::init_system, Self::cleanup_system).in_set(OnUpdate(WorldState::InWorld)),
+            Update,
+            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
         );
     }
 }

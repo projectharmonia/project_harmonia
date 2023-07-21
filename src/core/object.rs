@@ -3,10 +3,7 @@ pub(crate) mod placing_object;
 
 use std::path::PathBuf;
 
-use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
-    prelude::*,
-};
+use bevy::{ecs::entity::EntityMap, prelude::*};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -19,7 +16,7 @@ use super::{
     component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
     cursor_hover::OutlineHoverExt,
-    game_world::WorldState,
+    game_world::WorldName,
     lot::LotVertices,
     ready_scene::ReadyScene,
 };
@@ -30,23 +27,24 @@ pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(PlacingObjectPlugin)
-            .add_plugin(MirrorPlugin)
+        app.add_plugins((PlacingObjectPlugin, MirrorPlugin))
             .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>(SendPolicy::Unordered)
             .add_mapped_client_event::<ObjectMove>(SendPolicy::Ordered)
             .add_mapped_client_event::<ObjectDespawn>(SendPolicy::Unordered)
             .add_server_event::<ObjectEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
-                (Self::init_system, Self::scene_init_system).in_set(OnUpdate(WorldState::InWorld)),
-            )
-            .add_systems(
+                Update,
                 (
-                    Self::spawn_system,
-                    Self::movement_system,
-                    Self::despawn_system,
-                )
-                    .in_set(ServerSet::Authority),
+                    (Self::init_system, Self::scene_init_system)
+                        .run_if(resource_exists::<WorldName>()),
+                    (
+                        Self::spawn_system,
+                        Self::movement_system,
+                        Self::despawn_system,
+                    )
+                        .run_if(has_authority()),
+                ),
             );
     }
 }
@@ -210,41 +208,41 @@ impl ObjectBundle {
 }
 
 /// Contains path to the object metadata file.
-#[derive(Clone, Component, Debug, Default, Reflect)]
+#[derive(Clone, Component, Debug, Default, Event, Reflect)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(PathBuf);
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct ObjectSpawn {
     metadata_path: PathBuf,
     position: Vec2,
     rotation: Quat,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
 struct ObjectMove {
     entity: Entity,
     translation: Vec3,
     rotation: Quat,
 }
 
-impl MapEntities for ObjectMove {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.entity = entity_map.get(self.entity)?;
+impl MapEventEntities for ObjectMove {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
         Ok(())
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
 struct ObjectDespawn(Entity);
 
-impl MapEntities for ObjectDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+impl MapEventEntities for ObjectDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
         Ok(())
     }
 }
 
 /// An event from server which indicates action confirmation.
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Event, Serialize, Debug, Default)]
 struct ObjectEventConfirmed;

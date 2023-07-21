@@ -7,14 +7,20 @@ pub(crate) struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::text_init_system,
-            Self::image_init_system,
-            Self::interaction_system,
-            Self::text_update_system,
-            Self::tab_switching_system,
-        ))
-        .add_systems((Self::toggling_system, Self::exclusive_system).chain());
+        app.add_systems(
+            Update,
+            (
+                Self::text_init_system,
+                Self::image_init_system,
+                Self::interaction_system,
+                Self::text_update_system,
+                Self::toggling_system,
+            ),
+        )
+        .add_systems(
+            PostUpdate,
+            (Self::exclusive_system, Self::tab_switching_system).chain(),
+        );
     }
 }
 
@@ -79,7 +85,7 @@ impl ButtonPlugin {
         for (&interaction, mut background, toggled) in &mut buttons {
             let toggled = toggled.map(|toggled| toggled.0).unwrap_or_default();
             *background = match (interaction, toggled) {
-                (Interaction::Clicked, _) | (Interaction::None, true) => {
+                (Interaction::Pressed, _) | (Interaction::None, true) => {
                     theme.button.pressed_color.into()
                 }
                 (Interaction::Hovered, true) => theme.button.hovered_pressed_color.into(),

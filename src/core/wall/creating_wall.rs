@@ -17,6 +17,7 @@ pub(super) struct CreatingWallPlugin;
 impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            Update,
             (
                 Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
@@ -30,9 +31,9 @@ impl Plugin for CreatingWallPlugin {
                 Self::despawn_system.run_if(action_just_pressed(Action::Cancel)),
                 Self::despawn_system.run_if(on_event::<WallEventConfirmed>()),
             )
-                .in_set(OnUpdate(GameState::Family))
-                .in_set(OnUpdate(FamilyMode::Building))
-                .in_set(OnUpdate(BuildingMode::Walls)),
+                .run_if(in_state(GameState::Family))
+                .run_if(in_state(FamilyMode::Building))
+                .run_if(in_state(BuildingMode::Walls)),
         );
     }
 }

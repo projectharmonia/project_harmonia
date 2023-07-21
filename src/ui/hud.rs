@@ -14,9 +14,11 @@ pub(super) struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(CityHudPlugin)
-            .add_plugin(ObjectsNodePlugin)
-            .add_plugin(FamilyHudPlugin)
-            .add_plugin(TaskMenuPlugin);
+        app.add_plugins((
+            CityHudPlugin,
+            ObjectsNodePlugin,
+            FamilyHudPlugin,
+            TaskMenuPlugin,
+        ));
     }
 }

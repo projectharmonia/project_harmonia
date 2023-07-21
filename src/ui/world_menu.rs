@@ -26,8 +26,9 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::World)))
+        app.add_systems(OnEnter(GameState::World), Self::setup_system)
             .add_systems(
+                Update,
                 (
                     Self::family_node_spawn_system,
                     Self::city_node_spawn_system,
@@ -37,7 +38,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::city_dialog_button_system,
                     Self::entity_node_despawn_system,
                 )
-                    .in_set(OnUpdate(GameState::World)),
+                    .run_if(in_state(GameState::World)),
             );
     }
 }
@@ -56,7 +57,8 @@ impl WorldMenuPlugin {
                 UiRoot,
                 NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::FlexStart,
@@ -83,12 +85,13 @@ impl WorldMenuPlugin {
                     let content_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
-                                size: Size::all(Val::Percent(100.0)),
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
                                 flex_direction: FlexDirection::Column,
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::FlexStart,
                                 padding: theme.padding.normal,
-                                gap: theme.gap.normal,
+                                row_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             ..Default::default()
@@ -121,7 +124,7 @@ impl WorldMenuPlugin {
                 parent
                     .spawn(NodeBundle {
                         style: Style {
-                            size: Size::new(Val::Percent(100.0), Val::Auto),
+                            width: Val::Percent(100.0),
                             justify_content: JustifyContent::FlexStart,
                             ..Default::default()
                         },
@@ -308,7 +311,7 @@ fn setup_entity_node<E>(
             NodeBundle {
                 style: Style {
                     padding: theme.padding.normal,
-                    gap: theme.gap.normal,
+                    column_gap: theme.gap.normal,
                     ..Default::default()
                 },
                 background_color: theme.panel_color.into(),
@@ -321,7 +324,8 @@ fn setup_entity_node<E>(
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -333,7 +337,7 @@ fn setup_entity_node<E>(
                 .spawn(NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
-                        gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -362,7 +366,7 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -378,7 +382,7 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()

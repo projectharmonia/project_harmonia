@@ -22,59 +22,57 @@ use crate::core::{
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct PlacingObjectSet;
-
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            PlacingObjectSet.run_if(
-                in_state(GameState::City)
-                    .and_then(in_state(CityMode::Objects))
-                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
-            ),
+        app.add_systems(
+            OnExit(CityMode::Objects),
+            Self::cancel_system.pipe(Self::cleanup_system),
         )
         .add_systems(
-            (
-                Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
-                Self::movement_system,
-                Self::snapping_system,
-                Self::collision_system,
-                Self::material_system,
-            )
-                .chain()
-                .in_set(PlacingObjectSet),
+            OnExit(FamilyMode::Building),
+            Self::cancel_system.pipe(Self::cleanup_system),
         )
         .add_systems(
+            Update,
             (
-                Self::init_system,
-                Self::scene_init_system,
-                Self::picking_system
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<PlacingObject>())),
-                Self::confirmation_system
-                    .after(Self::collision_system)
-                    .run_if(action_just_pressed(Action::Confirm)),
-                Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                Self::exclusive_system
-                    .pipe(Self::cleanup_system)
-                    .in_base_set(CoreSet::PostUpdate),
-                Self::cancel_system.pipe(Self::cleanup_system).run_if(
-                    action_just_pressed(Action::Cancel).or_else(on_event::<ObjectEventConfirmed>()),
+                (
+                    Self::init_system,
+                    Self::scene_init_system,
+                    Self::picking_system
+                        .run_if(action_just_pressed(Action::Confirm))
+                        .run_if(not(any_with_component::<PlacingObject>())),
+                    Self::confirmation_system
+                        .after(Self::collision_system)
+                        .run_if(action_just_pressed(Action::Confirm)),
+                    Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                    Self::cancel_system.pipe(Self::cleanup_system).run_if(
+                        action_just_pressed(Action::Cancel)
+                            .or_else(on_event::<ObjectEventConfirmed>()),
+                    ),
                 ),
+                (
+                    Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
+                    Self::movement_system,
+                    Self::snapping_system,
+                    Self::collision_system,
+                    Self::material_system,
+                )
+                    .chain(),
             )
-                .in_set(PlacingObjectSet),
+                .run_if(
+                    in_state(GameState::City)
+                        .and_then(in_state(CityMode::Objects))
+                        .or_else(
+                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                        ),
+                ),
         )
-        .add_systems((
-            Self::cancel_system
-                .pipe(Self::cleanup_system)
-                .in_schedule(OnExit(CityMode::Objects)),
-            Self::cancel_system
-                .pipe(Self::cleanup_system)
-                .in_schedule(OnExit(FamilyMode::Building)),
-        ));
+        .add_systems(
+            PostUpdate,
+            Self::exclusive_system.pipe(Self::cleanup_system),
+        );
     }
 }
 

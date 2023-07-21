@@ -12,10 +12,11 @@ pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::setup_system.in_schedule(OnEnter(GameState::MainMenu)),
-            Self::button_system.in_set(OnUpdate(GameState::MainMenu)),
-        ));
+        app.add_systems(OnEnter(GameState::MainMenu), Self::setup_system)
+            .add_systems(
+                Update,
+                Self::button_system.run_if(in_state(GameState::MainMenu)),
+            );
     }
 }
 
@@ -27,11 +28,12 @@ impl MainMenuPlugin {
                 NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         align_items: AlignItems::FlexStart,
                         justify_content: JustifyContent::Center,
                         padding: theme.padding.global,
-                        gap: theme.gap.large,
+                        row_gap: theme.gap.large,
                         ..Default::default()
                     },
                     ..Default::default()

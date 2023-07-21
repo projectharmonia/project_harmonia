@@ -13,27 +13,22 @@ pub(super) struct PlayerCameraPlugin;
 
 impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            PlayerCameraSet.run_if(
-                in_state(GameState::FamilyEditor)
-                    .or_else(in_state(GameState::City))
-                    .or_else(in_state(GameState::Family)),
-            ),
-        )
-        .add_system(
-            Self::position_system
-                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
-        )
-        .add_systems(
+        app.add_systems(
+            Update,
             (
-                Self::rotation_system,
-                Self::arm_system,
-                Self::transform_system
-                    .after(Self::position_system)
-                    .after(Self::rotation_system)
-                    .after(Self::arm_system),
+                (
+                    Self::rotation_system,
+                    Self::position_system.run_if(not(in_state(GameState::FamilyEditor))),
+                    Self::arm_system,
+                ),
+                Self::transform_system,
             )
-                .in_set(PlayerCameraSet),
+                .chain()
+                .run_if(
+                    in_state(GameState::FamilyEditor)
+                        .or_else(in_state(GameState::City))
+                        .or_else(in_state(GameState::Family)),
+                ),
         );
     }
 }
@@ -112,9 +107,6 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
 
     direction.normalize_or_zero()
 }
-
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct PlayerCameraSet;
 
 #[derive(Bundle, Default)]
 pub(crate) struct PlayerCameraBundle {

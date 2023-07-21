@@ -29,8 +29,9 @@ pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::WorldBrowser)))
+        app.add_systems(OnEnter(GameState::WorldBrowser), Self::setup_system)
             .add_systems(
+                Update,
                 (
                     Self::world_button_system.after(GameWorldPlugin::loading_system),
                     Self::host_dialog_button_system
@@ -41,7 +42,7 @@ impl Plugin for WorldBrowserPlugin {
                     Self::create_dialog_button_system,
                     Self::join_dialog_button_system.pipe(error::report),
                 )
-                    .in_set(OnUpdate(GameState::WorldBrowser)),
+                    .run_if(in_state(GameState::WorldBrowser)),
             );
     }
 }
@@ -53,7 +54,8 @@ impl WorldBrowserPlugin {
                 UiRoot,
                 NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::FlexStart,
@@ -68,12 +70,13 @@ impl WorldBrowserPlugin {
                 parent
                     .spawn(NodeBundle {
                         style: Style {
-                            size: Size::all(Val::Percent(100.0)),
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             justify_content: JustifyContent::FlexStart,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -91,9 +94,9 @@ impl WorldBrowserPlugin {
                 parent
                     .spawn(NodeBundle {
                         style: Style {
-                            size: Size::new(Val::Percent(100.0), Val::Auto),
+                            width: Val::Percent(100.0),
                             justify_content: JustifyContent::FlexStart,
-                            gap: theme.gap.normal,
+                            column_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -300,7 +303,7 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
         .spawn(NodeBundle {
             style: Style {
                 padding: theme.padding.normal,
-                gap: theme.gap.normal,
+                column_gap: theme.gap.normal,
                 ..Default::default()
             },
             background_color: theme.panel_color.into(),
@@ -312,7 +315,8 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -322,7 +326,7 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
                 .spawn(NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
-                        gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -360,7 +364,7 @@ fn setup_host_world_dialog(
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -372,7 +376,7 @@ fn setup_host_world_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     justify_content: JustifyContent::Center,
                                     ..Default::default()
                                 },
@@ -389,7 +393,7 @@ fn setup_host_world_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -425,7 +429,7 @@ fn setup_remove_world_dialog(
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -440,7 +444,7 @@ fn setup_remove_world_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -470,7 +474,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -486,7 +490,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -516,7 +520,7 @@ fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: 
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -525,58 +529,35 @@ fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: 
                     .with_children(|parent| {
                         parent.spawn(LabelBundle::normal(theme, "Join world"));
 
-                        // TODO 0.11: Use grid layout
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    display: Display::Grid,
+                                    column_gap: theme.gap.normal,
+                                    row_gap: theme.gap.normal,
+                                    grid_template_columns: vec![GridTrack::auto(); 2],
                                     ..Default::default()
                                 },
                                 ..Default::default()
                             })
                             .with_children(|parent| {
-                                const GRID_GAP: Size = Size::all(Val::Px(10.0));
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: Style {
-                                            flex_direction: FlexDirection::Column,
-                                            gap: GRID_GAP,
-                                            ..Default::default()
-                                        },
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        parent.spawn(LabelBundle::normal(theme, "IP:"));
-                                        parent.spawn(LabelBundle::normal(theme, "Port:"));
-                                    });
-                                parent
-                                    .spawn(NodeBundle {
-                                        style: Style {
-                                            flex_direction: FlexDirection::Column,
-                                            gap: theme.gap.normal,
-                                            ..Default::default()
-                                        },
-                                        ..Default::default()
-                                    })
-                                    .with_children(|parent| {
-                                        parent.spawn((
-                                            IpEdit,
-                                            TextEditBundle::new(
-                                                theme,
-                                                Ipv4Addr::LOCALHOST.to_string(),
-                                            ),
-                                        ));
-                                        parent.spawn((
-                                            PortEdit,
-                                            TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
-                                        ));
-                                    });
+                                parent.spawn(LabelBundle::normal(theme, "IP:"));
+                                parent.spawn((
+                                    IpEdit,
+                                    TextEditBundle::new(theme, Ipv4Addr::LOCALHOST.to_string()),
+                                ));
+
+                                parent.spawn(LabelBundle::normal(theme, "Port:"));
+                                parent.spawn((
+                                    PortEdit,
+                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                                ));
                             });
 
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()

@@ -15,6 +15,7 @@ pub(super) struct CreatingLotPlugin;
 impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            Update,
             (
                 Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
@@ -25,9 +26,9 @@ impl Plugin for CreatingLotPlugin {
                     action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
                 ),
             )
-                .in_set(OnUpdate(GameState::City))
-                .in_set(OnUpdate(CityMode::Lots))
-                .in_set(OnUpdate(LotTool::Create)),
+                .run_if(in_state(GameState::City))
+                .run_if(in_state(CityMode::Lots))
+                .run_if(in_state(LotTool::Create)),
         );
     }
 }

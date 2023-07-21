@@ -4,19 +4,20 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 use oxidized_navigation::{NavMesh, NavMeshSettings};
 
 use super::{ComputePath, Navigation};
-use crate::core::game_world::WorldState;
+use crate::core::game_world::WorldName;
 
 pub(super) struct FollowingPlugin;
 
 impl Plugin for FollowingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            Update,
             (
                 Self::init_system,
                 Self::following_system.run_if(on_timer(Duration::from_secs(1))),
                 Self::cleanup_system,
             )
-                .in_set(OnUpdate(WorldState::InWorld)),
+                .run_if(resource_exists::<WorldName>()),
         );
     }
 }

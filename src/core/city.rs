@@ -7,7 +7,7 @@ use strum::EnumIter;
 use super::{
     actor::ActiveActor,
     game_state::GameState,
-    game_world::WorldState,
+    game_world::WorldName,
     player_camera::{PlayerCamera, PlayerCameraBundle},
 };
 
@@ -19,21 +19,24 @@ impl Plugin for CityPlugin {
             .replicate::<City>()
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<PlacedCities>()
-            .add_systems((
-                Self::activation_system.in_schedule(OnEnter(GameState::City)),
-                Self::deactivation_system.in_schedule(OnExit(GameState::City)),
-                Self::deactivation_system.in_schedule(OnExit(GameState::Family)),
-                Self::init_system.in_set(OnUpdate(WorldState::InWorld)),
-                Self::cleanup_system.in_schedule(OnExit(WorldState::InWorld)),
-            ))
+            .add_systems(OnEnter(GameState::City), Self::activation_system)
             .add_systems(
+                OnEnter(GameState::Family),
                 (
                     Self::actor_activation_system,
-                    apply_system_buffers,
+                    apply_deferred,
                     Self::activation_system,
                 )
-                    .chain()
-                    .in_schedule(OnEnter(GameState::Family)),
+                    .chain(),
+            )
+            .add_systems(OnExit(GameState::City), Self::deactivation_system)
+            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
+            .add_systems(
+                Update,
+                (
+                    Self::init_system.run_if(resource_exists::<WorldName>()),
+                    Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+                ),
             );
     }
 }

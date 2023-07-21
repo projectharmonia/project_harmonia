@@ -5,7 +5,7 @@ pub(crate) struct ThemePlugin;
 impl Plugin for ThemePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Theme>()
-            .add_startup_system(Self::clear_color_system);
+            .add_systems(Startup, Self::clear_color_system);
     }
 }
 
@@ -37,31 +37,36 @@ impl FromWorld for Theme {
         Self {
             button: ButtonTheme {
                 normal: Style {
-                    size: Size::new(Val::Px(170.0), Val::Px(40.0)),
+                    width: Val::Px(170.0),
+                    height: Val::Px(40.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 large: Style {
-                    size: Size::new(Val::Px(200.0), Val::Px(60.0)),
+                    width: Val::Px(200.0),
+                    height: Val::Px(60.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 symbol: Style {
-                    size: Size::new(Val::Px(40.0), Val::Px(40.0)),
+                    width: Val::Px(40.0),
+                    height: Val::Px(40.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 image_button: Style {
-                    size: Size::new(Val::Px(60.0), Val::Px(60.0)),
+                    width: Val::Px(60.0),
+                    height: Val::Px(60.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 image: Style {
-                    size: Size::all(Val::Px(50.0)),
+                    width: Val::Px(50.0),
+                    height: Val::Px(50.0),
                     ..Default::default()
                 },
                 normal_text: TextStyle {
@@ -103,7 +108,8 @@ impl FromWorld for Theme {
             },
             text_edit: TextEditTheme {
                 style: Style {
-                    min_size: Size::new(Val::Px(200.0), Val::Px(30.0)),
+                    min_width: Val::Px(200.0),
+                    min_height: Val::Px(30.0),
                     ..Default::default()
                 },
                 text: TextStyle {
@@ -118,26 +124,28 @@ impl FromWorld for Theme {
             },
             checkbox: CheckboxTheme {
                 node: Style {
-                    gap: Size::width(Val::Px(10.0)),
+                    column_gap: Val::Px(10.0),
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 button: Style {
-                    size: Size::all(Val::Px(25.0)),
+                    width: Val::Px(25.0),
+                    height: Val::Px(25.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 tick: Style {
-                    size: Size::all(Val::Px(15.0)),
+                    width: Val::Px(15.0),
+                    height: Val::Px(15.0),
                     ..Default::default()
                 },
                 tick_color: Color::rgb(0.35, 0.75, 0.35),
             },
             gap: GapTheme {
-                normal: Size::all(Val::Px(15.0)),
-                large: Size::all(Val::Px(25.0)),
+                normal: Val::Px(15.0),
+                large: Val::Px(25.0),
             },
             padding: PaddingTheme {
                 normal: UiRect::all(Val::Px(10.0)),
@@ -145,7 +153,8 @@ impl FromWorld for Theme {
             },
             progress_bar: ProgressBarTheme {
                 node: Style {
-                    size: Size::all(Val::Percent(100.0)),
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     ..Default::default()
                 },
                 background_color: Color::rgb(0.5, 0.5, 0.5),
@@ -196,8 +205,8 @@ pub(crate) struct CheckboxTheme {
 }
 
 pub(crate) struct GapTheme {
-    pub(crate) normal: Size,
-    pub(crate) large: Size,
+    pub(crate) normal: Val,
+    pub(crate) large: Val,
 }
 
 pub(crate) struct PaddingTheme {

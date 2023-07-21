@@ -3,7 +3,7 @@ unmaintained = "deny"
 yanked = "deny"
 notice = "deny"
 unsound = "deny"
-ignore = ["RUSTSEC-2020-0168", "RUSTSEC-2023-0040"]
+ignore = ["RUSTSEC-2023-0040"]
 
 [licenses]
 copyleft = "allow"
@@ -18,12 +18,19 @@ license-files = []
 multiple-versions = "deny"
 wildcards = "allow"
 skip = [
-  { name = "syn", version = "1.0" },
   { name = "ahash", version = "0.7.6" },
+  { name = "syn", version = "1.0" },
+  { name = "indexmap", version = "1.9" },
+  { name = "num_enum", version = "0.5" },
+  { name = "hashbrown", version = "0.12" },
+  { name = "bitflags", version = "1.3" },
+  { name = "num_enum_derive", version = "0.5" },
+  { name = "libloading", version = "0.7" },
   { name = "redox_syscall", version = "0.2" },
-  { name = "windows-sys", version = "0.42" },
+  { name = "regex-syntax", version = "0.6" },
+  { name = "regex-automata", version = "0.1" },
   { name = "windows-sys", version = "0.45" },
-  { name = "windows", version = "0.43" },
+  { name = "windows", version = "0.44" },
   { name = "windows_x86_64_msvc", version = "0.42" },
   { name = "windows_x86_64_gnullvm", version = "0.42" },
   { name = "windows_x86_64_gnu", version = "0.42" },

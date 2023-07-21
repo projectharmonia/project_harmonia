@@ -7,7 +7,7 @@ use crate::core::{
     actor::ActorAnimation,
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
-    game_world::WorldState,
+    game_world::WorldName,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
     task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
@@ -17,16 +17,16 @@ pub(super) struct MoveHerePlugin;
 
 impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<MoveHere>()
-            .add_system(Self::list_system.in_set(TaskListSet))
-            .add_systems(
-                (
-                    Self::activation_system,
-                    Self::cancellation_system,
-                    Self::finish_system,
-                )
-                    .in_set(OnUpdate(WorldState::InWorld)),
-            );
+        app.replicate::<MoveHere>().add_systems(
+            Update,
+            (
+                Self::list_system.in_set(TaskListSet),
+                Self::activation_system,
+                Self::cancellation_system,
+                Self::finish_system,
+            )
+                .run_if(resource_exists::<WorldName>()),
+        );
     }
 }
 

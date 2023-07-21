@@ -10,7 +10,7 @@ pub(super) struct ErrorDialogPlugin;
 
 impl Plugin for ErrorDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((Self::setup_system, Self::button_system));
+        app.add_systems(Update, (Self::setup_system, Self::button_system));
     }
 }
 
@@ -33,7 +33,7 @@ impl ErrorDialogPlugin {
                                     justify_content: JustifyContent::Center,
                                     align_items: AlignItems::Center,
                                     padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
+                                    row_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 background_color: theme.panel_color.into(),

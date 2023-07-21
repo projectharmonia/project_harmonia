@@ -10,7 +10,7 @@ use bevy::{
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 
-use crate::core::game_world::WorldState;
+use super::game_world::WorldName;
 use endpoint::EndpointPlugin;
 use following::FollowingPlugin;
 
@@ -18,15 +18,15 @@ pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(EndpointPlugin)
-            .add_plugin(FollowingPlugin)
+        app.add_plugins((EndpointPlugin, FollowingPlugin))
             .add_systems(
+                Update,
                 (
                     Self::navigation_system,
                     Self::poll_system,
                     Self::cleanup_system,
                 )
-                    .in_set(OnUpdate(WorldState::InWorld)),
+                    .run_if(resource_exists::<WorldName>()),
             );
     }
 }

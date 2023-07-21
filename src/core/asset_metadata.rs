@@ -9,7 +9,9 @@ use anyhow::{Context, Result};
 use bevy::{
     asset::{AssetLoader, AssetPath, LoadContext, LoadedAsset},
     prelude::*,
-    reflect::{serde::TypedReflectDeserializer, TypeRegistry, TypeRegistryInternal, TypeUuid},
+    reflect::{
+        serde::TypedReflectDeserializer, TypePath, TypeRegistry, TypeRegistryInternal, TypeUuid,
+    },
     utils::BoxedFuture,
 };
 use derive_more::Constructor;
@@ -123,7 +125,7 @@ pub(crate) struct GeneralMetadata {
     pub(crate) preview_translation: Vec3,
 }
 
-#[derive(TypeUuid)]
+#[derive(TypeUuid, TypePath)]
 #[uuid = "39cadc56-aa9c-4543-8640-a018b74b5052"]
 pub(crate) struct ObjectMetadata {
     pub(crate) general: GeneralMetadata,

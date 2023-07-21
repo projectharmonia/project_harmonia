@@ -16,7 +16,8 @@ use super::{
     asset_handles::{AssetCollection, AssetHandles},
     cursor_hover::OutlineHoverExt,
     family::ActorFamily,
-    game_world::WorldState,
+    game_state::GameState,
+    game_world::WorldName,
     ready_scene::ReadyScene,
 };
 use crate::core::{collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable};
@@ -30,24 +31,23 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
-            .add_plugins(RacePlugins)
-            .add_plugins(FriendlyPlugins)
-            .add_plugin(MovementPlugin)
-            .add_plugin(NeedsPlugin)
+            .add_plugins((RacePlugins, FriendlyPlugins, MovementPlugin, NeedsPlugin))
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
             .not_replicate_if_present::<Name, FirstName>()
+            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
             .add_systems(
+                Update,
                 (
                     Self::init_system,
                     Self::scene_init_system,
                     Self::name_update_system,
                 )
-                    .in_set(OnUpdate(WorldState::InWorld)),
+                    .run_if(resource_exists::<WorldName>()),
             )
-            .add_system(Self::exclusive_system.in_base_set(CoreSet::PostUpdate));
+            .add_systems(PostUpdate, Self::exclusive_system);
     }
 }
 
@@ -108,6 +108,10 @@ impl ActorPlugin {
                 .entity(entity)
                 .insert(Name::new(format!("{first_name} {last_name}")));
         }
+    }
+
+    fn deactivation_system(mut commands: Commands, actors: Query<Entity, With<ActiveActor>>) {
+        commands.entity(actors.single()).remove::<ActiveActor>();
     }
 
     fn exclusive_system(

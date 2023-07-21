@@ -8,7 +8,7 @@ pub(super) struct UiRootPlugin;
 impl Plugin for UiRootPlugin {
     fn build(&self, app: &mut App) {
         for state in GameState::iter() {
-            app.add_system(Self::cleanup_system.in_schedule(OnExit(state)));
+            app.add_systems(OnExit(state), Self::cleanup_system);
         }
     }
 }

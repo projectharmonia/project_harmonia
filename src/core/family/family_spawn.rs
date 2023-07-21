@@ -4,7 +4,7 @@ use std::{
 };
 
 use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    ecs::entity::EntityMap,
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
@@ -23,16 +23,19 @@ use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 use super::Budget;
 use crate::core::actor::race::{RaceBundle, ReflectRaceBundle};
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub(crate) struct FamilySpawn {
     pub(crate) city_entity: Entity,
     pub(crate) scene: FamilyScene,
     pub(crate) select: bool,
 }
 
-impl MapEntities for FamilySpawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.city_entity = entity_map.get(self.city_entity)?;
+impl MapEventEntities for FamilySpawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.city_entity = entity_map
+            .get(self.city_entity)
+            .ok_or(MapError(self.city_entity))?;
+
         Ok(())
     }
 }

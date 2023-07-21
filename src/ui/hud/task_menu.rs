@@ -21,6 +21,7 @@ pub(super) struct TaskMenuPlugin;
 impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            Update,
             (
                 Self::button_system,
                 Self::cleanup_system.run_if(
@@ -31,8 +32,8 @@ impl Plugin for TaskMenuPlugin {
                 Self::setup_system.after(TaskListSet),
             )
                 .chain()
-                .in_set(OnUpdate(GameState::Family))
-                .in_set(OnUpdate(FamilyMode::Life)),
+                .run_if(in_state(GameState::Family))
+                .run_if(in_state(FamilyMode::Life)),
         );
     }
 }
@@ -71,17 +72,13 @@ impl TaskMenuPlugin {
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
-                            position: UiRect::new(
-                                Val::Px(cursor_position.x),
-                                Val::Auto,
-                                Val::Auto,
-                                Val::Px(cursor_position.y),
-                            ),
+                            left: Val::Px(cursor_position.x),
+                            bottom: Val::Px(cursor_position.y),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),

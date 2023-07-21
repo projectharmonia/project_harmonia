@@ -7,11 +7,14 @@ pub(crate) struct CheckboxPlugin;
 
 impl Plugin for CheckboxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::init_system,
-            Self::interaction_system,
-            Self::tick_system,
-        ));
+        app.add_systems(
+            Update,
+            (
+                Self::init_system,
+                Self::interaction_system,
+                Self::tick_system,
+            ),
+        );
     }
 }
 

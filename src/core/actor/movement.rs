@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::{ActorAnimation, Sex};
 use crate::core::{
     asset_handles::AssetHandles,
-    game_world::WorldState,
+    game_world::WorldName,
     navigation::{NavPath, Navigation},
 };
 use move_here::MoveHerePlugin;
@@ -15,8 +15,9 @@ pub(super) struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MoveHerePlugin).add_systems(
-            (Self::init_system, Self::cleanup_system).in_set(OnUpdate(WorldState::InWorld)),
+        app.add_plugins(MoveHerePlugin).add_systems(
+            Update,
+            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
         );
     }
 }

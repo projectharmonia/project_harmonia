@@ -9,7 +9,7 @@ use crate::core::{
     animation::AnimationEnded,
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
-    game_world::WorldState,
+    game_world::WorldName,
     navigation::{following::Following, Navigation},
     task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
@@ -20,9 +20,10 @@ impl Plugin for TellSecretPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<TellSecret>()
             .replicate::<ListenSecret>()
-            .add_system(Self::list_system.in_set(TaskListSet))
             .add_systems(
+                Update,
                 (
+                    Self::list_system.in_set(TaskListSet),
                     Self::tell_activation_system,
                     Self::tell_system,
                     Self::listen_activation_system,
@@ -31,7 +32,7 @@ impl Plugin for TellSecretPlugin {
                     Self::tell_cancellation_system,
                     Self::cleanup_system,
                 )
-                    .in_set(OnUpdate(WorldState::InWorld)),
+                    .run_if(resource_exists::<WorldName>()),
             );
     }
 }

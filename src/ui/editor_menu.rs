@@ -30,27 +30,28 @@ pub(super) struct EditorMenuPlugin;
 
 impl Plugin for EditorMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::FamilyEditor)))
+        app.add_systems(OnEnter(GameState::FamilyEditor), Self::setup_system)
             .add_systems(
+                Update,
                 (
                     Self::plus_button_system,
                     Self::actor_buttons_spawn_system,
                     Self::actor_buttons_despawn_system,
-                    Self::actor_buttons_system,
+                    (
+                        Self::actor_buttons_system,
+                        (
+                            Self::sex_buttons_system,
+                            Self::first_name_edit_system,
+                            Self::last_name_edit_system,
+                        ),
+                    )
+                        .chain(),
                     Self::family_menu_button_system,
                     Self::save_family_button_system.pipe(error::report),
                     Self::place_dialog_button_system,
                     Self::city_place_button_system,
                 )
-                    .in_set(OnUpdate(GameState::FamilyEditor)),
-            )
-            .add_systems(
-                (
-                    Self::sex_buttons_system,
-                    Self::first_name_edit_system,
-                    Self::last_name_edit_system,
-                )
-                    .after(Self::actor_buttons_system),
+                    .run_if(in_state(GameState::FamilyEditor)),
             );
     }
 }
@@ -62,7 +63,8 @@ impl EditorMenuPlugin {
                 UiRoot,
                 NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -102,7 +104,7 @@ impl EditorMenuPlugin {
                 .with_children(|parent| {
                     parent.spawn((
                         EditActor(entity),
-                        Preview::actor(entity, theme.button.image.size),
+                        Preview::actor(entity, theme.button.image.width, theme.button.image.height),
                         ExclusiveButton,
                         Toggled(true),
                         ImageButtonBundle::placeholder(&theme),
@@ -322,50 +324,29 @@ fn setup_personality_node(parent: &mut ChildBuilder, theme: &Theme) {
             style: Style {
                 flex_direction: FlexDirection::Column,
                 padding: theme.padding.normal,
-                gap: theme.gap.normal,
+                row_gap: theme.gap.normal,
                 ..Default::default()
             },
             background_color: theme.panel_color.into(),
             ..Default::default()
         })
         .with_children(|parent| {
-            // TODO 0.11: Use grid layout
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        gap: theme.gap.normal,
+                        display: Display::Grid,
+                        column_gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
+                        grid_template_columns: vec![GridTrack::auto(); 2],
                         ..Default::default()
                     },
                     ..Default::default()
                 })
                 .with_children(|parent| {
-                    const GRID_GAP: Size = Size::all(Val::Px(10.0));
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Column,
-                                gap: GRID_GAP,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            parent.spawn(LabelBundle::normal(theme, "First name"));
-                            parent.spawn(LabelBundle::normal(theme, "Last name"));
-                        });
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Column,
-                                gap: theme.gap.normal,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            parent.spawn((FirstNameEdit, TextEditBundle::empty(theme)));
-                            parent.spawn((LastNameEdit, TextEditBundle::empty(theme)));
-                        });
+                    parent.spawn(LabelBundle::normal(theme, "First name"));
+                    parent.spawn((FirstNameEdit, TextEditBundle::empty(theme)));
+                    parent.spawn(LabelBundle::normal(theme, "Last name"));
+                    parent.spawn((LastNameEdit, TextEditBundle::empty(theme)));
                 });
 
             parent.spawn(NodeBundle::default()).with_children(|parent| {
@@ -388,7 +369,7 @@ fn setup_actors_node(parent: &mut ChildBuilder, theme: &Theme) {
                 position_type: PositionType::Absolute,
                 align_items: AlignItems::Center,
                 align_self: AlignSelf::FlexEnd,
-                gap: theme.gap.normal,
+                column_gap: theme.gap.normal,
                 padding: theme.padding.global,
                 ..Default::default()
             },
@@ -400,7 +381,7 @@ fn setup_actors_node(parent: &mut ChildBuilder, theme: &Theme) {
                 ActorsNode,
                 NodeBundle {
                     style: Style {
-                        gap: theme.gap.normal,
+                        column_gap: theme.gap.normal,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -416,8 +397,8 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
             style: Style {
                 position_type: PositionType::Absolute,
                 align_self: AlignSelf::FlexEnd,
-                position: UiRect::right(Val::Px(0.0)),
-                gap: theme.gap.normal,
+                right: Val::Px(0.0),
+                column_gap: theme.gap.normal,
                 padding: theme.padding.global,
                 ..Default::default()
             },
@@ -442,7 +423,7 @@ fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme:
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -458,7 +439,7 @@ fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme:
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -493,7 +474,7 @@ fn setup_place_family_dialog(
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -504,7 +485,8 @@ fn setup_place_family_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    size: Size::all(Val::Percent(100.0)),
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
                                     justify_content: JustifyContent::Center,
                                     ..Default::default()
                                 },
@@ -516,7 +498,7 @@ fn setup_place_family_dialog(
                                     parent
                                         .spawn(NodeBundle {
                                             style: Style {
-                                                gap: theme.gap.normal,
+                                                column_gap: theme.gap.normal,
                                                 ..Default::default()
                                             },
                                             ..Default::default()
@@ -540,7 +522,7 @@ fn setup_place_family_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()

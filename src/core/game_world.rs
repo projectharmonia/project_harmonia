@@ -16,38 +16,25 @@ pub(crate) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<WorldState>()
-            .init_resource::<IgnoreSaving>()
+        app.init_resource::<IgnoreSaving>()
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_systems(
+                Update,
                 (
-                    Self::in_world_state_system.run_if(resource_added::<WorldName>()),
-                    Self::no_world_state_system.run_if(resource_removed::<WorldName>()),
-                )
-                    .in_base_set(CoreSet::PostUpdate),
-            )
-            .add_systems((
-                Self::loading_system
-                    .pipe(error::report)
-                    .run_if(on_event::<GameLoad>())
-                    .before(scene::scene_spawner_system),
-                Self::saving_system
-                    .pipe(error::report)
-                    .run_if(on_event::<GameSave>()),
-            ));
+                    Self::loading_system
+                        .pipe(error::report)
+                        .run_if(on_event::<GameLoad>())
+                        .before(scene::scene_spawner_system),
+                    Self::saving_system
+                        .pipe(error::report)
+                        .run_if(on_event::<GameSave>()),
+                ),
+            );
     }
 }
 
 impl GameWorldPlugin {
-    fn no_world_state_system(mut world_state: ResMut<NextState<WorldState>>) {
-        world_state.set(WorldState::NoWorld);
-    }
-
-    fn in_world_state_system(mut world_state: ResMut<NextState<WorldState>>) {
-        world_state.set(WorldState::InWorld);
-    }
-
     /// Saves world to disk with the name from [`GameWorld`] resource.
     pub(crate) fn saving_system(
         world: &World,
@@ -161,24 +148,14 @@ fn save_to_scene(
     scene
 }
 
-/// Represents state of the [`WorldName`] resource.
-///
-/// To conveniently use with `in_set`.
-#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
-pub(super) enum WorldState {
-    #[default]
-    NoWorld,
-    InWorld,
-}
-
 /// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
-#[derive(Default)]
+#[derive(Default, Event)]
 pub(crate) struct GameSave;
 
 /// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
 ///
 /// Sets game state to [`GameState::World`].
-#[derive(Default)]
+#[derive(Default, Event)]
 pub(crate) struct GameLoad;
 
 /// Contains name of the currently loaded world.
@@ -226,12 +203,14 @@ mod tests {
             .not_replicate_if_present::<Transform, City>()
             .init_resource::<GamePaths>()
             .insert_resource(WorldName(WORLD_NAME.to_string()))
-            .add_plugin(TaskPoolPlugin::default())
-            .add_plugin(TypeRegistrationPlugin)
-            .add_plugin(AssetPlugin::default())
-            .add_plugin(ScenePlugin)
-            .add_plugin(TransformPlugin)
-            .add_plugin(GameWorldPlugin);
+            .add_plugins((
+                TaskPoolPlugin::default(),
+                TypeRegistrationPlugin,
+                AssetPlugin::default(),
+                ScenePlugin,
+                TransformPlugin,
+                GameWorldPlugin,
+            ));
 
         const TRANSFORM: Transform = Transform::IDENTITY;
         app.world.spawn(Transform::default()); // Non-reflected entity.

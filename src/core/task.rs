@@ -4,7 +4,7 @@ use std::{
 };
 
 use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    ecs::entity::EntityMap,
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
@@ -35,18 +35,20 @@ impl Plugin for TaskPlugin {
             .add_client_event::<TaskCancel>(SendPolicy::Unordered)
             .add_event::<TaskList>()
             .configure_set(
+                Update,
                 TaskListSet
                     .run_if(action_just_pressed(Action::Confirm))
-                    .in_set(OnUpdate(GameState::Family))
-                    .in_set(OnUpdate(FamilyMode::Life)),
+                    .run_if(in_state(GameState::Family))
+                    .run_if(in_state(FamilyMode::Life)),
             )
             .add_systems(
+                Update,
                 (
                     Self::queue_system,
                     Self::activation_system,
                     Self::cancelation_system,
                 )
-                    .in_set(ServerSet::Authority),
+                    .run_if(has_authority()),
             );
     }
 }
@@ -122,6 +124,7 @@ pub(crate) struct TaskListSet;
 // Contains a task that should be listed.
 ///
 /// Emitted when clicking on objects.
+#[derive(Event)]
 pub(crate) struct TaskList(pub(crate) Box<dyn Task>);
 
 impl<T: Task> From<T> for TaskList {
@@ -140,7 +143,7 @@ pub(crate) enum TaskState {
 }
 
 bitflags! {
-    #[derive(Default, Component)]
+    #[derive(Default, Component, Clone, Copy)]
     pub(crate) struct TaskGroups: u8 {
         const LEFT_HAND = 0b00000001;
         const RIGHT_HAND = 0b00000010;
@@ -160,25 +163,25 @@ pub(crate) trait Task: Reflect + Debug {
 /// An event of canceling the specified task.
 ///
 /// Emitted by players.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize, Event, Serialize)]
 pub(crate) struct TaskCancel(pub(crate) Entity);
 
-impl MapEntities for TaskCancel {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+impl MapEventEntities for TaskCancel {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
         Ok(())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub(crate) struct TaskRequest {
     pub(crate) entity: Entity,
     pub(crate) task: Box<dyn Task>,
 }
 
-impl MapEntities for TaskRequest {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.entity = entity_map.get(self.entity)?;
+impl MapEventEntities for TaskRequest {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
         Ok(())
     }
 }

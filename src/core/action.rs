@@ -1,17 +1,20 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypePath};
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-use super::settings::{Settings, SettingsApplySet};
+use super::settings::{Settings, SettingsApply};
 
 pub(super) struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ActionState<Action>>()
-            .add_startup_system(Self::load_mappings_system)
-            .add_system(Self::load_mappings_system.in_set(SettingsApplySet));
+            .add_systems(Startup, Self::load_mappings_system)
+            .add_systems(
+                Update,
+                Self::load_mappings_system.run_if(on_event::<SettingsApply>()),
+            );
     }
 }
 
@@ -34,6 +37,7 @@ impl ActionPlugin {
     PartialEq,
     PartialOrd,
     Serialize,
+    TypePath,
 )]
 pub(crate) enum Action {
     #[strum(serialize = "Camera Forward")]

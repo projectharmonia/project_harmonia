@@ -11,7 +11,7 @@ use super::{
     error::{self, ErrorReport},
     family::ActorFamily,
     game_state::GameState,
-    game_world::{GameLoad, WorldName, WorldState},
+    game_world::{GameLoad, WorldName},
     network::{self, DEFAULT_PORT},
 };
 
@@ -23,8 +23,9 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_startup_system(Self::subcommand_system.pipe(error::report))
-            .add_system(
+        app.add_systems(Startup, Self::subcommand_system.pipe(error::report))
+            .add_systems(
+                Update,
                 Self::quick_loading_system
                     .pipe(error::report)
                     .run_if(first_world_load),
@@ -119,7 +120,7 @@ impl CliPlugin {
 fn first_world_load(
     mut was_loaded: Local<bool>,
     error_events: EventReader<ErrorReport>,
-    world_state: Res<State<WorldState>>,
+    world_name: Option<Res<WorldName>>,
 ) -> bool {
     if *was_loaded {
         return false;
@@ -131,7 +132,7 @@ fn first_world_load(
         return false;
     }
 
-    if world_state.0 == WorldState::InWorld {
+    if world_name.is_some() {
         *was_loaded = true;
         true
     } else {

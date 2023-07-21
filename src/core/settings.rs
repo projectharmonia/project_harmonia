@@ -15,11 +15,11 @@ impl Plugin for SettingsPlugin {
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()
-            .configure_set(SettingsApplySet.run_if(on_event::<SettingsApply>()))
-            .add_system(
+            .add_systems(
+                Update,
                 Self::write_system
                     .pipe(error::report)
-                    .in_set(SettingsApplySet),
+                    .run_if(on_event::<SettingsApply>()),
             );
     }
 }
@@ -30,12 +30,8 @@ impl SettingsPlugin {
     }
 }
 
-/// Systems in this set will run on applying settings.
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(super) struct SettingsApplySet;
-
 /// An event that applies the specified settings in the [`Settings`] resource.
-#[derive(Default)]
+#[derive(Default, Event)]
 pub(crate) struct SettingsApply;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]

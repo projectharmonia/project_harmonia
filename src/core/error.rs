@@ -26,4 +26,5 @@ pub(crate) fn report(
 }
 
 /// Contains error that was reported using [`report`] adapter.
+#[derive(Event)]
 pub(crate) struct ErrorReport(pub(crate) Error);

@@ -2,10 +2,7 @@ mod buy_lot;
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
-use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
-    prelude::*,
-};
+use bevy::{ecs::entity::EntityMap, prelude::*};
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
@@ -13,7 +10,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use super::game_world::WorldState;
+use super::game_world::WorldName;
 use buy_lot::BuyLotPlugin;
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
@@ -23,9 +20,7 @@ pub(super) struct LotPlugin;
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<LotTool>()
-            .add_plugin(CreatingLotPlugin)
-            .add_plugin(MovingLotPlugin)
-            .add_plugin(BuyLotPlugin)
+            .add_plugins((CreatingLotPlugin, MovingLotPlugin, BuyLotPlugin))
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
@@ -34,16 +29,17 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotDespawn>(SendPolicy::Unordered)
             .add_server_event::<LotEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
-                (Self::vertices_update_system, Self::init_system)
-                    .in_set(OnUpdate(WorldState::InWorld)),
-            )
-            .add_systems(
+                Update,
                 (
-                    Self::spawn_system,
-                    Self::movement_system,
-                    Self::despawn_system,
-                )
-                    .in_set(ServerSet::Authority),
+                    (Self::vertices_update_system, Self::init_system)
+                        .run_if(resource_exists::<WorldName>()),
+                    (
+                        Self::spawn_system,
+                        Self::movement_system,
+                        Self::despawn_system,
+                    )
+                        .run_if(has_authority()),
+                ),
             );
     }
 }
@@ -216,43 +212,46 @@ impl FromWorld for LotMaterial {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct LotSpawn {
     vertices: Vec<Vec2>,
     city_entity: Entity,
 }
 
-impl MapEntities for LotSpawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.city_entity = entity_map.get(self.city_entity)?;
+impl MapEventEntities for LotSpawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.city_entity = entity_map
+            .get(self.city_entity)
+            .ok_or(MapError(self.city_entity))?;
+
         Ok(())
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
 struct LotMove {
     entity: Entity,
     offset: Vec2,
 }
 
-impl MapEntities for LotMove {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.entity = entity_map.get(self.entity)?;
+impl MapEventEntities for LotMove {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
         Ok(())
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Event, Debug, Deserialize, Serialize)]
 struct LotDespawn(Entity);
 
-impl MapEntities for LotDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+impl MapEventEntities for LotDespawn {
+    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
+        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
         Ok(())
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Event, Serialize)]
 struct LotEventConfirmed;
 
 #[cfg(test)]

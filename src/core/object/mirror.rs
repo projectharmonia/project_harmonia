@@ -1,7 +1,7 @@
 use bevy::{
     gltf::Gltf,
     prelude::*,
-    reflect::TypeUuid,
+    reflect::{TypePath, TypeUuid},
     render::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
@@ -9,19 +9,22 @@ use bevy::{
     scene::SceneInstance,
 };
 
-use crate::core::{game_state::GameState, game_world::WorldState, player_camera::PlayerCamera};
+use crate::core::{game_state::GameState, game_world::WorldName, player_camera::PlayerCamera};
 
 pub(super) struct MirrorPlugin;
 
 impl Plugin for MirrorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MaterialPlugin::<MirrorMaterial>::default())
+        app.add_plugins(MaterialPlugin::<MirrorMaterial>::default())
             .register_type::<Mirror>()
-            .add_systems((
-                Self::init_system.in_set(OnUpdate(WorldState::InWorld)),
-                Self::rotation_system
-                    .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
-            ));
+            .add_systems(
+                Update,
+                (
+                    Self::init_system.run_if(resource_exists::<WorldName>()),
+                    Self::rotation_system
+                        .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
+                ),
+            );
     }
 }
 
@@ -131,7 +134,7 @@ impl MirrorCameraBundle {
 #[derive(Component)]
 struct MirrorCamera;
 
-#[derive(AsBindGroup, Clone, TypeUuid)]
+#[derive(AsBindGroup, Clone, TypeUuid, TypePath)]
 #[uuid = "f425af87-cf60-493e-8bf8-dbf235e6ee46"]
 struct MirrorMaterial {
     #[texture(0)]

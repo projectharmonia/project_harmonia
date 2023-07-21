@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
 
-use crate::core::game_world::WorldState;
+use crate::core::game_world::WorldName;
 
 pub(super) struct NeedsPlugin;
 
@@ -18,20 +18,21 @@ impl Plugin for NeedsPlugin {
             .replicate::<Need>()
             .not_replicate_if_present::<Name, Need>()
             .add_systems(
+                Update,
                 (
-                    Self::hunger_init_system,
-                    Self::social_init_system,
-                    Self::hygiene_init_system,
-                    Self::fun_init_system,
-                    Self::energy_init_system,
-                    Self::bladder_init_system,
-                )
-                    .in_set(OnUpdate(WorldState::InWorld)),
-            )
-            .add_system(
-                Self::tick_system
-                    .run_if(on_timer(Duration::from_secs(1)))
-                    .in_set(ServerSet::Authority),
+                    (
+                        Self::hunger_init_system,
+                        Self::social_init_system,
+                        Self::hygiene_init_system,
+                        Self::fun_init_system,
+                        Self::energy_init_system,
+                        Self::bladder_init_system,
+                    )
+                        .run_if(resource_exists::<WorldName>()),
+                    Self::tick_system
+                        .run_if(on_timer(Duration::from_secs(1)))
+                        .run_if(has_authority()),
+                ),
             );
     }
 }

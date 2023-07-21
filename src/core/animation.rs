@@ -2,15 +2,16 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::core::game_world::WorldState;
+use super::game_world::WorldName;
 
 pub(super) struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<AnimationEnded>().add_systems(
+            Update,
             (Self::playing_system, Self::init_system, Self::update_system)
-                .in_set(OnUpdate(WorldState::InWorld)),
+                .run_if(resource_exists::<WorldName>()),
         );
     }
 }
@@ -89,4 +90,5 @@ impl AnimationTimer {
     }
 }
 
+#[derive(Event)]
 pub(super) struct AnimationEnded(pub(super) Entity);

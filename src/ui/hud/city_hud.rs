@@ -22,10 +22,11 @@ pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::setup_system.in_schedule(OnEnter(GameState::City)))
+        app.add_systems(OnEnter(GameState::City), Self::setup_system)
             .add_systems(
+                Update,
                 (Self::mode_button_system, Self::tool_button_system)
-                    .in_set(OnUpdate(GameState::City)),
+                    .run_if(in_state(GameState::City)),
             );
     }
 }
@@ -42,7 +43,8 @@ impl CityHudPlugin {
                 UiRoot,
                 NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -68,7 +70,7 @@ impl CityHudPlugin {
                             style: Style {
                                 align_self: AlignSelf::FlexEnd,
                                 padding: theme.padding.normal,
-                                gap: theme.gap.normal,
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             background_color: theme.panel_color.into(),

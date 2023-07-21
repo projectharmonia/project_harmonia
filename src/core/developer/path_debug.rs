@@ -3,24 +3,22 @@ use bevy_polyline::prelude::*;
 
 use crate::core::{
     navigation::NavPath,
-    settings::{Settings, SettingsApplySet},
+    settings::{Settings, SettingsApply},
 };
-
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-struct PathDebugSet;
 
 pub(super) struct PathDebugPlugin;
 
 impl Plugin for PathDebugPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PathDebugMaterial>()
-            .configure_set(PathDebugSet.run_if(debug_paths_enabled))
-            .add_systems((Self::init_system, Self::despawn_system).in_set(PathDebugSet))
-            .add_system(
+        app.init_resource::<PathDebugMaterial>().add_systems(
+            Update,
+            (
+                (Self::init_system, Self::despawn_system).run_if(debug_paths_enabled()),
                 Self::cleanup_system
-                    .in_set(SettingsApplySet)
-                    .run_if(not(debug_paths_enabled)),
-            );
+                    .run_if(on_event::<SettingsApply>())
+                    .run_if(not(debug_paths_enabled())),
+            ),
+        );
     }
 }
 
@@ -66,8 +64,8 @@ impl PathDebugPlugin {
     }
 }
 
-fn debug_paths_enabled(settings: Res<Settings>) -> bool {
-    settings.developer.debug_paths
+fn debug_paths_enabled() -> impl FnMut(Res<Settings>) -> bool {
+    |settings| settings.developer.debug_paths
 }
 
 /// Stores a handle for the navigation debug line material.

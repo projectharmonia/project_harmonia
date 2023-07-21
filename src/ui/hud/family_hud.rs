@@ -35,12 +35,13 @@ pub(super) struct FamilyHudPlugin;
 impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            (apply_system_buffers, Self::setup_system)
+            OnEnter(GameState::Family),
+            (apply_deferred, Self::setup_system)
                 .chain()
-                .after(FamilyPlugin::activation_system)
-                .in_schedule(OnEnter(GameState::Family)),
+                .after(FamilyPlugin::activation_system),
         )
         .add_systems(
+            Update,
             (
                 Self::mode_button_system,
                 Self::tasks_node_system,
@@ -48,23 +49,16 @@ impl Plugin for FamilyHudPlugin {
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
                 Self::need_bars_system,
                 Self::budget_system,
+                Self::building_mode_button_system.run_if(in_state(FamilyMode::Building)),
+                (
+                    Self::tasks_node_setup_system,
+                    Self::task_button_system,
+                    Self::actor_buttons_system,
+                    Self::needs_node_setup_system,
+                )
+                    .run_if(in_state(FamilyMode::Life)),
             )
-                .in_set(OnUpdate(GameState::Family)),
-        )
-        .add_systems(
-            (
-                Self::tasks_node_setup_system,
-                Self::task_button_system,
-                Self::actor_buttons_system,
-                Self::needs_node_setup_system,
-            )
-                .in_set(OnUpdate(GameState::Family))
-                .in_set(OnUpdate(FamilyMode::Life)),
-        )
-        .add_system(
-            Self::building_mode_button_system
-                .in_set(OnUpdate(GameState::Family))
-                .in_set(OnUpdate(FamilyMode::Building)),
+                .run_if(in_state(GameState::Family)),
         );
     }
 }
@@ -83,7 +77,8 @@ impl FamilyHudPlugin {
                 UiRoot,
                 NodeBundle {
                     style: Style {
-                        size: Size::all(Val::Percent(100.0)),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -94,7 +89,7 @@ impl FamilyHudPlugin {
                     .spawn(NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
-                            position: UiRect::right(Val::Px(0.0)),
+                            right: Val::Px(0.0),
                             padding: theme.padding.normal,
                             ..Default::default()
                         },
@@ -107,7 +102,7 @@ impl FamilyHudPlugin {
                     let content_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
-                                size: Size::width(Val::Percent(100.0)),
+                                width: Val::Percent(100.0),
                                 ..Default::default()
                             },
                             ..Default::default()
@@ -309,9 +304,10 @@ impl FamilyHudPlugin {
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    size: Size::all(Val::Percent(100.0)),
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
                                     padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -375,8 +371,9 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
                 NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::ColumnReverse,
-                        size: Size::all(Val::Percent(100.0)),
-                        gap: theme.gap.normal,
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
+                        row_gap: theme.gap.normal,
                         padding: theme.padding.normal,
                         ..Default::default()
                     },
@@ -386,7 +383,7 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
 
             const MAX_TASKS: usize = 4;
             // Image button is a square
-            let width = theme.button.image_button.size.width;
+            let width = theme.button.image_button.width;
             let height = width * MAX_TASKS as f32;
 
             let min_width = width
@@ -401,9 +398,10 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
                 ActiveTasksNode,
                 NodeBundle {
                     style: Style {
-                        min_size: Size::new(min_width, min_height),
+                        min_width,
+                        min_height,
                         flex_direction: FlexDirection::Column,
-                        gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
                         padding: theme.padding.normal,
                         ..Default::default()
                     },
@@ -418,7 +416,8 @@ fn setup_portrait_node(parent: &mut ChildBuilder, theme: &Theme, budget: Budget)
     parent
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Px(180.0), Val::Px(30.0)),
+                width: Val::Px(180.0),
+                height: Val::Px(30.0),
                 align_self: AlignSelf::FlexEnd,
                 align_items: AlignItems::Center,
                 ..Default::default()
@@ -441,7 +440,7 @@ fn setup_members_node(
         .spawn(NodeBundle {
             style: Style {
                 align_self: AlignSelf::FlexEnd,
-                gap: theme.gap.normal,
+                column_gap: theme.gap.normal,
                 padding: theme.padding.normal,
                 ..Default::default()
             },
@@ -452,7 +451,7 @@ fn setup_members_node(
             for &entity in members.iter() {
                 parent.spawn((
                     PlayActor(entity),
-                    Preview::actor(entity, theme.button.image.size),
+                    Preview::actor(entity, theme.button.image.width, theme.button.image.height),
                     ExclusiveButton,
                     Toggled(entity == active_entity),
                     ImageButtonBundle::placeholder(theme),
@@ -468,7 +467,7 @@ fn setup_info_node(parent: &mut ChildBuilder, tab_commands: &mut Commands, theme
                 flex_direction: FlexDirection::ColumnReverse,
                 position_type: PositionType::Absolute,
                 align_self: AlignSelf::FlexEnd,
-                position: UiRect::right(Val::Px(0.0)),
+                right: Val::Px(0.0),
                 ..Default::default()
             },
             ..Default::default()
@@ -491,7 +490,7 @@ fn setup_info_node(parent: &mut ChildBuilder, tab_commands: &mut Commands, theme
                     .spawn(NodeBundle {
                         style: Style {
                             flex_direction: FlexDirection::Column,
-                            size: Size::width(Val::Px(400.0)),
+                            width: Val::Px(400.0),
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -537,7 +536,7 @@ fn setup_building_hud(
                 style: Style {
                     align_self: AlignSelf::FlexEnd,
                     padding: theme.padding.normal,
-                    gap: theme.gap.normal,
+                    column_gap: theme.gap.normal,
                     ..Default::default()
                 },
                 background_color: theme.panel_color.into(),

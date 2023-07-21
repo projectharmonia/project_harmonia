@@ -19,16 +19,17 @@ pub(crate) struct EditorPlugin;
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
+            .add_systems(OnEnter(GameState::FamilyEditor), Self::setup_system)
+            .add_systems(OnExit(GameState::FamilyEditor), Self::cleanup_system)
             .add_systems(
+                Update,
                 (
                     Self::selection_system,
                     Self::reset_family_system.run_if(on_event::<FamilyReset>()),
                     Self::scene_save_system.pipe(error::report),
                 )
-                    .in_set(OnUpdate(GameState::FamilyEditor)),
-            )
-            .add_system(Self::setup_system.in_schedule(OnEnter(GameState::FamilyEditor)))
-            .add_system(Self::cleanup_system.in_schedule(OnExit(GameState::FamilyEditor)));
+                    .run_if(in_state(GameState::FamilyEditor)),
+            );
     }
 }
 
@@ -156,5 +157,5 @@ impl Default for EditableActorBundle {
 pub(crate) struct EditableActor;
 
 /// Event that resets currently editing family.
-#[derive(Default)]
+#[derive(Default, Event)]
 pub(crate) struct FamilyReset;

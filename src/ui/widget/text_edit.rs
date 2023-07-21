@@ -7,12 +7,15 @@ pub(super) struct TextEditPlugin;
 
 impl Plugin for TextEditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            Self::input_system,
-            Self::interaction_system,
-            Self::activation_system,
-        ))
-        .add_system(Self::exclusive_system.in_base_set(CoreSet::PostUpdate));
+        app.add_systems(
+            Update,
+            (
+                Self::input_system,
+                Self::interaction_system,
+                Self::activation_system,
+            ),
+        )
+        .add_systems(PostUpdate, Self::exclusive_system);
     }
 }
 
@@ -44,7 +47,7 @@ impl TextEditPlugin {
     ) {
         for (&interaction, mut background, active_edit) in &mut text_edits {
             *background = match (interaction, active_edit.is_some()) {
-                (Interaction::Clicked, _) | (Interaction::None, true) => {
+                (Interaction::Pressed, _) | (Interaction::None, true) => {
                     theme.text_edit.active_color.into()
                 }
                 (Interaction::Hovered, true) => theme.text_edit.hovered_active_color.into(),
@@ -59,7 +62,7 @@ impl TextEditPlugin {
         mut text_edits: Query<(Entity, &Interaction), (Changed<Interaction>, With<TextEdit>)>,
     ) {
         for (entity, &interaction) in &mut text_edits {
-            if interaction == Interaction::Clicked {
+            if interaction == Interaction::Pressed {
                 commands.entity(entity).insert(ActiveEdit);
             }
         }

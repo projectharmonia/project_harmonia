@@ -20,24 +20,25 @@ pub(super) struct InGameMenuPlugin;
 
 impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            Self::setup_system
-                .run_if(action_just_pressed(Action::Cancel))
-                .run_if(not(any_with_component::<IngameMenu>()))
-                .run_if(not(any_with_component::<TaskMenu>()))
-                .run_if(not(any_with_component::<PlacingObject>()))
-                .run_if(not(any_with_component::<CreatingLot>()))
-                .run_if(not(any_with_component::<MovingLot>()))
-                .run_if(not(any_with_component::<CreatingLot>()))
-                .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
-        )
-        .add_systems(
+        app.add_systems(
+            Update,
             (
-                Self::ingame_button_system,
-                Self::exit_dialog_button_system,
-                Self::cleanup_system.run_if(action_just_pressed(Action::Cancel)),
-            )
-                .distributive_run_if(any_with_component::<IngameMenu>()),
+                Self::setup_system
+                    .run_if(action_just_pressed(Action::Cancel))
+                    .run_if(not(any_with_component::<IngameMenu>()))
+                    .run_if(not(any_with_component::<TaskMenu>()))
+                    .run_if(not(any_with_component::<PlacingObject>()))
+                    .run_if(not(any_with_component::<CreatingLot>()))
+                    .run_if(not(any_with_component::<MovingLot>()))
+                    .run_if(not(any_with_component::<CreatingLot>()))
+                    .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
+                (
+                    Self::ingame_button_system,
+                    Self::exit_dialog_button_system,
+                    Self::cleanup_system.run_if(action_just_pressed(Action::Cancel)),
+                )
+                    .run_if(any_with_component::<IngameMenu>()),
+            ),
         );
     }
 }
@@ -55,7 +56,7 @@ impl InGameMenuPlugin {
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
                                 padding: theme.padding.normal,
-                                gap: theme.gap.normal,
+                                row_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             background_color: theme.panel_color.into(),
@@ -170,7 +171,7 @@ fn setup_exit_dialog(
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             padding: theme.padding.normal,
-                            gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         },
                         background_color: theme.panel_color.into(),
@@ -182,7 +183,7 @@ fn setup_exit_dialog(
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()

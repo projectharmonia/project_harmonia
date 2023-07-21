@@ -17,13 +17,16 @@ pub(super) struct PreviewPlugin;
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<PreviewState>()
-            .add_startup_system(Self::spawn_camera_system)
-            .add_systems((
-                Self::deactivation_system.in_schedule(OnEnter(PreviewState::Inactive)),
-                Self::scene_spawning_system.in_set(OnUpdate(PreviewState::Inactive)),
-                Self::loading_system.in_set(OnUpdate(PreviewState::LoadingAsset)),
-                Self::rendering_system.in_set(OnUpdate(PreviewState::Rendering)),
-            ));
+            .add_systems(Startup, Self::spawn_camera_system)
+            .add_systems(OnEnter(PreviewState::Inactive), Self::deactivation_system)
+            .add_systems(
+                Update,
+                (
+                    Self::scene_spawning_system.run_if(in_state(PreviewState::Inactive)),
+                    Self::loading_system.run_if(in_state(PreviewState::LoadingAsset)),
+                    Self::rendering_system.run_if(in_state(PreviewState::Rendering)),
+                ),
+            );
     }
 }
 
@@ -230,19 +233,19 @@ pub(crate) struct Preview {
 }
 
 impl Preview {
-    pub(crate) fn object(id: HandleId, size: Size) -> Self {
-        Self::new(PreviewKind::Object(id), size)
+    pub(crate) fn object(id: HandleId, width: Val, height: Val) -> Self {
+        Self::new(PreviewKind::Object(id), width, height)
     }
 
-    pub(crate) fn actor(entity: Entity, size: Size) -> Self {
-        Self::new(PreviewKind::Actor(entity), size)
+    pub(crate) fn actor(entity: Entity, width: Val, height: Val) -> Self {
+        Self::new(PreviewKind::Actor(entity), width, height)
     }
 
-    fn new(kind: PreviewKind, size: Size) -> Self {
-        let Val::Px(width) = size.width else {
+    fn new(kind: PreviewKind, width: Val, height: Val) -> Self {
+        let Val::Px(width) = width else {
             panic!("width should be in pixels");
         };
-        let Val::Px(height) = size.height else {
+        let Val::Px(height) = height else {
             panic!("height should be in pixels");
         };
 

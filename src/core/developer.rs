@@ -3,7 +3,7 @@ mod path_debug;
 use bevy::{pbr::wireframe::WireframeConfig, prelude::*};
 use bevy_rapier3d::prelude::*;
 
-use super::settings::{Settings, SettingsApplySet};
+use super::settings::{Settings, SettingsApply};
 use path_debug::PathDebugPlugin;
 
 /// Propagates developer settings changes into resources.
@@ -11,17 +11,21 @@ pub(super) struct DeveloperPlugin;
 
 impl Plugin for DeveloperPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(PathDebugPlugin)
-            .add_startup_systems((
-                Self::debug_collisions_toggle_system,
-                Self::wireframe_toggle_system,
-            ))
+        app.add_plugins(PathDebugPlugin)
             .add_systems(
+                Startup,
+                (
+                    Self::debug_collisions_toggle_system,
+                    Self::wireframe_toggle_system,
+                ),
+            )
+            .add_systems(
+                Update,
                 (
                     Self::debug_collisions_toggle_system,
                     Self::wireframe_toggle_system,
                 )
-                    .in_set(SettingsApplySet),
+                    .run_if(on_event::<SettingsApply>()),
             );
     }
 }

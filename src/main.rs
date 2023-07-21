@@ -5,7 +5,10 @@
 mod core;
 mod ui;
 
+use std::time::Duration;
+
 use bevy::{
+    asset::ChangeWatcher,
     log::LogPlugin,
     pbr::wireframe::WireframePlugin,
     prelude::*,
@@ -39,7 +42,7 @@ fn main() {
                     level: bevy::log::Level::DEBUG,
                 })
                 .set(AssetPlugin {
-                    watch_for_changes: true,
+                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                     ..Default::default()
                 })
                 .set(RenderPlugin {
@@ -49,33 +52,35 @@ fn main() {
                     },
                 }),
         )
-        .add_plugins(ReplicationPlugins)
-        .add_plugin(WireframePlugin)
-        .add_plugin(AtmospherePlugin)
-        .add_plugin(InputManagerPlugin::<Action>::default())
-        .add_plugin(OxidizedNavigationPlugin {
-            settings: NavMeshSettings {
-                cell_width: 0.25,
-                cell_height: 0.1,
-                tile_width: 100,
-                world_half_extents: 250.0,
-                world_bottom_bound: -100.0,
-                max_traversable_slope_radians: (40.0_f32 - 0.1).to_radians(),
-                walkable_height: 20,
-                walkable_radius: 1,
-                step_height: 3,
-                min_region_area: 100,
-                merge_region_area: 500,
-                max_contour_simplification_error: 1.1,
-                max_edge_length: 80,
-                max_tile_generation_tasks: None,
+        .add_plugins((
+            ReplicationPlugins,
+            WireframePlugin,
+            AtmospherePlugin,
+            InputManagerPlugin::<Action>::default(),
+            OxidizedNavigationPlugin {
+                settings: NavMeshSettings {
+                    cell_width: 0.25,
+                    cell_height: 0.1,
+                    tile_width: 100,
+                    world_half_extents: 250.0,
+                    world_bottom_bound: -100.0,
+                    max_traversable_slope_radians: (40.0_f32 - 0.1).to_radians(),
+                    walkable_height: 20,
+                    walkable_radius: 1,
+                    step_height: 3,
+                    min_region_area: 100,
+                    merge_region_area: 500,
+                    max_contour_simplification_error: 1.1,
+                    max_edge_length: 80,
+                    max_tile_generation_tasks: None,
+                },
             },
-        })
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(OutlinePlugin)
-        .add_plugin(PolylinePlugin)
-        .add_plugins(CorePlugins)
-        .add_plugins(UiPlugins)
+            RapierPhysicsPlugin::<NoUserData>::default(),
+            RapierDebugRenderPlugin::default(),
+            OutlinePlugin,
+            PolylinePlugin,
+            CorePlugins,
+            UiPlugins,
+        ))
         .run();
 }

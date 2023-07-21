@@ -26,9 +26,10 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SettingsMenuOpen>()
-            .add_system(Self::setup_system.run_if(on_event::<SettingsMenuOpen>()))
-            .add_systems(
+        app.add_event::<SettingsMenuOpen>().add_systems(
+            Update,
+            (
+                Self::setup_system.run_if(on_event::<SettingsMenuOpen>()),
                 (
                     Self::mapping_button_text_system,
                     Self::mapping_button_system,
@@ -36,8 +37,9 @@ impl Plugin for SettingsMenuPlugin {
                     Self::binding_dialog_button_system,
                     Self::settings_button_system,
                 )
-                    .distributive_run_if(any_with_component::<SettingsMenu>()), // TODO 0.11: Replace with run_if
-            );
+                    .run_if(any_with_component::<SettingsMenu>()),
+            ),
+        );
     }
 }
 
@@ -58,7 +60,8 @@ impl SettingsMenuPlugin {
                             position_type: PositionType::Absolute,
                             flex_direction: FlexDirection::Column,
                             align_self: AlignSelf::Center,
-                            size: Size::all(Val::Percent(100.0)),
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
                             padding: theme.padding.global,
                             ..Default::default()
                         },
@@ -83,7 +86,7 @@ impl SettingsMenuPlugin {
                             .spawn(NodeBundle {
                                 style: Style {
                                     padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
+                                    column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 ..Default::default()
@@ -113,9 +116,10 @@ impl SettingsMenuPlugin {
                         .spawn(NodeBundle {
                             style: Style {
                                 align_items: AlignItems::End,
-                                size: Size::all(Val::Percent(100.0)),
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
                                 justify_content: JustifyContent::End,
-                                gap: theme.gap.normal,
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             ..Default::default()
@@ -174,7 +178,7 @@ impl SettingsMenuPlugin {
                                     justify_content: JustifyContent::Center,
                                     align_items: AlignItems::Center,
                                     padding: theme.padding.normal,
-                                    gap: theme.gap.normal,
+                                    row_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
                                 background_color: theme.panel_color.into(),
@@ -191,7 +195,7 @@ impl SettingsMenuPlugin {
                                 parent
                                     .spawn(NodeBundle {
                                         style: Style {
-                                            gap: theme.gap.normal,
+                                            column_gap: theme.gap.normal,
                                             ..Default::default()
                                         },
                                         ..Default::default()
@@ -353,7 +357,7 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
-                gap: theme.gap.normal,
+                row_gap: theme.gap.normal,
                 ..Default::default()
             },
             ..Default::default()
@@ -371,13 +375,14 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
 }
 
 fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
-    // TODO 0.11: Use grid layout.
-    const GRID_GAP: Size = Size::all(Val::Px(20.0));
+    const INPUTS_PER_ACTION: usize = 3;
     parent
         .spawn(NodeBundle {
             style: Style {
-                gap: GRID_GAP,
-                flex_direction: FlexDirection::Column,
+                display: Display::Grid,
+                column_gap: theme.gap.normal,
+                row_gap: theme.gap.normal,
+                grid_template_columns: vec![GridTrack::auto(); INPUTS_PER_ACTION + 1],
                 ..Default::default()
             },
             ..Default::default()
@@ -388,21 +393,8 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                     action.to_string(),
                     theme.label.normal.clone(),
                 ));
-            }
-        });
 
-    for index in 0..3 {
-        parent
-            .spawn(NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Column,
-                    gap: theme.gap.normal,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .with_children(|parent| {
-                for action in Action::variants() {
+                for index in 0..INPUTS_PER_ACTION {
                     let inputs = settings.controls.mappings.get(action);
                     let input = inputs.get_at(index).cloned();
                     let input_kind = if let Some(UserInput::Single(input_kind)) = input {
@@ -419,8 +411,8 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                         TextButtonBundle::normal(theme, String::new()),
                     ));
                 }
-            });
-    }
+            }
+        });
 }
 
 fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
@@ -428,7 +420,7 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
-                gap: theme.gap.normal,
+                row_gap: theme.gap.normal,
                 ..Default::default()
             },
             ..Default::default()
@@ -454,7 +446,7 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
 }
 
 // Creates a settings menu node.
-#[derive(Default)]
+#[derive(Default, Event)]
 pub(super) struct SettingsMenuOpen;
 
 #[derive(Component)]

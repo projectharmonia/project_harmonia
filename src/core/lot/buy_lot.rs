@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::entity::{EntityMap, MapEntities, MapEntitiesError},
+    ecs::entity::{EntityMapper, MapEntities},
     math::Vec3Swizzles,
     prelude::*,
 };
@@ -19,9 +19,13 @@ pub(super) struct BuyLotPlugin;
 
 impl Plugin for BuyLotPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<BuyLot>()
-            .add_system(Self::list_system.in_set(TaskListSet))
-            .add_system(Self::buying_system.in_set(ServerSet::Authority));
+        app.replicate::<BuyLot>().add_systems(
+            Update,
+            (
+                Self::list_system.in_set(TaskListSet),
+                Self::buying_system.run_if(has_authority()),
+            ),
+        );
     }
 }
 
@@ -81,8 +85,7 @@ impl FromWorld for BuyLot {
 }
 
 impl MapEntities for BuyLot {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
-        Ok(())
+    fn map_entities(&mut self, entity_mapper: &mut EntityMapper) {
+        self.0 = entity_mapper.get_or_reserve(self.0);
     }
 }
