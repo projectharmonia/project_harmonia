@@ -136,17 +136,29 @@ impl ButtonPlugin {
     }
 
     fn tab_switching_system(
+        mut commmands: Commands,
         tabs: Query<(&Toggled, &TabContent), Changed<Toggled>>,
-        mut tab_nodes: Query<&mut Style>,
+        mut tab_nodes: Query<(&mut Style, Option<&mut PreviousDisplay>)>,
     ) {
         for (toggled, tab_content) in &tabs {
-            let mut style = tab_nodes
+            let (mut style, mut previous_display) = tab_nodes
                 .get_mut(tab_content.0)
                 .expect("tabs should point to nodes with style component");
-            style.display = if toggled.0 {
-                Display::Flex
+
+            if toggled.0 {
+                if let Some(previous_display) = previous_display {
+                    style.display = previous_display.0;
+                }
             } else {
-                Display::None
+                if let Some(previous_display) = &mut previous_display {
+                    previous_display.0 = style.display;
+                } else {
+                    commmands
+                        .entity(tab_content.0)
+                        .insert(PreviousDisplay(style.display));
+                }
+
+                style.display = Display::None;
             };
         }
     }
@@ -155,6 +167,10 @@ impl ButtonPlugin {
 /// Makes the button togglable.
 #[derive(Component)]
 pub(crate) struct Toggled(pub(crate) bool);
+
+/// Stores previous [`Display`] since last toggle.
+#[derive(Component)]
+struct PreviousDisplay(Display);
 
 /// If present, then only one button that belongs to the parent node can be toggled at any given time.
 ///
