@@ -3,7 +3,7 @@ pub(crate) mod creating_wall;
 use std::f32::consts::PI;
 
 use bevy::{
-    ecs::entity::EntityMap,
+    ecs::{entity::EntityMap, query::Has},
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
@@ -42,7 +42,7 @@ impl WallPlugin {
     fn init_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
-        spawned_walls: Query<(Entity, Option<&CreatingWall>), Added<WallEdges>>,
+        spawned_walls: Query<(Entity, Has<CreatingWall>), Added<WallEdges>>,
     ) {
         for (entity, creating_wall) in &spawned_walls {
             let mut entity = commands.entity(entity);
@@ -56,7 +56,7 @@ impl WallPlugin {
             ));
 
             // Creating walls shouldn't affect navigation.
-            if creating_wall.is_none() {
+            if !creating_wall {
                 entity.insert(NavMeshAffector);
             }
         }

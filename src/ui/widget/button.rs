@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
+use bevy::{ecs::query::Has, prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
 
 use super::click::{Click, LastInteraction};
 use crate::ui::theme::Theme;
@@ -97,11 +97,11 @@ impl ButtonPlugin {
 
     fn toggling_system(
         mut click_events: EventReader<Click>,
-        mut buttons: Query<(&mut Toggled, Option<&ExclusiveButton>)>,
+        mut buttons: Query<(&mut Toggled, Has<ExclusiveButton>)>,
     ) {
         for event in &mut click_events {
             if let Ok((mut toggled, exclusive)) = buttons.get_mut(event.0) {
-                if exclusive.is_some() && toggled.0 {
+                if exclusive && toggled.0 {
                     // Button is already pressed, if it's exclusive button, do not toggle it.
                     continue;
                 }

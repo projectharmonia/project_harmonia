@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::query::Has, prelude::*};
 
 use crate::ui::theme::Theme;
 
@@ -38,7 +38,7 @@ impl TextEditPlugin {
     fn interaction_system(
         theme: Res<Theme>,
         mut text_edits: Query<
-            (&Interaction, &mut BackgroundColor, Option<&ActiveEdit>),
+            (&Interaction, &mut BackgroundColor, Has<ActiveEdit>),
             (
                 Or<(Changed<Interaction>, Added<ActiveEdit>)>,
                 With<TextEdit>,
@@ -46,7 +46,7 @@ impl TextEditPlugin {
         >,
     ) {
         for (&interaction, mut background, active_edit) in &mut text_edits {
-            *background = match (interaction, active_edit.is_some()) {
+            *background = match (interaction, active_edit) {
                 (Interaction::Pressed, _) | (Interaction::None, true) => {
                     theme.text_edit.active_color.into()
                 }
