@@ -118,7 +118,7 @@ impl WorldBrowserPlugin {
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
         buttons: Query<(&WorldButton, &WorldNode)>,
-        mut labels: Query<&mut Text>,
+        labels: Query<&Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
         for event in &mut click_events {
@@ -126,13 +126,12 @@ impl WorldBrowserPlugin {
                 continue;
             };
 
-            let mut world_name = labels
-                .get_mut(world_node.label_entity)
+            let world_name = labels
+                .get(world_node.label_entity)
                 .expect("world label should contain text");
             match world_button {
                 WorldButton::Play => {
-                    commands
-                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
+                    commands.insert_resource(WorldName(world_name.sections[0].value.clone()));
                     load_events.send_default();
                 }
                 WorldButton::Host => setup_host_world_dialog(
