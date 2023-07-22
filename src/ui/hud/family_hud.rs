@@ -292,34 +292,37 @@ impl FamilyHudPlugin {
             .find(|(_, &tab)| tab == InfoTab::Needs)
             .expect("tab with cities should be spawned on state enter");
 
-        let mut content_entity = commands.entity(tab_content.0);
-        content_entity.despawn_descendants();
-        content_entity.with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        display: Display::Grid,
-                        column_gap: theme.gap.normal,
-                        row_gap: theme.gap.normal,
-                        padding: theme.padding.normal,
-                        grid_template_columns: vec![
-                            GridTrack::auto(),
-                            GridTrack::flex(1.0),
-                            GridTrack::auto(),
-                            GridTrack::flex(1.0),
-                        ],
+        commands
+            .entity(tab_content.0)
+            .despawn_descendants()
+            .with_children(|parent| {
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            display: Display::Grid,
+                            column_gap: theme.gap.normal,
+                            row_gap: theme.gap.normal,
+                            padding: theme.padding.normal,
+                            grid_template_columns: vec![
+                                GridTrack::auto(),
+                                GridTrack::flex(1.0),
+                                GridTrack::auto(),
+                                GridTrack::flex(1.0),
+                            ],
+                            ..Default::default()
+                        },
                         ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    for (need_entity, glyph, need) in needs.iter_many(children) {
-                        parent.spawn(LabelBundle::symbol(&theme, glyph.0));
-                        parent
-                            .spawn((BarNeed(need_entity), ProgressBarBundle::new(&theme, need.0)));
-                    }
-                });
-        });
+                    })
+                    .with_children(|parent| {
+                        for (need_entity, glyph, need) in needs.iter_many(children) {
+                            parent.spawn(LabelBundle::symbol(&theme, glyph.0));
+                            parent.spawn((
+                                BarNeed(need_entity),
+                                ProgressBarBundle::new(&theme, need.0),
+                            ));
+                        }
+                    });
+            });
     }
 
     fn need_bars_system(

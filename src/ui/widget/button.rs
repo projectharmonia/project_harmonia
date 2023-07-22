@@ -48,18 +48,19 @@ impl ButtonPlugin {
         buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
     ) {
         for (entity, image_handle) in &buttons {
-            let mut entity = commmands.entity(entity);
-            entity.despawn_descendants();
-            entity.with_children(|parent| {
-                parent.spawn(ImageBundle {
-                    style: theme.button.image.clone(),
-                    image: UiImage {
-                        texture: image_handle.clone(),
+            commmands
+                .entity(entity)
+                .despawn_descendants()
+                .with_children(|parent| {
+                    parent.spawn(ImageBundle {
+                        style: theme.button.image.clone(),
+                        image: UiImage {
+                            texture: image_handle.clone(),
+                            ..Default::default()
+                        },
                         ..Default::default()
-                    },
-                    ..Default::default()
+                    });
                 });
-            });
         }
     }
 
