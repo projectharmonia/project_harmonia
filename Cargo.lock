@@ -402,7 +402,8 @@ dependencies = [
 [[package]]
 name = "bevy_atmosphere"
 version = "0.7.0"
-source = "git+https://github.com/JonahPlusPlus/bevy_atmosphere#8d1436c5ffa400b40417e9caabc9ad85b5a3010a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72e824a9e417cea4dabece5214f621fed36c8e916790924fcd6054a3ca5342a3"
 dependencies = [
  "bevy",
  "bevy_atmosphere_macros",
@@ -412,7 +413,8 @@ dependencies = [
 [[package]]
 name = "bevy_atmosphere_macros"
 version = "0.2.1"
-source = "git+https://github.com/JonahPlusPlus/bevy_atmosphere#8d1436c5ffa400b40417e9caabc9ad85b5a3010a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ec647b6d64306efddf366911786e7a6150e6a97603dd7380d62f81768f2a3f1"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro-crate",

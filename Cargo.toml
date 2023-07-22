@@ -16,7 +16,7 @@ bevy = { version = "0.11", default-features = false, features = [
   "png",
   "x11",
 ] }
-bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
+bevy_atmosphere = "0.7"
 bevy_replicon = "0.7"
 bevy_rapier3d = "0.22"
 bevy_mod_outline = { git = "https://github.com/ramirezmike/bevy_mod_outline", default-features = false }
