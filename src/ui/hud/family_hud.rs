@@ -296,32 +296,10 @@ impl FamilyHudPlugin {
             .entity(tab_content.0)
             .despawn_descendants()
             .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            display: Display::Grid,
-                            column_gap: theme.gap.normal,
-                            row_gap: theme.gap.normal,
-                            padding: theme.padding.normal,
-                            grid_template_columns: vec![
-                                GridTrack::auto(),
-                                GridTrack::flex(1.0),
-                                GridTrack::auto(),
-                                GridTrack::flex(1.0),
-                            ],
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        for (need_entity, glyph, need) in needs.iter_many(children) {
-                            parent.spawn(LabelBundle::symbol(&theme, glyph.0));
-                            parent.spawn((
-                                BarNeed(need_entity),
-                                ProgressBarBundle::new(&theme, need.0),
-                            ));
-                        }
-                    });
+                for (need_entity, glyph, need) in needs.iter_many(children) {
+                    parent.spawn(LabelBundle::symbol(&theme, glyph.0));
+                    parent.spawn((BarNeed(need_entity), ProgressBarBundle::new(&theme, need.0)));
+                }
             });
     }
 
@@ -486,17 +464,30 @@ fn setup_info_node(parent: &mut ChildBuilder, tab_commands: &mut Commands, theme
                 .id();
 
             for (index, tab) in InfoTab::iter().enumerate() {
-                let tab_content = parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            width: Val::Px(400.0),
+                let tab_content = match tab {
+                    InfoTab::Needs => parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                display: Display::Grid,
+                                width: Val::Px(400.0),
+                                column_gap: theme.gap.normal,
+                                row_gap: theme.gap.normal,
+                                padding: theme.padding.normal,
+                                grid_template_columns: vec![
+                                    GridTrack::auto(),
+                                    GridTrack::flex(1.0),
+                                    GridTrack::auto(),
+                                    GridTrack::flex(1.0),
+                                ],
+                                ..Default::default()
+                            },
+                            background_color: theme.panel_color.into(),
+
                             ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
-                        ..Default::default()
-                    })
-                    .id();
+                        })
+                        .id(),
+                    InfoTab::Skills => parent.spawn(NodeBundle::default()).id(),
+                };
 
                 tab_commands
                     .spawn((
