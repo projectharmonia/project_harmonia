@@ -18,21 +18,22 @@ impl Plugin for NeedsPlugin {
             .replicate::<Need>()
             .not_replicate_if_present::<Name, Need>()
             .add_systems(
-                Update,
+                PreUpdate,
+                Self::tick_system
+                    .run_if(on_timer(Duration::from_secs(1)))
+                    .run_if(has_authority()),
+            )
+            .add_systems(
+                PostUpdate, // To initialize after actor spawn.
                 (
-                    (
-                        Self::hunger_init_system,
-                        Self::social_init_system,
-                        Self::hygiene_init_system,
-                        Self::fun_init_system,
-                        Self::energy_init_system,
-                        Self::bladder_init_system,
-                    )
-                        .run_if(resource_exists::<WorldName>()),
-                    Self::tick_system
-                        .run_if(on_timer(Duration::from_secs(1)))
-                        .run_if(has_authority()),
-                ),
+                    Self::hunger_init_system,
+                    Self::social_init_system,
+                    Self::hygiene_init_system,
+                    Self::fun_init_system,
+                    Self::energy_init_system,
+                    Self::bladder_init_system,
+                )
+                    .run_if(resource_exists::<WorldName>()),
             );
     }
 }

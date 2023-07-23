@@ -1,6 +1,6 @@
 use std::mem;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, scene};
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
@@ -35,6 +35,7 @@ impl Plugin for HumanPlugin {
                         .before(EditorPlugin::scene_save_system)
                         .run_if(in_state(GameState::FamilyEditor)),
                     (Self::init_system, Self::needs_init_system)
+                        .after(scene::scene_spawner_system)
                         .run_if(resource_exists::<WorldName>()),
                 ),
             );

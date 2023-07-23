@@ -9,7 +9,7 @@ use super::{
     actor::ActiveActor,
     city::{ActiveCity, City},
     error::{self, ErrorReport},
-    family::ActorFamily,
+    family::FamilyMembers,
     game_state::GameState,
     game_world::{GameLoad, WorldName},
     network::{self, DEFAULT_PORT},
@@ -25,7 +25,7 @@ impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_systems(Startup, Self::subcommand_system.pipe(error::report))
             .add_systems(
-                Update,
+                PostUpdate,
                 Self::quick_loading_system
                     .pipe(error::report)
                     .run_if(first_world_load),
@@ -81,8 +81,7 @@ impl CliPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(Entity, &Name)>,
-        actors: Query<(Entity, &ActorFamily)>,
+        families: Query<(&Name, &FamilyMembers)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.get_quick_load() {
             match quick_load {
@@ -96,17 +95,15 @@ impl CliPlugin {
                     game_state.set(GameState::City);
                 }
                 QuickLoad::Family { name } => {
-                    let (family_entity, _) = families
+                    let (_, members) = families
                         .iter()
-                        .find(|(_, family_name)| family_name.as_str() == name)
+                        .find(|(family_name, _)| family_name.as_str() == name)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
-                    // Search using `ActorFamily` because `FamilyMembers` component inserted to family on update.
-                    let (actor_entity, _) = actors
-                        .iter()
-                        .find(|(_, family)| family.0 == family_entity)
+                    let entity = *members
+                        .first()
                         .expect("family should contain at least one actor");
-                    commands.entity(actor_entity).insert(ActiveActor);
+                    commands.entity(entity).insert(ActiveActor);
                     game_state.set(GameState::Family);
                 }
             }
