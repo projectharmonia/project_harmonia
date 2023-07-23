@@ -73,7 +73,7 @@ impl TaskMenuPlugin {
                         style: Style {
                             position_type: PositionType::Absolute,
                             left: Val::Px(cursor_position.x),
-                            bottom: Val::Px(cursor_position.y),
+                            top: Val::Px(cursor_position.y),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
