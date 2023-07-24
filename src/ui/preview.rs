@@ -49,7 +49,7 @@ impl PreviewPlugin {
         if let Some((preview_entity, preview)) = previews.iter().find(|&(entity, _)| {
             styles
                 .iter_many(parents.iter_ancestors(entity))
-                .all(|style| style.display == Display::Flex)
+                .all(|style| style.display != Display::None)
         }) {
             let (translation, scene_handle) = match preview.kind {
                 PreviewKind::Actor(entity) => {
