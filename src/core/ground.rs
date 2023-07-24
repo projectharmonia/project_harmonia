@@ -36,7 +36,12 @@ impl GroundPlugin {
                 parent.spawn(GroundBundle {
                     pbr_bundle: PbrBundle {
                         mesh: meshes.add(Mesh::from(Plane::from_size(GroundBundle::SIZE))),
-                        material: materials.add(Color::rgb_u8(69, 108, 69).into()),
+                        material: materials.add(StandardMaterial {
+                            base_color: Color::rgb(0.5, 0.5, 0.5),
+                            perceptual_roughness: 1.0,
+                            reflectance: 0.0,
+                            ..default()
+                        }),
                         ..Default::default()
                     },
                     ..Default::default()
