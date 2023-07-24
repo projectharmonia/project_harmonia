@@ -27,10 +27,13 @@ impl CheckboxPlugin {
         for (entity, checkbox, text) in &checkboxes {
             commmands.entity(entity).with_children(|parent| {
                 parent
-                    .spawn(ButtonBundle {
-                        style: theme.checkbox.button.clone(),
-                        ..Default::default()
-                    })
+                    .spawn((
+                        LastInteraction::default(),
+                        ButtonBundle {
+                            style: theme.checkbox.button.clone(),
+                            ..Default::default()
+                        },
+                    ))
                     .with_children(|parent| {
                         if checkbox.0 {
                             parent.spawn(NodeBundle {
