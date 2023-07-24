@@ -30,6 +30,7 @@ use ui::UiPlugins;
 
 fn main() {
     App::new()
+        .insert_resource(Msaa::Off)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.3,

@@ -2,7 +2,7 @@ mod exp_smoothed;
 
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{input::mouse::MouseMotion, prelude::*};
+use bevy::{input::mouse::MouseMotion, pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*};
 use leafwing_input_manager::prelude::ActionState;
 
 use self::exp_smoothed::ExpSmoothed;
@@ -108,13 +108,33 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
     direction.normalize_or_zero()
 }
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub(crate) struct PlayerCameraBundle {
     target_translation: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
     player_camera: PlayerCamera,
     camera_3d_bundle: Camera3dBundle,
+    ssao_bundle: ScreenSpaceAmbientOcclusionBundle,
+}
+
+impl Default for PlayerCameraBundle {
+    fn default() -> Self {
+        Self {
+            target_translation: Default::default(),
+            orbit_rotation: Default::default(),
+            spring_arm: Default::default(),
+            player_camera: PlayerCamera,
+            camera_3d_bundle: Camera3dBundle {
+                camera: Camera {
+                    hdr: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ssao_bundle: Default::default(),
+        }
+    }
 }
 
 /// The origin of a camera.
