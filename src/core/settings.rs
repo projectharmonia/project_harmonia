@@ -75,20 +75,10 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub(crate) struct VideoSettings {
-    pub(crate) msaa: u32,
     pub(crate) perf_stats: bool,
-}
-
-impl Default for VideoSettings {
-    fn default() -> Self {
-        Self {
-            msaa: 1,
-            perf_stats: false,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
