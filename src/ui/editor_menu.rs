@@ -323,6 +323,7 @@ fn setup_personality_node(parent: &mut ChildBuilder, theme: &Theme) {
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
+                position_type: PositionType::Absolute,
                 padding: theme.padding.normal,
                 row_gap: theme.gap.normal,
                 ..Default::default()
