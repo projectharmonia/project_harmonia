@@ -93,10 +93,19 @@ impl EditorPlugin {
         }
     }
 
-    fn reset_family_system(mut commands: Commands, actors: Query<Entity, With<EditableActor>>) {
+    fn reset_family_system(
+        mut commands: Commands,
+        actors: Query<Entity, With<EditableActor>>,
+        families: Query<Entity, With<EditableFamily>>,
+    ) {
         for entity in &actors {
             commands.entity(entity).despawn_recursive();
         }
+
+        // Spawn a new actor for editing.
+        commands.entity(families.single()).with_children(|parent| {
+            parent.spawn(EditableActorBundle::default());
+        });
     }
 
     fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<EditableFamily>>) {
