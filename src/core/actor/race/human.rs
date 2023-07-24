@@ -34,7 +34,11 @@ impl Plugin for HumanPlugin {
                     Self::scene_setup_system
                         .before(EditorPlugin::scene_save_system)
                         .run_if(in_state(GameState::FamilyEditor)),
-                    (Self::init_system, Self::needs_init_system)
+                    (
+                        Self::init_system,
+                        // TODO 0.12: Probably could be moved to update if scene spawning will be moved to `PreUpdate`.
+                        Self::needs_init_system.run_if(not(resource_added::<WorldName>())),
+                    )
                         .after(scene::scene_spawner_system)
                         .run_if(resource_exists::<WorldName>()),
                 ),
