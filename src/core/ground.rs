@@ -48,7 +48,7 @@ impl GroundPlugin {
                 });
                 parent.spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
-                        illuminance: 6000.0,
+                        illuminance: 30000.0,
                         shadows_enabled: true,
                         ..Default::default()
                     },
