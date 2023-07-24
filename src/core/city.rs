@@ -60,7 +60,7 @@ impl CityPlugin {
             commands.entity(entity).insert((
                 TransformBundle::from_transform(transform),
                 VisibilityBundle {
-                    visibility: Visibility::Visible,
+                    visibility: Visibility::Hidden,
                     ..Default::default()
                 },
             ));
