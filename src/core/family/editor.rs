@@ -24,11 +24,14 @@ impl Plugin for EditorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::selection_system,
                     Self::reset_family_system.run_if(on_event::<FamilyReset>()),
                     Self::scene_save_system.pipe(error::report),
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::selection_system.run_if(in_state(GameState::FamilyEditor)), // Should run after family members update.
             );
     }
 }
@@ -55,24 +58,6 @@ impl EditorPlugin {
             });
     }
 
-    fn selection_system(
-        mut commands: Commands,
-        mut spawn_select_events: EventReader<SelectedFamilySpawned>,
-        mut game_state: ResMut<NextState<GameState>>,
-        families: Query<&FamilyMembers>,
-    ) {
-        for event in &mut spawn_select_events {
-            let members = families
-                .get(event.0)
-                .expect("spawned family should have actors");
-            let actor_entity = *members
-                .first()
-                .expect("family should always have at least one member");
-            commands.entity(actor_entity).insert(ActiveActor);
-            game_state.set(GameState::Family);
-        }
-    }
-
     pub(crate) fn scene_save_system(
         registry: Res<AppTypeRegistry>,
         game_paths: Res<GamePaths>,
@@ -91,6 +76,24 @@ impl EditorPlugin {
         }
 
         Ok(())
+    }
+
+    fn selection_system(
+        mut commands: Commands,
+        mut spawn_select_events: EventReader<SelectedFamilySpawned>,
+        mut game_state: ResMut<NextState<GameState>>,
+        families: Query<&FamilyMembers>,
+    ) {
+        for event in &mut spawn_select_events {
+            let members = families
+                .get(event.0)
+                .expect("spawned family should have actors");
+            let actor_entity = *members
+                .first()
+                .expect("family should always have at least one member");
+            commands.entity(actor_entity).insert(ActiveActor);
+            game_state.set(GameState::Family);
+        }
     }
 
     fn reset_family_system(mut commands: Commands, actors: Query<Entity, With<EditableActor>>) {
