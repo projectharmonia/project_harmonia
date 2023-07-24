@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
-    preview::Preview,
+    preview::{Preview, PreviewProcessed},
     theme::Theme,
     widget::{
         button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
@@ -36,6 +36,7 @@ impl Plugin for EditorMenuPlugin {
                 (
                     Self::plus_button_system,
                     Self::actor_buttons_spawn_system,
+                    Self::actor_buttons_update_system,
                     Self::actor_buttons_despawn_system,
                     (
                         Self::actor_buttons_system,
@@ -110,6 +111,23 @@ impl EditorMenuPlugin {
                         ImageButtonBundle::placeholder(&theme),
                     ));
                 });
+        }
+    }
+
+    fn actor_buttons_update_system(
+        mut commands: Commands,
+        actors: Query<(Entity, Ref<Sex>), With<EditableActor>>,
+        buttons: Query<(Entity, &EditActor)>,
+    ) {
+        for (actor_entity, _) in actors
+            .iter()
+            .filter(|(_, sex)| sex.is_changed() && !sex.is_added())
+        {
+            let (button_entity, _) = buttons
+                .iter()
+                .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
+                .expect("each actor should have a corresponding button");
+            commands.entity(button_entity).remove::<PreviewProcessed>();
         }
     }
 

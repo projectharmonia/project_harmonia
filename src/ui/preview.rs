@@ -268,7 +268,7 @@ enum PreviewKind {
 
 /// Marks entity with [`Preview`] as processed end excludes it from preview generation.
 #[derive(Component)]
-struct PreviewProcessed;
+pub(super) struct PreviewProcessed;
 
 /// Scene that used for preview generation.
 #[derive(Bundle)]
