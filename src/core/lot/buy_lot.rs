@@ -2,6 +2,7 @@ use bevy::{
     ecs::entity::{EntityMapper, MapEntities},
     math::Vec3Swizzles,
     prelude::*,
+    scene,
 };
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -23,7 +24,9 @@ impl Plugin for BuyLotPlugin {
             Update,
             (
                 Self::list_system.in_set(TaskListSet),
-                Self::buying_system.run_if(has_authority()),
+                Self::activation_system
+                    .after(scene::scene_spawner_system)
+                    .run_if(has_authority()),
             ),
         );
     }
@@ -46,7 +49,7 @@ impl BuyLotPlugin {
         }
     }
 
-    fn buying_system(
+    fn activation_system(
         mut commands: Commands,
         lots: Query<(), Without<LotFamily>>,
         actors: Query<&ActorFamily>,

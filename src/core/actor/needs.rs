@@ -18,7 +18,7 @@ impl Plugin for NeedsPlugin {
             .replicate::<Need>()
             .not_replicate_if_present::<Name, Need>()
             .add_systems(
-                PreUpdate,
+                Update,
                 Self::tick_system
                     .run_if(on_timer(Duration::from_secs(1)))
                     .run_if(has_authority()),

@@ -2,7 +2,7 @@ mod buy_lot;
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
-use bevy::{ecs::entity::EntityMap, prelude::*};
+use bevy::{ecs::entity::EntityMap, prelude::*, scene};
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
@@ -31,7 +31,10 @@ impl Plugin for LotPlugin {
             .add_systems(
                 Update,
                 (
-                    (Self::vertices_update_system, Self::init_system)
+                    (
+                        Self::init_system.after(scene::scene_spawner_system),
+                        Self::vertices_update_system,
+                    )
                         .run_if(resource_exists::<WorldName>()),
                     (
                         Self::spawn_system,

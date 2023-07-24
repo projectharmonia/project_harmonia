@@ -6,6 +6,7 @@ use bevy::{
     ecs::{entity::EntityMap, query::Has},
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
+    scene,
 };
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -31,6 +32,7 @@ impl Plugin for WallPlugin {
                 Update,
                 (
                     (Self::init_system, Self::mesh_update_system)
+                        .after(scene::scene_spawner_system)
                         .run_if(resource_exists::<WorldName>()),
                     Self::wall_creation_system.run_if(has_authority()),
                 ),

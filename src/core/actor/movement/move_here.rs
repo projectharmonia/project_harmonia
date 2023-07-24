@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, scene};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ impl Plugin for MoveHerePlugin {
             Update,
             (
                 Self::list_system.in_set(TaskListSet),
-                Self::activation_system,
+                Self::activation_system.after(scene::scene_spawner_system),
                 Self::cancellation_system,
                 Self::finish_system,
             )

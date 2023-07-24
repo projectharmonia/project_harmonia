@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, scene};
 use bevy_replicon::prelude::*;
 
 use crate::core::{
@@ -24,9 +24,9 @@ impl Plugin for TellSecretPlugin {
                 Update,
                 (
                     Self::list_system.in_set(TaskListSet),
-                    Self::tell_activation_system,
+                    Self::tell_activation_system.after(scene::scene_spawner_system),
                     Self::tell_system,
-                    Self::listen_activation_system,
+                    Self::listen_activation_system.after(scene::scene_spawner_system),
                     Self::finish_system,
                     Self::listen_cancellation_system,
                     Self::tell_cancellation_system,
