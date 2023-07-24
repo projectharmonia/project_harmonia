@@ -196,6 +196,7 @@ impl Default for PreviewCameraBundle {
             preview_camera: PreviewCamera,
             render_layer: PREVIEW_RENDER_LAYER,
             camera_bundle: Camera3dBundle {
+                transform: Transform::from_translation(Vec3::Y * 1000.0), // High above the player to avoid noticing.
                 camera: Camera {
                     is_active: false,
                     ..Default::default()
