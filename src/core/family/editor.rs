@@ -41,19 +41,16 @@ impl EditorPlugin {
         commands
             .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
-                parent.spawn(PointLightBundle {
-                    point_light: PointLight {
-                        intensity: 1500.0,
+                parent.spawn(DirectionalLightBundle {
+                    directional_light: DirectionalLight {
+                        illuminance: 30000.0,
                         shadows_enabled: true,
-                        shadow_depth_bias: 0.25,
                         ..Default::default()
                     },
-                    transform: Transform::from_xyz(4.0, 8.0, 4.0),
+                    transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..Default::default()
                 });
                 parent.spawn(PlayerCameraBundle::default());
-            })
-            .with_children(|parent| {
                 parent.spawn(EditableActorBundle::default());
             });
     }
