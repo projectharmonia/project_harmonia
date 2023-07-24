@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 
 use super::{
-    city::{ActiveCity, CityPlugin},
+    city::{ActiveCity, CityPlugin, CITY_SIZE, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
     cursor_hover::Hoverable,
     game_state::GameState,
@@ -35,7 +35,7 @@ impl GroundPlugin {
             .with_children(|parent| {
                 parent.spawn(GroundBundle {
                     pbr_bundle: PbrBundle {
-                        mesh: meshes.add(Mesh::from(Plane::from_size(GroundBundle::SIZE))),
+                        mesh: meshes.add(Mesh::from(Plane::from_size(CITY_SIZE))),
                         material: materials.add(StandardMaterial {
                             base_color: Color::rgb(0.5, 0.5, 0.5),
                             perceptual_roughness: 1.0,
@@ -90,15 +90,11 @@ struct GroundBundle {
     pbr_bundle: PbrBundle,
 }
 
-impl GroundBundle {
-    const SIZE: f32 = 50.0;
-}
-
 impl Default for GroundBundle {
     fn default() -> Self {
         Self {
             name: Name::new("Ground"),
-            collider: Collider::cuboid(Self::SIZE / 2.0, 0.0, Self::SIZE / 2.0),
+            collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
             collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
             ground: Ground,
             hoverable: Hoverable,
