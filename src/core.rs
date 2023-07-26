@@ -25,7 +25,6 @@ mod player_camera;
 pub(super) mod ready_scene;
 mod reflect_bundle;
 pub(super) mod settings;
-pub(super) mod task;
 pub(super) mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
@@ -51,7 +50,6 @@ use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
 use ready_scene::ReadyScenePlugin;
 use settings::SettingsPlugin;
-use task::TaskPlugin;
 use wall::WallPlugin;
 
 pub(super) struct CorePlugins;
@@ -60,7 +58,6 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(NetworkPlugin)
-            .add(TaskPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
             .add(CityPlugin)

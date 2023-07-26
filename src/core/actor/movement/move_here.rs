@@ -4,13 +4,15 @@ use serde::{Deserialize, Serialize};
 
 use super::{Movement, MovementBundle};
 use crate::core::{
-    actor::ActorAnimation,
+    actor::{
+        task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
+        ActorAnimation,
+    },
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
     game_world::WorldName,
     ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
-    task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct MoveHerePlugin;

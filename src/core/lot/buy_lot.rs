@@ -8,10 +8,10 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
+    actor::task::{Task, TaskList, TaskListSet, TaskState},
     cursor_hover::CursorHover,
     family::ActorFamily,
     ground::Ground,
-    task::{Task, TaskList, TaskListSet, TaskState},
 };
 
 use super::{LotFamily, LotVertices};

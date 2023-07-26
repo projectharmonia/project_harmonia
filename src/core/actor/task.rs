@@ -21,7 +21,7 @@ use serde::{
 };
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
-use super::{
+use crate::core::{
     action::Action, actor::Actor, component_commands::ComponentCommandsExt, family::FamilyMode,
     game_state::GameState,
 };

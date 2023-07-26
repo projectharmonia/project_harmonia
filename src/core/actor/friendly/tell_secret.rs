@@ -4,6 +4,7 @@ use bevy_replicon::prelude::*;
 use crate::core::{
     actor::{
         movement::{Movement, MovementBundle},
+        task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
         Actor, ActorAnimation,
     },
     animation::AnimationEnded,
@@ -11,7 +12,6 @@ use crate::core::{
     cursor_hover::CursorHover,
     game_world::WorldName,
     navigation::{following::Following, Navigation},
-    task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
 };
 
 pub(super) struct TellSecretPlugin;

@@ -4,11 +4,13 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use crate::{
     core::{
         action::Action,
-        actor::ActiveActor,
+        actor::{
+            task::{Task, TaskList, TaskListSet, TaskRequest},
+            ActiveActor,
+        },
         cursor_hover::CursorHover,
         family::FamilyMode,
         game_state::GameState,
-        task::{Task, TaskList, TaskListSet, TaskRequest},
     },
     ui::{
         theme::Theme,

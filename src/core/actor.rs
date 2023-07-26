@@ -2,6 +2,7 @@ mod friendly;
 pub(super) mod movement;
 pub(crate) mod needs;
 pub(crate) mod race;
+pub(crate) mod task;
 
 use bevy::{prelude::*, scene};
 use bevy_mod_outline::OutlineBundle;
@@ -25,13 +26,20 @@ use friendly::FriendlyPlugins;
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
 use race::RacePlugins;
+use task::TaskPlugin;
 
 pub(super) struct ActorPlugin;
 
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
-            .add_plugins((RacePlugins, FriendlyPlugins, MovementPlugin, NeedsPlugin))
+            .add_plugins((
+                RacePlugins,
+                FriendlyPlugins,
+                MovementPlugin,
+                NeedsPlugin,
+                TaskPlugin,
+            ))
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
