@@ -48,6 +48,7 @@ impl MovementPlugin {
     }
 }
 
+/// Setups navigation using the corresponding movement speed.
 #[derive(Bundle)]
 pub(super) struct MovementBundle {
     navigation: Navigation,
@@ -68,6 +69,7 @@ impl MovementBundle {
     }
 }
 
+/// Triggers animation when the actor starts moving.
 #[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
 pub(super) enum Movement {
     #[default]
