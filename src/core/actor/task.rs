@@ -63,12 +63,7 @@ impl TaskPlugin {
             if actors.get(event.entity).is_ok() {
                 commands.entity(event.entity).with_children(|parent| {
                     parent
-                        .spawn((
-                            Name::new(event.task.name().to_string()),
-                            event.task.groups(),
-                            Replication,
-                            TaskState::Queued,
-                        ))
+                        .spawn(TaskBundle::new(&*event.task))
                         .insert_reflect([event.task.into_reflect()]);
                 });
             } else {
@@ -130,6 +125,27 @@ pub(crate) struct TaskList(pub(crate) Box<dyn Task>);
 impl<T: Task> From<T> for TaskList {
     fn from(value: T) -> Self {
         Self(Box::new(value))
+    }
+}
+
+#[derive(Bundle)]
+struct TaskBundle {
+    name: Name,
+    groups: TaskGroups,
+    state: TaskState,
+    parent_sync: ParentSync,
+    replication: Replication,
+}
+
+impl TaskBundle {
+    fn new(task: &dyn Task) -> Self {
+        Self {
+            name: Name::new(task.name().to_string()),
+            groups: task.groups(),
+            state: Default::default(),
+            parent_sync: Default::default(),
+            replication: Replication,
+        }
     }
 }
 
