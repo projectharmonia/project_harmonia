@@ -6,7 +6,7 @@ use bevy::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
     },
-    scene::{self, SceneInstance},
+    scene::SceneInstance,
 };
 
 use crate::core::{game_state::GameState, game_world::WorldName, player_camera::PlayerCamera};
@@ -20,9 +20,7 @@ impl Plugin for MirrorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system
-                        .after(scene::scene_spawner_system)
-                        .run_if(resource_exists::<WorldName>()),
+                    Self::init_system.run_if(resource_exists::<WorldName>()),
                     Self::rotation_system
                         .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
                 ),

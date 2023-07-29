@@ -8,7 +8,6 @@ use bevy::{
         reflect::ReflectMapEntities,
     },
     prelude::*,
-    scene,
     utils::HashMap,
 };
 use bevy_replicon::prelude::*;
@@ -44,7 +43,7 @@ impl Plugin for FamilyPlugin {
                 Update,
                 (
                     (Self::spawn_system, Self::despawn_system).run_if(has_authority()),
-                    Self::members_update_system.after(scene::scene_spawner_system).run_if(resource_exists::<WorldName>()),
+                    Self::members_update_system.run_if(resource_exists::<WorldName>()),
                     Self::cleanup_system.run_if(resource_removed::<WorldName>())
                 )
             );

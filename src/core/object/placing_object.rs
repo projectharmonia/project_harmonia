@@ -39,6 +39,7 @@ impl Plugin for PlacingObjectPlugin {
             (
                 (
                     Self::init_system,
+                    Self::scene_init_system,
                     Self::picking_system
                         .run_if(action_just_pressed(Action::Confirm))
                         .run_if(not(any_with_component::<PlacingObject>())),
@@ -70,10 +71,7 @@ impl Plugin for PlacingObjectPlugin {
         )
         .add_systems(
             PostUpdate,
-            (
-                Self::exclusive_system.pipe(Self::cleanup_system),
-                Self::scene_init_system, // TODO 0.12: Probably could be moved to update if scene spawning will be moved to `PreUpdate`.
-            ),
+            Self::exclusive_system.pipe(Self::cleanup_system),
         );
     }
 }

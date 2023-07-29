@@ -3,7 +3,7 @@ pub(crate) mod placing_object;
 
 use std::path::PathBuf;
 
-use bevy::{ecs::entity::EntityMap, prelude::*, scene};
+use bevy::{ecs::entity::EntityMap, prelude::*};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -36,10 +36,7 @@ impl Plugin for ObjectPlugin {
             .add_systems(
                 Update,
                 (
-                    (
-                        Self::init_system.after(scene::scene_spawner_system),
-                        Self::scene_init_system,
-                    )
+                    (Self::init_system, Self::scene_init_system)
                         .run_if(resource_exists::<WorldName>()),
                     (
                         Self::spawn_system,

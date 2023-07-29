@@ -1,4 +1,4 @@
-use bevy::{prelude::*, scene};
+use bevy::prelude::*;
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
@@ -34,9 +34,7 @@ impl Plugin for CityPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system
-                        .after(scene::scene_spawner_system)
-                        .run_if(resource_exists::<WorldName>()),
+                    Self::init_system.run_if(resource_exists::<WorldName>()),
                     Self::cleanup_system.run_if(resource_removed::<WorldName>()),
                 ),
             );

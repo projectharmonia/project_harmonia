@@ -20,7 +20,7 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_systems(
-                Update,
+                PostUpdate,
                 (
                     Self::loading_system
                         .pipe(error::report)

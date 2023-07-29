@@ -28,7 +28,7 @@ impl Plugin for CliPlugin {
                 PostUpdate,
                 Self::quick_loading_system
                     .pipe(error::report)
-                    .run_if(first_world_load),
+                    .run_if(second_frame),
             );
     }
 }
@@ -113,27 +113,20 @@ impl CliPlugin {
     }
 }
 
-/// Returns `true` for the first full world load.
-fn first_world_load(
-    mut was_loaded: Local<bool>,
-    error_events: EventReader<ErrorReport>,
-    world_name: Option<Res<WorldName>>,
-) -> bool {
-    if *was_loaded {
-        return false;
-    }
-
-    // Mark as loaded when an error was occurred.
-    if !error_events.is_empty() {
-        *was_loaded = true;
-        return false;
-    }
-
-    if world_name.is_some() {
-        *was_loaded = true;
-        true
-    } else {
-        false
+/// Returns `true` only for the second frame.
+///
+/// Needed to skip one frame after startup to let game world load.
+fn second_frame(mut frame: Local<usize>, error_events: EventReader<ErrorReport>) -> bool {
+    match *frame {
+        0 => {
+            *frame += 1;
+            false
+        }
+        1 => {
+            *frame += 1;
+            error_events.is_empty()
+        }
+        _ => false,
     }
 }
 

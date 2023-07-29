@@ -4,7 +4,7 @@ pub(crate) mod needs;
 pub(crate) mod race;
 pub(crate) mod task;
 
-use bevy::{prelude::*, scene};
+use bevy::prelude::*;
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -49,7 +49,7 @@ impl Plugin for ActorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system.after(scene::scene_spawner_system),
+                    Self::init_system,
                     Self::scene_init_system,
                     Self::name_update_system,
                 )
