@@ -6,10 +6,12 @@ use bevy::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
     },
-    scene::SceneInstance,
 };
 
-use crate::core::{game_state::GameState, game_world::WorldName, player_camera::PlayerCamera};
+use crate::core::{
+    game_state::GameState, game_world::WorldName, player_camera::PlayerCamera,
+    ready_scene::ReadyScene,
+};
 
 pub(super) struct MirrorPlugin;
 
@@ -34,19 +36,11 @@ impl MirrorPlugin {
         mut images: ResMut<Assets<Image>>,
         mut mirror_materials: ResMut<Assets<MirrorMaterial>>,
         gltfs: Res<Assets<Gltf>>,
-        scene_spawner: Res<SceneSpawner>,
-        mirrors: Query<
-            (Entity, &Handle<Scene>, &SceneInstance),
-            (With<Mirror>, Without<MirrorReady>),
-        >,
+        mirrors: Query<(Entity, &Handle<Scene>), (With<Mirror>, Added<ReadyScene>)>,
         children: Query<&Children>,
         material_handles: Query<&Handle<StandardMaterial>>,
     ) {
-        for (scene_entity, scene_handle, scene_instance) in &mirrors {
-            if !scene_spawner.instance_is_ready(**scene_instance) {
-                continue;
-            }
-
+        for (scene_entity, scene_handle) in &mirrors {
             let gltf = gltfs
                 .iter()
                 .map(|(_, gltf)| gltf)
@@ -80,8 +74,6 @@ impl MirrorPlugin {
                     }
                 }
             }
-
-            commands.entity(scene_entity).insert(MirrorReady);
         }
     }
 
@@ -103,10 +95,6 @@ impl MirrorPlugin {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component, Default)]
 pub(crate) struct Mirror;
-
-/// Marker that says that mirror materials on this entity was initialized.
-#[derive(Component)]
-struct MirrorReady;
 
 #[derive(Bundle)]
 struct MirrorCameraBundle {
