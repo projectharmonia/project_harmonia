@@ -186,6 +186,7 @@ impl WallPlugin {
             }
 
             let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![Vec3::Z; positions.len()]);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
             mesh.set_indices(Some(Indices::U32(indices)));
 
