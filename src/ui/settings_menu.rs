@@ -17,7 +17,6 @@ use super::{
 };
 use crate::core::{
     action::Action,
-    game_state::GameState,
     input_events::InputEvents,
     settings::{Settings, SettingsApply},
 };
@@ -300,7 +299,6 @@ impl SettingsMenuPlugin {
         mut apply_events: EventWriter<SettingsApply>,
         mut click_events: EventReader<Click>,
         mut settings: ResMut<Settings>,
-        mut game_state: ResMut<NextState<GameState>>,
         settings_menus: Query<Entity, With<SettingsMenu>>,
         settings_buttons: Query<&SettingsButton>,
         mapping_buttons: Query<&Mapping>,
@@ -311,35 +309,31 @@ impl SettingsMenuPlugin {
                 continue;
             };
 
-            match settings_button {
-                SettingsButton::Ok => {
-                    for (checkbox, field) in &checkboxes {
-                        let field_value = settings
-                            .path_mut::<bool>(field.0)
-                            .expect("fields with checkboxes should be stored as bools");
-                        *field_value = checkbox.0;
-                    }
-                    for mapping in &mapping_buttons {
-                        if let Some(input_kind) = mapping.input_kind {
-                            settings.controls.mappings.insert_at(
-                                input_kind,
-                                mapping.action,
-                                mapping.index,
-                            );
-                        } else {
-                            settings
-                                .controls
-                                .mappings
-                                .remove_at(mapping.action, mapping.index);
-                        }
-                    }
-                    apply_events.send_default();
-                    game_state.set(GameState::MainMenu);
+            if settings_button == SettingsButton::Ok {
+                for (checkbox, field) in &checkboxes {
+                    let field_value = settings
+                        .path_mut::<bool>(field.0)
+                        .expect("fields with checkboxes should be stored as bools");
+                    *field_value = checkbox.0;
                 }
-                SettingsButton::Cancel => {
-                    commands.entity(settings_menus.single()).despawn_recursive()
+                for mapping in &mapping_buttons {
+                    if let Some(input_kind) = mapping.input_kind {
+                        settings.controls.mappings.insert_at(
+                            input_kind,
+                            mapping.action,
+                            mapping.index,
+                        );
+                    } else {
+                        settings
+                            .controls
+                            .mappings
+                            .remove_at(mapping.action, mapping.index);
+                    }
                 }
+                apply_events.send_default();
             }
+
+            commands.entity(settings_menus.single()).despawn_recursive()
         }
     }
 }
@@ -460,7 +454,7 @@ enum SettingsTab {
     Developer,
 }
 
-#[derive(Clone, Component, Copy, Display, EnumIter)]
+#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum SettingsButton {
     Ok,
     Cancel,
