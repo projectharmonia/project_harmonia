@@ -140,7 +140,6 @@ impl PlacingObjectPlugin {
             placing_entity
                 .insert((
                     Name::new("Placing object"),
-                    AsyncSceneCollider::default(),
                     SceneBundle {
                         scene: scene_handle,
                         transform,
@@ -159,12 +158,13 @@ impl PlacingObjectPlugin {
 
     fn scene_init_system(
         mut commands: Commands,
+        meshes: Res<Assets<Mesh>>,
         placing_objects: Query<(Entity, &PlacingObject), Added<ReadyScene>>,
         chidlren: Query<&Children>,
         mut objects: Query<&mut Visibility>,
-        meshes: Query<(), With<Handle<Mesh>>>,
+        mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
-        for (scene_entity, placing_object) in &placing_objects {
+        for (object_entity, placing_object) in &placing_objects {
             if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
                 let mut visibility = objects
                     .get_mut(object_entity)
@@ -172,13 +172,18 @@ impl PlacingObjectPlugin {
                 *visibility = Visibility::Hidden;
             }
 
-            for child_entity in chidlren
-                .iter_descendants(scene_entity)
-                .filter(|&entity| meshes.get(entity).is_ok())
+            for (child_entity, mesh_handle) in
+                mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {
-                commands
-                    .entity(child_entity)
-                    .insert(CollisionGroups::new(Group::NONE, Group::NONE));
+                if let Some(mesh) = meshes.get(mesh_handle) {
+                    if let Some(collider) =
+                        Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+                    {
+                        commands
+                            .entity(child_entity)
+                            .insert((collider, CollisionGroups::new(Group::NONE, Group::NONE)));
+                    }
+                }
             }
         }
     }

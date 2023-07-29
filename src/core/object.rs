@@ -72,7 +72,6 @@ impl ObjectPlugin {
                     scene_handle,
                     Name::new(object_metadata.general.name.clone()),
                     Hoverable,
-                    AsyncSceneCollider::default(),
                     GlobalTransform::default(),
                     VisibilityBundle::default(),
                 ))
@@ -88,19 +87,26 @@ impl ObjectPlugin {
 
     fn scene_init_system(
         mut commands: Commands,
+        meshes: Res<Assets<Mesh>>,
         objects: Query<Entity, (Added<ReadyScene>, With<ObjectPath>)>,
         chidlren: Query<&Children>,
-        meshes: Query<(), With<Handle<Mesh>>>,
+        mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
         for object_entity in &objects {
-            for child_entity in chidlren
-                .iter_descendants(object_entity)
-                .filter(|&entity| meshes.get(entity).is_ok())
+            for (child_entity, mesh_handle) in
+                mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {
-                commands.entity(child_entity).insert((
-                    CollisionGroups::new(Group::OBJECT, Group::ALL),
-                    OutlineBundle::hover(),
-                ));
+                if let Some(mesh) = meshes.get(mesh_handle) {
+                    if let Some(collider) =
+                        Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+                    {
+                        commands.entity(child_entity).insert((
+                            collider,
+                            CollisionGroups::new(Group::OBJECT, Group::ALL),
+                            OutlineBundle::hover(),
+                        ));
+                    }
+                }
             }
         }
     }
