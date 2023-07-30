@@ -15,10 +15,12 @@ pub(super) struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MoveHerePlugin).add_systems(
-            Update,
-            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
-        );
+        app.register_type::<Movement>()
+            .add_plugins(MoveHerePlugin)
+            .add_systems(
+                Update,
+                (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
+            );
     }
 }
 
