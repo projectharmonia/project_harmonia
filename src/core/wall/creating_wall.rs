@@ -28,8 +28,9 @@ impl Plugin for CreatingWallPlugin {
                 Self::creation_system
                     .run_if(action_just_released(Action::Confirm))
                     .run_if(any_with_component::<CreatingWall>()),
-                Self::despawn_system.run_if(action_just_pressed(Action::Cancel)),
-                Self::despawn_system.run_if(on_event::<WallEventConfirmed>()),
+                Self::despawn_system.run_if(
+                    action_just_pressed(Action::Cancel).or_else(on_event::<WallEventConfirmed>()),
+                ),
             )
                 .run_if(in_state(GameState::Family))
                 .run_if(in_state(FamilyMode::Building))
