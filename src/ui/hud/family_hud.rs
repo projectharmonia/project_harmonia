@@ -47,14 +47,10 @@ impl Plugin for FamilyHudPlugin {
                 // To run despawn commands after image spawns.
                 Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
                 Self::need_bars_system,
+                Self::need_cleanup_system,
                 Self::budget_system,
                 Self::building_mode_button_system.run_if(in_state(FamilyMode::Building)),
-                (
-                    Self::tasks_node_setup_system,
-                    Self::task_button_system,
-                    Self::actor_buttons_system,
-                    Self::needs_node_setup_system,
-                )
+                (Self::task_button_system, Self::actor_buttons_system)
                     .run_if(in_state(FamilyMode::Life)),
             )
                 .run_if(in_state(GameState::Family)),
@@ -148,61 +144,30 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn tasks_node_setup_system(
-        mut commands: Commands,
-        theme: Res<Theme>,
-        actors: Query<&Children, Added<ActiveActor>>,
-        tasks: Query<(Entity, &TaskState)>,
-        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
-        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
-    ) {
-        let Ok(children) = actors.get_single() else {
-            return;
-        };
-
-        let queued_entity = queued_task_nodes.single();
-        let active_entity = active_task_nodes.single();
-        commands.entity(queued_entity).despawn_descendants();
-        commands.entity(active_entity).despawn_descendants();
-
-        for (task_entity, state) in tasks.iter_many(children) {
-            match *state {
-                TaskState::Queued => {
-                    commands.entity(queued_entity).with_children(|parent| {
-                        parent.spawn((
-                            ButtonTask(task_entity),
-                            ImageButtonBundle::placeholder(&theme),
-                        ));
-                    });
-                }
-                TaskState::Active => {
-                    commands.entity(active_entity).with_children(|parent| {
-                        parent.spawn((
-                            ButtonTask(task_entity),
-                            ImageButtonBundle::placeholder(&theme),
-                        ));
-                    });
-                }
-                TaskState::Cancelled => continue,
-            };
-        }
-    }
-
     fn tasks_node_system(
         mut commands: Commands,
         theme: Res<Theme>,
         actors: Query<(&Children, Ref<ActiveActor>)>,
-        tasks: Query<(Entity, &TaskState), Changed<TaskState>>,
+        tasks: Query<(Entity, Ref<TaskState>)>,
         queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
         active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
         let (children, active_actor) = actors.single();
+
         if active_actor.is_added() {
-            return;
+            commands
+                .entity(queued_task_nodes.single())
+                .despawn_descendants();
+            commands
+                .entity(active_task_nodes.single())
+                .despawn_descendants();
         }
 
-        for (task_entity, state) in tasks.iter_many(children) {
+        for (task_entity, state) in tasks
+            .iter_many(children)
+            .filter(|(_, state)| state.is_changed() || active_actor.is_added())
+        {
             match *state {
                 TaskState::Queued => {
                     commands
@@ -215,14 +180,23 @@ impl FamilyHudPlugin {
                         });
                 }
                 TaskState::Active => {
-                    let (button_entity, _) = buttons
+                    if let Some((button_entity, _)) = buttons
                         .iter()
                         .find(|(_, button_task)| button_task.0 == task_entity)
-                        .expect("all tasks should be queued first");
-
-                    commands
-                        .entity(button_entity)
-                        .set_parent(active_task_nodes.single());
+                    {
+                        commands
+                            .entity(button_entity)
+                            .set_parent(active_task_nodes.single());
+                    } else {
+                        commands
+                            .entity(active_task_nodes.single())
+                            .with_children(|parent| {
+                                parent.spawn((
+                                    ButtonTask(task_entity),
+                                    ImageButtonBundle::placeholder(&theme),
+                                ));
+                            });
+                    }
                 }
                 TaskState::Cancelled => continue,
             };
@@ -276,49 +250,54 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn needs_node_setup_system(
+    fn need_bars_system(
         mut commands: Commands,
         theme: Res<Theme>,
-        actors: Query<&Children, Added<ActiveActor>>,
+        needs: Query<(Entity, &NeedGlyph, Ref<Need>)>,
+        actors: Query<(&Children, Ref<ActiveActor>)>,
         tabs: Query<(&TabContent, &InfoTab)>,
-        needs: Query<(Entity, &NeedGlyph, &Need)>,
+        mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
     ) {
-        let Ok(children) = actors.get_single() else {
-            return;
-        };
-
+        let (children, active_actor) = actors.single();
         let (tab_content, _) = tabs
             .iter()
             .find(|(_, &tab)| tab == InfoTab::Needs)
             .expect("tab with cities should be spawned on state enter");
 
-        commands
-            .entity(tab_content.0)
-            .despawn_descendants()
-            .with_children(|parent| {
-                for (need_entity, glyph, need) in needs.iter_many(children) {
-                    parent.spawn(LabelBundle::symbol(&theme, glyph.0));
-                    parent.spawn((BarNeed(need_entity), ProgressBarBundle::new(&theme, need.0)));
-                }
-            });
-    }
-
-    fn need_bars_system(
-        needs: Query<(Entity, &Need), Changed<Need>>,
-        actors: Query<(&Children, Ref<ActiveActor>)>,
-        mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
-    ) {
-        let (children, active_actor) = actors.single();
         if active_actor.is_added() {
-            return;
+            commands.entity(tab_content.0).despawn_descendants();
         }
 
-        for (entity, need) in needs.iter_many(children) {
-            let (mut progress_bar, _) = progress_bars
+        for (entity, glyph, need) in needs
+            .iter_many(children)
+            .filter(|(.., need)| need.is_changed() || active_actor.is_added())
+        {
+            if let Some((mut progress_bar, _)) = progress_bars
                 .iter_mut()
                 .find(|(_, bar_need)| bar_need.0 == entity)
-                .expect("each need should have a bar");
-            progress_bar.0 = need.0;
+            {
+                progress_bar.0 = need.0;
+            } else {
+                commands.entity(tab_content.0).with_children(|parent| {
+                    parent.spawn(LabelBundle::symbol(&theme, glyph.0));
+                    parent.spawn((BarNeed(entity), ProgressBarBundle::new(&theme, need.0)));
+                });
+            }
+        }
+    }
+
+    fn need_cleanup_system(
+        mut commands: Commands,
+        mut removed_needs: RemovedComponents<Need>,
+        progress_bars: Query<(Entity, &BarNeed)>,
+    ) {
+        for need_entity in &mut removed_needs {
+            if let Some((bar_entity, _)) = progress_bars
+                .iter()
+                .find(|(_, bar_need)| bar_need.0 == need_entity)
+            {
+                commands.entity(bar_entity).despawn_recursive();
+            }
         }
     }
 
