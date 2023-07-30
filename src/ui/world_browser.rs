@@ -10,7 +10,7 @@ use crate::core::{
     error,
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoad, GameWorldPlugin, WorldName},
+    game_world::{GameLoad, WorldName},
     network::{self, DEFAULT_PORT},
 };
 
@@ -33,10 +33,8 @@ impl Plugin for WorldBrowserPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::world_button_system.after(GameWorldPlugin::loading_system),
-                    Self::host_dialog_button_system
-                        .pipe(error::report)
-                        .after(GameWorldPlugin::loading_system),
+                    Self::world_button_system,
+                    Self::host_dialog_button_system.pipe(error::report),
                     Self::remove_dialog_button_system.pipe(error::report),
                     Self::world_browser_button_system,
                     Self::create_dialog_button_system,

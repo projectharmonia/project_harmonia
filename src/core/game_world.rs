@@ -12,7 +12,7 @@ use serde::de::DeserializeSeed;
 
 use super::{error, game_paths::GamePaths, game_state::GameState};
 
-pub(crate) struct GameWorldPlugin;
+pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
@@ -36,7 +36,7 @@ impl Plugin for GameWorldPlugin {
 
 impl GameWorldPlugin {
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    pub(crate) fn saving_system(
+    fn saving_system(
         world: &World,
         world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
@@ -59,7 +59,7 @@ impl GameWorldPlugin {
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
-    pub(crate) fn loading_system(
+    fn loading_system(
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
         mut game_state: ResMut<NextState<GameState>>,
