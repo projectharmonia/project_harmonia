@@ -10,7 +10,7 @@ use bevy::{
 
 use crate::core::{
     game_state::GameState, game_world::WorldName, player_camera::PlayerCamera,
-    ready_scene::ReadyScene,
+    ready_scene::SceneReady,
 };
 
 pub(super) struct MirrorPlugin;
@@ -34,13 +34,17 @@ impl MirrorPlugin {
     fn init_system(
         mut commands: Commands,
         mut images: ResMut<Assets<Image>>,
+        mut ready_events: EventReader<SceneReady>,
         mut mirror_materials: ResMut<Assets<MirrorMaterial>>,
         gltfs: Res<Assets<Gltf>>,
-        mirrors: Query<(Entity, &Handle<Scene>), (With<Mirror>, Added<ReadyScene>)>,
+        mirrors: Query<(Entity, &Handle<Scene>), With<Mirror>>,
         children: Query<&Children>,
         material_handles: Query<&Handle<StandardMaterial>>,
     ) {
-        for (scene_entity, scene_handle) in &mirrors {
+        for (scene_entity, scene_handle) in ready_events
+            .iter()
+            .filter_map(|scene| mirrors.get(scene.0).ok())
+        {
             let gltf = gltfs
                 .iter()
                 .map(|(_, gltf)| gltf)

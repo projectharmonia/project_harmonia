@@ -18,7 +18,7 @@ use super::{
     cursor_hover::OutlineHoverExt,
     game_world::WorldName,
     lot::LotVertices,
-    ready_scene::ReadyScene,
+    ready_scene::SceneReady,
 };
 use mirror::MirrorPlugin;
 use placing_object::PlacingObjectPlugin;
@@ -87,12 +87,16 @@ impl ObjectPlugin {
 
     fn scene_init_system(
         mut commands: Commands,
+        mut ready_events: EventReader<SceneReady>,
         meshes: Res<Assets<Mesh>>,
-        objects: Query<Entity, (Added<ReadyScene>, With<ObjectPath>)>,
+        objects: Query<Entity, With<ObjectPath>>,
         chidlren: Query<&Children>,
         mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
-        for object_entity in &objects {
+        for object_entity in ready_events
+            .iter()
+            .filter_map(|scene| objects.get(scene.0).ok())
+        {
             for (child_entity, mesh_handle) in
                 mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {

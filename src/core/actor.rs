@@ -19,7 +19,7 @@ use super::{
     family::ActorFamily,
     game_state::GameState,
     game_world::WorldName,
-    ready_scene::ReadyScene,
+    ready_scene::SceneReady,
 };
 use crate::core::{collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable};
 use friendly::FriendlyPlugins;
@@ -90,11 +90,15 @@ impl ActorPlugin {
 
     fn scene_init_system(
         mut commands: Commands,
-        actors: Query<Entity, (Added<ReadyScene>, With<Actor>)>,
+        mut ready_events: EventReader<SceneReady>,
+        actors: Query<Entity, With<Actor>>,
         chidlren: Query<&Children>,
         meshes: Query<(), With<Handle<Mesh>>>,
     ) {
-        for actor_entity in &actors {
+        for actor_entity in ready_events
+            .iter()
+            .filter_map(|scene| actors.get(scene.0).ok())
+        {
             for child_entity in chidlren
                 .iter_descendants(actor_entity)
                 .filter(|&entity| meshes.get(entity).is_ok())
