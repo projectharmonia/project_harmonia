@@ -17,10 +17,7 @@ use crate::{
         preview::Preview,
         theme::Theme,
         widget::{
-            button::{
-                ButtonPlugin, ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle,
-                Toggled,
-            },
+            button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
             click::Click,
             progress_bar::{ProgressBar, ProgressBarBundle},
             ui_root::UiRoot,
@@ -44,8 +41,7 @@ impl Plugin for FamilyHudPlugin {
             (
                 Self::mode_button_system,
                 Self::tasks_node_system,
-                // To run despawn commands after image spawns.
-                Self::task_cleanup_system.after(ButtonPlugin::image_init_system),
+                Self::task_cleanup_system,
                 Self::need_bars_system,
                 Self::need_cleanup_system,
                 Self::budget_system,

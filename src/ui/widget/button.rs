@@ -3,7 +3,7 @@ use bevy::{ecs::query::Has, prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
 use super::click::{Click, LastInteraction};
 use crate::ui::theme::Theme;
 
-pub(crate) struct ButtonPlugin;
+pub(super) struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
@@ -42,7 +42,7 @@ impl ButtonPlugin {
         }
     }
 
-    pub(crate) fn image_init_system(
+    fn image_init_system(
         mut commmands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
