@@ -1,11 +1,11 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ui};
 
 pub(crate) struct ClickPlugin;
 
 impl Plugin for ClickPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<Click>()
-            .add_systems(Update, Self::click_system);
+            .add_systems(PreUpdate, Self::click_system.after(ui::ui_focus_system));
     }
 }
 
