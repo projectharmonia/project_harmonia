@@ -29,17 +29,19 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotDespawn>(SendPolicy::Unordered)
             .add_server_event::<LotEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
+                PreUpdate,
+                (Self::init_system, Self::vertices_update_system)
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
                 (
-                    (Self::init_system, Self::vertices_update_system)
-                        .run_if(resource_exists::<WorldName>()),
-                    (
-                        Self::spawn_system,
-                        Self::movement_system,
-                        Self::despawn_system,
-                    )
-                        .run_if(has_authority()),
-                ),
+                    Self::spawn_system,
+                    Self::movement_system,
+                    Self::despawn_system,
+                )
+                    .run_if(has_authority()),
             );
     }
 }

@@ -32,11 +32,14 @@ impl Plugin for CityPlugin {
             .add_systems(OnExit(GameState::City), Self::deactivation_system)
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
             .add_systems(
+                PreUpdate,
+                Self::init_system
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
-                (
-                    Self::init_system.run_if(resource_exists::<WorldName>()),
-                    Self::cleanup_system.run_if(resource_removed::<WorldName>()),
-                ),
+                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
             );
     }
 }

@@ -28,13 +28,12 @@ impl Plugin for WallPlugin {
             .add_mapped_client_event::<WallCreate>(SendPolicy::Unordered)
             .add_server_event::<WallEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
-                Update,
-                (
-                    (Self::init_system, Self::mesh_update_system)
-                        .run_if(resource_exists::<WorldName>()),
-                    Self::wall_creation_system.run_if(has_authority()),
-                ),
-            );
+                PreUpdate,
+                (Self::init_system, Self::mesh_update_system)
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(Update, Self::wall_creation_system.run_if(has_authority()));
     }
 }
 

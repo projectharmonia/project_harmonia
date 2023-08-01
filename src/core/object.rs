@@ -34,17 +34,19 @@ impl Plugin for ObjectPlugin {
             .add_mapped_client_event::<ObjectDespawn>(SendPolicy::Unordered)
             .add_server_event::<ObjectEventConfirmed>(SendPolicy::Unordered)
             .add_systems(
+                PreUpdate,
+                (Self::init_system, Self::scene_init_system)
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
                 (
-                    (Self::init_system, Self::scene_init_system)
-                        .run_if(resource_exists::<WorldName>()),
-                    (
-                        Self::spawn_system,
-                        Self::movement_system,
-                        Self::despawn_system,
-                    )
-                        .run_if(has_authority()),
-                ),
+                    Self::spawn_system,
+                    Self::movement_system,
+                    Self::despawn_system,
+                )
+                    .run_if(has_authority()),
             );
     }
 }

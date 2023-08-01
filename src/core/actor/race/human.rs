@@ -29,13 +29,16 @@ impl Plugin for HumanPlugin {
             .register_type::<HumanRaceBundle>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
+                PreUpdate,
+                Self::init_system.run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
                 (
+                    Self::needs_init_system.run_if(resource_exists::<WorldName>()),
                     Self::scene_setup_system
                         .before(EditorPlugin::scene_save_system)
                         .run_if(in_state(GameState::FamilyEditor)),
-                    (Self::init_system, Self::needs_init_system)
-                        .run_if(resource_exists::<WorldName>()),
                 ),
             );
     }

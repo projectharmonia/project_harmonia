@@ -47,12 +47,14 @@ impl Plugin for ActorPlugin {
             .not_replicate_if_present::<Name, FirstName>()
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
             .add_systems(
+                PreUpdate,
+                Self::init_system
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
-                (
-                    Self::init_system,
-                    Self::scene_init_system,
-                    Self::name_update_system,
-                )
+                (Self::scene_init_system, Self::name_update_system)
                     .run_if(resource_exists::<WorldName>()),
             )
             .add_systems(PostUpdate, Self::exclusive_system);
