@@ -25,7 +25,7 @@ impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_systems(Startup, Self::subcommand_system.pipe(error::report))
             .add_systems(
-                PostUpdate,
+                Update,
                 Self::quick_loading_system
                     .pipe(error::report)
                     .run_if(second_frame),
