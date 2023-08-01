@@ -15,9 +15,12 @@ impl Plugin for FollowingPlugin {
             (
                 Self::init_system,
                 Self::following_system.run_if(on_timer(Duration::from_secs(1))),
-                Self::cleanup_system,
             )
                 .run_if(resource_exists::<WorldName>()),
+        )
+        .add_systems(
+            PostUpdate,
+            Self::cleanup_system.run_if(resource_exists::<WorldName>()),
         );
     }
 }

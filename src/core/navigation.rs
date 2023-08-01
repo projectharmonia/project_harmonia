@@ -21,12 +21,11 @@ impl Plugin for NavigationPlugin {
         app.add_plugins((EndpointPlugin, FollowingPlugin))
             .add_systems(
                 Update,
-                (
-                    Self::navigation_system,
-                    Self::poll_system,
-                    Self::cleanup_system,
-                )
-                    .run_if(resource_exists::<WorldName>()),
+                (Self::navigation_system, Self::poll_system).run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::cleanup_system.run_if(resource_exists::<WorldName>()),
             );
     }
 }

@@ -40,13 +40,8 @@ impl Plugin for FamilyPlugin {
             .add_systems(OnEnter(GameState::Family), (Self::activation_system, Self::reset_mode_system))
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
             .add_systems(PreUpdate, Self::members_update_system.after(ClientSet::Receive).run_if(resource_exists::<WorldName>()))
-            .add_systems(
-                Update,
-                (
-                    (Self::spawn_system, Self::despawn_system).run_if(has_authority()),
-                    Self::cleanup_system.run_if(resource_removed::<WorldName>())
-                )
-            );
+            .add_systems(Update, (Self::spawn_system, Self::despawn_system).run_if(has_authority()))
+            .add_systems(PostUpdate, Self::cleanup_system.run_if(resource_removed::<WorldName>()));
     }
 }
 

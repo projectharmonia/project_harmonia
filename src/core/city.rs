@@ -38,7 +38,7 @@ impl Plugin for CityPlugin {
                     .run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 Self::cleanup_system.run_if(resource_removed::<WorldName>()),
             );
     }
