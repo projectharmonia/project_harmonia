@@ -36,7 +36,7 @@ fn main() {
             brightness: 3.0,
         })
         .init_resource::<Cli>()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
                     filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,lifescape=debug".into(),
@@ -52,8 +52,6 @@ fn main() {
                         ..Default::default()
                     },
                 }),
-        )
-        .add_plugins((
             ReplicationPlugins,
             WireframePlugin,
             AtmospherePlugin,
