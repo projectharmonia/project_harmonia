@@ -18,7 +18,7 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    ready_scene::SceneReady,
+    ready_scene::SceneInstanceReady,
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 
@@ -158,7 +158,7 @@ impl PlacingObjectPlugin {
 
     fn scene_init_system(
         mut commands: Commands,
-        mut ready_events: EventReader<SceneReady>,
+        mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
         placing_objects: Query<(Entity, &PlacingObject)>,
         chidlren: Query<&Children>,
@@ -167,7 +167,7 @@ impl PlacingObjectPlugin {
     ) {
         for (object_entity, placing_object) in ready_events
             .iter()
-            .filter_map(|scene| placing_objects.get(scene.0).ok())
+            .filter_map(|event| placing_objects.get(event.parent).ok())
         {
             if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
                 let mut visibility = objects
