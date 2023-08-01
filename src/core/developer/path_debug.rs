@@ -10,15 +10,17 @@ pub(super) struct PathDebugPlugin;
 
 impl Plugin for PathDebugPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PathDebugMaterial>().add_systems(
-            Update,
-            (
+        app.init_resource::<PathDebugMaterial>()
+            .add_systems(
+                Update,
                 (Self::init_system, Self::despawn_system).run_if(debug_paths_enabled()),
+            )
+            .add_systems(
+                PostUpdate,
                 Self::cleanup_system
                     .run_if(on_event::<SettingsApply>())
                     .run_if(not(debug_paths_enabled())),
-            ),
-        );
+            );
     }
 }
 

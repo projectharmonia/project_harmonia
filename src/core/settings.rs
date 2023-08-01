@@ -16,7 +16,7 @@ impl Plugin for SettingsPlugin {
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()
             .add_systems(
-                Update,
+                PostUpdate,
                 Self::write_system
                     .pipe(error::report)
                     .run_if(on_event::<SettingsApply>()),

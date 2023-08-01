@@ -12,7 +12,7 @@ impl Plugin for ActionPlugin {
         app.init_resource::<ActionState<Action>>()
             .add_systems(Startup, Self::load_mappings_system)
             .add_systems(
-                Update,
+                PostUpdate,
                 Self::load_mappings_system.run_if(on_event::<SettingsApply>()),
             );
     }

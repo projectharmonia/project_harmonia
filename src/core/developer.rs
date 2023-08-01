@@ -20,7 +20,7 @@ impl Plugin for DeveloperPlugin {
                 ),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 (
                     Self::debug_collisions_toggle_system,
                     Self::wireframe_toggle_system,
