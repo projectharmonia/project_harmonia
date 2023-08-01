@@ -697,7 +697,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_outline"
 version = "0.4.2"
-source = "git+https://github.com/ramirezmike/bevy_mod_outline#629380d5c8bb36a86244d3084c43d3f2d54744a1"
+source = "git+https://github.com/ramirezmike/bevy_mod_outline#58a0af980beed14bc720f5022d29febe5c603fea"
 dependencies = [
  "bevy",
  "bitfield",
