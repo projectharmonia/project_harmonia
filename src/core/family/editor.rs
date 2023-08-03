@@ -26,12 +26,9 @@ impl Plugin for EditorPlugin {
                 (
                     Self::reset_family_system.run_if(on_event::<FamilyReset>()),
                     Self::scene_save_system.pipe(error::report),
+                    Self::selection_system,
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::selection_system.run_if(in_state(GameState::FamilyEditor)), // Should run after family members update.
             );
     }
 }
