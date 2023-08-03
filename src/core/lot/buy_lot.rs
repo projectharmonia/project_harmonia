@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     actor::task::{Task, TaskList, TaskListSet, TaskState},
+    city::Ground,
     cursor_hover::CursorHover,
     family::ActorFamily,
-    ground::Ground,
 };
 
 use super::{LotFamily, LotVertices};

@@ -15,7 +15,6 @@ pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
-mod ground;
 pub(super) mod input_events;
 pub(super) mod lot;
 mod navigation;
@@ -42,7 +41,6 @@ use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
-use ground::GroundPlugin;
 use lot::LotPlugin;
 use navigation::NavigationPlugin;
 use network::NetworkPlugin;
@@ -67,7 +65,6 @@ impl PluginGroup for CorePlugins {
             .add(AnimationPlugin)
             .add(LotPlugin)
             .add(NavigationPlugin)
-            .add(GroundPlugin)
             .add(ActionPlugin)
             .add(DeveloperPlugin)
             .add(ErrorPlugin)

@@ -1,11 +1,15 @@
-use bevy::prelude::*;
+use bevy::prelude::{shape::Plane, *};
 use bevy_atmosphere::prelude::*;
+use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
+use oxidized_navigation::NavMeshAffector;
 use strum::EnumIter;
 
 use super::{
     actor::ActiveActor,
+    collision_groups::LifescapeGroupsExt,
+    cursor_hover::Hoverable,
     game_state::GameState,
     game_world::WorldName,
     player_camera::{PlayerCamera, PlayerCameraBundle},
@@ -45,26 +49,45 @@ impl Plugin for CityPlugin {
 }
 
 /// City square side size.
-pub(super) const CITY_SIZE: f32 = 100.0;
+const CITY_SIZE: f32 = 100.0;
 pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn init_system(
         mut commands: Commands,
+        mut meshes: ResMut<Assets<Mesh>>,
+        mut materials: ResMut<Assets<StandardMaterial>>,
         mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, Added<City>>,
     ) {
         for entity in &added_cities {
             let transform =
                 Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
-            commands.entity(entity).insert((
-                TransformBundle::from_transform(transform),
-                VisibilityBundle {
-                    visibility: Visibility::Hidden,
-                    ..Default::default()
-                },
-            ));
+            commands
+                .entity(entity)
+                .insert((
+                    TransformBundle::from_transform(transform),
+                    VisibilityBundle {
+                        visibility: Visibility::Hidden,
+                        ..Default::default()
+                    },
+                ))
+                .with_children(|parent| {
+                    parent.spawn(GroundBundle {
+                        pbr_bundle: PbrBundle {
+                            mesh: meshes.add(Mesh::from(Plane::from_size(CITY_SIZE))),
+                            material: materials.add(StandardMaterial {
+                                base_color: Color::rgb(0.5, 0.5, 0.5),
+                                perceptual_roughness: 1.0,
+                                reflectance: 0.0,
+                                ..default()
+                            }),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    });
+                });
             placed_citites.0 += 1;
         }
     }
@@ -85,6 +108,15 @@ impl CityPlugin {
         let (entity, mut visibility) = activated_cities.single_mut();
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
+            parent.spawn(DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    illuminance: 30000.0,
+                    shadows_enabled: true,
+                    ..Default::default()
+                },
+                transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+                ..Default::default()
+            });
             parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
         });
     }
@@ -93,11 +125,13 @@ impl CityPlugin {
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<PlayerCamera>>,
+        lights: Query<Entity, With<DirectionalLight>>,
     ) {
         let (entity, mut visibility) = active_cities.single_mut();
         *visibility = Visibility::Hidden;
         commands.entity(entity).remove::<ActiveCity>();
         commands.entity(cameras.single()).despawn();
+        commands.entity(lights.single()).despawn();
     }
 
     /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
@@ -161,3 +195,31 @@ pub(crate) struct ActiveCity;
 /// when it is removed to assign a unique position to new each city.
 #[derive(Default, Resource)]
 struct PlacedCities(usize);
+
+#[derive(Bundle)]
+struct GroundBundle {
+    name: Name,
+    collider: Collider,
+    collision_groups: CollisionGroups,
+    ground: Ground,
+    hoverable: Hoverable,
+    nav_mesh_affector: NavMeshAffector,
+    pbr_bundle: PbrBundle,
+}
+
+impl Default for GroundBundle {
+    fn default() -> Self {
+        Self {
+            name: Name::new("Ground"),
+            collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
+            collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
+            ground: Ground,
+            hoverable: Hoverable,
+            nav_mesh_affector: NavMeshAffector,
+            pbr_bundle: Default::default(),
+        }
+    }
+}
+
+#[derive(Component)]
+pub(super) struct Ground;

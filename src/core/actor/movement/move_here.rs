@@ -9,9 +9,9 @@ use crate::core::{
         ActorAnimation,
     },
     asset_handles::AssetHandles,
+    city::Ground,
     cursor_hover::CursorHover,
     game_world::WorldName,
-    ground::Ground,
     navigation::{endpoint::Endpoint, Navigation},
 };
 
