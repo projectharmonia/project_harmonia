@@ -24,11 +24,14 @@ impl Plugin for EditorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::reset_family_system.run_if(on_event::<FamilyReset>()),
                     Self::scene_save_system.pipe(error::report),
                     Self::selection_system,
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::reset_family_system.run_if(on_event::<FamilyReset>()),
             );
     }
 }
