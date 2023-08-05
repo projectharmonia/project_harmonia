@@ -118,12 +118,11 @@ impl ButtonPlugin {
         >,
         children: Query<&Children>,
     ) {
-        let toggled_entities: Vec<_> = buttons
+        for (toggled_entity, parent) in buttons
             .iter()
             .filter_map(|(entity, parent, toggled)| toggled.0.then_some((entity, **parent)))
-            .collect();
-
-        for (toggled_entity, parent) in toggled_entities {
+            .collect::<Vec<_>>()
+        {
             let children = children.get(parent).unwrap();
             for &child_entity in children.iter().filter(|&&entity| entity != toggled_entity) {
                 if let Ok(mut toggled) = buttons.get_component_mut::<Toggled>(child_entity) {
