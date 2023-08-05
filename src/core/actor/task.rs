@@ -1,3 +1,7 @@
+mod buy_lot;
+mod friendly;
+mod movement;
+
 use std::{
     any,
     fmt::{self, Debug, Formatter},
@@ -25,12 +29,15 @@ use crate::core::{
     action::Action, actor::Actor, component_commands::ComponentCommandsExt, family::FamilyMode,
     game_state::GameState,
 };
+use buy_lot::BuyLotPlugin;
+use friendly::FriendlyPlugins;
+use movement::MovementPlugin;
 
 pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<TaskState>()
+        app.add_plugins((FriendlyPlugins, MovementPlugin, BuyLotPlugin)).replicate::<TaskState>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>(SendPolicy::Unordered)
             .add_client_event::<TaskCancel>(SendPolicy::Unordered)
             .add_event::<TaskList>()

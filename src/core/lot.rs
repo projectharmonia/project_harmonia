@@ -1,4 +1,3 @@
-mod buy_lot;
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
@@ -11,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::game_world::WorldName;
-use buy_lot::BuyLotPlugin;
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -20,7 +18,7 @@ pub(super) struct LotPlugin;
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<LotTool>()
-            .add_plugins((CreatingLotPlugin, MovingLotPlugin, BuyLotPlugin))
+            .add_plugins((CreatingLotPlugin, MovingLotPlugin))
             .register_type::<Vec<Vec2>>()
             .replicate::<LotVertices>()
             .not_replicate_if_present::<Transform, LotVertices>()
@@ -171,7 +169,7 @@ pub(super) struct LotVertices(Vec<Vec2>);
 
 /// Contains a family entity that owns the lot.
 #[derive(Component)]
-struct LotFamily(Entity);
+pub(crate) struct LotFamily(pub(crate) Entity);
 
 impl LotVertices {
     /// Converts polygon points to 3D coordinates with y = 0.

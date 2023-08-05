@@ -3,8 +3,10 @@ use bevy_replicon::prelude::*;
 
 use crate::core::{
     actor::{
-        movement::{Movement, MovementBundle},
-        task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
+        task::{
+            movement::{Movement, MovementBundle},
+            Task, TaskGroups, TaskList, TaskListSet, TaskState,
+        },
         Actor, ActorAnimation,
     },
     animation::AnimationEnded,

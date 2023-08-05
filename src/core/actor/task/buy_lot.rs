@@ -11,9 +11,8 @@ use crate::core::{
     city::Ground,
     cursor_hover::CursorHover,
     family::ActorFamily,
+    lot::{LotFamily, LotVertices},
 };
-
-use super::{LotFamily, LotVertices};
 
 pub(super) struct BuyLotPlugin;
 

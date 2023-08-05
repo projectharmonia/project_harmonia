@@ -3,8 +3,8 @@ mod move_here;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{ActorAnimation, Sex};
 use crate::core::{
+    actor::{ActorAnimation, Sex},
     asset_handles::AssetHandles,
     game_world::WorldName,
     navigation::{NavPath, Navigation},
