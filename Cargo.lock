@@ -3285,12 +3285,12 @@ dependencies = [
 
 [[package]]
 name = "standard_paths"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be73bbc3bc759997e751bab3fd700deab1a04727189d50838b9809ba223a118d"
+checksum = "d95f10ebae9a59d899e618eb7248d02077e656f1150ce125e3b5b98426c3b307"
 dependencies = [
  "home",
- "users",
+ "nix",
  "winapi",
 ]
 
@@ -3602,16 +3602,6 @@ checksum = "fc1de2c688dc15305988b563c3854064043356019f97a4b46276fe734c4f07ea"
 dependencies = [
  "crypto-common",
  "subtle",
-]
-
-[[package]]
-name = "users"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24cc0f6d6f267b73e5a2cadf007ba8f9bc39c6a6f9666f8cf25ea809a153b032"
-dependencies = [
- "libc",
- "log",
 ]
 
 [[package]]
