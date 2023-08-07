@@ -4,6 +4,7 @@ use bevy_replicon::prelude::*;
 use crate::core::{
     actor::{
         task::{
+            linked_task::LinkedTask,
             movement::{Movement, MovementBundle},
             Task, TaskGroups, TaskList, TaskListSet, TaskState,
         },
@@ -30,7 +31,6 @@ impl Plugin for TellSecretPlugin {
                     Self::tell_system,
                     Self::listen_activation_system,
                     Self::finish_system,
-                    Self::listen_cancellation_system,
                     Self::tell_cancellation_system,
                     Self::cleanup_system,
                 )
@@ -68,28 +68,23 @@ impl TellSecretPlugin {
         mut removed_navigations: RemovedComponents<Navigation>,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
-        tasks: Query<(&TellSecret, &TaskState)>,
+        tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
-        for entity in &mut removed_navigations {
-            let Ok((children, mut animation_handle)) = actors.get_mut(entity) else {
+        for actor_entity in &mut removed_navigations {
+            let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) else {
                 continue;
             };
 
-            let Some((tell_secret, _)) = tasks.iter_many(children).find(|(_, &state)| state == TaskState::Active) else {
+            let Some((tell_entity, tell_secret, _)) = tasks.iter_many(children).find(|(.., &state)| state == TaskState::Active) else {
                 continue;
             };
 
-            commands.entity(entity).insert(TellingSecret);
+            commands.entity(actor_entity).insert(TellingSecret);
             *animation_handle = actor_animations.handle(ActorAnimation::TellSecret);
 
             // TODO: Handle cancellation of currently active tasks.
             commands.entity(tell_secret.0).with_children(|parent| {
-                parent.spawn((
-                    Name::new("Listen secret"),
-                    TaskGroups::LEGS,
-                    TaskState::Queued,
-                    ListenSecret(entity),
-                ));
+                parent.spawn(ListenSecretBundle::new(actor_entity, tell_entity));
             });
         }
     }
@@ -124,22 +119,6 @@ impl TellSecretPlugin {
         for event in &mut end_events {
             if tell_actors.get(event.0).is_ok() {
                 commands.entity(event.0).insert(ToldSecret);
-            }
-        }
-    }
-
-    fn listen_cancellation_system(
-        tasks: Query<(&Parent, &TaskState), (Changed<TaskState>, With<ListenSecret>)>,
-        mut actors: Query<(&mut TaskState, &TellSecret), Without<ListenSecret>>,
-    ) {
-        for (parent, &listen_state) in &tasks {
-            if listen_state == TaskState::Cancelled {
-                if let Some((mut tell_state, _)) = actors
-                    .iter_mut()
-                    .find(|(_, tell_secret)| tell_secret.0 == **parent)
-                {
-                    *tell_state = TaskState::Cancelled;
-                }
             }
         }
     }
@@ -226,5 +205,26 @@ struct ListenSecret(Entity);
 impl FromWorld for ListenSecret {
     fn from_world(_world: &mut World) -> Self {
         Self(Entity::PLACEHOLDER)
+    }
+}
+
+#[derive(Bundle)]
+struct ListenSecretBundle {
+    name: Name,
+    task_groups: TaskGroups,
+    task_state: TaskState,
+    listen_secret: ListenSecret,
+    link: LinkedTask,
+}
+
+impl ListenSecretBundle {
+    fn new(actor_entity: Entity, task_entity: Entity) -> Self {
+        Self {
+            name: Name::new("Listen secret"),
+            task_groups: TaskGroups::LEGS,
+            task_state: Default::default(),
+            listen_secret: ListenSecret(actor_entity),
+            link: LinkedTask(task_entity),
+        }
     }
 }

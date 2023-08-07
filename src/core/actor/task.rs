@@ -1,5 +1,5 @@
 mod buy_lot;
-mod friendly;
+mod linked_task;
 mod movement;
 
 use std::{
@@ -30,14 +30,14 @@ use crate::core::{
     game_state::GameState,
 };
 use buy_lot::BuyLotPlugin;
-use friendly::FriendlyPlugins;
+use linked_task::LinkedTaskPlugin;
 use movement::MovementPlugin;
 
 pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((FriendlyPlugins, MovementPlugin, BuyLotPlugin)).replicate::<TaskState>()
+        app.add_plugins((BuyLotPlugin, LinkedTaskPlugin, MovementPlugin)).replicate::<TaskState>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>(SendPolicy::Unordered)
             .add_client_event::<TaskCancel>(SendPolicy::Unordered)
             .add_event::<TaskList>()
