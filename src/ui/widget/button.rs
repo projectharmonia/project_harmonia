@@ -112,20 +112,16 @@ impl ButtonPlugin {
     }
 
     fn exclusive_system(
-        mut buttons: Query<
-            (Entity, &Parent, &mut Toggled),
-            (Changed<Toggled>, With<ExclusiveButton>),
-        >,
+        buttons: Query<(Entity, &Parent, &mut Toggled), (Changed<Toggled>, With<ExclusiveButton>)>,
         children: Query<&Children>,
     ) {
-        for (toggled_entity, parent) in buttons
-            .iter()
-            .filter_map(|(entity, parent, toggled)| toggled.0.then_some((entity, **parent)))
-            .collect::<Vec<_>>()
-        {
-            let children = children.get(parent).unwrap();
-            for &child_entity in children.iter().filter(|&&entity| entity != toggled_entity) {
-                if let Ok(mut toggled) = buttons.get_component_mut::<Toggled>(child_entity) {
+        for (toggled_entity, parent, _) in buttons.iter().filter(|(.., toggled)| toggled.0) {
+            let children = children.get(**parent).unwrap();
+            for &other_entity in children.iter().filter(|&&entity| entity != toggled_entity) {
+                // SAFETY: called only on children, one at a time.
+                if let Ok(mut toggled) =
+                    unsafe { buttons.get_component_unchecked_mut::<Toggled>(other_entity) }
+                {
                     if toggled.0 {
                         toggled.0 = false;
                     }
