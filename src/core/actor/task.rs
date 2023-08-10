@@ -1,6 +1,6 @@
 mod buy_lot;
 mod linked_task;
-mod movement;
+mod move_here;
 
 use std::{
     any,
@@ -31,13 +31,13 @@ use crate::core::{
 };
 use buy_lot::BuyLotPlugin;
 use linked_task::LinkedTaskPlugin;
-use movement::MovementPlugin;
+use move_here::MoveHerePlugin;
 
 pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((BuyLotPlugin, LinkedTaskPlugin, MovementPlugin)).replicate::<TaskState>()
+        app.add_plugins((BuyLotPlugin, LinkedTaskPlugin, MoveHerePlugin)).replicate::<TaskState>()
             .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>(SendPolicy::Unordered)
             .add_client_event::<TaskCancel>(SendPolicy::Unordered)
             .add_event::<TaskList>()

@@ -3,11 +3,8 @@ use bevy_replicon::prelude::*;
 
 use crate::core::{
     actor::{
-        task::{
-            linked_task::LinkedTask,
-            movement::{Movement, MovementBundle},
-            Task, TaskGroups, TaskList, TaskListSet, TaskState,
-        },
+        movement::Movement,
+        task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
         Actor, ActorAnimation,
     },
     animation::AnimationEnded,
@@ -56,7 +53,7 @@ impl TellSecretPlugin {
         for (tell_secret, parent, &state) in &tasks {
             if state == TaskState::Active {
                 commands.entity(**parent).insert((
-                    MovementBundle::new(Movement::Walk).with_offset(0.5),
+                    Navigation::new(Movement::Walk.speed()).with_offset(0.5),
                     Following(tell_secret.0),
                 ));
             }

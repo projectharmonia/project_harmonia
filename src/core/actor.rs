@@ -1,3 +1,4 @@
+mod movement;
 pub(crate) mod needs;
 pub(crate) mod race;
 pub(crate) mod task;
@@ -20,6 +21,7 @@ use super::{
     ready_scene::SceneInstanceReady,
 };
 use crate::core::{collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable};
+use movement::MovementPlugin;
 use needs::NeedsPlugin;
 use race::RacePlugins;
 use task::TaskPlugin;
@@ -29,7 +31,7 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
-            .add_plugins((RacePlugins, NeedsPlugin, TaskPlugin))
+            .add_plugins((MovementPlugin, NeedsPlugin, RacePlugins, TaskPlugin))
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()

@@ -61,10 +61,12 @@ impl NavigationPlugin {
                     .rotation
                     .slerp(target_rotation, ROTATION_SPEED * delta_secs);
 
-                let min_distance = navigation
-                    .offset
-                    .filter(|_| nav_path.len() == 1)
-                    .unwrap_or(0.1);
+                let min_distance = if nav_path.len() == 1 {
+                    // Last waypoint.
+                    navigation.offset.max(DISTANCE_EPSILON)
+                } else {
+                    DISTANCE_EPSILON
+                };
                 if direction.length() < min_distance {
                     nav_path.pop();
                 }
@@ -86,23 +88,25 @@ impl NavigationPlugin {
     }
 }
 
+const DISTANCE_EPSILON: f32 = 0.1;
+
 #[derive(Component)]
 pub(super) struct Navigation {
-    speed: f32,
+    pub(super) speed: f32,
     /// Offset for the last waypoint.
-    offset: Option<f32>,
+    pub(super) offset: f32,
 }
 
 impl Navigation {
     pub(super) fn new(speed: f32) -> Self {
         Self {
             speed,
-            offset: None,
+            offset: DISTANCE_EPSILON,
         }
     }
 
     pub(super) fn with_offset(mut self, offset: f32) -> Self {
-        self.offset = Some(offset);
+        self.offset = offset;
         self
     }
 }

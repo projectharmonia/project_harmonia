@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{Movement, MovementBundle};
 use crate::core::{
     actor::{
+        movement::Movement,
         task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
         ActorAnimation,
     },
@@ -62,7 +62,7 @@ impl MoveHerePlugin {
         for (parent, move_here, &state) in &tasks {
             if state == TaskState::Active {
                 commands.entity(**parent).insert((
-                    MovementBundle::new(move_here.movement),
+                    Navigation::new(move_here.movement.speed()),
                     Endpoint::new(move_here.endpoint),
                 ));
             }
@@ -83,11 +83,11 @@ impl MoveHerePlugin {
     fn finish_system(
         mut commands: Commands,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        mut removed_movements: RemovedComponents<Movement>,
+        mut removed_navigations: RemovedComponents<Navigation>,
         mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
-        for actor_entity in &mut removed_movements {
+        for actor_entity in &mut removed_navigations {
             if let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) {
                 if let Some((task_entity, _)) = tasks
                     .iter_many(children)
