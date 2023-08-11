@@ -79,7 +79,7 @@ impl TaskPlugin {
         for children in &actors {
             let current_groups = tasks
                 .iter_many(children)
-                .filter(|(_, &state)| state == TaskState::Active)
+                .filter(|(_, &state)| state != TaskState::Queued)
                 .map(|(&groups, _)| groups)
                 .reduce(|acc, groups| acc & groups)
                 .unwrap_or_default();
