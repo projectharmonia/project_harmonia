@@ -8,7 +8,7 @@ use strum::EnumIter;
 use super::{RaceBundle, ReflectRaceBundle};
 use crate::core::{
     actor::{
-        needs::{Bladder, Energy, Fun, Hunger, Hygiene, NeedBundle, Social},
+        needs::{Bladder, Energy, Fun, Hunger, Hygiene, Need, NeedBundle, Social},
         Actor, FirstName, LastName, Sex,
     },
     asset_handles::{AssetCollection, AssetHandles},
@@ -30,22 +30,38 @@ impl Plugin for HumanPlugin {
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
                 PreUpdate,
-                Self::init_system.run_if(resource_exists::<WorldName>()),
+                (Self::init_system, Self::sex_update_system).run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
                 Update,
-                (
-                    Self::needs_init_system.run_if(resource_exists::<WorldName>()),
-                    Self::scene_setup_system
-                        .before(EditorPlugin::scene_save_system)
-                        .run_if(in_state(GameState::FamilyEditor)),
-                ),
+                Self::scene_setup_system
+                    .before(EditorPlugin::scene_save_system)
+                    .run_if(in_state(GameState::FamilyEditor)),
             );
     }
 }
 
 impl HumanPlugin {
     fn init_system(
+        mut commands: Commands,
+        actors: Query<(Entity, &Children), (Added<Human>, With<Actor>)>,
+        need: Query<(), With<Need>>,
+    ) {
+        for (entity, children) in &actors {
+            if need.iter_many(children).next().is_none() {
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn(NeedBundle::<Bladder>::default());
+                    parent.spawn(NeedBundle::<Energy>::default());
+                    parent.spawn(NeedBundle::<Fun>::default());
+                    parent.spawn(NeedBundle::<Hunger>::default());
+                    parent.spawn(NeedBundle::<Hygiene>::default());
+                    parent.spawn(NeedBundle::<Social>::default());
+                });
+            }
+        }
+    }
+
+    fn sex_update_system(
         mut commands: Commands,
         human_scenes: Res<AssetHandles<HumanScene>>,
         actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
@@ -54,22 +70,6 @@ impl HumanPlugin {
             commands
                 .entity(entity)
                 .insert(human_scenes.handle(sex.into()));
-        }
-    }
-
-    fn needs_init_system(
-        mut commands: Commands,
-        actors: Query<Entity, (Added<Human>, With<Actor>, Without<Children>)>,
-    ) {
-        for entity in &actors {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn(NeedBundle::<Bladder>::default());
-                parent.spawn(NeedBundle::<Energy>::default());
-                parent.spawn(NeedBundle::<Fun>::default());
-                parent.spawn(NeedBundle::<Hunger>::default());
-                parent.spawn(NeedBundle::<Hygiene>::default());
-                parent.spawn(NeedBundle::<Social>::default());
-            });
         }
     }
 
