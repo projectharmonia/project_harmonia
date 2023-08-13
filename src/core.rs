@@ -1,6 +1,6 @@
 pub(super) mod action;
 pub(super) mod actor;
-mod animation;
+mod animation_state;
 mod asset_handles;
 pub(super) mod asset_metadata;
 pub(super) mod city;
@@ -30,7 +30,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use action::ActionPlugin;
 use actor::ActorPlugin;
-use animation::AnimationPlugin;
+use animation_state::AnimationStatePlugin;
 use asset_metadata::AssetMetadataPlugin;
 use city::CityPlugin;
 use cli::CliPlugin;
@@ -62,7 +62,7 @@ impl PluginGroup for CorePlugins {
             .add(CliPlugin)
             .add(CursorHoverPlugin)
             .add(ActorPlugin)
-            .add(AnimationPlugin)
+            .add(AnimationStatePlugin)
             .add(LotPlugin)
             .add(NavigationPlugin)
             .add(ActionPlugin)

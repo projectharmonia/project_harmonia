@@ -20,7 +20,9 @@ use super::{
     game_world::WorldName,
     ready_scene::SceneInstanceReady,
 };
-use crate::core::{collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable};
+use crate::core::{
+    animation_state::AnimationState, collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable,
+};
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
 use race::RacePlugins;
@@ -65,7 +67,7 @@ impl ActorPlugin {
             commands
                 .entity(entity)
                 .insert((
-                    actor_animations.handle(ActorAnimation::Idle),
+                    AnimationState::new(actor_animations.handle(ActorAnimation::Idle)),
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     Hoverable,

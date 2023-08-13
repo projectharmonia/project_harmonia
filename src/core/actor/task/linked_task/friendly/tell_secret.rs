@@ -7,7 +7,7 @@ use crate::core::{
         task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
         Actor, ActorAnimation,
     },
-    animation::AnimationEnded,
+    animation_state::{AnimationFinished, AnimationState},
     asset_handles::AssetHandles,
     cursor_hover::CursorHover,
     game_world::WorldName,
@@ -64,11 +64,11 @@ impl TellSecretPlugin {
         mut commands: Commands,
         mut removed_navigations: RemovedComponents<Navigation>,
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
+        mut actors: Query<(&Children, &mut AnimationState)>,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
         for actor_entity in &mut removed_navigations {
-            let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) else {
+            let Ok((children, mut animation_state)) = actors.get_mut(actor_entity) else {
                 continue;
             };
 
@@ -77,7 +77,7 @@ impl TellSecretPlugin {
             };
 
             commands.entity(actor_entity).insert(TellingSecret);
-            *animation_handle = actor_animations.handle(ActorAnimation::TellSecret);
+            animation_state.play_once(actor_animations.handle(ActorAnimation::TellSecret));
 
             // TODO: Handle cancellation of currently active tasks.
             commands.entity(tell_secret.0).with_children(|parent| {
@@ -89,31 +89,28 @@ impl TellSecretPlugin {
     fn listen_activation_system(
         actor_animations: Res<AssetHandles<ActorAnimation>>,
         tasks: Query<(&ListenSecret, &Parent), Added<ListenSecret>>,
-        mut listen_actors: Query<
-            (&mut Transform, &mut Handle<AnimationClip>),
-            Without<TellingSecret>,
-        >,
+        mut listen_actors: Query<(&mut Transform, &mut AnimationState), Without<TellingSecret>>,
         tell_actors: Query<&Transform, With<TellingSecret>>,
     ) {
         for (tell_secret, parent) in &tasks {
-            let (mut listen_transform, mut animation_handle) = listen_actors
+            let (mut listen_transform, mut animation_state) = listen_actors
                 .get_mut(**parent)
-                .expect("listener should have animation");
+                .expect("listener should have transform and animation");
             let tell_transform = tell_actors
                 .get(tell_secret.0)
                 .expect("teller should have transform");
 
             listen_transform.look_at(tell_transform.translation, Vec3::Y);
-            *animation_handle = actor_animations.handle(ActorAnimation::ThoughtfulNod);
+            animation_state.repeat(actor_animations.handle(ActorAnimation::ThoughtfulNod));
         }
     }
 
     fn finish_system(
         mut commands: Commands,
-        mut end_events: EventReader<AnimationEnded>,
+        mut finish_events: EventReader<AnimationFinished>,
         tell_actors: Query<(), With<TellingSecret>>,
     ) {
-        for event in &mut end_events {
+        for event in &mut finish_events {
             if tell_actors.get(event.0).is_ok() {
                 commands.entity(event.0).insert(ToldSecret);
             }
@@ -133,13 +130,12 @@ impl TellSecretPlugin {
 
     fn cleanup_system(
         mut commands: Commands,
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
-        mut tell_actors: Query<(Entity, &Children, &mut Handle<AnimationClip>), Added<ToldSecret>>,
-        mut listen_actors: Query<&mut Handle<AnimationClip>, Without<ToldSecret>>,
+        mut tell_actors: Query<(Entity, &Children, &mut AnimationState), Added<ToldSecret>>,
+        mut listen_actors: Query<&mut AnimationState, Without<ToldSecret>>,
         listen_tasks: Query<(Entity, &Parent, &ListenSecret, &TaskState)>,
         tell_tasks: Query<(Entity, &TaskState), With<TellSecret>>,
     ) {
-        for (teller_entity, children, mut animation_handle) in &mut tell_actors {
+        for (teller_entity, children, mut animation_state) in &mut tell_actors {
             if let Some((listen_entity, parent, ..)) =
                 listen_tasks.iter().find(|(.., listen_secret, &state)| {
                     listen_secret.0 == teller_entity && state != TaskState::Queued
@@ -149,10 +145,10 @@ impl TellSecretPlugin {
                 let mut animation_handle = listen_actors
                     .get_mut(**parent)
                     .expect("actor should have animation handle");
-                *animation_handle = actor_animations.handle(ActorAnimation::Idle);
+                animation_handle.stop();
             }
 
-            *animation_handle = actor_animations.handle(ActorAnimation::Idle);
+            animation_state.stop();
 
             commands
                 .entity(teller_entity)

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     actor::{ActorAnimation, Sex},
+    animation_state::AnimationState,
     asset_handles::AssetHandles,
     game_world::WorldName,
     navigation::{NavPath, Navigation},
@@ -14,7 +15,7 @@ impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Movement>().add_systems(
             Update,
-            Self::init_system.run_if(resource_exists::<WorldName>()),
+            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
         );
     }
 }
@@ -22,9 +23,9 @@ impl Plugin for MovementPlugin {
 impl MovementPlugin {
     fn init_system(
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        mut actors: Query<(&Sex, &Navigation, &mut Handle<AnimationClip>), Added<NavPath>>,
+        mut actors: Query<(&Sex, &Navigation, &mut AnimationState), Added<NavPath>>,
     ) {
-        for (sex, navigation, mut animation_handle) in &mut actors {
+        for (sex, navigation, mut animation_state) in &mut actors {
             let animation = match sex {
                 Sex::Male => {
                     if navigation.speed <= Movement::Walk.speed() {
@@ -42,7 +43,19 @@ impl MovementPlugin {
                 }
             };
 
-            *animation_handle = actor_animations.handle(animation);
+            animation_state.set_default(actor_animations.handle(animation));
+        }
+    }
+
+    fn cleanup_system(
+        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        mut removed_navigations: RemovedComponents<NavPath>,
+        mut actors: Query<&mut AnimationState>,
+    ) {
+        for entity in &mut removed_navigations {
+            if let Ok(mut animation_state) = actors.get_mut(entity) {
+                animation_state.set_default(actor_animations.handle(ActorAnimation::Idle));
+            }
         }
     }
 }

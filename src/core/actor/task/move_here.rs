@@ -6,9 +6,7 @@ use crate::core::{
     actor::{
         movement::Movement,
         task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
-        ActorAnimation,
     },
-    asset_handles::AssetHandles,
     city::Ground,
     cursor_hover::CursorHover,
     game_world::WorldName,
@@ -82,20 +80,16 @@ impl MoveHerePlugin {
 
     fn finish_system(
         mut commands: Commands,
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
         mut removed_navigations: RemovedComponents<Navigation>,
-        mut actors: Query<(&Children, &mut Handle<AnimationClip>)>,
+        children: Query<&Children>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
-        for actor_entity in &mut removed_navigations {
-            if let Ok((children, mut animation_handle)) = actors.get_mut(actor_entity) {
-                if let Some((task_entity, _)) = tasks
-                    .iter_many(children)
-                    .find(|(_, &state)| state != TaskState::Queued)
-                {
-                    commands.entity(task_entity).despawn();
-                    *animation_handle = actor_animations.handle(ActorAnimation::Idle);
-                }
+        for children in children.iter_many(&mut removed_navigations) {
+            if let Some((entity, _)) = tasks
+                .iter_many(children)
+                .find(|(_, &state)| state != TaskState::Queued)
+            {
+                commands.entity(entity).despawn();
             }
         }
     }
