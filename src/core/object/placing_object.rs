@@ -3,7 +3,10 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{asset::HandleId, math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
+use bevy::{
+    asset::HandleId, ecs::system::EntityCommands, math::Vec3Swizzles, prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
@@ -26,53 +29,45 @@ pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnExit(CityMode::Objects),
-            Self::cancel_system.pipe(Self::cleanup_system),
-        )
-        .add_systems(
-            OnExit(FamilyMode::Building),
-            Self::cancel_system.pipe(Self::cleanup_system),
-        )
-        .add_systems(
-            Update,
-            (
+        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
+            .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
+            .add_systems(
+                Update,
                 (
-                    Self::init_system,
-                    Self::scene_init_system,
-                    Self::picking_system
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<PlacingObject>())),
-                    Self::confirmation_system
-                        .after(Self::collision_system)
-                        .run_if(action_just_pressed(Action::Confirm)),
-                    Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                    Self::cancel_system.pipe(Self::cleanup_system).run_if(
-                        action_just_pressed(Action::Cancel)
-                            .or_else(on_event::<ObjectEventConfirmed>()),
-                    ),
-                ),
-                (
-                    Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
-                    Self::movement_system,
-                    Self::snapping_system,
-                    Self::collision_system,
-                    Self::material_system,
-                )
-                    .chain(),
-            )
-                .run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                    (
+                        Self::init_system,
+                        Self::scene_init_system,
+                        Self::picking_system
+                            .run_if(action_just_pressed(Action::Confirm))
+                            .run_if(not(any_with_component::<PlacingObject>())),
+                        Self::confirmation_system
+                            .after(Self::collision_system)
+                            .run_if(action_just_pressed(Action::Confirm)),
+                        Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                        Self::cancel_system.run_if(
+                            action_just_pressed(Action::Cancel)
+                                .or_else(on_event::<ObjectEventConfirmed>()),
                         ),
-                ),
-        )
-        .add_systems(
-            PostUpdate,
-            Self::exclusive_system.pipe(Self::cleanup_system),
-        );
+                    ),
+                    (
+                        Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
+                        Self::movement_system,
+                        Self::snapping_system,
+                        Self::collision_system,
+                        Self::material_system,
+                    )
+                        .chain(),
+                )
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
+            )
+            .add_systems(PostUpdate, Self::exclusive_system);
     }
 }
 
@@ -389,52 +384,67 @@ impl PlacingObjectPlugin {
     }
 
     fn exclusive_system(
+        mut commands: Commands,
         new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<(Entity, &PlacingObject)>,
-    ) -> Vec<(Entity, PlacingObjectKind)> {
-        if let Some(new_entity) = new_placing_objects.iter().last() {
-            return placing_objects
-                .iter()
-                .filter(|&(entity, _)| entity != new_entity)
-                .map(|(entity, placing_object)| (entity, placing_object.kind))
-                .collect();
-        }
-
-        Vec::new()
-    }
-
-    fn cancel_system(
-        placing_objects: Query<(Entity, &PlacingObject)>,
-    ) -> Vec<(Entity, PlacingObjectKind)> {
-        placing_objects
-            .iter()
-            .map(|(entity, placing_object)| (entity, placing_object.kind))
-            .collect()
-    }
-
-    fn cleanup_system(
-        In(placing_objects): In<Vec<(Entity, PlacingObjectKind)>>,
-        mut commands: Commands,
         mut visibility: Query<&mut Visibility>,
         children: Query<&Children>,
         mut groups: Query<&mut CollisionGroups>,
     ) {
-        for (placing_entity, kind) in placing_objects {
-            debug!("despawned placing object {kind:?}");
-            commands.entity(placing_entity).despawn_recursive();
-
-            if let PlacingObjectKind::Moving(object_entity) = kind {
-                // Object could be invalid in case of removal.
-                if let Ok(mut visibility) = visibility.get_mut(object_entity) {
-                    *visibility = Visibility::Visible;
+        if let Some(new_entity) = new_placing_objects.iter().last() {
+            for (placing_entity, placing_object) in &placing_objects {
+                if placing_entity != new_entity {
+                    cleanup(
+                        commands.entity(placing_entity),
+                        placing_object.kind,
+                        &children,
+                        &mut visibility,
+                        &mut groups,
+                    );
                 }
+            }
+        }
+    }
 
-                // Restore object's collisions back.
-                for child_entity in children.iter_descendants(object_entity) {
-                    if let Ok(mut group) = groups.get_mut(child_entity) {
-                        group.memberships |= Group::OBJECT;
-                    }
-                }
+    fn cancel_system(
+        mut commands: Commands,
+        placing_objects: Query<(Entity, &PlacingObject)>,
+        mut visibility: Query<&mut Visibility>,
+        children: Query<&Children>,
+        mut groups: Query<&mut CollisionGroups>,
+    ) {
+        for (placing_entity, placing_object) in &placing_objects {
+            cleanup(
+                commands.entity(placing_entity),
+                placing_object.kind,
+                &children,
+                &mut visibility,
+                &mut groups,
+            );
+        }
+    }
+}
+
+fn cleanup(
+    placing_entity: EntityCommands,
+    kind: PlacingObjectKind,
+    children: &Query<&Children>,
+    visibility: &mut Query<&mut Visibility>,
+    groups: &mut Query<&mut CollisionGroups>,
+) {
+    debug!("despawned placing object {kind:?}");
+    placing_entity.despawn_recursive();
+
+    if let PlacingObjectKind::Moving(object_entity) = kind {
+        // Object could be invalid in case of removal.
+        if let Ok(mut visibility) = visibility.get_mut(object_entity) {
+            *visibility = Visibility::Visible;
+        }
+
+        // Restore object's collisions back.
+        for child_entity in children.iter_descendants(object_entity) {
+            if let Ok(mut group) = groups.get_mut(child_entity) {
+                group.memberships |= Group::OBJECT;
             }
         }
     }
