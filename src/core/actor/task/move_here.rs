@@ -69,11 +69,12 @@ impl MoveHerePlugin {
 
     fn cancellation_system(
         mut commands: Commands,
-        tasks: Query<(&Parent, &TaskState), Changed<TaskState>>,
+        tasks: Query<(Entity, &Parent, &TaskState), Changed<TaskState>>,
     ) {
-        for (parent, &state) in &tasks {
+        for (entity, parent, &state) in &tasks {
             if state == TaskState::Cancelled {
                 commands.entity(**parent).remove::<Navigation>();
+                commands.entity(entity).despawn();
             }
         }
     }
@@ -87,7 +88,7 @@ impl MoveHerePlugin {
         for children in children.iter_many(&mut removed_navigations) {
             if let Some((entity, _)) = tasks
                 .iter_many(children)
-                .find(|(_, &state)| state != TaskState::Queued)
+                .find(|(_, &state)| state == TaskState::Active)
             {
                 commands.entity(entity).despawn();
             }
