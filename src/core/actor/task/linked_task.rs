@@ -1,16 +1,12 @@
-mod friendly;
-
 use bevy::prelude::*;
 
 use super::TaskState;
-use friendly::FriendlyPlugins;
 
 pub(super) struct LinkedTaskPlugin;
 
 impl Plugin for LinkedTaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(FriendlyPlugins)
-            .add_systems(PostUpdate, (Self::link_system, Self::state_sync_system));
+        app.add_systems(PostUpdate, (Self::link_system, Self::state_sync_system));
     }
 }
 
@@ -37,4 +33,4 @@ impl LinkedTaskPlugin {
 
 /// Stores entity of another tasks and syncs [`TaskState`] between them.
 #[derive(Clone, Component, Copy)]
-struct LinkedTask(Entity);
+pub(super) struct LinkedTask(pub(super) Entity);
