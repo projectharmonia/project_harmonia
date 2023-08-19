@@ -1,12 +1,20 @@
 use bevy::prelude::*;
 
 use super::TaskState;
+use crate::core::animation_state::AnimationState;
 
 pub(super) struct LinkedTaskPlugin;
 
 impl Plugin for LinkedTaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, (Self::link_system, Self::state_sync_system));
+        app.add_systems(
+            PostUpdate,
+            (
+                Self::link_system,
+                Self::state_sync_system,
+                Self::finish_system,
+            ),
+        );
     }
 }
 
@@ -29,8 +37,35 @@ impl LinkedTaskPlugin {
             }
         }
     }
+
+    fn finish_system(
+        mut commands: Commands,
+        mut removed_tasks: RemovedComponents<LinkedTask>,
+        tasks: Query<(Entity, &Parent, &TaskState, &LinkedTask)>,
+        mut actors: Query<&mut AnimationState>,
+    ) {
+        for removed_entity in &mut removed_tasks {
+            if let Some((linked_entity, parent, &task_state, _)) = tasks
+                .iter()
+                .find(|(.., linked_task)| linked_task.0 == removed_entity)
+            {
+                if task_state == TaskState::Active {
+                    let mut animation_state = actors
+                        .get_mut(**parent)
+                        .expect("actor should have animaition state");
+                    animation_state.stop();
+
+                    commands.entity(linked_entity).despawn();
+                }
+            }
+        }
+    }
 }
 
 /// Stores entity of another tasks and syncs [`TaskState`] between them.
+///
+/// Same component will be automatically added to the linked task too.
+/// After insertion current task state changes to the linked state.
+/// Current task will be considered finished after linked task despawn.
 #[derive(Clone, Component, Copy)]
 pub(super) struct LinkedTask(pub(super) Entity);

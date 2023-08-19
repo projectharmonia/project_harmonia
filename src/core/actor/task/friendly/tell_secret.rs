@@ -28,8 +28,6 @@ impl Plugin for TellSecretPlugin {
                     Self::tell_system,
                     Self::listen_activation_system,
                     Self::finish_system,
-                    Self::tell_cancellation_system,
-                    Self::cleanup_system,
                 )
                     .run_if(resource_exists::<WorldName>()),
             );
@@ -76,7 +74,6 @@ impl TellSecretPlugin {
                 continue;
             };
 
-            commands.entity(actor_entity).insert(TellingSecret);
             animation_state.play_once(actor_animations.handle(ActorAnimation::TellSecret));
 
             // TODO: Handle cancellation of currently active tasks.
@@ -88,88 +85,40 @@ impl TellSecretPlugin {
 
     fn listen_activation_system(
         actor_animations: Res<AssetHandles<ActorAnimation>>,
-        tasks: Query<(&ListenSecret, &Parent), Added<ListenSecret>>,
-        mut listen_actors: Query<(&mut Transform, &mut AnimationState), Without<TellingSecret>>,
-        tell_actors: Query<&Transform, With<TellingSecret>>,
+        tasks: Query<(&ListenSecret, &Parent, &TaskState), Changed<TaskState>>,
+        mut actors: Query<(&mut Transform, &mut AnimationState)>,
     ) {
-        for (tell_secret, parent) in &tasks {
-            let (mut listen_transform, mut animation_state) = listen_actors
-                .get_mut(**parent)
-                .expect("listener should have transform and animation");
-            let tell_transform = tell_actors
-                .get(tell_secret.0)
-                .expect("teller should have transform");
+        for (listen_secret, parent, &state) in &tasks {
+            if state == TaskState::Active {
+                let tell_transform: Transform = *actors
+                    .get_component(listen_secret.0)
+                    .expect("teller should have transform");
+                let (mut listen_transform, mut animation_state) = actors
+                    .get_mut(**parent)
+                    .expect("listener should have transform and animation");
 
-            listen_transform.look_at(tell_transform.translation, Vec3::Y);
-            animation_state.repeat(actor_animations.handle(ActorAnimation::ThoughtfulNod));
+                listen_transform.look_at(tell_transform.translation, Vec3::Y);
+                animation_state.repeat(actor_animations.handle(ActorAnimation::ThoughtfulNod));
+            }
         }
     }
 
     fn finish_system(
         mut commands: Commands,
         mut finish_events: EventReader<AnimationFinished>,
-        tell_actors: Query<(), With<TellingSecret>>,
+        children: Query<&Children>,
+        tasks: Query<(Entity, &TaskState), With<TellSecret>>,
     ) {
-        for event in &mut finish_events {
-            if tell_actors.get(event.0).is_ok() {
-                commands.entity(event.0).insert(ToldSecret);
-            }
-        }
-    }
-
-    fn tell_cancellation_system(
-        mut commands: Commands,
-        tasks: Query<(&Parent, &TaskState), (Changed<TaskState>, With<TellSecret>)>,
-    ) {
-        for (parent, &state) in &tasks {
-            if state == TaskState::Cancelled {
-                commands.entity(**parent).insert(ToldSecret);
-            }
-        }
-    }
-
-    fn cleanup_system(
-        mut commands: Commands,
-        mut tell_actors: Query<(Entity, &Children, &mut AnimationState), Added<ToldSecret>>,
-        mut listen_actors: Query<&mut AnimationState, Without<ToldSecret>>,
-        listen_tasks: Query<(Entity, &Parent, &ListenSecret, &TaskState)>,
-        tell_tasks: Query<(Entity, &TaskState), With<TellSecret>>,
-    ) {
-        for (teller_entity, children, mut animation_state) in &mut tell_actors {
-            if let Some((listen_entity, parent, ..)) =
-                listen_tasks.iter().find(|(.., listen_secret, &state)| {
-                    listen_secret.0 == teller_entity && state != TaskState::Queued
-                })
-            {
-                commands.entity(listen_entity).despawn();
-                let mut animation_handle = listen_actors
-                    .get_mut(**parent)
-                    .expect("actor should have animation handle");
-                animation_handle.stop();
-            }
-
-            animation_state.stop();
-
-            commands
-                .entity(teller_entity)
-                .remove::<(Navigation, TellingSecret, ToldSecret)>();
-
-            let (tell_entity, _) = tell_tasks
+        for children in children.iter_many(finish_events.iter().map(|event| event.0)) {
+            if let Some((entity, _)) = tasks
                 .iter_many(children)
-                .find(|(_, &state)| state != TaskState::Queued)
-                .expect("actor should have tell secret task as a child");
-            commands.entity(tell_entity).despawn();
+                .find(|(_, &state)| state == TaskState::Active)
+            {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }
-
-/// Indicates that the actor is currently telling a secret.
-#[derive(Component)]
-struct TellingSecret;
-
-/// Indicates that the actor just finished telling a secret.
-#[derive(Component)]
-struct ToldSecret;
 
 #[derive(Debug, Reflect, Component)]
 #[reflect(Component)]

@@ -27,8 +27,9 @@ use serde::{
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use crate::core::{
-    action::Action, actor::Actor, component_commands::ComponentCommandsExt, family::FamilyMode,
-    game_state::GameState,
+    action::Action, actor::Actor, animation_state::AnimationState,
+    component_commands::ComponentCommandsExt, family::FamilyMode, game_state::GameState,
+    navigation::Navigation,
 };
 use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;
@@ -50,7 +51,7 @@ impl Plugin for TaskPlugin {
                     .run_if(in_state(GameState::Family))
                     .run_if(in_state(FamilyMode::Life)),
             )
-            .add_systems(Update, (Self::queue_system, Self::cancelation_system).run_if(has_authority()))
+            .add_systems(Update, (Self::queue_system, Self::cancelation_system, Self::cleanup_system).run_if(has_authority()))
             .add_systems(PostUpdate, Self::activation_system.run_if(has_authority()));
     }
 }
@@ -110,6 +111,27 @@ impl TaskPlugin {
                 }
             } else {
                 error!("entity {:?} is not a task", event.0);
+            }
+        }
+    }
+
+    fn cleanup_system(
+        mut commands: Commands,
+        tasks: Query<(Entity, &Parent, &TaskGroups, &TaskState), Changed<TaskState>>,
+        mut actors: Query<&mut AnimationState>,
+    ) {
+        for (entity, parent, groups, &task_state) in &tasks {
+            if task_state == TaskState::Cancelled {
+                if groups.contains(TaskGroups::LEGS) {
+                    commands.entity(**parent).remove::<Navigation>();
+                }
+
+                let mut animation_state = actors
+                    .get_mut(**parent)
+                    .expect("actor should have animaition state");
+                animation_state.stop();
+
+                commands.entity(entity).despawn();
             }
         }
     }

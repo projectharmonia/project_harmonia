@@ -22,7 +22,6 @@ impl Plugin for MoveHerePlugin {
             (
                 Self::list_system.in_set(TaskListSet),
                 Self::activation_system,
-                Self::cancellation_system,
                 Self::finish_system,
             )
                 .run_if(resource_exists::<WorldName>()),
@@ -63,18 +62,6 @@ impl MoveHerePlugin {
                     Navigation::new(move_here.movement.speed()),
                     Endpoint::new(move_here.endpoint),
                 ));
-            }
-        }
-    }
-
-    fn cancellation_system(
-        mut commands: Commands,
-        tasks: Query<(Entity, &Parent, &TaskState), Changed<TaskState>>,
-    ) {
-        for (entity, parent, &state) in &tasks {
-            if state == TaskState::Cancelled {
-                commands.entity(**parent).remove::<Navigation>();
-                commands.entity(entity).despawn();
             }
         }
     }
