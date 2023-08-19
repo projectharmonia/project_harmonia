@@ -21,7 +21,6 @@ mod navigation;
 pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
-pub(super) mod ready_scene;
 mod reflect_bundle;
 pub(super) mod settings;
 pub(super) mod wall;
@@ -46,7 +45,6 @@ use navigation::NavigationPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
-use ready_scene::ReadyScenePlugin;
 use settings::SettingsPlugin;
 use wall::WallPlugin;
 
@@ -71,7 +69,6 @@ impl PluginGroup for CorePlugins {
             .add(FamilyPlugin)
             .add(GamePathsPlugin)
             .add(PlayerCameraPlugin)
-            .add(ReadyScenePlugin)
             .add(SettingsPlugin)
             .add(ObjectPlugin)
             .add(WallPlugin)

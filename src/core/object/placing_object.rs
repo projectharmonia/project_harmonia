@@ -5,7 +5,7 @@ use std::{
 
 use bevy::{
     asset::HandleId, ecs::system::EntityCommands, math::Vec3Swizzles, prelude::*,
-    window::PrimaryWindow,
+    scene::SceneInstanceReady, window::PrimaryWindow,
 };
 use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -21,7 +21,6 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    ready_scene::SceneInstanceReady,
     wall::{WallEdges, WallObject, HALF_WIDTH},
 };
 

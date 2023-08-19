@@ -6,12 +6,10 @@ use bevy::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
     },
+    scene::SceneInstanceReady,
 };
 
-use crate::core::{
-    game_state::GameState, game_world::WorldName, player_camera::PlayerCamera,
-    ready_scene::SceneInstanceReady,
-};
+use crate::core::{game_state::GameState, game_world::WorldName, player_camera::PlayerCamera};
 
 pub(super) struct MirrorPlugin;
 

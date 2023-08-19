@@ -3,7 +3,7 @@ pub(crate) mod needs;
 pub(crate) mod race;
 pub(crate) mod task;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, scene::SceneInstanceReady};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -18,7 +18,6 @@ use super::{
     family::ActorFamily,
     game_state::GameState,
     game_world::WorldName,
-    ready_scene::SceneInstanceReady,
 };
 use crate::core::{
     animation_state::AnimationState, collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable,

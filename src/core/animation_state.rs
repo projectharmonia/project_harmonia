@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use bevy::{animation::RepeatAnimation, prelude::*};
+use bevy::{animation::RepeatAnimation, prelude::*, scene::SceneInstanceReady};
 
-use super::{game_world::WorldName, ready_scene::SceneInstanceReady};
+use super::game_world::WorldName;
 
 pub(super) struct AnimationStatePlugin;
 

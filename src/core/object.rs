@@ -3,7 +3,7 @@ pub(crate) mod placing_object;
 
 use std::path::PathBuf;
 
-use bevy::{ecs::entity::EntityMap, prelude::*};
+use bevy::{ecs::entity::EntityMap, prelude::*, scene::SceneInstanceReady};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -18,7 +18,6 @@ use super::{
     cursor_hover::OutlineHoverExt,
     game_world::WorldName,
     lot::LotVertices,
-    ready_scene::SceneInstanceReady,
 };
 use mirror::MirrorPlugin;
 use placing_object::PlacingObjectPlugin;
