@@ -151,7 +151,7 @@ impl WorldMenuPlugin {
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
-            if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
+            if nodes.iter().all(|world_entity| world_entity.0 != entity) {
                 commands.entity(tab_content.0).with_children(|parent| {
                     setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
                 });
