@@ -20,16 +20,17 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_systems(
+                SpawnScene,
+                Self::loading_system
+                    .pipe(error::report)
+                    .run_if(on_event::<GameLoad>())
+                    .before(scene::scene_spawner_system),
+            )
+            .add_systems(
                 PostUpdate,
-                (
-                    Self::loading_system
-                        .pipe(error::report)
-                        .run_if(on_event::<GameLoad>())
-                        .before(scene::scene_spawner_system),
-                    Self::saving_system
-                        .pipe(error::report)
-                        .run_if(on_event::<GameSave>()),
-                ),
+                Self::saving_system
+                    .pipe(error::report)
+                    .run_if(on_event::<GameSave>()),
             );
     }
 }
