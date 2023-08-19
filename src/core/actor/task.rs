@@ -82,15 +82,15 @@ impl TaskPlugin {
         for children in &actors {
             let current_groups = tasks
                 .iter_many(children)
-                .filter(|(_, &state)| state != TaskState::Queued)
+                .filter(|(_, &task_state)| task_state != TaskState::Queued)
                 .map(|(&groups, _)| groups)
                 .reduce(|acc, groups| acc & groups)
                 .unwrap_or_default();
 
             let mut iter = tasks.iter_many_mut(children);
-            while let Some((groups, mut state)) = iter.fetch_next() {
-                if *state == TaskState::Queued && !groups.intersects(current_groups) {
-                    *state = TaskState::Active;
+            while let Some((groups, mut task_state)) = iter.fetch_next() {
+                if *task_state == TaskState::Queued && !groups.intersects(current_groups) {
+                    *task_state = TaskState::Active;
                     break;
                 }
             }
@@ -103,10 +103,10 @@ impl TaskPlugin {
         mut tasks: Query<&mut TaskState>,
     ) {
         for event in cancel_events.iter().map(|event| &event.event) {
-            if let Ok(mut state) = tasks.get_mut(event.0) {
-                match *state {
+            if let Ok(mut task_state) = tasks.get_mut(event.0) {
+                match *task_state {
                     TaskState::Queued => commands.entity(event.0).despawn(),
-                    TaskState::Active => *state = TaskState::Cancelled,
+                    TaskState::Active => *task_state = TaskState::Cancelled,
                     TaskState::Cancelled => (),
                 }
             } else {

@@ -51,8 +51,8 @@ impl BuyLotPlugin {
         actors: Query<&ActorFamily>,
         tasks: Query<(Entity, &Parent, &BuyLot, &TaskState), Changed<TaskState>>,
     ) {
-        for (entity, parent, buy, &state) in &tasks {
-            if state == TaskState::Active {
+        for (entity, parent, buy, &task_state) in &tasks {
+            if task_state == TaskState::Active {
                 let family = actors
                     .get(**parent)
                     .expect("actors should have assigned family");

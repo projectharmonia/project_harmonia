@@ -56,8 +56,8 @@ impl MoveHerePlugin {
         mut commands: Commands,
         tasks: Query<(&Parent, &MoveHere, &TaskState), Changed<TaskState>>,
     ) {
-        for (parent, move_here, &state) in &tasks {
-            if state == TaskState::Active {
+        for (parent, move_here, &task_state) in &tasks {
+            if task_state == TaskState::Active {
                 commands.entity(**parent).insert((
                     Navigation::new(move_here.movement.speed()),
                     Endpoint::new(move_here.endpoint),
@@ -75,7 +75,7 @@ impl MoveHerePlugin {
         for children in children.iter_many(&mut removed_navigations) {
             if let Some((entity, _)) = tasks
                 .iter_many(children)
-                .find(|(_, &state)| state == TaskState::Active)
+                .find(|(_, &task_state)| task_state == TaskState::Active)
             {
                 commands.entity(entity).despawn();
             }

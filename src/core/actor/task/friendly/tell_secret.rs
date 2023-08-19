@@ -48,8 +48,8 @@ impl TellSecretPlugin {
         mut commands: Commands,
         tasks: Query<(&TellSecret, &Parent, &TaskState), Changed<TaskState>>,
     ) {
-        for (tell_secret, parent, &state) in &tasks {
-            if state == TaskState::Active {
+        for (tell_secret, parent, &task_state) in &tasks {
+            if task_state == TaskState::Active {
                 commands.entity(**parent).insert((
                     Navigation::new(Movement::Walk.speed()).with_offset(0.5),
                     Following(tell_secret.0),
@@ -70,7 +70,7 @@ impl TellSecretPlugin {
                 continue;
             };
 
-            let Some((tell_entity, tell_secret, _)) = tasks.iter_many(children).find(|(.., &state)| state == TaskState::Active) else {
+            let Some((tell_entity, tell_secret, _)) = tasks.iter_many(children).find(|(.., &task_state)| task_state == TaskState::Active) else {
                 continue;
             };
 
@@ -88,8 +88,8 @@ impl TellSecretPlugin {
         tasks: Query<(&ListenSecret, &Parent, &TaskState), Changed<TaskState>>,
         mut actors: Query<(&mut Transform, &mut AnimationState)>,
     ) {
-        for (listen_secret, parent, &state) in &tasks {
-            if state == TaskState::Active {
+        for (listen_secret, parent, &task_state) in &tasks {
+            if task_state == TaskState::Active {
                 let tell_transform: Transform = *actors
                     .get_component(listen_secret.0)
                     .expect("teller should have transform");
@@ -112,7 +112,7 @@ impl TellSecretPlugin {
         for children in children.iter_many(finish_events.iter().map(|event| event.0)) {
             if let Some((entity, _)) = tasks
                 .iter_many(children)
-                .find(|(_, &state)| state == TaskState::Active)
+                .find(|(_, &task_state)| task_state == TaskState::Active)
             {
                 commands.entity(entity).despawn();
             }
