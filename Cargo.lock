@@ -224,9 +224,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.72"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
+checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
 
 [[package]]
 name = "approx"
@@ -1056,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#2ea0db2f32818709a7bf2031876991aa2721512a"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
 dependencies = [
  "accesskit_winit",
  "approx",
