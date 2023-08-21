@@ -1056,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#2ea0db2f32818709a7bf2031876991aa2721512a"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
 dependencies = [
  "accesskit_winit",
  "approx",
@@ -1240,9 +1240,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.21"
+version = "4.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c27cdf28c0f604ba3f512b0c9a409f8de8513e4816705deb0498b627e7c3a3fd"
+checksum = "03aef18ddf7d879c15ce20f04826ef8418101c7e528014c3eeea13321047dca3"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1251,9 +1251,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.21"
+version = "4.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a9f1ab5e9f01a9b81f202e8562eb9a10de70abf9eaeac1be465c28b75aa4aa"
+checksum = "f8ce6fffb678c9b80a70b6b6de0aad31df727623a70fd9a842c30cd573e2fa98"
 dependencies = [
  "anstream",
  "anstyle",
