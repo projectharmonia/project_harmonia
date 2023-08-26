@@ -234,20 +234,17 @@ pub(crate) struct Preview {
 }
 
 impl Preview {
-    pub(crate) fn object(id: HandleId, width: Val, height: Val) -> Self {
-        Self::new(PreviewKind::Object(id), width, height)
+    pub(crate) fn object(id: HandleId, style: &Style) -> Self {
+        Self::new(PreviewKind::Object(id), style)
     }
 
-    pub(crate) fn actor(entity: Entity, width: Val, height: Val) -> Self {
-        Self::new(PreviewKind::Actor(entity), width, height)
+    pub(crate) fn actor(entity: Entity, style: &Style) -> Self {
+        Self::new(PreviewKind::Actor(entity), style)
     }
 
-    fn new(kind: PreviewKind, width: Val, height: Val) -> Self {
-        let Val::Px(width) = width else {
-            panic!("width should be in pixels");
-        };
-        let Val::Px(height) = height else {
-            panic!("height should be in pixels");
+    fn new(kind: PreviewKind, style: &Style) -> Self {
+        let (Val::Px(width), Val::Px(height)) = (style.width, style.height) else {
+            panic!("button size should be set in pixels");
         };
 
         Self {

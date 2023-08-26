@@ -404,7 +404,7 @@ fn setup_members_node(
             for &entity in members.iter() {
                 parent.spawn((
                     PlayActor(entity),
-                    Preview::actor(entity, theme.button.image.width, theme.button.image.height),
+                    Preview::actor(entity, &theme.button.image),
                     ExclusiveButton,
                     Toggled(entity == active_entity),
                     ImageButtonBundle::placeholder(theme),

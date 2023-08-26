@@ -101,7 +101,7 @@ pub(super) fn setup_objects_node(
                 {
                     parent.spawn((
                         MetadataId(id),
-                        Preview::object(id, theme.button.image.width, theme.button.image.height),
+                        Preview::object(id, &theme.button.image),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),
