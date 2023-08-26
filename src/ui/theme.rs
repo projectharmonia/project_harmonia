@@ -27,6 +27,7 @@ pub(crate) struct Theme {
     pub(crate) background_color: Color,
     pub(crate) modal_color: Color,
     pub(crate) panel_color: Color,
+    pub(crate) popup_color: Color,
 }
 
 impl FromWorld for Theme {
@@ -158,6 +159,7 @@ impl FromWorld for Theme {
             background_color: Color::rgb(0.9, 0.9, 0.9),
             modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
             panel_color: Color::rgb(0.8, 0.8, 0.8),
+            popup_color: Color::rgb(0.75, 0.75, 0.75),
         }
     }
 }

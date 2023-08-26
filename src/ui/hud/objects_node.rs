@@ -1,4 +1,4 @@
-use bevy::{asset::HandleId, prelude::*};
+use bevy::{asset::HandleId, prelude::*, window::PrimaryWindow};
 
 use crate::{
     core::{
@@ -23,7 +23,7 @@ impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (Self::button_system, Self::toggle_system).run_if(
+            (Self::button_system, Self::popup_system, Self::toggle_system).run_if(
                 in_state(GameState::City)
                     .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
             ),
@@ -44,6 +44,71 @@ impl ObjectsNodePlugin {
                     .with_children(|parent| {
                         parent.spawn(PlacingObject::spawning(id.0));
                     });
+            }
+        }
+    }
+
+    fn popup_system(
+        mut commands: Commands,
+        asset_server: Res<AssetServer>,
+        theme: Res<Theme>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
+        buttons: Query<(&Interaction, &GlobalTransform, &MetadataId), Changed<Interaction>>,
+        windows: Query<&Window, With<PrimaryWindow>>,
+        popups: Query<Entity, With<ObjectPopup>>,
+    ) {
+        for (&interaction, transform, id) in &buttons {
+            match interaction {
+                Interaction::Pressed => continue,
+                Interaction::Hovered => {
+                    let (Val::Px(button_width), Val::Px(button_height)) = (
+                        theme.button.image_button.width,
+                        theme.button.image_button.height,
+                    ) else {
+                        panic!("button size should be set in pixels");
+                    };
+                    let button_translation = transform.translation();
+                    let window = windows.single();
+                    let left = button_translation.x + button_width / 2.0;
+                    let bottom =
+                        window.resolution.height() - button_translation.y + button_height / 2.0;
+
+                    let metadata_path = asset_server
+                        .get_handle_path(id.0)
+                        .expect("spawning object metadata should have a path");
+                    let object_metadata = object_metadata
+                        .get(&asset_server.get_handle(id.0))
+                        .unwrap_or_else(|| {
+                            panic!("{metadata_path:?} should correspond to metadata")
+                        });
+
+                    commands
+                        .spawn((
+                            ObjectPopup,
+                            NodeBundle {
+                                style: Style {
+                                    padding: theme.padding.normal,
+                                    left: Val::Px(left),
+                                    bottom: Val::Px(bottom),
+                                    position_type: PositionType::Absolute,
+                                    ..Default::default()
+                                },
+                                background_color: theme.popup_color.into(),
+                                ..Default::default()
+                            },
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle::from_section(
+                                &object_metadata.general.name,
+                                theme.label.normal.clone(),
+                            ));
+                        });
+                }
+                Interaction::None => {
+                    if let Ok(entity) = popups.get_single() {
+                        commands.entity(entity).despawn_recursive();
+                    }
+                }
             }
         }
     }
@@ -124,3 +189,6 @@ pub(super) fn setup_objects_node(
 
 #[derive(Component)]
 struct MetadataId(HandleId);
+
+#[derive(Component)]
+struct ObjectPopup;
