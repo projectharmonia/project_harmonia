@@ -54,8 +54,7 @@ impl TaskMenuPlugin {
             return;
         }
 
-        let primary_window = windows.single();
-        let cursor_position = primary_window.cursor_position().unwrap_or_default();
+        let cursor_position = windows.single().cursor_position().unwrap_or_default();
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn_empty()
