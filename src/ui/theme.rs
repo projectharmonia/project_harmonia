@@ -38,51 +38,51 @@ impl FromWorld for Theme {
         Self {
             button: ButtonTheme {
                 normal: Style {
-                    width: Val::Px(170.0),
-                    height: Val::Px(40.0),
+                    width: Val::Px(150.0),
+                    height: Val::Px(35.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 large: Style {
-                    width: Val::Px(200.0),
-                    height: Val::Px(60.0),
+                    width: Val::Px(180.0),
+                    height: Val::Px(50.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 symbol: Style {
-                    width: Val::Px(40.0),
-                    height: Val::Px(40.0),
+                    width: Val::Px(30.0),
+                    height: Val::Px(30.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 image_button: Style {
-                    width: Val::Px(60.0),
-                    height: Val::Px(60.0),
+                    width: Val::Px(55.0),
+                    height: Val::Px(55.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 image: Style {
-                    width: Val::Px(50.0),
-                    height: Val::Px(50.0),
+                    width: Val::Px(45.0),
+                    height: Val::Px(45.0),
                     ..Default::default()
                 },
                 normal_text: TextStyle {
                     font: text_handle.clone(),
-                    font_size: 35.0,
+                    font_size: 25.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 large_text: TextStyle {
                     font: text_handle.clone(),
-                    font_size: 40.0,
+                    font_size: 30.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 symbol_text: TextStyle {
                     font: symbol_handle.clone(),
-                    font_size: 35.0,
+                    font_size: 25.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
                 normal_color: Color::rgb(0.15, 0.15, 0.15),
@@ -93,17 +93,17 @@ impl FromWorld for Theme {
             label: LabelTheme {
                 normal: TextStyle {
                     font: text_handle.clone(),
-                    font_size: 35.0,
+                    font_size: 25.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
                 large: TextStyle {
                     font: text_handle.clone(),
-                    font_size: 45.0,
+                    font_size: 35.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
                 symbol: TextStyle {
                     font: symbol_handle,
-                    font_size: 30.0,
+                    font_size: 20.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
             },
@@ -115,7 +115,7 @@ impl FromWorld for Theme {
                 },
                 text: TextStyle {
                     font: text_handle,
-                    font_size: 30.0,
+                    font_size: 20.0,
                     color: Color::rgb(0.1, 0.1, 0.1),
                 },
                 normal_color: Color::rgb(0.5, 0.5, 0.5),
@@ -131,26 +131,26 @@ impl FromWorld for Theme {
                     ..Default::default()
                 },
                 button: Style {
-                    width: Val::Px(25.0),
-                    height: Val::Px(25.0),
+                    width: Val::Px(20.0),
+                    height: Val::Px(20.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
                 tick: Style {
-                    width: Val::Px(15.0),
-                    height: Val::Px(15.0),
+                    width: Val::Px(14.0),
+                    height: Val::Px(14.0),
                     ..Default::default()
                 },
                 tick_color: Color::rgb(0.35, 0.75, 0.35),
             },
             gap: GapTheme {
-                normal: Val::Px(15.0),
-                large: Val::Px(25.0),
+                normal: Val::Px(10.0),
+                large: Val::Px(20.0),
             },
             padding: PaddingTheme {
-                normal: UiRect::all(Val::Px(10.0)),
-                global: UiRect::all(Val::Px(20.0)),
+                normal: UiRect::all(Val::Px(8.0)),
+                global: UiRect::all(Val::Px(15.0)),
             },
             progress_bar: ProgressBarTheme {
                 background_color: Color::rgb(0.5, 0.5, 0.5),
