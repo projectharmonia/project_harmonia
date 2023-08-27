@@ -11,8 +11,9 @@ use crate::{
     ui::{
         preview::Preview,
         theme::Theme,
-        widget::button::{
-            ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled,
+        widget::{
+            button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
+            ui_root::UiRoot,
         },
     },
 };
@@ -56,6 +57,7 @@ impl ObjectsNodePlugin {
         buttons: Query<(&Interaction, &GlobalTransform, &MetadataId), Changed<Interaction>>,
         windows: Query<&Window, With<PrimaryWindow>>,
         popups: Query<Entity, With<ObjectPopup>>,
+        roots: Query<Entity, With<UiRoot>>,
     ) {
         for (&interaction, transform, id) in &buttons {
             match interaction {
@@ -81,27 +83,29 @@ impl ObjectsNodePlugin {
                             panic!("{metadata_path:?} should correspond to metadata")
                         });
 
-                    commands
-                        .spawn((
-                            ObjectPopup,
-                            NodeBundle {
-                                style: Style {
-                                    padding: theme.padding.normal,
-                                    left: Val::Px(left),
-                                    bottom: Val::Px(bottom),
-                                    position_type: PositionType::Absolute,
+                    commands.entity(roots.single()).with_children(|parent| {
+                        parent
+                            .spawn((
+                                ObjectPopup,
+                                NodeBundle {
+                                    style: Style {
+                                        padding: theme.padding.normal,
+                                        left: Val::Px(left),
+                                        bottom: Val::Px(bottom),
+                                        position_type: PositionType::Absolute,
+                                        ..Default::default()
+                                    },
+                                    background_color: theme.popup_color.into(),
                                     ..Default::default()
                                 },
-                                background_color: theme.popup_color.into(),
-                                ..Default::default()
-                            },
-                        ))
-                        .with_children(|parent| {
-                            parent.spawn(TextBundle::from_section(
-                                &object_metadata.general.name,
-                                theme.label.normal.clone(),
-                            ));
-                        });
+                            ))
+                            .with_children(|parent| {
+                                parent.spawn(TextBundle::from_section(
+                                    &object_metadata.general.name,
+                                    theme.label.normal.clone(),
+                                ));
+                            });
+                    });
                 }
                 Interaction::Pressed | Interaction::None => {
                     if let Ok(entity) = popups.get_single() {
