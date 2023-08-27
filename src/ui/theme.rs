@@ -157,7 +157,7 @@ impl FromWorld for Theme {
                 fill_color: Color::rgb(0.35, 0.75, 0.35),
             },
             background_color: Color::rgb(0.9, 0.9, 0.9),
-            modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0),
+            modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0), // TODO: Make gray when we will have multiple UI roots.
             panel_color: Color::rgb(0.8, 0.8, 0.8),
             popup_color: Color::rgb(0.75, 0.75, 0.75),
         }
