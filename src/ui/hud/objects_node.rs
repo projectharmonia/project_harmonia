@@ -54,18 +54,17 @@ impl ObjectsNodePlugin {
         asset_server: Res<AssetServer>,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        buttons: Query<(&Interaction, &GlobalTransform, &MetadataId), Changed<Interaction>>,
+        buttons: Query<(&Interaction, &Style, &GlobalTransform, &MetadataId), Changed<Interaction>>,
         windows: Query<&Window, With<PrimaryWindow>>,
         popups: Query<Entity, With<ObjectPopup>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, transform, id) in &buttons {
+        for (&interaction, style, transform, id) in &buttons {
             match interaction {
                 Interaction::Hovered => {
-                    let (Val::Px(button_width), Val::Px(button_height)) = (
-                        theme.button.image_button.width,
-                        theme.button.image_button.height,
-                    ) else {
+                    let (Val::Px(button_width), Val::Px(button_height)) =
+                        (style.width, style.height)
+                    else {
                         panic!("button size should be set in pixels");
                     };
                     let button_translation = transform.translation();
