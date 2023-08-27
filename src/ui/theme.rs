@@ -110,7 +110,7 @@ impl FromWorld for Theme {
             text_edit: TextEditTheme {
                 style: Style {
                     min_width: Val::Px(200.0),
-                    min_height: Val::Px(30.0),
+                    min_height: Val::Px(20.0),
                     ..Default::default()
                 },
                 text: TextStyle {
