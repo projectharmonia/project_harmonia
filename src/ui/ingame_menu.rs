@@ -35,7 +35,9 @@ impl Plugin for InGameMenuPlugin {
                 (
                     Self::ingame_button_system,
                     Self::exit_dialog_button_system,
-                    Self::cleanup_system.run_if(action_just_pressed(Action::Cancel)),
+                    Self::cleanup_system
+                        .run_if(not(any_with_component::<ExitDialog>()))
+                        .run_if(action_just_pressed(Action::Cancel)),
                 )
                     .run_if(any_with_component::<IngameMenu>()),
             ),
