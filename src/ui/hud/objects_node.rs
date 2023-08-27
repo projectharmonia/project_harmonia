@@ -59,7 +59,6 @@ impl ObjectsNodePlugin {
     ) {
         for (&interaction, transform, id) in &buttons {
             match interaction {
-                Interaction::Pressed => continue,
                 Interaction::Hovered => {
                     let (Val::Px(button_width), Val::Px(button_height)) = (
                         theme.button.image_button.width,
@@ -104,7 +103,7 @@ impl ObjectsNodePlugin {
                             ));
                         });
                 }
-                Interaction::None => {
+                Interaction::Pressed | Interaction::None => {
                     if let Ok(entity) = popups.get_single() {
                         commands.entity(entity).despawn_recursive();
                     }
