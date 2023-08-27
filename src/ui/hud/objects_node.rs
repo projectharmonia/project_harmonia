@@ -88,6 +88,7 @@ impl ObjectsNodePlugin {
                                 ObjectPopup,
                                 NodeBundle {
                                     style: Style {
+                                        flex_direction: FlexDirection::Column,
                                         padding: theme.padding.normal,
                                         left: Val::Px(left),
                                         bottom: Val::Px(bottom),
@@ -99,10 +100,20 @@ impl ObjectsNodePlugin {
                                 },
                             ))
                             .with_children(|parent| {
-                                parent.spawn(TextBundle::from_section(
-                                    &object_metadata.general.name,
-                                    theme.label.normal.clone(),
-                                ));
+                                parent.spawn(TextBundle::from_sections([
+                                    TextSection::new(
+                                        object_metadata.general.name.clone() + "\n\n",
+                                        theme.label.normal.clone(),
+                                    ),
+                                    TextSection::new(
+                                        format!(
+                                            "{}\n{}",
+                                            object_metadata.general.license,
+                                            object_metadata.general.author,
+                                        ),
+                                        theme.label.small.clone(),
+                                    ),
+                                ]));
                             });
                     });
                 }

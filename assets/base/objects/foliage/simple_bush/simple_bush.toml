@@ -1,5 +1,7 @@
 [object]
 name = "Simple bush"
+license = "CC BY-SA 4.0"
+author = "Irina Chernyshchyk"
 preview_translation = [0.0, -0.6, -1.9]
 category = "Foliage"
 components = []

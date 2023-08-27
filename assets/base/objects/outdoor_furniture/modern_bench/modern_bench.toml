@@ -1,5 +1,7 @@
 [object]
 name = "Modern bench"
+license = "CC BY-SA 4.0"
+author = "Irina Chernyshchyk"
 preview_translation = [0.0, -0.25, -2.9]
 category = "Outdoor furniture"
 components = []

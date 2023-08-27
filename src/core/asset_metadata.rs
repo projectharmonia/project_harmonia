@@ -122,6 +122,8 @@ enum AssetMetadata {
 
 pub(crate) struct GeneralMetadata {
     pub(crate) name: String,
+    pub(crate) author: String,
+    pub(crate) license: String,
     pub(crate) preview_translation: Vec3,
 }
 
@@ -139,6 +141,8 @@ pub(crate) struct ObjectMetadata {
 #[serde(field_identifier, rename_all = "snake_case")]
 enum ObjectMetadataField {
     Name,
+    Author,
+    License,
     PreviewTranslation,
     Category,
     Components,
@@ -240,6 +244,8 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
 
     fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
         let mut name = None;
+        let mut author = None;
+        let mut license = None;
         let mut preview_translation = None;
         let mut category = None;
         let mut components = None;
@@ -250,6 +256,22 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
                         return Err(de::Error::duplicate_field(ObjectMetadataField::Name.into()));
                     }
                     name = Some(map.next_value()?);
+                }
+                ObjectMetadataField::Author => {
+                    if author.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::Author.into(),
+                        ));
+                    }
+                    author = Some(map.next_value()?);
+                }
+                ObjectMetadataField::License => {
+                    if license.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::License.into(),
+                        ));
+                    }
+                    license = Some(map.next_value()?);
                 }
                 ObjectMetadataField::PreviewTranslation => {
                     if preview_translation.is_some() {
@@ -280,6 +302,10 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         }
         let name =
             name.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Name.into()))?;
+        let author =
+            author.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Author.into()))?;
+        let license =
+            license.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::License.into()))?;
         let preview_translation = preview_translation.ok_or_else(|| {
             de::Error::missing_field(ObjectMetadataField::PreviewTranslation.into())
         })?;
@@ -291,6 +317,8 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         Ok(ObjectMetadata {
             general: GeneralMetadata {
                 name,
+                author,
+                license,
                 preview_translation,
             },
             category,

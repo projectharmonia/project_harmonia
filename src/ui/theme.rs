@@ -91,6 +91,11 @@ impl FromWorld for Theme {
                 hovered_pressed_color: Color::rgb(0.25, 0.65, 0.25),
             },
             label: LabelTheme {
+                small: TextStyle {
+                    font: text_handle.clone(),
+                    font_size: 17.0,
+                    color: Color::rgb(0.1, 0.1, 0.1),
+                },
                 normal: TextStyle {
                     font: text_handle.clone(),
                     font_size: 25.0,
@@ -180,6 +185,7 @@ pub(crate) struct ButtonTheme {
 }
 
 pub(crate) struct LabelTheme {
+    pub(crate) small: TextStyle,
     pub(crate) normal: TextStyle,
     pub(crate) large: TextStyle,
     pub(crate) symbol: TextStyle,
