@@ -69,7 +69,7 @@ impl ObjectsNodePlugin {
                     };
                     let button_translation = transform.translation();
                     let window = windows.single();
-                    let left = button_translation.x + button_width / 2.0;
+                    let left = button_translation.x - button_width / 2.0;
                     let bottom =
                         window.resolution.height() - button_translation.y + button_height / 2.0;
 
