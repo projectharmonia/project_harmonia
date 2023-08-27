@@ -54,6 +54,7 @@ impl SettingsMenuPlugin {
             parent
                 .spawn((
                     SettingsMenu,
+                    Interaction::None,
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,

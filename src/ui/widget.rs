@@ -62,6 +62,7 @@ impl LabelBundle {
 #[derive(Bundle)]
 pub(super) struct DialogBundle {
     dialog: Dialog,
+    interaction: Interaction,
     node_bundle: NodeBundle,
 }
 
@@ -69,6 +70,7 @@ impl DialogBundle {
     pub(super) fn new(theme: &Theme) -> Self {
         Self {
             dialog: Dialog,
+            interaction: Default::default(),
             node_bundle: NodeBundle {
                 style: Style {
                     position_type: PositionType::Absolute,
