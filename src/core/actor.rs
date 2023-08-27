@@ -118,7 +118,9 @@ impl ActorPlugin {
     }
 
     fn deactivation_system(mut commands: Commands, actors: Query<Entity, With<ActiveActor>>) {
-        commands.entity(actors.single()).remove::<ActiveActor>();
+        if let Ok(entity) = actors.get_single() {
+            commands.entity(entity).remove::<ActiveActor>();
+        }
     }
 
     fn exclusive_system(

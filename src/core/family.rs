@@ -139,9 +139,9 @@ impl FamilyPlugin {
         mut commands: Commands,
         families: Query<&ActorFamily, With<ActiveActor>>,
     ) {
-        commands
-            .entity(families.single().0)
-            .remove::<ActiveFamily>();
+        if let Ok(family) = families.get_single() {
+            commands.entity(family.0).remove::<ActiveFamily>();
+        }
     }
 
     fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {

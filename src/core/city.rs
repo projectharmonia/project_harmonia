@@ -127,11 +127,12 @@ impl CityPlugin {
         cameras: Query<Entity, With<PlayerCamera>>,
         lights: Query<Entity, With<DirectionalLight>>,
     ) {
-        let (entity, mut visibility) = active_cities.single_mut();
-        *visibility = Visibility::Hidden;
-        commands.entity(entity).remove::<ActiveCity>();
-        commands.entity(cameras.single()).despawn();
-        commands.entity(lights.single()).despawn();
+        if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
+            *visibility = Visibility::Hidden;
+            commands.entity(entity).remove::<ActiveCity>();
+            commands.entity(cameras.single()).despawn();
+            commands.entity(lights.single()).despawn();
+        }
     }
 
     /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
