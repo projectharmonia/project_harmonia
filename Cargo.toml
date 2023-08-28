@@ -30,7 +30,7 @@ derive_more = { version = "0.99", default-features = false, features = [
   "constructor",
 ] }
 standard_paths = "2.1"
-clap = { version = "4.3", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.7"
 bincode = "1.3"
