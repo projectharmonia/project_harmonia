@@ -135,7 +135,10 @@ impl ObjectPlugin {
                 .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
                 .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
             else {
-                error!("unable to find a city for object spawn position {}", event.position);
+                error!(
+                    "unable to find a city for object spawn position {}",
+                    event.position
+                );
                 continue;
             };
 
