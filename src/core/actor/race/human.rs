@@ -1,6 +1,6 @@
 use std::mem;
 
-use bevy::prelude::*;
+use bevy::{ecs::reflect::ReflectBundle, prelude::*};
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
@@ -18,7 +18,6 @@ use crate::core::{
     },
     game_state::GameState,
     game_world::WorldName,
-    reflect_bundle::ReflectBundle,
 };
 
 pub(super) struct HumanPlugin;

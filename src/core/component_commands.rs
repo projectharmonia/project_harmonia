@@ -1,9 +1,10 @@
 use bevy::{
-    ecs::system::{EntityCommand, EntityCommands},
+    ecs::{
+        reflect::ReflectBundle,
+        system::{EntityCommand, EntityCommands},
+    },
     prelude::*,
 };
-
-use super::reflect_bundle::ReflectBundle;
 
 pub(super) trait ComponentCommandsExt {
     fn remove_by_name(&mut self, name: String) -> &mut Self;

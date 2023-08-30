@@ -21,7 +21,6 @@ mod navigation;
 pub(super) mod network;
 pub(super) mod object;
 mod player_camera;
-mod reflect_bundle;
 pub(super) mod settings;
 pub(super) mod wall;
 
