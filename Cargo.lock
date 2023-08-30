@@ -330,7 +330,7 @@ dependencies = [
 [[package]]
 name = "bevy_a11y"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "accesskit",
  "bevy_app",
@@ -341,7 +341,7 @@ dependencies = [
 [[package]]
 name = "bevy_animation"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -359,7 +359,7 @@ dependencies = [
 [[package]]
 name = "bevy_app"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -374,7 +374,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -426,7 +426,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -441,7 +441,7 @@ dependencies = [
 [[package]]
 name = "bevy_core_pipeline"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -461,7 +461,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -471,7 +471,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -485,7 +485,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "async-channel",
  "bevy_ecs_macros",
@@ -505,7 +505,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -516,7 +516,7 @@ dependencies = [
 [[package]]
 name = "bevy_encase_derive"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
@@ -525,7 +525,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -540,7 +540,7 @@ dependencies = [
 [[package]]
 name = "bevy_gizmos"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -559,7 +559,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "anyhow",
  "base64",
@@ -589,7 +589,7 @@ dependencies = [
 [[package]]
 name = "bevy_hierarchy"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -603,7 +603,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_a11y",
  "bevy_animation",
@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "android_log-sys",
  "bevy_app",
@@ -669,7 +669,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "quote",
  "rustc-hash",
@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "glam",
  "serde",
@@ -689,7 +689,7 @@ dependencies = [
 [[package]]
 name = "bevy_mikktspace"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "glam",
 ]
@@ -710,7 +710,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -743,7 +743,7 @@ dependencies = [
 [[package]]
 name = "bevy_ptr"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 
 [[package]]
 name = "bevy_rapier3d"
@@ -761,7 +761,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_math",
  "bevy_ptr",
@@ -781,7 +781,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_macro_utils",
  "bit-set",
@@ -794,7 +794,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -843,7 +843,7 @@ dependencies = [
 [[package]]
 name = "bevy_render_macros"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -878,7 +878,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -899,7 +899,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -923,7 +923,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "async-channel",
  "async-executor",
@@ -936,7 +936,7 @@ dependencies = [
 [[package]]
 name = "bevy_text"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -958,7 +958,7 @@ dependencies = [
 [[package]]
 name = "bevy_time"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -972,7 +972,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -985,7 +985,7 @@ dependencies = [
 [[package]]
 name = "bevy_ui"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -1014,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "ahash 0.8.3",
  "bevy_utils_proc_macros",
@@ -1030,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils_proc_macros"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1040,7 +1040,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1055,7 +1055,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.11.2"
-source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#b9e6d15fa94c39a83907d43564326ebbfacfaeaf"
+source = "git+https://github.com/lifescapegame/bevy?branch=release-0.11.2-patched#18fd7194ee145cc1d08663e9f0c7cad20b067b0b"
 dependencies = [
  "accesskit_winit",
  "approx",
