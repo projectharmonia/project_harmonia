@@ -3,7 +3,11 @@ pub(crate) mod placing_object;
 
 use std::path::PathBuf;
 
-use bevy::{ecs::entity::EntityMap, prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    ecs::{entity::EntityMap, reflect::ReflectCommandExt},
+    prelude::*,
+    scene::SceneInstanceReady,
+};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -13,7 +17,6 @@ use super::{
     asset_metadata::{self, ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
-    component_commands::ComponentCommandsExt,
     cursor_hover::Hoverable,
     cursor_hover::OutlineHoverExt,
     game_world::WorldName,
@@ -67,22 +70,17 @@ impl ObjectPlugin {
             debug!("spawning object {scene_path:?}");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
-            commands
-                .entity(entity)
-                .insert((
-                    scene_handle,
-                    Name::new(object_metadata.general.name.clone()),
-                    Hoverable,
-                    GlobalTransform::default(),
-                    VisibilityBundle::default(),
-                ))
-                .insert_reflect(
-                    object_metadata
-                        .components
-                        .iter()
-                        .map(|component| component.clone_value())
-                        .collect::<Vec<_>>(),
-                );
+            let mut entity = commands.entity(entity);
+            entity.insert((
+                scene_handle,
+                Name::new(object_metadata.general.name.clone()),
+                Hoverable,
+                GlobalTransform::default(),
+                VisibilityBundle::default(),
+            ));
+            for component in &object_metadata.components {
+                entity.insert_reflect(component.clone_value());
+            }
         }
     }
 

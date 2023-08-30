@@ -4,8 +4,12 @@ use std::{
 };
 
 use bevy::{
-    asset::HandleId, ecs::system::EntityCommands, math::Vec3Swizzles, prelude::*,
-    scene::SceneInstanceReady, window::PrimaryWindow,
+    asset::HandleId,
+    ecs::{reflect::ReflectCommandExt, system::EntityCommands},
+    math::Vec3Swizzles,
+    prelude::*,
+    scene::SceneInstanceReady,
+    window::PrimaryWindow,
 };
 use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -15,7 +19,6 @@ use crate::core::{
     asset_metadata::{self, ObjectMetadata},
     city::CityMode,
     collision_groups::LifescapeGroupsExt,
-    component_commands::ComponentCommandsExt,
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
@@ -131,22 +134,17 @@ impl PlacingObjectPlugin {
                 }
             };
 
-            placing_entity
-                .insert((
-                    Name::new("Placing object"),
-                    SceneBundle {
-                        scene: scene_handle,
-                        transform,
-                        ..Default::default()
-                    },
-                ))
-                .insert_reflect(
-                    object_metadata
-                        .components
-                        .iter()
-                        .map(|component| component.clone_value())
-                        .collect::<Vec<_>>(),
-                );
+            placing_entity.insert((
+                Name::new("Placing object"),
+                SceneBundle {
+                    scene: scene_handle,
+                    transform,
+                    ..Default::default()
+                },
+            ));
+            for component in &object_metadata.components {
+                placing_entity.insert_reflect(component.clone_value());
+            }
         }
     }
 

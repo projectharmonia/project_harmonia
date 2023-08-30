@@ -9,7 +9,7 @@ use std::{
 };
 
 use bevy::{
-    ecs::entity::EntityMap,
+    ecs::{entity::EntityMap, reflect::ReflectCommandExt},
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
@@ -27,9 +27,8 @@ use serde::{
 use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
 
 use crate::core::{
-    action::Action, actor::Actor, animation_state::AnimationState,
-    component_commands::ComponentCommandsExt, family::FamilyMode, game_state::GameState,
-    navigation::Navigation,
+    action::Action, actor::Actor, animation_state::AnimationState, family::FamilyMode,
+    game_state::GameState, navigation::Navigation,
 };
 use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;
@@ -67,7 +66,7 @@ impl TaskPlugin {
                 commands.entity(event.entity).with_children(|parent| {
                     parent
                         .spawn(TaskBundle::new(&*event.task))
-                        .insert_reflect([event.task.into_reflect()]);
+                        .insert_reflect(event.task.into_reflect());
                 });
             } else {
                 error!("entity {:?} is not an actor", event.entity);
