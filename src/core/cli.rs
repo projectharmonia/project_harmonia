@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 use super::{
     actor::ActiveActor,
     city::{ActiveCity, City},
-    error::{self, ErrorReport},
+    error_report::{self, ErrorReport},
     family::FamilyMembers,
     game_state::GameState,
     game_world::{GameLoad, WorldName},
@@ -23,11 +23,11 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, Self::subcommand_system.pipe(error::report))
+        app.add_systems(Startup, Self::subcommand_system.pipe(error_report::report))
             .add_systems(
                 Update,
                 Self::quick_loading_system
-                    .pipe(error::report)
+                    .pipe(error_report::report)
                     .run_if(second_frame),
             );
     }

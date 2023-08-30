@@ -7,7 +7,7 @@ use derive_more::Display;
 use strum::{EnumIter, IntoEnumIterator};
 
 use crate::core::{
-    error,
+    error_report,
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, WorldName},
@@ -34,11 +34,11 @@ impl Plugin for WorldBrowserPlugin {
                 Update,
                 (
                     Self::world_button_system,
-                    Self::host_dialog_button_system.pipe(error::report),
-                    Self::remove_dialog_button_system.pipe(error::report),
+                    Self::host_dialog_button_system.pipe(error_report::report),
+                    Self::remove_dialog_button_system.pipe(error_report::report),
                     Self::world_browser_button_system,
                     Self::create_dialog_button_system,
-                    Self::join_dialog_button_system.pipe(error::report),
+                    Self::join_dialog_button_system.pipe(error_report::report),
                 )
                     .run_if(in_state(GameState::WorldBrowser)),
             );

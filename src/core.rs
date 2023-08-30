@@ -10,7 +10,7 @@ mod component_commands;
 pub(super) mod condition;
 pub(super) mod cursor_hover;
 pub(super) mod developer;
-pub(super) mod error;
+pub(super) mod error_report;
 pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
@@ -35,7 +35,7 @@ use city::CityPlugin;
 use cli::CliPlugin;
 use cursor_hover::CursorHoverPlugin;
 use developer::DeveloperPlugin;
-use error::ErrorPlugin;
+use error_report::ErrorReportPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
@@ -65,7 +65,7 @@ impl PluginGroup for CorePlugins {
             .add(NavigationPlugin)
             .add(ActionPlugin)
             .add(DeveloperPlugin)
-            .add(ErrorPlugin)
+            .add(ErrorReportPlugin)
             .add(FamilyPlugin)
             .add(GamePathsPlugin)
             .add(PlayerCameraPlugin)

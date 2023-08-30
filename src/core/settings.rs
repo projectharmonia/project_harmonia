@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{action::Action, error, game_paths::GamePaths};
+use super::{action::Action, error_report, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
@@ -18,7 +18,7 @@ impl Plugin for SettingsPlugin {
             .add_systems(
                 PostUpdate,
                 Self::write_system
-                    .pipe(error::report)
+                    .pipe(error_report::report)
                     .run_if(on_event::<SettingsApply>()),
             );
     }

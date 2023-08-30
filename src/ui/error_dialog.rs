@@ -4,7 +4,7 @@ use super::{
     theme::Theme,
     widget::{button::TextButtonBundle, click::Click, ui_root::UiRoot, DialogBundle, LabelBundle},
 };
-use crate::core::error::ErrorReport;
+use crate::core::error_report::ErrorReport;
 
 pub(super) struct ErrorDialogPlugin;
 

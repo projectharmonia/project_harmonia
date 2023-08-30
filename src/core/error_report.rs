@@ -1,9 +1,9 @@
 use anyhow::{Error, Result};
 use bevy::prelude::*;
 
-pub(super) struct ErrorPlugin;
+pub(super) struct ErrorReportPlugin;
 
-impl Plugin for ErrorPlugin {
+impl Plugin for ErrorReportPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ErrorReport>();
     }

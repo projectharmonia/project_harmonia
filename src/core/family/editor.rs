@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::core::{
     actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
-    error,
+    error_report,
     family::{FamilyMembers, SelectedFamilySpawned},
     game_paths::GamePaths,
     game_state::GameState,
@@ -24,7 +24,7 @@ impl Plugin for EditorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::scene_save_system.pipe(error::report),
+                    Self::scene_save_system.pipe(error_report::report),
                     Self::selection_system,
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
