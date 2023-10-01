@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::{Context, Result};
 use bevy::{
-    ecs::{archetype::ArchetypeId, component::ComponentId},
+    ecs::archetype::ArchetypeId,
     prelude::*,
     reflect::TypeRegistryArc,
     scene::{self, serde::SceneDeserializer, DynamicEntity},
@@ -16,8 +16,7 @@ pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<IgnoreSaving>()
-            .add_event::<GameSave>()
+        app.add_event::<GameSave>()
             .add_event::<GameLoad>()
             .add_systems(
                 SpawnScene,
@@ -43,14 +42,13 @@ impl GameWorldPlugin {
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
         replication_rules: Res<ReplicationRules>,
-        ignore_saving: Res<IgnoreSaving>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&world_name.0);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
-        let scene = save_to_scene(world, &registry, &replication_rules, &ignore_saving);
+        let scene = save_to_scene(world, &registry, &replication_rules);
         let bytes = scene
             .serialize_ron(&registry)
             .expect("game world should be serialized");
@@ -93,12 +91,11 @@ impl GameWorldPlugin {
 }
 
 /// Iterates over a world and serializes all components that implement [`Reflect`]
-/// and not filtered with [`ReplicationRules`] or [`IgnoreSaving`].
+/// and not filtered with [`ReplicationRules`].
 fn save_to_scene(
     world: &World,
     registry: &TypeRegistryArc,
     replication_rules: &ReplicationRules,
-    ignore_saving: &IgnoreSaving,
 ) -> DynamicScene {
     let mut scene = DynamicScene::default();
     let registry = registry.read();
@@ -119,7 +116,6 @@ fn save_to_scene(
 
         for component_id in archetype.components().filter(|&component_id| {
             replication_rules.is_replicated_component(archetype, component_id)
-                && !ignore_saving.contains(&component_id)
         }) {
             // SAFE: `component_info` obtained from the world.
             let component_info = unsafe { world.components().get_info_unchecked(component_id) };
@@ -162,23 +158,6 @@ pub(crate) struct GameLoad;
 /// Contains name of the currently loaded world.
 #[derive(Default, Resource)]
 pub(crate) struct WorldName(pub(crate) String);
-
-/// Contains component IDs that will be ignored on game world serialization.
-#[derive(Default, Deref, DerefMut, Resource)]
-pub(crate) struct IgnoreSaving(Vec<ComponentId>);
-
-pub(super) trait AppIgnoreSavingExt {
-    /// Ignore specified component for game world serialization.
-    fn ignore_saving<T: Component>(&mut self) -> &mut Self;
-}
-
-impl AppIgnoreSavingExt for App {
-    fn ignore_saving<T: Component>(&mut self) -> &mut Self {
-        let component_id = self.world.init_component::<T>();
-        self.world.resource_mut::<IgnoreSaving>().push(component_id);
-        self
-    }
-}
 
 #[cfg(test)]
 mod tests {
