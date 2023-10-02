@@ -42,7 +42,7 @@ bitflags = "2.4"
 futures-lite = "1.13"
 
 [dev-dependencies]
-fastrand = "1.9"
+fastrand = "2.0"
 serde_test = "1.0"
 
 [patch.crates-io]
