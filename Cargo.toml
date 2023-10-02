@@ -21,7 +21,7 @@ bevy_replicon = "0.9"
 bevy_rapier3d = "0.22"
 bevy_mod_outline = "0.5"
 bevy_polyline = "0.7"
-oxidized_navigation = "0.6"
+oxidized_navigation = { version = "0.7", features = ["rapier"] }
 leafwing-input-manager = "0.10"
 serde = "1.0"
 strum = { version = "0.25", features = ["derive"] }
