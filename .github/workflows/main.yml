@@ -26,7 +26,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install Taplo
-        run: cargo install taplo-cli
+        run: cargo install taplo-cli --locked
 
       - name: Format
         run: |
