@@ -863,16 +863,16 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon"
-version = "0.9.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e99bae5b6388345a3e98891c2aa343b18b8a2fd66bff0a430883993cc20f703"
+checksum = "16afbaa4573ed68f1efc99569edbc7aae72526a72c612d39c79b3c4486fa148d"
 dependencies = [
  "bevy",
  "bevy_renet",
  "bincode",
- "derive_more",
  "serde",
  "strum",
+ "varint-rs",
 ]
 
 [[package]]
@@ -3576,6 +3576,12 @@ name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
+
+[[package]]
+name = "varint-rs"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f54a172d0620933a27a4360d3db3e2ae0dd6cceae9730751a036bbf182c4b23"
 
 [[package]]
 name = "vec_map"
