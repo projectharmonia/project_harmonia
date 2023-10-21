@@ -70,7 +70,10 @@ impl TellSecretPlugin {
                 continue;
             };
 
-            let Some((tell_entity, tell_secret, _)) = tasks.iter_many(children).find(|(.., &task_state)| task_state == TaskState::Active) else {
+            let Some((tell_entity, tell_secret, _)) = tasks
+                .iter_many(children)
+                .find(|(.., &task_state)| task_state == TaskState::Active)
+            else {
                 continue;
             };
 
