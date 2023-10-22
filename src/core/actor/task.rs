@@ -3,13 +3,11 @@ mod friendly;
 mod linked_task;
 mod move_here;
 
-use std::{
-    any,
-    fmt::{self, Debug, Formatter},
-};
+use std::{fmt::Debug, io::Cursor};
 
+use anyhow::{anyhow, Context, Result};
 use bevy::{
-    ecs::{entity::EntityMap, reflect::ReflectCommandExt},
+    ecs::reflect::ReflectCommandExt,
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
@@ -17,14 +15,10 @@ use bevy::{
     },
 };
 use bevy_replicon::prelude::*;
+use bincode::{DefaultOptions, Options};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
-use serde::{
-    de::{self, DeserializeSeed, SeqAccess, Visitor},
-    ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize, Serializer,
-};
-use strum::{EnumVariantNames, IntoStaticStr, VariantNames};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::core::{
     action::Action, actor::Actor, animation_state::AnimationState, family::FamilyMode,
@@ -39,19 +33,38 @@ pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((BuyLotPlugin, FriendlyPlugins, LinkedTaskPlugin, MoveHerePlugin)).replicate::<TaskState>()
-            .add_mapped_client_reflect_event::<TaskRequest, TaskRequestSerializer, TaskRequestDeserializer>(SendPolicy::Unordered)
-            .add_client_event::<TaskCancel>(SendPolicy::Unordered)
-            .add_event::<TaskList>()
-            .configure_set(
-                Update,
-                TaskListSet
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(in_state(GameState::Family))
-                    .run_if(in_state(FamilyMode::Life)),
+        app.add_plugins((
+            BuyLotPlugin,
+            FriendlyPlugins,
+            LinkedTaskPlugin,
+            MoveHerePlugin,
+        ))
+        .register_type::<TaskState>()
+        .replicate::<TaskState>()
+        .add_client_event::<TaskCancel>(SendPolicy::Unordered)
+        .add_client_event_with::<TaskRequest, _, _>(
+            SendPolicy::Unordered,
+            Self::sending_task_system,
+            Self::receiving_task_system,
+        )
+        .add_event::<TaskList>()
+        .configure_set(
+            Update,
+            TaskListSet
+                .run_if(action_just_pressed(Action::Confirm))
+                .run_if(in_state(GameState::Family))
+                .run_if(in_state(FamilyMode::Life)),
+        )
+        .add_systems(
+            Update,
+            (
+                Self::queue_system,
+                Self::cancelation_system,
+                Self::cleanup_system,
             )
-            .add_systems(Update, (Self::queue_system, Self::cancelation_system, Self::cleanup_system).run_if(has_authority()))
-            .add_systems(PostUpdate, Self::activation_system.run_if(has_authority()));
+                .run_if(has_authority()),
+        )
+        .add_systems(PostUpdate, Self::activation_system.run_if(has_authority()));
     }
 }
 
@@ -134,6 +147,78 @@ impl TaskPlugin {
             }
         }
     }
+
+    fn sending_task_system(
+        mut task_events: EventReader<TaskRequest>,
+        mut client: ResMut<RenetClient>,
+        channel: Res<EventChannel<TaskRequest>>,
+        registry: Res<AppTypeRegistry>,
+    ) {
+        let registry = registry.read();
+        for event in &mut task_events {
+            let message = serialize_task_request(event, &registry)
+                .expect("client event should be serializable");
+
+            client.send_message(*channel, message);
+        }
+    }
+
+    fn receiving_task_system(
+        mut task_events: EventWriter<FromClient<TaskRequest>>,
+        mut server: ResMut<RenetServer>,
+        channel: Res<EventChannel<TaskRequest>>,
+        registry: Res<AppTypeRegistry>,
+        entity_map: Res<ServerEntityMap>,
+    ) {
+        let registry = registry.read();
+        for client_id in server.clients_id() {
+            while let Some(message) = server.receive_message(client_id, *channel) {
+                match deserialize_task_request(&message, &registry) {
+                    Ok(mut event) => {
+                        event.map_entities(&mut EventMapper(entity_map.to_server()));
+                        task_events.send(FromClient { client_id, event });
+                    }
+                    Err(e) => {
+                        error!("unable to deserialize event from client {client_id}: {e}")
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn serialize_task_request(
+    event: &TaskRequest,
+    registry: &TypeRegistryInternal,
+) -> bincode::Result<Vec<u8>> {
+    let mut message = Vec::new();
+    let serializer = ReflectSerializer::new(event.task.as_reflect(), registry);
+    DefaultOptions::new().serialize_into(&mut message, &event.entity)?;
+    DefaultOptions::new().serialize_into(&mut message, &serializer)?;
+
+    Ok(message)
+}
+
+fn deserialize_task_request(
+    message: &[u8],
+    registry: &TypeRegistryInternal,
+) -> Result<TaskRequest> {
+    let mut cursor = Cursor::new(message);
+    let entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let mut deserializer = bincode::Deserializer::with_reader(&mut cursor, DefaultOptions::new());
+    let reflect = UntypedReflectDeserializer::new(registry).deserialize(&mut deserializer)?;
+    let type_name = reflect.type_name();
+    let registration = registry
+        .get(reflect.type_id())
+        .with_context(|| format!("{type_name} is not registered"))?;
+    let reflect_task = registration
+        .data::<ReflectTask>()
+        .with_context(|| format!("{type_name} doesn't have reflect(Task)"))?;
+    let task = reflect_task
+        .get_boxed(reflect)
+        .map_err(|reflect| anyhow!("{} is not a Task", reflect.type_name()))?;
+
+    Ok(TaskRequest { entity, task })
 }
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -172,7 +257,7 @@ impl TaskBundle {
     }
 }
 
-#[derive(Clone, Component, Copy, Default, PartialEq, Reflect)]
+#[derive(Clone, Component, Copy, Default, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) enum TaskState {
     #[default]
@@ -192,7 +277,7 @@ bitflags! {
 }
 
 #[reflect_trait]
-pub(crate) trait Task: Reflect + Debug {
+pub(crate) trait Task: Reflect {
     fn name(&self) -> &str;
     fn groups(&self) -> TaskGroups {
         TaskGroups::default()
@@ -202,166 +287,23 @@ pub(crate) trait Task: Reflect + Debug {
 /// An event of canceling the specified task.
 ///
 /// Emitted by players.
-#[derive(Debug, Deserialize, Event, Serialize)]
+#[derive(Deserialize, Event, Serialize)]
 pub(crate) struct TaskCancel(pub(crate) Entity);
 
-impl MapEventEntities for TaskCancel {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
-        Ok(())
+impl MapNetworkEntities for TaskCancel {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map(self.0);
     }
 }
 
-#[derive(Debug, Event)]
+#[derive(Event)]
 pub(crate) struct TaskRequest {
     pub(crate) entity: Entity,
     pub(crate) task: Box<dyn Task>,
 }
 
-impl MapEventEntities for TaskRequest {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
-        Ok(())
-    }
-}
-
-#[derive(IntoStaticStr, EnumVariantNames)]
-#[strum(serialize_all = "snake_case")]
-enum TaskRequestField {
-    Entity,
-    Task,
-}
-
-struct TaskRequestSerializer<'a> {
-    event: &'a TaskRequest,
-    registry: &'a TypeRegistryInternal,
-}
-
-impl BuildEventSerializer<TaskRequest> for TaskRequestSerializer<'_> {
-    type EventSerializer<'a> = TaskRequestSerializer<'a>;
-
-    fn new<'a>(
-        event: &'a TaskRequest,
-        registry: &'a TypeRegistryInternal,
-    ) -> Self::EventSerializer<'a> {
-        Self::EventSerializer { event, registry }
-    }
-}
-
-impl Serialize for TaskRequestSerializer<'_> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct(
-            any::type_name::<TaskRequest>(),
-            TaskRequestField::VARIANTS.len(),
-        )?;
-        state.serialize_field(TaskRequestField::Entity.into(), &self.event.entity)?;
-        state.serialize_field(
-            TaskRequestField::Task.into(),
-            &ReflectSerializer::new(self.event.task.as_reflect(), self.registry),
-        )?;
-        state.end()
-    }
-}
-
-struct TaskRequestDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
-}
-
-impl BuildEventDeserializer for TaskRequestDeserializer<'_> {
-    type EventDeserializer<'a> = TaskRequestDeserializer<'a>;
-
-    fn new(registry: &TypeRegistryInternal) -> Self::EventDeserializer<'_> {
-        Self::EventDeserializer { registry }
-    }
-}
-
-impl<'de> DeserializeSeed<'de> for TaskRequestDeserializer<'_> {
-    type Value = TaskRequest;
-
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_struct(
-            any::type_name::<Self::Value>(),
-            TaskRequestField::VARIANTS,
-            self,
-        )
-    }
-}
-
-impl<'de> Visitor<'de> for TaskRequestDeserializer<'_> {
-    type Value = TaskRequest;
-
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-        formatter.write_str(any::type_name::<Self::Value>())
-    }
-
-    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let entity = seq
-            .next_element()?
-            .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Entity as usize, &self))?;
-        let reflect = seq
-            .next_element_seed(UntypedReflectDeserializer::new(self.registry))?
-            .ok_or_else(|| de::Error::invalid_length(TaskRequestField::Task as usize, &self))?;
-        let type_name = reflect.type_name();
-        let registration = self
-            .registry
-            .get(reflect.type_id())
-            .ok_or_else(|| de::Error::custom(format!("{type_name} is not registered")))?;
-        let reflect_task = registration
-            .data::<ReflectTask>()
-            .ok_or_else(|| de::Error::custom(format!("{type_name} doesn't have reflect(Task)")))?;
-        let task = reflect_task.get_boxed(reflect).map_err(|reflect| {
-            de::Error::custom(format!("{} is not a Task", reflect.type_name()))
-        })?;
-
-        Ok(TaskRequest { entity, task })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_test::Token;
-
-    use super::*;
-
-    #[test]
-    fn task_request_ser() {
-        let mut registry = TypeRegistryInternal::new();
-        registry.register::<DummyTask>();
-        let task_request = TaskRequest {
-            entity: Entity::PLACEHOLDER,
-            task: Box::new(DummyTask),
-        };
-        let serializer = TaskRequestSerializer::new(&task_request, &registry);
-
-        serde_test::assert_ser_tokens(
-            &serializer,
-            &[
-                Token::Struct {
-                    name: any::type_name::<TaskRequest>(),
-                    len: TaskRequestField::VARIANTS.len(),
-                },
-                Token::Str(TaskRequestField::Entity.into()),
-                Token::U64(task_request.entity.to_bits()),
-                Token::Str(TaskRequestField::Task.into()),
-                Token::Map { len: Some(1) },
-                Token::Str(any::type_name::<DummyTask>()),
-                Token::Struct {
-                    name: "DummyTask",
-                    len: 0,
-                },
-                Token::StructEnd,
-                Token::MapEnd,
-                Token::StructEnd,
-            ],
-        );
-    }
-
-    #[derive(Reflect, Debug)]
-    struct DummyTask;
-
-    impl Task for DummyTask {
-        fn name(&self) -> &str {
-            unimplemented!()
-        }
+impl MapNetworkEntities for TaskRequest {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.entity = mapper.map(self.entity);
     }
 }

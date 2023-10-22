@@ -18,13 +18,15 @@ pub(super) struct BuyLotPlugin;
 
 impl Plugin for BuyLotPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<BuyLot>().add_systems(
-            Update,
-            (
-                Self::list_system.in_set(TaskListSet),
-                Self::activation_system.run_if(has_authority()),
-            ),
-        );
+        app.register_type::<BuyLot>()
+            .replicate::<BuyLot>()
+            .add_systems(
+                Update,
+                (
+                    Self::list_system.in_set(TaskListSet),
+                    Self::activation_system.run_if(has_authority()),
+                ),
+            );
     }
 }
 

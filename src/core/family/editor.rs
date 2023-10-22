@@ -1,18 +1,13 @@
-use std::{f32::consts::PI, fs};
+use std::f32::consts::PI;
 
-use anyhow::{Context, Result};
 use bevy::prelude::*;
 
 use crate::core::{
     actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
-    error_report,
     family::{FamilyMembers, SelectedFamilySpawned},
-    game_paths::GamePaths,
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
-
-use super::family_spawn::{FamilyScene, FamilySceneSerializer};
 
 pub(crate) struct EditorPlugin;
 
@@ -23,11 +18,7 @@ impl Plugin for EditorPlugin {
             .add_systems(OnExit(GameState::FamilyEditor), Self::cleanup_system)
             .add_systems(
                 Update,
-                (
-                    Self::scene_save_system.pipe(error_report::report),
-                    Self::selection_system,
-                )
-                    .run_if(in_state(GameState::FamilyEditor)),
+                Self::selection_system.run_if(in_state(GameState::FamilyEditor)),
             )
             .add_systems(
                 PostUpdate,
@@ -53,26 +44,6 @@ impl EditorPlugin {
                 parent.spawn(PlayerCameraBundle::default());
                 parent.spawn(EditableActorBundle::default());
             });
-    }
-
-    pub(crate) fn scene_save_system(
-        registry: Res<AppTypeRegistry>,
-        game_paths: Res<GamePaths>,
-        family_scenes: Query<&FamilyScene, Added<FamilyScene>>,
-    ) -> Result<()> {
-        if let Ok(family_scene) = family_scenes.get_single() {
-            fs::create_dir_all(&game_paths.families)
-                .with_context(|| format!("unable to create {:?}", game_paths.families))?;
-
-            let registry = registry.read();
-            let serializer = FamilySceneSerializer::new(family_scene, &registry);
-            let ron = ron::to_string(&serializer).expect("unable to serialize family scene");
-            let family_path = game_paths.family_path(&family_scene.name);
-            fs::write(&family_path, ron)
-                .with_context(|| format!("unable to save game to {family_path:?}"))?;
-        }
-
-        Ok(())
     }
 
     fn selection_system(

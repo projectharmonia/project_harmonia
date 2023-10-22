@@ -33,11 +33,14 @@ impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
             .add_plugins((MovementPlugin, NeedsPlugin, RacePlugins, TaskPlugin))
+            .register_type::<Actor>()
+            .register_type::<FirstName>()
+            .register_type::<Sex>()
+            .register_type::<LastName>()
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
-            .not_replicate_if_present::<Name, FirstName>()
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
             .add_systems(
                 PreUpdate,
@@ -50,7 +53,13 @@ impl Plugin for ActorPlugin {
                 (Self::scene_init_system, Self::name_update_system)
                     .run_if(resource_exists::<WorldName>()),
             )
-            .add_systems(PostUpdate, Self::exclusive_system);
+            .add_systems(
+                PostUpdate,
+                (
+                    Self::ignore_name_system.before(ServerSet::Send),
+                    Self::exclusive_system,
+                ),
+            );
     }
 }
 
@@ -134,28 +143,24 @@ impl ActorPlugin {
             }
         }
     }
+
+    fn ignore_name_system(mut commands: Commands, actors: Query<Entity, Added<FirstName>>) {
+        for entity in &actors {
+            commands.entity(entity).insert(Ignored::<Name>::default());
+        }
+    }
 }
 
-#[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
+#[derive(Clone, Component, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct FirstName(pub(crate) String);
 
-#[derive(Clone, Component, Debug, Default, Deref, Deserialize, Display, Reflect, Serialize)]
+#[derive(Clone, Component, Default, Deref, Deserialize, Display, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
 
 #[derive(
-    Display,
-    Clone,
-    EnumIter,
-    Component,
-    Copy,
-    Debug,
-    Default,
-    Deserialize,
-    PartialEq,
-    Reflect,
-    Serialize,
+    Display, Clone, EnumIter, Component, Copy, Default, Deserialize, PartialEq, Reflect, Serialize,
 )]
 #[reflect(Component)]
 pub(crate) enum Sex {
@@ -191,7 +196,7 @@ impl ActorBundle {
 }
 
 /// Marks entity as an actor.
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Actor;
 

@@ -23,7 +23,10 @@ pub(super) struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Transform>()
+        app.register_type::<Replication>()
+            .register_type::<Transform>()
+            .register_type::<Name>()
+            .replicate::<Transform>()
             .replicate::<Name>()
             .add_systems(
                 Update,

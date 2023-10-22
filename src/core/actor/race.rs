@@ -1,7 +1,6 @@
 pub(crate) mod human;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
-use std::fmt::Debug;
 
 use human::HumanPlugin;
 
@@ -14,6 +13,6 @@ impl PluginGroup for RacePlugins {
 }
 
 #[reflect_trait]
-pub(crate) trait RaceBundle: Debug + Reflect {
+pub(crate) trait RaceBundle: Reflect {
     fn glyph(&self) -> &'static str;
 }

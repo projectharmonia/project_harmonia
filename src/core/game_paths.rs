@@ -21,27 +21,12 @@ const SCENE_EXTENSION: &str = "scn";
 pub(crate) struct GamePaths {
     pub(crate) settings: PathBuf,
     pub(crate) worlds: PathBuf,
-    pub(crate) families: PathBuf,
 }
 
 impl GamePaths {
     pub(crate) fn world_path(&self, world_name: &str) -> PathBuf {
         let mut path = self.worlds.join(world_name);
         path.set_extension(SCENE_EXTENSION);
-        path
-    }
-
-    pub(crate) fn family_path(&self, family_name: &str) -> PathBuf {
-        let mut path = self.families.join(family_name);
-        path.set_extension(SCENE_EXTENSION);
-
-        let mut file_index = 0;
-        while path.exists() {
-            file_index += 1;
-            path.set_file_name(format!("{family_name} {file_index}"));
-            path.set_extension(SCENE_EXTENSION);
-        }
-
         path
     }
 
@@ -81,17 +66,10 @@ impl Default for GamePaths {
         settings.push(env!("CARGO_PKG_NAME"));
         settings.set_extension("toml");
 
-        let mut worlds = config_dir.clone();
+        let mut worlds = config_dir;
         worlds.push("worlds");
 
-        let mut families = config_dir;
-        families.push("families");
-
-        Self {
-            settings,
-            worlds,
-            families,
-        }
+        Self { settings, worlds }
     }
 }
 
@@ -127,21 +105,6 @@ mod tests {
     use std::fs::{self, File};
 
     use super::*;
-
-    #[test]
-    fn family_path_duplication() -> Result<()> {
-        let game_paths = GamePaths::default();
-        const FAMILY_NAME: &str = "Test family";
-
-        fs::create_dir_all(&game_paths.families)?;
-        let family_path = game_paths.family_path(FAMILY_NAME);
-        File::create(&family_path)?;
-        let new_family_path = game_paths.family_path(FAMILY_NAME);
-
-        assert_ne!(family_path, new_family_path);
-
-        Ok(())
-    }
 
     #[test]
     fn world_names_reading() -> Result<()> {

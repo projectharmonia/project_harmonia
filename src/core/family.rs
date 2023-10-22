@@ -1,28 +1,36 @@
 pub(crate) mod editor;
-pub(crate) mod family_spawn;
 
-use anyhow::Result;
+use std::io::Cursor;
+
+use anyhow::{anyhow, Context, Result};
 use bevy::{
     ecs::{
-        entity::{EntityMap, EntityMapper, MapEntities},
+        entity::{EntityMapper, MapEntities},
         reflect::ReflectMapEntities,
     },
     prelude::*,
+    reflect::{
+        serde::{ReflectSerializer, UntypedReflectDeserializer},
+        TypeRegistryInternal,
+    },
     utils::HashMap,
 };
 use bevy_replicon::prelude::*;
+use bincode::{DefaultOptions, Options};
 use derive_more::Display;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    actor::{ActiveActor, ActorBundle},
+    actor::{
+        race::{RaceBundle, ReflectRaceBundle},
+        ActiveActor, ActorBundle,
+    },
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldName,
 };
 use editor::EditorPlugin;
-use family_spawn::{FamilySpawn, FamilySpawnDeserializer, FamilySpawnSerializer};
 
 pub(crate) struct FamilyPlugin;
 
@@ -31,17 +39,38 @@ impl Plugin for FamilyPlugin {
         app.add_plugins(EditorPlugin)
             .add_state::<FamilyMode>()
             .add_state::<BuildingMode>()
+            .register_type::<ActorFamily>()
+            .register_type::<Family>()
+            .register_type::<Budget>()
             .replicate::<ActorFamily>()
             .replicate::<Family>()
             .replicate::<Budget>()
-            .add_mapped_client_reflect_event::<FamilySpawn, FamilySpawnSerializer, FamilySpawnDeserializer>(SendPolicy::Unordered)
+            .add_client_event_with::<FamilySpawn, _, _>(
+                SendPolicy::Unordered,
+                Self::sending_spawn_system,
+                Self::receiving_spawn_system,
+            )
             .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
             .add_mapped_server_event::<SelectedFamilySpawned>(SendPolicy::Unordered)
-            .add_systems(OnEnter(GameState::Family), (Self::activation_system, Self::reset_mode_system))
+            .add_systems(
+                OnEnter(GameState::Family),
+                (Self::activation_system, Self::reset_mode_system),
+            )
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
-            .add_systems(PreUpdate, Self::members_update_system.after(ClientSet::Receive).run_if(resource_exists::<WorldName>()))
-            .add_systems(Update, (Self::spawn_system, Self::despawn_system).run_if(has_authority()))
-            .add_systems(PostUpdate, Self::cleanup_system.run_if(resource_removed::<WorldName>()));
+            .add_systems(
+                PreUpdate,
+                Self::members_update_system
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
+                Update,
+                (Self::spawn_system, Self::despawn_system).run_if(has_authority()),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+            );
     }
 }
 
@@ -149,6 +178,101 @@ impl FamilyPlugin {
             commands.entity(entity).despawn();
         }
     }
+
+    fn sending_spawn_system(
+        mut spawn_events: EventReader<FamilySpawn>,
+        mut client: ResMut<RenetClient>,
+        channel: Res<EventChannel<FamilySpawn>>,
+        registry: Res<AppTypeRegistry>,
+    ) {
+        let registry = registry.read();
+        for event in &mut spawn_events {
+            let message = serialize_family_spawn(event, &registry)
+                .expect("client event should be serializable");
+
+            client.send_message(*channel, message);
+        }
+    }
+
+    fn receiving_spawn_system(
+        mut spawn_events: EventWriter<FromClient<FamilySpawn>>,
+        mut server: ResMut<RenetServer>,
+        channel: Res<EventChannel<FamilySpawn>>,
+        registry: Res<AppTypeRegistry>,
+        entity_map: Res<ServerEntityMap>,
+    ) {
+        let registry = registry.read();
+        for client_id in server.clients_id() {
+            while let Some(message) = server.receive_message(client_id, *channel) {
+                match deserialize_family_spawn(&message, &registry) {
+                    Ok(mut event) => {
+                        event.map_entities(&mut EventMapper(entity_map.to_server()));
+                        spawn_events.send(FromClient { client_id, event });
+                    }
+                    Err(e) => {
+                        error!("unable to deserialize event from client {client_id}: {e}")
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn serialize_family_spawn(
+    event: &FamilySpawn,
+    registry: &TypeRegistryInternal,
+) -> bincode::Result<Vec<u8>> {
+    let mut message = Vec::new();
+    DefaultOptions::new().serialize_into(&mut message, &event.city_entity)?;
+    DefaultOptions::new().serialize_into(&mut message, &event.scene.name)?;
+    DefaultOptions::new().serialize_into(&mut message, &event.scene.budget)?;
+    DefaultOptions::new().serialize_into(&mut message, &event.scene.actors.len())?;
+    for actor in &event.scene.actors {
+        let serializer = ReflectSerializer::new(actor.as_reflect(), registry);
+        DefaultOptions::new().serialize_into(&mut message, &serializer)?;
+    }
+    DefaultOptions::new().serialize_into(&mut message, &event.select)?;
+
+    Ok(message)
+}
+
+fn deserialize_family_spawn(
+    message: &[u8],
+    registry: &TypeRegistryInternal,
+) -> Result<FamilySpawn> {
+    let mut cursor = Cursor::new(message);
+    let city_entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let name = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let budget = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let actors_count = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let mut actors = Vec::with_capacity(actors_count);
+    for _ in 0..actors_count {
+        let mut deserializer =
+            bincode::Deserializer::with_reader(&mut cursor, DefaultOptions::new());
+        let reflect = UntypedReflectDeserializer::new(registry).deserialize(&mut deserializer)?;
+        let type_name = reflect.type_name();
+        let registration = registry
+            .get(reflect.type_id())
+            .with_context(|| format!("{type_name} is not registered"))?;
+        let reflect_race = registration
+            .data::<ReflectRaceBundle>()
+            .with_context(|| format!("{type_name} doesn't have reflect(RaceBundle)"))?;
+        let actor = reflect_race
+            .get_boxed(reflect)
+            .map_err(|reflect| anyhow!("{} is not a RaceBundle", reflect.type_name()))?;
+        actors.push(actor);
+    }
+    let select = DefaultOptions::new().deserialize_from(&mut cursor)?;
+
+    Ok(FamilySpawn {
+        city_entity,
+        scene: FamilyScene {
+            name,
+            budget,
+            actors,
+        },
+        select,
+    })
 }
 
 #[derive(
@@ -206,7 +330,7 @@ impl FamilyBundle {
     }
 }
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct Family;
 
@@ -216,7 +340,7 @@ pub(crate) struct Family;
 #[derive(Component)]
 pub(crate) struct ActiveFamily;
 
-#[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize, Deref)]
+#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
 pub(crate) struct Budget(u32);
 
@@ -227,7 +351,7 @@ pub(crate) struct Budget(u32);
 pub(crate) struct FamilyMembers(Vec<Entity>);
 
 /// Contains the family entity to which the actor belongs.
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, Serialize, Deserialize)]
 #[reflect(Component, MapEntities)]
 pub(crate) struct ActorFamily(pub(crate) Entity);
 
@@ -245,23 +369,50 @@ impl FromWorld for ActorFamily {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
+#[derive(Event)]
+pub(crate) struct FamilySpawn {
+    pub(crate) city_entity: Entity,
+    pub(crate) scene: FamilyScene,
+    pub(crate) select: bool,
+}
+
+impl MapNetworkEntities for FamilySpawn {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.city_entity = mapper.map(self.city_entity);
+    }
+}
+
+#[derive(Component, Default)]
+pub(crate) struct FamilyScene {
+    pub(crate) name: Name,
+    pub(crate) budget: Budget,
+    pub(crate) actors: Vec<Box<dyn RaceBundle>>,
+}
+
+impl FamilyScene {
+    pub(crate) fn new(name: Name) -> Self {
+        Self {
+            name,
+            budget: Default::default(),
+            actors: Default::default(),
+        }
+    }
+}
+#[derive(Clone, Copy, Deserialize, Event, Serialize)]
 pub(crate) struct FamilyDespawn(pub(crate) Entity);
 
-impl MapEventEntities for FamilyDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
-        Ok(())
+impl MapNetworkEntities for FamilyDespawn {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map(self.0);
     }
 }
 
 /// An event from server which indicates spawn confirmation for the selected family.
-#[derive(Debug, Deserialize, Event, Serialize)]
+#[derive(Deserialize, Event, Serialize)]
 pub(super) struct SelectedFamilySpawned(pub(super) Entity);
 
-impl MapEventEntities for SelectedFamilySpawned {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
-        Ok(())
+impl MapNetworkEntities for SelectedFamilySpawned {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map(self.0);
     }
 }

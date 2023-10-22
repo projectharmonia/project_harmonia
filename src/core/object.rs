@@ -3,11 +3,7 @@ pub(crate) mod placing_object;
 
 use std::path::PathBuf;
 
-use bevy::{
-    ecs::{entity::EntityMap, reflect::ReflectCommandExt},
-    prelude::*,
-    scene::SceneInstanceReady,
-};
+use bevy::{ecs::reflect::ReflectCommandExt, prelude::*, scene::SceneInstanceReady};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -30,6 +26,7 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((PlacingObjectPlugin, MirrorPlugin))
+            .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>(SendPolicy::Unordered)
             .add_mapped_client_event::<ObjectMove>(SendPolicy::Ordered)
@@ -220,41 +217,39 @@ impl ObjectBundle {
 }
 
 /// Contains path to the object metadata file.
-#[derive(Clone, Component, Debug, Default, Event, Reflect)]
+#[derive(Clone, Component, Debug, Default, Event, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(PathBuf);
 
-#[derive(Clone, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Deserialize, Event, Serialize)]
 struct ObjectSpawn {
     metadata_path: PathBuf,
     position: Vec2,
     rotation: Quat,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct ObjectMove {
     entity: Entity,
     translation: Vec3,
     rotation: Quat,
 }
 
-impl MapEventEntities for ObjectMove {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
-        Ok(())
+impl MapNetworkEntities for ObjectMove {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.entity = mapper.map(self.entity);
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct ObjectDespawn(Entity);
 
-impl MapEventEntities for ObjectDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
-        Ok(())
+impl MapNetworkEntities for ObjectDespawn {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map(self.0);
     }
 }
 
 /// An event from server which indicates action confirmation.
-#[derive(Deserialize, Event, Serialize, Debug, Default)]
+#[derive(Deserialize, Event, Serialize, Default)]
 struct ObjectEventConfirmed;

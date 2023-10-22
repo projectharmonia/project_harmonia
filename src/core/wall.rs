@@ -3,7 +3,7 @@ pub(crate) mod creating_wall;
 use std::f32::consts::PI;
 
 use bevy::{
-    ecs::{entity::EntityMap, query::Has},
+    ecs::query::Has,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
@@ -24,6 +24,7 @@ impl Plugin for WallPlugin {
             .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
+            .register_type::<WallEdges>()
             .replicate::<WallEdges>()
             .add_mapped_client_event::<WallCreate>(SendPolicy::Unordered)
             .add_server_event::<WallEventConfirmed>(SendPolicy::Unordered)
@@ -260,7 +261,7 @@ fn wall_intersection(start: Vec2, end: Vec2, a: Vec2, b: Vec2, width: Vec2) -> V
         .unwrap_or_else(|| start + width)
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq)]
 struct Line {
     a: f32,
     b: f32,
@@ -323,28 +324,24 @@ impl WallBundle {
     }
 }
 
-#[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
+#[derive(Clone, Component, Default, Deref, DerefMut, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
 
 /// Client event to request a wall creation.
-#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct WallCreate {
     lot_entity: Entity,
     edge: (Vec2, Vec2),
 }
 
-impl MapEventEntities for WallCreate {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.lot_entity = entity_map
-            .get(self.lot_entity)
-            .ok_or(MapError(self.lot_entity))?;
-
-        Ok(())
+impl MapNetworkEntities for WallCreate {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.lot_entity = mapper.map(self.lot_entity);
     }
 }
 
-#[derive(Debug, Event, Serialize, Deserialize)]
+#[derive(Event, Serialize, Deserialize)]
 struct WallEventConfirmed;
 
 /// A component that marks that entity can be placed only on walls.

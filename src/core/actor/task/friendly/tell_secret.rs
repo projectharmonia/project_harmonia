@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::core::{
     actor::{
@@ -18,7 +19,9 @@ pub(super) struct TellSecretPlugin;
 
 impl Plugin for TellSecretPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<TellSecret>()
+        app.register_type::<TellSecret>()
+            .register_type::<ListenSecret>()
+            .replicate::<TellSecret>()
             .replicate::<ListenSecret>()
             .add_systems(
                 Update,
@@ -123,7 +126,7 @@ impl TellSecretPlugin {
     }
 }
 
-#[derive(Debug, Reflect, Component)]
+#[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 struct TellSecret(Entity);
 
@@ -143,7 +146,7 @@ impl FromWorld for TellSecret {
     }
 }
 
-#[derive(Debug, Reflect, Component)]
+#[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 struct ListenSecret(Entity);
 

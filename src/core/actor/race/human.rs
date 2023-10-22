@@ -3,6 +3,7 @@ use std::mem;
 use bevy::{ecs::reflect::ReflectBundle, prelude::*};
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{RaceBundle, ReflectRaceBundle};
@@ -12,10 +13,7 @@ use crate::core::{
         Actor, FirstName, LastName, Sex,
     },
     asset_handles::{AssetCollection, AssetHandles},
-    family::{
-        editor::{EditableActor, EditorPlugin},
-        family_spawn::FamilyScene,
-    },
+    family::{editor::EditableActor, FamilyScene},
     game_state::GameState,
     game_world::WorldName,
 };
@@ -24,24 +22,28 @@ pub(super) struct HumanPlugin;
 
 impl Plugin for HumanPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Human>()
+        app.register_type::<Human>()
+            .replicate::<Human>()
             .register_type::<HumanRaceBundle>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
                 PreUpdate,
-                (Self::init_system, Self::sex_update_system).run_if(resource_exists::<WorldName>()),
+                Self::sex_update_system
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
                 Update,
-                Self::scene_setup_system
-                    .before(EditorPlugin::scene_save_system)
-                    .run_if(in_state(GameState::FamilyEditor)),
+                (
+                    Self::needs_init_system, // Should run after `ParentSync` to detect if needs was initialized correctly.
+                    Self::scene_setup_system.run_if(in_state(GameState::FamilyEditor)),
+                ),
             );
     }
 }
 
 impl HumanPlugin {
-    fn init_system(
+    fn needs_init_system(
         mut commands: Commands,
         actors: Query<(Entity, &Children), (Added<Human>, With<Actor>)>,
         need: Query<(), With<Need>>,
@@ -89,11 +91,11 @@ impl HumanPlugin {
     }
 }
 
-#[derive(Component, Reflect, Default, Debug)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Human;
 
-#[derive(Bundle, Debug, Default, Reflect)]
+#[derive(Bundle, Default, Reflect)]
 #[reflect(Bundle, RaceBundle)]
 struct HumanRaceBundle {
     first_name: FirstName,
@@ -119,7 +121,7 @@ impl RaceBundle for HumanRaceBundle {
     }
 }
 
-#[derive(Clone, Copy, Debug, IntoPrimitive, EnumIter, Default)]
+#[derive(Clone, Copy, IntoPrimitive, EnumIter, Default)]
 #[repr(usize)]
 enum HumanScene {
     #[default]

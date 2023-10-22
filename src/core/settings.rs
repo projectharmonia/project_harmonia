@@ -34,7 +34,7 @@ impl SettingsPlugin {
 #[derive(Default, Event)]
 pub(crate) struct SettingsApply;
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]
+#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]
 #[serde(default)]
 pub(crate) struct Settings {
     pub(crate) video: VideoSettings,
@@ -75,13 +75,13 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub(crate) struct VideoSettings {
     pub(crate) perf_stats: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct ControlsSettings {
     pub(crate) mappings: InputMap<Action>,
@@ -110,7 +110,7 @@ impl Default for ControlsSettings {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub(crate) struct DeveloperSettings {
     pub(crate) game_inspector: bool,

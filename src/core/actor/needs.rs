@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::core::game_world::WorldName;
 
@@ -9,31 +10,40 @@ pub(super) struct NeedsPlugin;
 
 impl Plugin for NeedsPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Hunger>()
+        app.register_type::<Hunger>()
+            .register_type::<Social>()
+            .register_type::<Hygiene>()
+            .register_type::<Fun>()
+            .register_type::<Energy>()
+            .register_type::<Bladder>()
+            .register_type::<Need>()
+            .replicate::<Hunger>()
             .replicate::<Social>()
             .replicate::<Hygiene>()
             .replicate::<Fun>()
             .replicate::<Energy>()
             .replicate::<Bladder>()
             .replicate::<Need>()
-            .not_replicate_if_present::<Name, Need>()
+            .add_systems(
+                PreUpdate,
+                (
+                    Self::hunger_init_system,
+                    Self::social_init_system,
+                    Self::hygiene_init_system,
+                    Self::fun_init_system,
+                    Self::energy_init_system,
+                    Self::bladder_init_system,
+                )
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>()),
+            )
             .add_systems(
                 Update,
-                (
-                    (
-                        Self::hunger_init_system,
-                        Self::social_init_system,
-                        Self::hygiene_init_system,
-                        Self::fun_init_system,
-                        Self::energy_init_system,
-                        Self::bladder_init_system,
-                    )
-                        .run_if(resource_exists::<WorldName>()),
-                    Self::tick_system
-                        .run_if(on_timer(Duration::from_secs(1)))
-                        .run_if(has_authority()),
-                ),
-            );
+                Self::tick_system
+                    .run_if(on_timer(Duration::from_secs(1)))
+                    .run_if(has_authority()),
+            )
+            .add_systems(PostUpdate, Self::ignore_name_system.before(ServerSet::Send));
     }
 }
 
@@ -95,6 +105,12 @@ impl NeedsPlugin {
             }
         }
     }
+
+    fn ignore_name_system(mut commands: Commands, needs: Query<Entity, Added<Need>>) {
+        for entity in &needs {
+            commands.entity(entity).insert(Ignored::<Name>::default());
+        }
+    }
 }
 
 #[derive(Bundle)]
@@ -116,31 +132,31 @@ impl<T: Component + Default> Default for NeedBundle<T> {
     }
 }
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Hunger;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Social;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Hygiene;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Fun;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Energy;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Bladder;
 
-#[derive(Component, Reflect)]
+#[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Need(pub(crate) f32);
 

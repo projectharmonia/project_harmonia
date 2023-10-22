@@ -21,7 +21,7 @@ use crate::core::{
     error_report,
     family::{
         editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
-        family_spawn::{FamilyScene, FamilySpawn},
+        FamilyScene, FamilySpawn,
     },
     game_state::GameState,
 };

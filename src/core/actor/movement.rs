@@ -61,7 +61,7 @@ impl MovementPlugin {
 }
 
 /// Triggers animation when the actor starts moving.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
 pub(super) enum Movement {
     #[default]
     Walk,

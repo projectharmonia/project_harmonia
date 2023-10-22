@@ -17,15 +17,17 @@ pub(super) struct MoveHerePlugin;
 
 impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<MoveHere>().add_systems(
-            Update,
-            (
-                Self::list_system.in_set(TaskListSet),
-                Self::activation_system,
-                Self::finish_system,
-            )
-                .run_if(resource_exists::<WorldName>()),
-        );
+        app.register_type::<MoveHere>()
+            .replicate::<MoveHere>()
+            .add_systems(
+                Update,
+                (
+                    Self::list_system.in_set(TaskListSet),
+                    Self::activation_system,
+                    Self::finish_system,
+                )
+                    .run_if(resource_exists::<WorldName>()),
+            );
     }
 }
 
@@ -83,7 +85,7 @@ impl MoveHerePlugin {
     }
 }
 
-#[derive(Clone, Component, Copy, Debug, Default, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 struct MoveHere {
     endpoint: Vec3,

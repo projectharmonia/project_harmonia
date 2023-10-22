@@ -1,7 +1,7 @@
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
-use bevy::{ecs::entity::EntityMap, prelude::*};
+use bevy::prelude::*;
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
@@ -20,8 +20,8 @@ impl Plugin for LotPlugin {
         app.add_state::<LotTool>()
             .add_plugins((CreatingLotPlugin, MovingLotPlugin))
             .register_type::<Vec<Vec2>>()
+            .register_type::<LotVertices>()
             .replicate::<LotVertices>()
-            .not_replicate_if_present::<Transform, LotVertices>()
             .add_mapped_client_event::<LotSpawn>(SendPolicy::Unordered)
             .add_mapped_client_event::<LotMove>(SendPolicy::Ordered)
             .add_mapped_client_event::<LotDespawn>(SendPolicy::Unordered)
@@ -40,6 +40,10 @@ impl Plugin for LotPlugin {
                     Self::despawn_system,
                 )
                     .run_if(has_authority()),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::ignore_transform_system.before(ServerSet::Send),
             );
     }
 }
@@ -126,6 +130,14 @@ impl LotPlugin {
             });
         }
     }
+
+    fn ignore_transform_system(mut commands: Commands, lots: Query<Entity, Added<LotVertices>>) {
+        for entity in &lots {
+            commands
+                .entity(entity)
+                .insert(Ignored::<Transform>::default());
+        }
+    }
 }
 
 #[derive(
@@ -163,7 +175,7 @@ impl LotBundle {
     }
 }
 
-#[derive(Clone, Component, Default, Deref, DerefMut, Reflect)]
+#[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(super) struct LotVertices(Vec<Vec2>);
 
@@ -212,46 +224,40 @@ impl FromWorld for LotMaterial {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Deserialize, Event, Serialize)]
 struct LotSpawn {
     vertices: Vec<Vec2>,
     city_entity: Entity,
 }
 
-impl MapEventEntities for LotSpawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.city_entity = entity_map
-            .get(self.city_entity)
-            .ok_or(MapError(self.city_entity))?;
-
-        Ok(())
+impl MapNetworkEntities for LotSpawn {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.city_entity = mapper.map(self.city_entity);
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct LotMove {
     entity: Entity,
     offset: Vec2,
 }
 
-impl MapEventEntities for LotMove {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.entity = entity_map.get(self.entity).ok_or(MapError(self.entity))?;
-        Ok(())
+impl MapNetworkEntities for LotMove {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.entity = mapper.map(self.entity);
     }
 }
 
-#[derive(Clone, Copy, Event, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Event, Deserialize, Serialize)]
 struct LotDespawn(Entity);
 
-impl MapEventEntities for LotDespawn {
-    fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapError> {
-        self.0 = entity_map.get(self.0).ok_or(MapError(self.0))?;
-        Ok(())
+impl MapNetworkEntities for LotDespawn {
+    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map(self.0);
     }
 }
 
-#[derive(Debug, Deserialize, Event, Serialize)]
+#[derive(Deserialize, Event, Serialize)]
 struct LotEventConfirmed;
 
 #[cfg(test)]

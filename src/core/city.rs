@@ -4,6 +4,7 @@ use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use derive_more::Display;
 use oxidized_navigation::NavMeshAffector;
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
@@ -20,8 +21,8 @@ pub(super) struct CityPlugin;
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<CityMode>()
+            .register_type::<City>()
             .replicate::<City>()
-            .not_replicate_if_present::<Transform, City>()
             .init_resource::<PlacedCities>()
             .add_systems(OnEnter(GameState::City), Self::activation_system)
             .add_systems(
@@ -43,7 +44,10 @@ impl Plugin for CityPlugin {
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+                (
+                    Self::ignore_transform_system.before(ServerSet::Send),
+                    Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+                ),
             );
     }
 }
@@ -146,6 +150,17 @@ impl CityPlugin {
             commands.entity(entity).despawn_recursive();
         }
     }
+
+    fn ignore_transform_system(
+        mut commands: Commands,
+        cities: Query<Entity, (Added<Transform>, With<City>)>,
+    ) {
+        for entity in &cities {
+            commands
+                .entity(entity)
+                .insert(Ignored::<Transform>::default());
+        }
+    }
 }
 
 #[derive(
@@ -183,7 +198,7 @@ impl CityBundle {
     }
 }
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct City;
 
