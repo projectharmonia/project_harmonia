@@ -1,6 +1,6 @@
+pub(super) mod human;
 mod movement;
 pub(crate) mod needs;
-pub(crate) mod race;
 pub(crate) mod task;
 
 use bevy::{prelude::*, scene::SceneInstanceReady};
@@ -15,16 +15,15 @@ use strum::EnumIter;
 use super::{
     asset_handles::{AssetCollection, AssetHandles},
     cursor_hover::OutlineHoverExt,
-    family::ActorFamily,
     game_state::GameState,
     game_world::WorldName,
 };
 use crate::core::{
     animation_state::AnimationState, collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable,
 };
+use human::HumanPlugin;
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
-use race::RacePlugins;
 use task::TaskPlugin;
 
 pub(super) struct ActorPlugin;
@@ -32,7 +31,7 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetHandles<ActorAnimation>>()
-            .add_plugins((MovementPlugin, NeedsPlugin, RacePlugins, TaskPlugin))
+            .add_plugins((MovementPlugin, NeedsPlugin, HumanPlugin, TaskPlugin))
             .register_type::<Actor>()
             .register_type::<FirstName>()
             .register_type::<Sex>()
@@ -173,32 +172,15 @@ pub(crate) enum Sex {
 #[derive(Component)]
 pub(crate) struct ActiveActor;
 
-/// Minimal actor components without a race.
-#[derive(Bundle)]
-pub(super) struct ActorBundle {
-    actor_family: ActorFamily,
-    parent_sync: ParentSync,
-    transform: Transform,
-    actor: Actor,
-    replication: Replication,
-}
-
-impl ActorBundle {
-    pub(super) fn new(family_entity: Entity) -> Self {
-        Self {
-            actor_family: ActorFamily(family_entity),
-            parent_sync: Default::default(),
-            transform: Default::default(), // TODO: Get spawn position from world.
-            actor: Actor,
-            replication: Replication,
-        }
-    }
-}
-
 /// Marks entity as an actor.
 #[derive(Component, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct Actor;
+
+#[reflect_trait]
+pub(crate) trait ActorBundle: Reflect {
+    fn glyph(&self) -> &'static str;
+}
 
 #[derive(Clone, Copy, EnumIter, IntoPrimitive)]
 #[repr(usize)]

@@ -22,10 +22,7 @@ use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    actor::{
-        race::{RaceBundle, ReflectRaceBundle},
-        ActiveActor, ActorBundle,
-    },
+    actor::{ActiveActor, Actor, ActorBundle, ReflectActorBundle},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldName,
@@ -123,11 +120,17 @@ impl FamilyPlugin {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
-            for race_bundle in event.scene.actors {
+            for actor in event.scene.actors {
                 commands.entity(event.city_entity).with_children(|parent| {
                     parent
-                        .spawn(ActorBundle::new(family_entity))
-                        .insert_reflect_bundle(race_bundle.into_reflect());
+                        .spawn((
+                            ActorFamily(family_entity),
+                            ParentSync::default(),
+                            Transform::default(),
+                            Actor,
+                            Replication,
+                        ))
+                        .insert_reflect_bundle(actor.into_reflect());
                 });
             }
             if event.select {
@@ -254,12 +257,12 @@ fn deserialize_family_spawn(
         let registration = registry
             .get(reflect.type_id())
             .with_context(|| format!("{type_name} is not registered"))?;
-        let reflect_race = registration
-            .data::<ReflectRaceBundle>()
-            .with_context(|| format!("{type_name} doesn't have reflect(RaceBundle)"))?;
-        let actor = reflect_race
+        let reflect_actor = registration
+            .data::<ReflectActorBundle>()
+            .with_context(|| format!("{type_name} doesn't have reflect(ActorBundle)"))?;
+        let actor = reflect_actor
             .get_boxed(reflect)
-            .map_err(|reflect| anyhow!("{} is not a RaceBundle", reflect.type_name()))?;
+            .map_err(|reflect| anyhow!("{} is not a ActorBundle", reflect.type_name()))?;
         actors.push(actor);
     }
     let select = DefaultOptions::new().deserialize_from(&mut cursor)?;
@@ -386,7 +389,7 @@ impl MapNetworkEntities for FamilySpawn {
 pub(crate) struct FamilyScene {
     pub(crate) name: Name,
     pub(crate) budget: Budget,
-    pub(crate) actors: Vec<Box<dyn RaceBundle>>,
+    pub(crate) actors: Vec<Box<dyn ActorBundle>>,
 }
 
 impl FamilyScene {

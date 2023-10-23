@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 
 use crate::core::{
-    actor::{race::human::Human, ActiveActor, FirstName, LastName, Sex},
+    actor::{human::Human, ActiveActor, FirstName, LastName, Sex},
     family::{FamilyMembers, SelectedFamilySpawned},
     game_state::GameState,
     player_camera::PlayerCameraBundle,

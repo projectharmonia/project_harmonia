@@ -6,12 +6,11 @@ use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use super::{RaceBundle, ReflectRaceBundle};
+use super::{
+    needs::{Bladder, Energy, Fun, Hunger, Hygiene, Need, NeedBundle, Social},
+    Actor, ActorBundle, FirstName, LastName, ReflectActorBundle, Sex,
+};
 use crate::core::{
-    actor::{
-        needs::{Bladder, Energy, Fun, Hunger, Hygiene, Need, NeedBundle, Social},
-        Actor, FirstName, LastName, Sex,
-    },
     asset_handles::{AssetCollection, AssetHandles},
     family::{editor::EditableActor, FamilyScene},
     game_state::GameState,
@@ -24,7 +23,7 @@ impl Plugin for HumanPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Human>()
             .replicate::<Human>()
-            .register_type::<HumanRaceBundle>()
+            .register_type::<HumanBundle>()
             .init_resource::<AssetHandles<HumanScene>>()
             .add_systems(
                 PreUpdate,
@@ -81,7 +80,7 @@ impl HumanPlugin {
     ) {
         if let Ok(mut family_scene) = family_scenes.get_single_mut() {
             for (mut first_name, mut last_name, &sex) in &mut actors {
-                family_scene.actors.push(Box::new(HumanRaceBundle::new(
+                family_scene.actors.push(Box::new(HumanBundle::new(
                     mem::take(&mut first_name),
                     mem::take(&mut last_name),
                     sex,
@@ -96,15 +95,15 @@ impl HumanPlugin {
 pub(crate) struct Human;
 
 #[derive(Bundle, Default, Reflect)]
-#[reflect(Bundle, RaceBundle)]
-struct HumanRaceBundle {
+#[reflect(Bundle, ActorBundle)]
+struct HumanBundle {
     first_name: FirstName,
     last_name: LastName,
     sex: Sex,
     human: Human,
 }
 
-impl HumanRaceBundle {
+impl HumanBundle {
     fn new(first_name: FirstName, last_name: LastName, sex: Sex) -> Self {
         Self {
             first_name,
@@ -115,7 +114,7 @@ impl HumanRaceBundle {
     }
 }
 
-impl RaceBundle for HumanRaceBundle {
+impl ActorBundle for HumanBundle {
     fn glyph(&self) -> &'static str {
         "👤"
     }
