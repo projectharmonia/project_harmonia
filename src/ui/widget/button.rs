@@ -48,10 +48,9 @@ impl ButtonPlugin {
         buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
     ) {
         for (entity, image_handle) in &buttons {
-            commmands
-                .entity(entity)
-                .despawn_descendants()
-                .with_children(|parent| {
+            // Entity could be despawned in the same frame, so check for existence.
+            if let Some(mut entity) = commmands.get_entity(entity) {
+                entity.despawn_descendants().with_children(|parent| {
                     parent.spawn(ImageBundle {
                         style: theme.button.image.clone(),
                         image: UiImage {
@@ -61,6 +60,7 @@ impl ButtonPlugin {
                         ..Default::default()
                     });
                 });
+            }
         }
     }
 
