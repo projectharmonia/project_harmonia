@@ -216,6 +216,7 @@ impl FromWorld for LotMaterial {
     fn from_world(world: &mut World) -> Self {
         let mut polyline_materials = world.resource_mut::<Assets<PolylineMaterial>>();
         let material_handle = polyline_materials.add(PolylineMaterial {
+            width: 25.0,
             color: Color::WHITE,
             perspective: true,
             ..Default::default()
