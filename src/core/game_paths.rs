@@ -1,9 +1,8 @@
 use std::{env, fs::DirEntry, path::PathBuf};
 
 use anyhow::{Context, Result};
+use app_dirs2::{AppDataType, AppInfo};
 use bevy::prelude::*;
-#[cfg(not(test))]
-use standard_paths::{default_paths, LocationType};
 
 /// Initializes [`GamePaths`] resource.
 pub(super) struct GamePathsPlugin;
@@ -50,17 +49,12 @@ impl Default for GamePaths {
     ///
     /// In tests points to a temporary folder that will be removed on destruction.
     fn default() -> Self {
-        #[cfg(test)]
-        let config_dir = env::temp_dir().join(
-            std::iter::repeat_with(fastrand::alphanumeric)
-                .take(10)
-                .collect::<String>(),
-        );
-
-        #[cfg(not(test))]
-        let config_dir = default_paths!()
-            .writable_location(LocationType::AppConfigLocation)
-            .expect("app configuration directory should be found");
+        let app_info = AppInfo {
+            name: env!("CARGO_PKG_NAME"),
+            author: "shatur",
+        };
+        let config_dir = app_dirs2::app_dir(AppDataType::UserConfig, &app_info, "")
+            .expect("config directory should be accessiable");
 
         let mut settings = config_dir.clone();
         settings.push(env!("CARGO_PKG_NAME"));
