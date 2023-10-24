@@ -41,9 +41,6 @@ itertools = "0.11"
 bitflags = "2.4"
 futures-lite = "1.13"
 
-[dev-dependencies]
-serde_test = "1.0"
-
 [patch.crates-io]
 bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
 bevy_animation = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
