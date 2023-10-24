@@ -30,12 +30,12 @@ use ui::UiPlugins;
 
 fn main() {
     App::new()
+        .init_resource::<Cli>()
         .insert_resource(Msaa::Off)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 3.0,
         })
-        .init_resource::<Cli>()
         .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
