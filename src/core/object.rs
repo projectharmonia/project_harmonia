@@ -28,10 +28,10 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((PlacingObjectPlugin, MirrorPlugin))
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
-            .add_client_event::<ObjectSpawn>(SendPolicy::Unordered)
-            .add_mapped_client_event::<ObjectMove>(SendPolicy::Ordered)
-            .add_mapped_client_event::<ObjectDespawn>(SendPolicy::Unordered)
-            .add_server_event::<ObjectEventConfirmed>(SendPolicy::Unordered)
+            .add_client_event::<ObjectSpawn>(EventType::Unordered)
+            .add_mapped_client_event::<ObjectMove>(EventType::Ordered)
+            .add_mapped_client_event::<ObjectDespawn>(EventType::Unordered)
+            .add_server_event::<ObjectEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (Self::init_system, Self::scene_init_system)

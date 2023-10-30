@@ -41,9 +41,9 @@ impl Plugin for TaskPlugin {
         ))
         .register_type::<TaskState>()
         .replicate::<TaskState>()
-        .add_client_event::<TaskCancel>(SendPolicy::Unordered)
+        .add_client_event::<TaskCancel>(EventType::Unordered)
         .add_client_event_with::<TaskRequest, _, _>(
-            SendPolicy::Unordered,
+            EventType::Unordered,
             Self::sending_task_system,
             Self::receiving_task_system,
         )

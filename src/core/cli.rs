@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+use bevy_replicon::{prelude::*, renet::ConnectionConfig};
 use clap::{Args, Parser, Subcommand};
 
 use super::{
@@ -47,26 +47,29 @@ impl CliPlugin {
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
                 }
                 GameCommand::Host { world_load, port } => {
-                    let (server, transport) = network::create_server(
-                        *port,
-                        network_channels.server_channels(),
-                        network_channels.client_channels(),
-                    )
-                    .context("unable to create server")?;
+                    let server = RenetServer::new(ConnectionConfig {
+                        server_channels_config: network_channels.get_server_configs(),
+                        client_channels_config: network_channels.get_client_configs(),
+                        ..Default::default()
+                    });
+                    let transport =
+                        network::create_server(*port).context("unable to create server")?;
+
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
-
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
+
                     load_events.send_default();
                 }
                 GameCommand::Join { ip, port } => {
-                    let (client, transport) = network::create_client(
-                        *ip,
-                        *port,
-                        network_channels.server_channels(),
-                        network_channels.client_channels(),
-                    )
-                    .context("unable to create client")?;
+                    let client = RenetClient::new(ConnectionConfig {
+                        server_channels_config: network_channels.get_server_configs(),
+                        client_channels_config: network_channels.get_client_configs(),
+                        ..Default::default()
+                    });
+                    let transport =
+                        network::create_client(*ip, *port).context("unable to create client")?;
+
                     commands.insert_resource(client);
                     commands.insert_resource(transport);
                 }

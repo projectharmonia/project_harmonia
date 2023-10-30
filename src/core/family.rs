@@ -43,12 +43,12 @@ impl Plugin for FamilyPlugin {
             .replicate::<Family>()
             .replicate::<Budget>()
             .add_client_event_with::<FamilySpawn, _, _>(
-                SendPolicy::Unordered,
+                EventType::Unordered,
                 Self::sending_spawn_system,
                 Self::receiving_spawn_system,
             )
-            .add_mapped_client_event::<FamilyDespawn>(SendPolicy::Unordered)
-            .add_mapped_server_event::<SelectedFamilySpawned>(SendPolicy::Unordered)
+            .add_mapped_client_event::<FamilyDespawn>(EventType::Unordered)
+            .add_mapped_server_event::<SelectedFamilySpawned>(EventType::Unordered)
             .add_systems(
                 OnEnter(GameState::Family),
                 (Self::activation_system, Self::reset_mode_system),

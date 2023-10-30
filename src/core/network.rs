@@ -7,12 +7,9 @@ use anyhow::Result;
 use bevy::prelude::*;
 use bevy_replicon::{
     prelude::*,
-    renet::{
-        transport::{
-            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
-            ServerAuthentication, ServerConfig,
-        },
-        ChannelConfig, ConnectionConfig, RenetClient, RenetServer,
+    renet::transport::{
+        ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
+        ServerConfig,
     },
     transport::client_just_connected,
 };
@@ -48,17 +45,7 @@ impl NetworkPlugin {
 pub(crate) const DEFAULT_PORT: u16 = 4761;
 const PROTOCOL_ID: u64 = 7;
 
-pub(crate) fn create_server(
-    port: u16,
-    server_channels_config: Vec<ChannelConfig>,
-    client_channels_config: Vec<ChannelConfig>,
-) -> Result<(RenetServer, NetcodeServerTransport)> {
-    let server = RenetServer::new(ConnectionConfig {
-        server_channels_config,
-        client_channels_config,
-        ..Default::default()
-    });
-
+pub(crate) fn create_server(port: u16) -> Result<NetcodeServerTransport> {
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
     let socket = UdpSocket::bind(public_addr)?;
@@ -70,21 +57,10 @@ pub(crate) fn create_server(
     };
     let transport = NetcodeServerTransport::new(current_time, server_config, socket)?;
 
-    Ok((server, transport))
+    Ok(transport)
 }
 
-pub(crate) fn create_client(
-    ip: IpAddr,
-    port: u16,
-    server_channels_config: Vec<ChannelConfig>,
-    client_channels_config: Vec<ChannelConfig>,
-) -> Result<(RenetClient, NetcodeClientTransport)> {
-    let client = RenetClient::new(ConnectionConfig {
-        server_channels_config,
-        client_channels_config,
-        ..Default::default()
-    });
-
+pub(crate) fn create_client(ip: IpAddr, port: u16) -> Result<NetcodeClientTransport> {
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;
     let server_addr = SocketAddr::new(ip, port);
@@ -97,5 +73,5 @@ pub(crate) fn create_client(
     };
     let transport = NetcodeClientTransport::new(current_time, authentication, socket)?;
 
-    Ok((client, transport))
+    Ok(transport)
 }

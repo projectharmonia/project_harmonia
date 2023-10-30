@@ -26,8 +26,8 @@ impl Plugin for WallPlugin {
             .register_type::<Vec<(Vec2, Vec2)>>()
             .register_type::<WallEdges>()
             .replicate::<WallEdges>()
-            .add_mapped_client_event::<WallCreate>(SendPolicy::Unordered)
-            .add_server_event::<WallEventConfirmed>(SendPolicy::Unordered)
+            .add_mapped_client_event::<WallCreate>(EventType::Unordered)
+            .add_server_event::<WallEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (Self::init_system, Self::mesh_update_system)

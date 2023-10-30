@@ -22,10 +22,10 @@ impl Plugin for LotPlugin {
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
             .replicate::<LotVertices>()
-            .add_mapped_client_event::<LotSpawn>(SendPolicy::Unordered)
-            .add_mapped_client_event::<LotMove>(SendPolicy::Ordered)
-            .add_mapped_client_event::<LotDespawn>(SendPolicy::Unordered)
-            .add_server_event::<LotEventConfirmed>(SendPolicy::Unordered)
+            .add_mapped_client_event::<LotSpawn>(EventType::Unordered)
+            .add_mapped_client_event::<LotMove>(EventType::Ordered)
+            .add_mapped_client_event::<LotDespawn>(EventType::Unordered)
+            .add_server_event::<LotEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (Self::init_system, Self::vertices_update_system)

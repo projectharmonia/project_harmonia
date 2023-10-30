@@ -2,7 +2,7 @@ use std::{fs, mem, net::Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
+use bevy_replicon::{prelude::*, renet::ConnectionConfig};
 use derive_more::Display;
 use strum::{EnumIter, IntoEnumIterator};
 
@@ -166,22 +166,25 @@ impl WorldBrowserPlugin {
             if let Ok(&button) = buttons.get(event.0) {
                 let (dialog_entity, world_node) = dialogs.single();
                 if button == HostDialogButton::Host {
+                    let server = RenetServer::new(ConnectionConfig {
+                        server_channels_config: network_channels.get_server_configs(),
+                        client_channels_config: network_channels.get_client_configs(),
+                        ..Default::default()
+                    });
+                    let port = text_edits.single();
+                    let transport = network::create_server(port.sections[0].value.parse()?)
+                        .context("unable to create server")?;
+
+                    commands.insert_resource(server);
+                    commands.insert_resource(transport);
+
                     let mut world_name = labels
                         .get_mut(world_node.label_entity)
                         .expect("world label should contain text");
                     commands
                         .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
-                    load_events.send_default();
 
-                    let port = text_edits.single();
-                    let (server, transport) = network::create_server(
-                        port.sections[0].value.parse()?,
-                        network_channels.server_channels(),
-                        network_channels.client_channels(),
-                    )
-                    .context("unable to create server")?;
-                    commands.insert_resource(server);
-                    commands.insert_resource(transport);
+                    load_events.send_default();
                 }
                 commands.entity(dialog_entity).despawn_recursive();
             }
@@ -272,15 +275,19 @@ impl WorldBrowserPlugin {
             if let Ok(&button) = buttons.get(event.0) {
                 match button {
                     JoinDialogButton::Join => {
+                        let client = RenetClient::new(ConnectionConfig {
+                            server_channels_config: network_channels.get_server_configs(),
+                            client_channels_config: network_channels.get_client_configs(),
+                            ..Default::default()
+                        });
                         let ip = ip_edits.single();
                         let port = port_edits.single();
-                        let (client, transport) = network::create_client(
+                        let transport = network::create_client(
                             ip.sections[0].value.parse()?,
                             port.sections[0].value.parse()?,
-                            network_channels.server_channels(),
-                            network_channels.client_channels(),
                         )
                         .context("unable to create connection")?;
+
                         commands.insert_resource(client);
                         commands.insert_resource(transport);
                     }
