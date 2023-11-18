@@ -11,7 +11,7 @@ use super::{
     Actor, ActorBundle, FirstName, LastName, ReflectActorBundle, Sex,
 };
 use crate::core::{
-    asset_handles::{AssetCollection, AssetHandles},
+    asset::collection::{AssetCollection, Collection},
     family::{editor::EditableActor, FamilyScene},
     game_state::GameState,
     game_world::WorldName,
@@ -24,7 +24,7 @@ impl Plugin for HumanPlugin {
         app.register_type::<Human>()
             .replicate::<Human>()
             .register_type::<HumanBundle>()
-            .init_resource::<AssetHandles<HumanScene>>()
+            .init_resource::<Collection<HumanScene>>()
             .add_systems(
                 PreUpdate,
                 Self::sex_update_system
@@ -63,7 +63,7 @@ impl HumanPlugin {
 
     fn sex_update_system(
         mut commands: Commands,
-        human_scenes: Res<AssetHandles<HumanScene>>,
+        human_scenes: Res<Collection<HumanScene>>,
         actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
     ) {
         for (entity, &sex) in &actors {

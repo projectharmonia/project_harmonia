@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::{
     actor::{ActorAnimation, Sex},
     animation_state::AnimationState,
-    asset_handles::AssetHandles,
+    asset::collection::Collection,
     game_world::WorldName,
     navigation::{NavPath, Navigation},
 };
@@ -22,7 +22,7 @@ impl Plugin for MovementPlugin {
 
 impl MovementPlugin {
     fn init_system(
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actor_animations: Res<Collection<ActorAnimation>>,
         mut actors: Query<(&Sex, &Navigation, &mut AnimationState), Added<NavPath>>,
     ) {
         for (sex, navigation, mut animation_state) in &mut actors {
@@ -48,7 +48,7 @@ impl MovementPlugin {
     }
 
     fn cleanup_system(
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actor_animations: Res<Collection<ActorAnimation>>,
         mut removed_navigations: RemovedComponents<NavPath>,
         mut actors: Query<&mut AnimationState>,
     ) {

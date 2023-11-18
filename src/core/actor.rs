@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    asset_handles::{AssetCollection, AssetHandles},
+    asset::collection::{AssetCollection, Collection},
     cursor_hover::OutlineHoverExt,
     game_state::GameState,
     game_world::WorldName,
@@ -30,7 +30,7 @@ pub(super) struct ActorPlugin;
 
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AssetHandles<ActorAnimation>>()
+        app.init_resource::<Collection<ActorAnimation>>()
             .add_plugins((MovementPlugin, NeedsPlugin, HumanPlugin, TaskPlugin))
             .register_type::<Actor>()
             .register_type::<FirstName>()
@@ -65,7 +65,7 @@ impl Plugin for ActorPlugin {
 impl ActorPlugin {
     fn init_system(
         mut commands: Commands,
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actor_animations: Res<Collection<ActorAnimation>>,
         actors: Query<Entity, Added<Actor>>,
     ) {
         for entity in &actors {

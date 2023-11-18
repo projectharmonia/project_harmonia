@@ -9,7 +9,7 @@ use crate::core::{
         Actor, ActorAnimation,
     },
     animation_state::{AnimationFinished, AnimationState},
-    asset_handles::AssetHandles,
+    asset::collection::Collection,
     cursor_hover::CursorHover,
     game_world::WorldName,
     navigation::{following::Following, Navigation},
@@ -64,7 +64,7 @@ impl TellSecretPlugin {
     fn tell_system(
         mut commands: Commands,
         mut removed_navigations: RemovedComponents<Navigation>,
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actor_animations: Res<Collection<ActorAnimation>>,
         mut actors: Query<(&Children, &mut AnimationState)>,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
@@ -90,7 +90,7 @@ impl TellSecretPlugin {
     }
 
     fn listen_activation_system(
-        actor_animations: Res<AssetHandles<ActorAnimation>>,
+        actor_animations: Res<Collection<ActorAnimation>>,
         tasks: Query<(&ListenSecret, &Parent, &TaskState), Changed<TaskState>>,
         mut actors: Query<(&mut Transform, &mut AnimationState)>,
     ) {

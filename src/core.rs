@@ -1,7 +1,7 @@
 pub(super) mod action;
 pub(super) mod actor;
 mod animation_state;
-mod asset_handles;
+mod asset;
 pub(super) mod asset_metadata;
 pub(super) mod city;
 pub(super) mod cli;
