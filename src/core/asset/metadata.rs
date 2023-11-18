@@ -158,13 +158,13 @@ pub(crate) enum ObjectCategory {
 }
 
 impl ObjectCategory {
-    pub(crate) const CITY_CATEGORIES: &[ObjectCategory] = &[
+    pub(crate) const CITY_CATEGORIES: &'static [ObjectCategory] = &[
         ObjectCategory::Rocks,
         ObjectCategory::Foliage,
         ObjectCategory::OutdoorFurniture,
     ];
 
-    pub(crate) const FAMILY_CATEGORIES: &[ObjectCategory] = &[
+    pub(crate) const FAMILY_CATEGORIES: &'static [ObjectCategory] = &[
         ObjectCategory::Rocks,
         ObjectCategory::Foliage,
         ObjectCategory::OutdoorFurniture,
