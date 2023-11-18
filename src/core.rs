@@ -1,8 +1,7 @@
 pub(super) mod action;
 pub(super) mod actor;
 mod animation_state;
-mod asset;
-pub(super) mod asset_metadata;
+pub(super) mod asset;
 pub(super) mod city;
 pub(super) mod cli;
 mod collision_groups;
@@ -29,7 +28,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 use action::ActionPlugin;
 use actor::ActorPlugin;
 use animation_state::AnimationStatePlugin;
-use asset_metadata::AssetMetadataPlugin;
+use asset::AssetPlugin;
 use city::CityPlugin;
 use cli::CliPlugin;
 use cursor_hover::CursorHoverPlugin;
@@ -71,6 +70,6 @@ impl PluginGroup for CorePlugins {
             .add(SettingsPlugin)
             .add(ObjectPlugin)
             .add(WallPlugin)
-            .add(AssetMetadataPlugin) // Should run after registering components.
+            .add(AssetPlugin) // Should run after registering components.
     }
 }

@@ -10,7 +10,7 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    asset_metadata::{self, ObjectMetadata},
+    asset::metadata::{self, ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
     cursor_hover::Hoverable,
@@ -63,7 +63,7 @@ impl ObjectPlugin {
                 .get(&metadata_handle)
                 .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
-            let scene_path = asset_metadata::scene_path(&*object_path.0);
+            let scene_path = metadata::scene_path(&*object_path.0);
             debug!("spawning object {scene_path:?}");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);

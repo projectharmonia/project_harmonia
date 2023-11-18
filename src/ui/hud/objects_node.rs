@@ -2,7 +2,7 @@ use bevy::{asset::HandleId, prelude::*, window::PrimaryWindow};
 
 use crate::{
     core::{
-        asset_metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::{ObjectCategory, ObjectMetadata},
         city::ActiveCity,
         family::FamilyMode,
         game_state::GameState,

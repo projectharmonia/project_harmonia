@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     core::{
-        asset_metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::{ObjectCategory, ObjectMetadata},
         city::CityMode,
         game_state::GameState,
         lot::LotTool,

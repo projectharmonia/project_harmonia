@@ -16,7 +16,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
     action::Action,
-    asset_metadata::{self, ObjectMetadata},
+    asset::metadata::{self, ObjectMetadata},
     city::CityMode,
     collision_groups::LifescapeGroupsExt,
     cursor_hover::CursorHover,
@@ -116,7 +116,7 @@ impl PlacingObjectPlugin {
                         object_metadata.get(&metadata_handle).unwrap_or_else(|| {
                             panic!("{metadata_path:?} should correspond to metadata")
                         });
-                    let scene_handle = asset_server.load(asset_metadata::scene_path(metadata_path));
+                    let scene_handle = asset_server.load(metadata::scene_path(metadata_path));
                     placing_entity.insert(CursorOffset::default());
                     let transform = Transform::from_rotation(Quat::from_rotation_y(PI)); // Rotate towards camera.
                     (transform, scene_handle, object_metadata)

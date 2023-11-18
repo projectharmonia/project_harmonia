@@ -9,7 +9,7 @@ use crate::{
             task::{TaskCancel, TaskState},
             ActiveActor,
         },
-        asset_metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::{ObjectCategory, ObjectMetadata},
         family::{ActiveFamily, Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin},
         game_state::GameState,
     },

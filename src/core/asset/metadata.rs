@@ -24,26 +24,25 @@ use walkdir::WalkDir;
 
 const METADATA_EXTENSION: &str = "toml";
 
-pub(super) struct AssetMetadataPlugin;
+pub(super) struct MetadataPlugin;
 
-impl Plugin for AssetMetadataPlugin {
+impl Plugin for MetadataPlugin {
     fn build(&self, app: &mut App) {
         app.add_asset::<ObjectMetadata>()
-            .init_asset_loader::<AssetMetadataLoader>()
+            .init_asset_loader::<MetadataLoader>()
             .init_resource::<MetadataHandles>();
     }
 }
 
-#[derive(Deref, DerefMut)]
-pub struct AssetMetadataLoader(TypeRegistry);
+pub struct MetadataLoader(TypeRegistry);
 
-impl FromWorld for AssetMetadataLoader {
+impl FromWorld for MetadataLoader {
     fn from_world(world: &mut World) -> Self {
         Self(world.resource::<AppTypeRegistry>().0.clone())
     }
 }
 
-impl AssetLoader for AssetMetadataLoader {
+impl AssetLoader for MetadataLoader {
     fn load<'a>(
         &'a self,
         bytes: &'a [u8],
@@ -53,11 +52,11 @@ impl AssetLoader for AssetMetadataLoader {
             let data = str::from_utf8(bytes)
                 .with_context(|| format!("{:?} contains invalid UTF-8", load_context.path()))?;
             let deserializer = toml::Deserializer::new(data);
-            match AssetMetadataDeserializer::new(&self.read()).deserialize(deserializer)? {
-                AssetMetadata::Object(metadata) => {
+            match MetadataDeserializer::new(&self.0.read()).deserialize(deserializer)? {
+                Metadata::Object(metadata) => {
                     load_context.set_default_asset(LoadedAsset::new(metadata))
                 }
-                AssetMetadata::Cloth => unimplemented!(),
+                Metadata::Cloth => unimplemented!(),
             }
             Ok(())
         })
@@ -79,7 +78,8 @@ pub(crate) fn scene_path<'a, P: Into<AssetPath<'a>>>(metadata_path: P) -> AssetP
     AssetPath::new(scene_path, Some("Scene0".to_string()))
 }
 
-#[derive(Deref, DerefMut, Resource)]
+/// Preloads and stores metadata handles.
+#[derive(Resource)]
 struct MetadataHandles(Vec<HandleUntyped>);
 
 impl FromWorld for MetadataHandles {
@@ -110,12 +110,12 @@ impl FromWorld for MetadataHandles {
 
 #[derive(EnumDiscriminants)]
 #[strum_discriminants(
-    name(AssetMetadataField),
+    name(MetadataField),
     derive(Deserialize, EnumVariantNames),
     strum(serialize_all = "snake_case"),
     serde(field_identifier, rename_all = "snake_case")
 )]
-enum AssetMetadata {
+enum Metadata {
     Object(ObjectMetadata),
     Cloth,
 }
@@ -182,36 +182,32 @@ impl ObjectCategory {
 }
 
 #[derive(Constructor)]
-struct AssetMetadataDeserializer<'a> {
+struct MetadataDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'de> DeserializeSeed<'de> for AssetMetadataDeserializer<'_> {
-    type Value = AssetMetadata;
+impl<'de> DeserializeSeed<'de> for MetadataDeserializer<'_> {
+    type Value = Metadata;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_enum(
-            any::type_name::<AssetMetadata>(),
-            AssetMetadataField::VARIANTS,
-            self,
-        )
+        deserializer.deserialize_enum(any::type_name::<Metadata>(), MetadataField::VARIANTS, self)
     }
 }
 
-impl<'de> Visitor<'de> for AssetMetadataDeserializer<'_> {
-    type Value = AssetMetadata;
+impl<'de> Visitor<'de> for MetadataDeserializer<'_> {
+    type Value = Metadata;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
     }
 
     fn visit_enum<A: EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
-        let (field, variant) = data.variant::<AssetMetadataField>()?;
+        let (field, variant) = data.variant::<MetadataField>()?;
         let asset_metadata = match field {
-            AssetMetadataField::Object => AssetMetadata::Object(
+            MetadataField::Object => Metadata::Object(
                 variant.newtype_variant_seed(ObjectMetadataDeserializer::new(self.registry))?,
             ),
-            AssetMetadataField::Cloth => AssetMetadata::Cloth,
+            MetadataField::Cloth => Metadata::Cloth,
         };
 
         Ok(asset_metadata)
@@ -427,7 +423,7 @@ mod tests {
                 if extension == METADATA_EXTENSION {
                     let data = fs::read_to_string(entry.path())?;
                     let deserializer = toml::Deserializer::new(&data);
-                    AssetMetadataDeserializer::new(&type_registry).deserialize(deserializer)?;
+                    MetadataDeserializer::new(&type_registry).deserialize(deserializer)?;
                 }
             }
         }
