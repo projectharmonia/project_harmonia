@@ -8,7 +8,6 @@ use bevy::{
     prelude::*,
     reflect::{serde::TypedReflectDeserializer, TypeRegistry},
 };
-use derive_more::Constructor;
 use serde::{
     de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer,
@@ -77,7 +76,6 @@ impl ObjectCategory {
     }
 }
 
-#[derive(Constructor)]
 pub(super) struct ObjectMetadataDeserializer<'a> {
     registry: &'a TypeRegistry,
     general: GeneralMetadata,
@@ -140,9 +138,14 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
     }
 }
 
-#[derive(Constructor)]
 struct ComponentsDeserializer<'a> {
     registry: &'a TypeRegistry,
+}
+
+impl<'a> ComponentsDeserializer<'a> {
+    fn new(registry: &'a TypeRegistry) -> Self {
+        Self { registry }
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
@@ -173,9 +176,14 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
 }
 
 /// Like [`UntypedReflectDeserializer`], but searches for registration by short name.
-#[derive(Constructor)]
 pub struct ShortReflectDeserializer<'a> {
     registry: &'a TypeRegistry,
+}
+
+impl<'a> ShortReflectDeserializer<'a> {
+    fn new(registry: &'a TypeRegistry) -> Self {
+        Self { registry }
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {

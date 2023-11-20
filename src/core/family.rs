@@ -17,9 +17,8 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use bincode::{DefaultOptions, Options};
-use derive_more::Display;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 use super::{
     actor::{ActiveActor, Actor, ActorBundle, ReflectActorBundle},

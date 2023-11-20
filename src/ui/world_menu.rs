@@ -1,8 +1,7 @@
 use std::{fmt::Display, mem};
 
 use bevy::prelude::*;
-use derive_more::Display;
-use strum::{EnumIter, IntoEnumIterator};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
     theme::Theme,

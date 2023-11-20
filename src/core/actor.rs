@@ -7,10 +7,9 @@ use bevy::{prelude::*, scene::SceneInstanceReady};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
-use derive_more::Display;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 use super::{
     asset::collection::{AssetCollection, Collection},
@@ -121,7 +120,7 @@ impl ActorPlugin {
         for (entity, first_name, last_name) in &mut changed_names {
             commands
                 .entity(entity)
-                .insert(Name::new(format!("{first_name} {last_name}")));
+                .insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
         }
     }
 
@@ -150,11 +149,11 @@ impl ActorPlugin {
     }
 }
 
-#[derive(Clone, Component, Default, Deref, Deserialize, Display, Reflect, Serialize)]
+#[derive(Clone, Component, Default, Deref, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct FirstName(pub(crate) String);
 
-#[derive(Clone, Component, Default, Deref, Deserialize, Display, Reflect, Serialize)]
+#[derive(Clone, Component, Default, Deref, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(crate) struct LastName(pub(crate) String);
 

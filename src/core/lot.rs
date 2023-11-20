@@ -4,10 +4,9 @@ pub(crate) mod moving_lot;
 use bevy::prelude::*;
 use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
-use derive_more::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 use super::game_world::WorldName;
 use creating_lot::CreatingLotPlugin;

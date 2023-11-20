@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use derive_more::Constructor;
 use oxidized_navigation::{NavMesh, NavMeshSettings};
 
 use crate::core::game_world::WorldName;
@@ -51,5 +50,11 @@ impl EndpointPlugin {
 }
 
 /// Computes [`NavPath`] once after insertion.
-#[derive(Component, Constructor)]
+#[derive(Component)]
 pub(crate) struct Endpoint(Vec3);
+
+impl Endpoint {
+    pub(crate) fn new(point: Vec3) -> Self {
+        Self(point)
+    }
+}

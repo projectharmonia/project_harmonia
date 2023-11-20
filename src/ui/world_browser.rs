@@ -3,8 +3,7 @@ use std::{fs, mem, net::Ipv4Addr};
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy_replicon::{prelude::*, renet::ConnectionConfig};
-use derive_more::Display;
-use strum::{EnumIter, IntoEnumIterator};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::core::{
     error_report,

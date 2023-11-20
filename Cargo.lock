@@ -2491,7 +2491,6 @@ dependencies = [
  "bincode",
  "bitflags 2.4.1",
  "clap",
- "derive_more",
  "futures-lite 1.13.0",
  "itertools",
  "leafwing-input-manager",

@@ -2,10 +2,9 @@ use bevy::prelude::{shape::Plane, *};
 use bevy_atmosphere::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
-use derive_more::Display;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 use super::{
     actor::ActiveActor,
