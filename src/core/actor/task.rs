@@ -11,7 +11,7 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        TypeRegistryInternal,
+        TypeRegistry,
     },
 };
 use bevy_replicon::prelude::*;
@@ -48,7 +48,7 @@ impl Plugin for TaskPlugin {
             Self::receiving_task_system,
         )
         .add_event::<TaskList>()
-        .configure_set(
+        .configure_sets(
             Update,
             TaskListSet
                 .run_if(action_just_pressed(Action::Confirm))
@@ -114,7 +114,7 @@ impl TaskPlugin {
         mut cancel_events: EventReader<FromClient<TaskCancel>>,
         mut tasks: Query<&mut TaskState>,
     ) {
-        for event in cancel_events.iter().map(|event| &event.event) {
+        for event in cancel_events.read().map(|event| &event.event) {
             if let Ok(mut task_state) = tasks.get_mut(event.0) {
                 match *task_state {
                     TaskState::Queued => commands.entity(event.0).despawn(),
@@ -155,7 +155,7 @@ impl TaskPlugin {
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
-        for event in &mut task_events {
+        for event in task_events.read() {
             let message = serialize_task_request(event, &registry)
                 .expect("client event should be serializable");
 
@@ -189,7 +189,7 @@ impl TaskPlugin {
 
 fn serialize_task_request(
     event: &TaskRequest,
-    registry: &TypeRegistryInternal,
+    registry: &TypeRegistry,
 ) -> bincode::Result<Vec<u8>> {
     let mut message = Vec::new();
     let serializer = ReflectSerializer::new(event.task.as_reflect(), registry);
@@ -199,24 +199,22 @@ fn serialize_task_request(
     Ok(message)
 }
 
-fn deserialize_task_request(
-    message: &[u8],
-    registry: &TypeRegistryInternal,
-) -> Result<TaskRequest> {
+fn deserialize_task_request(message: &[u8], registry: &TypeRegistry) -> Result<TaskRequest> {
     let mut cursor = Cursor::new(message);
     let entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
     let mut deserializer = bincode::Deserializer::with_reader(&mut cursor, DefaultOptions::new());
     let reflect = UntypedReflectDeserializer::new(registry).deserialize(&mut deserializer)?;
-    let type_name = reflect.type_name();
+    let type_info = reflect.get_represented_type_info().unwrap();
+    let type_path = type_info.type_path();
     let registration = registry
-        .get(reflect.type_id())
-        .with_context(|| format!("{type_name} is not registered"))?;
+        .get(type_info.type_id())
+        .with_context(|| format!("{type_path} is not registered"))?;
     let reflect_task = registration
         .data::<ReflectTask>()
-        .with_context(|| format!("{type_name} doesn't have reflect(Task)"))?;
+        .with_context(|| format!("{type_path} doesn't have reflect(Task)"))?;
     let task = reflect_task
         .get_boxed(reflect)
-        .map_err(|reflect| anyhow!("{} is not a Task", reflect.type_name()))?;
+        .map_err(|_| anyhow!("{type_path} is not a Task"))?;
 
     Ok(TaskRequest { entity, task })
 }

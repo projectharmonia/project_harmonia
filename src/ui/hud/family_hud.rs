@@ -9,7 +9,7 @@ use crate::{
             task::{TaskCancel, TaskState},
             ActiveActor,
         },
-        asset::metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
         family::{ActiveFamily, Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin},
         game_state::GameState,
     },
@@ -59,6 +59,7 @@ impl FamilyHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
+        asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         families: Query<(&Budget, &FamilyMembers), With<ActiveFamily>>,
         actors: Query<Entity, With<ActiveActor>>,
@@ -111,6 +112,7 @@ impl FamilyHudPlugin {
                                 parent,
                                 &mut tab_commands,
                                 &theme,
+                                &asset_server,
                                 &object_metadata,
                             ),
                         })
@@ -204,7 +206,7 @@ impl FamilyHudPlugin {
         mut click_events: EventReader<Click>,
         buttons: Query<&ButtonTask>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(button_task) = buttons.get(event.0) {
                 cancel_events.send(TaskCancel(button_task.0));
             }
@@ -216,7 +218,7 @@ impl FamilyHudPlugin {
         mut removed_tasks: RemovedComponents<TaskState>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        for task_entity in &mut removed_tasks {
+        for task_entity in removed_tasks.read() {
             if let Some((button_entity, _)) = buttons
                 .iter()
                 .find(|(_, button_task)| button_task.0 == task_entity)
@@ -287,7 +289,7 @@ impl FamilyHudPlugin {
         mut removed_needs: RemovedComponents<Need>,
         progress_bars: Query<(Entity, &BarNeed)>,
     ) {
-        for need_entity in &mut removed_needs {
+        for need_entity in removed_needs.read() {
             if let Some((bar_entity, _)) = progress_bars
                 .iter()
                 .find(|(_, bar_need)| bar_need.0 == need_entity)
@@ -336,17 +338,24 @@ fn setup_tasks_node(parent: &mut ChildBuilder, theme: &Theme) {
 
             const MAX_TASKS: usize = 4;
             // Image button is a square
-            let width = theme.button.image_button.width;
+            let Val::Px(width) = theme.button.image_button.width else {
+                panic!("button width should be set in pixels");
+            };
             let height = width * MAX_TASKS as f32;
 
-            let min_width = width
-                .try_add(theme.padding.normal.left)
-                .and_then(|val| val.try_add(theme.padding.normal.right))
-                .expect("button size and padding should be set pixels");
-            let min_height = height
-                .try_add(theme.padding.normal.top)
-                .and_then(|val| val.try_add(theme.padding.normal.bottom))
-                .expect("button size and padding should be set pixels");
+            let UiRect {
+                left: Val::Px(left),
+                right: Val::Px(right),
+                top: Val::Px(top),
+                bottom: Val::Px(bottom),
+            } = theme.padding.normal
+            else {
+                panic!("padding should be set in pixels");
+            };
+
+            let min_width = Val::Px(width + left + right);
+            let min_height = Val::Px(height + top + bottom);
+
             parent.spawn((
                 ActiveTasksNode,
                 NodeBundle {
@@ -481,6 +490,7 @@ fn setup_building_hud(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
+    asset_server: &AssetServer,
     object_metadata: &Assets<ObjectMetadata>,
 ) {
     let tabs_entity = parent
@@ -514,6 +524,7 @@ fn setup_building_hud(
                         parent,
                         tab_commands,
                         theme,
+                        asset_server,
                         object_metadata,
                         ObjectCategory::FAMILY_CATEGORIES,
                     );

@@ -52,7 +52,7 @@ impl MovementPlugin {
         mut removed_navigations: RemovedComponents<NavPath>,
         mut actors: Query<&mut AnimationState>,
     ) {
-        for entity in &mut removed_navigations {
+        for entity in removed_navigations.read() {
             if let Ok(mut animation_state) = actors.get_mut(entity) {
                 animation_state.set_default(actor_animations.handle(ActorAnimation::Idle));
             }

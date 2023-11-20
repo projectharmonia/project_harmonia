@@ -89,7 +89,7 @@ impl InGameMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
         ingame_menus: Query<Entity, With<IngameMenu>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(button) = buttons.get(event.0) {
                 match button {
                     IngameMenuButton::Resume => {
@@ -124,7 +124,7 @@ impl InGameMenuPlugin {
         buttons: Query<&ExitDialogButton>,
         exit_dialogs: Query<(Entity, &ExitDialog)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(button) = buttons.get(event.0) {
                 let (dialog_entity, exit_dialog) = exit_dialogs.single();
                 match button {

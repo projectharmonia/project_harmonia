@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{
-    asset::{HandleId, LoadState},
+    asset::LoadState,
     prelude::*,
     render::{
         camera::RenderTarget,
@@ -10,7 +10,7 @@ use bevy::{
     },
 };
 
-use crate::core::asset::metadata::{self, ObjectMetadata};
+use crate::core::asset::metadata::{self, object_metadata::ObjectMetadata};
 
 pub(super) struct PreviewPlugin;
 
@@ -40,36 +40,42 @@ impl PreviewPlugin {
         mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        previews: Query<(Entity, &Preview), Without<PreviewProcessed>>,
+        previews: Query<
+            (Entity, &Preview, Option<&Handle<ObjectMetadata>>),
+            Without<PreviewProcessed>,
+        >,
         parents: Query<&Parent>,
         styles: Query<&Style>,
         actors: Query<&Handle<Scene>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
-        if let Some((preview_entity, preview)) = previews.iter().find(|&(entity, _)| {
-            styles
-                .iter_many(parents.iter_ancestors(entity))
-                .all(|style| style.display != Display::None)
-        }) {
+        if let Some((preview_entity, preview, metadata_handle)) =
+            previews.iter().find(|&(entity, ..)| {
+                styles
+                    .iter_many(parents.iter_ancestors(entity))
+                    .all(|style| style.display != Display::None)
+            })
+        {
             let (translation, scene_handle) = match preview.kind {
                 PreviewKind::Actor(entity) => {
                     debug!("generating preview for actor {entity:?}");
+
                     let scene_handle = actors
                         .get(entity)
                         .expect("actor for preview should have a scene handle");
+
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
-                PreviewKind::Object(id) => {
-                    let object_metadata = object_metadata
-                        .get(&object_metadata.get_handle(id))
-                        .expect("preview event handle should be a metadata handle");
-                    let metadata_path = asset_server
-                        .get_handle_path(id)
-                        .expect("metadata handle should have a path");
-                    debug!("generating preview for {metadata_path:?}");
+                PreviewKind::Object => {
+                    let metadata_handle = metadata_handle
+                        .expect("metadata handle component should be present for object previews");
+                    let metadata_path = metadata_handle.path().unwrap();
+                    debug!("generating preview for object {metadata_path:?}");
 
+                    let metadata = object_metadata.get(metadata_handle).unwrap();
                     let scene_handle = asset_server.load(metadata::scene_path(metadata_path));
-                    (object_metadata.general.preview_translation, scene_handle)
+
+                    (metadata.general.preview_translation, scene_handle)
                 }
             };
 
@@ -99,7 +105,7 @@ impl PreviewPlugin {
         previews: Query<&Preview>,
     ) {
         let (preview_target, scene_handle) = preview_scenes.single();
-        match asset_server.get_load_state(scene_handle) {
+        match asset_server.get_load_state(scene_handle).unwrap() {
             LoadState::NotLoaded | LoadState::Loading => (),
             LoadState::Loaded => {
                 debug!("asset for preview was sucessfully loaded");
@@ -125,7 +131,7 @@ impl PreviewPlugin {
 
                 // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
                 asset_events.send(AssetEvent::Modified {
-                    handle: image_handle.clone(),
+                    id: image_handle.id(),
                 });
 
                 let mut camera = preview_cameras.single_mut();
@@ -138,9 +144,6 @@ impl PreviewPlugin {
                 error!("unable to load asset for preview");
 
                 preview_state.set(PreviewState::Inactive);
-            }
-            LoadState::Unloaded => {
-                unreachable!("asset for preview shouldn't be unloaded");
             }
         }
     }
@@ -234,8 +237,8 @@ pub(crate) struct Preview {
 }
 
 impl Preview {
-    pub(crate) fn object(id: HandleId, style: &Style) -> Self {
-        Self::new(PreviewKind::Object(id), style)
+    pub(crate) fn object(style: &Style) -> Self {
+        Self::new(PreviewKind::Object, style)
     }
 
     pub(crate) fn actor(entity: Entity, style: &Style) -> Self {
@@ -255,12 +258,12 @@ impl Preview {
     }
 }
 
-/// Points to the asset or object for which the preview will be generated.
+/// Specifies where preview should be generated for specific actor in the world or for an object by its metadata.
 enum PreviewKind {
     /// Actor entity.
     Actor(Entity),
-    /// Asset's metadata ID.
-    Object(HandleId),
+    /// An object whose metadata handle is a component of the entity.
+    Object,
 }
 
 /// Marks entity with [`Preview`] as processed end excludes it from preview generation.

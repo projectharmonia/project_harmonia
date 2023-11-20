@@ -99,7 +99,7 @@ impl ActorPlugin {
         meshes: Query<(), With<Handle<Mesh>>>,
     ) {
         for actor_entity in ready_events
-            .iter()
+            .read()
             .filter_map(|event| actors.get(event.parent).ok())
         {
             for child_entity in chidlren

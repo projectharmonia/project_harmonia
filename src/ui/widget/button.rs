@@ -1,4 +1,4 @@
-use bevy::{ecs::query::Has, prelude::*, render::texture::DEFAULT_IMAGE_HANDLE};
+use bevy::{ecs::query::Has, prelude::*};
 
 use super::click::{Click, LastInteraction};
 use crate::ui::theme::Theme;
@@ -100,7 +100,7 @@ impl ButtonPlugin {
         mut click_events: EventReader<Click>,
         mut buttons: Query<(&mut Toggled, Has<ExclusiveButton>)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok((mut toggled, exclusive)) = buttons.get_mut(event.0) {
                 if exclusive && toggled.0 {
                     // Button is already pressed, if it's exclusive button, do not toggle it.
@@ -236,7 +236,7 @@ pub(crate) struct ImageButtonBundle {
 
 impl ImageButtonBundle {
     pub(crate) fn placeholder(theme: &Theme) -> Self {
-        Self::new(theme, DEFAULT_IMAGE_HANDLE.typed())
+        Self::new(theme, Default::default())
     }
 
     pub(crate) fn new(theme: &Theme, image_handle: Handle<Image>) -> Self {

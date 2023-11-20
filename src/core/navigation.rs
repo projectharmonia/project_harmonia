@@ -80,7 +80,7 @@ impl NavigationPlugin {
         mut commands: Commands,
         mut removed_navigations: RemovedComponents<Navigation>,
     ) {
-        for entity in &mut removed_navigations {
+        for entity in removed_navigations.read() {
             if let Some(mut commands) = commands.get_entity(entity) {
                 commands.remove::<(NavPath, ComputePath)>();
             }

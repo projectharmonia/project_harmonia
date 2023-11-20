@@ -1,7 +1,7 @@
 use bevy::{
     gltf::Gltf,
     prelude::*,
-    reflect::{TypePath, TypeUuid},
+    reflect::TypePath,
     render::{
         camera::RenderTarget,
         render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureUsages},
@@ -40,7 +40,7 @@ impl MirrorPlugin {
         material_handles: Query<&Handle<StandardMaterial>>,
     ) {
         for (scene_entity, scene_handle) in ready_events
-            .iter()
+            .read()
             .filter_map(|event| mirrors.get(event.parent).ok())
         {
             let gltf = gltfs
@@ -124,8 +124,7 @@ impl MirrorCameraBundle {
 #[derive(Component)]
 struct MirrorCamera;
 
-#[derive(AsBindGroup, Clone, TypeUuid, TypePath)]
-#[uuid = "f425af87-cf60-493e-8bf8-dbf235e6ee46"]
+#[derive(AsBindGroup, Clone, TypePath, Asset)]
 struct MirrorMaterial {
     #[texture(0)]
     #[sampler(1)]

@@ -52,7 +52,7 @@ impl EditorPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         families: Query<&FamilyMembers>,
     ) {
-        for event in &mut spawn_select_events {
+        for event in spawn_select_events.read() {
             let members = families
                 .get(event.0)
                 .expect("spawned family should have actors");

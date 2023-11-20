@@ -1,16 +1,16 @@
 pub(super) mod mirror;
 pub(crate) mod placing_object;
 
-use std::path::PathBuf;
-
-use bevy::{ecs::reflect::ReflectCommandExt, prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    asset::AssetPath, ecs::reflect::ReflectCommandExt, prelude::*, scene::SceneInstanceReady,
+};
 use bevy_mod_outline::OutlineBundle;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    asset::metadata::{self, ObjectMetadata},
+    asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     collision_groups::LifescapeGroupsExt,
     cursor_hover::Hoverable,
@@ -58,24 +58,24 @@ impl ObjectPlugin {
         spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
     ) {
         for (entity, object_path) in &spawned_objects {
-            let metadata_handle = asset_server.load(&*object_path.0);
-            let object_metadata = object_metadata
+            let metadata_handle = asset_server.load(&object_path.0);
+            let metadata = object_metadata
                 .get(&metadata_handle)
                 .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
-            let scene_path = metadata::scene_path(&*object_path.0);
+            let scene_path = metadata::scene_path(&object_path.0);
             debug!("spawning object {scene_path:?}");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             let mut entity = commands.entity(entity);
             entity.insert((
                 scene_handle,
-                Name::new(object_metadata.general.name.clone()),
+                Name::new(metadata.general.name.clone()),
                 Hoverable,
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
             ));
-            for component in &object_metadata.components {
+            for component in &metadata.components {
                 entity.insert_reflect(component.clone_value());
             }
         }
@@ -90,7 +90,7 @@ impl ObjectPlugin {
         mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
         for object_entity in ready_events
-            .iter()
+            .read()
             .filter_map(|event| objects.get(event.parent).ok())
         {
             for (child_entity, mesh_handle) in
@@ -118,7 +118,7 @@ impl ObjectPlugin {
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
-        for FromClient { client_id, event } in spawn_events.iter().cloned() {
+        for FromClient { client_id, event } in spawn_events.read().cloned() {
             if event.position.y.abs() > HALF_CITY_SIZE {
                 error!(
                     "received object spawn position {} with 'y' outside of city size",
@@ -165,7 +165,7 @@ impl ObjectPlugin {
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
         mut transforms: Query<&mut Transform>,
     ) {
-        for FromClient { client_id, event } in move_events.iter().copied() {
+        for FromClient { client_id, event } in move_events.read().copied() {
             match transforms.get_mut(event.entity) {
                 Ok(mut transform) => {
                     transform.translation = event.translation;
@@ -185,7 +185,7 @@ impl ObjectPlugin {
         mut despawn_events: EventReader<FromClient<ObjectDespawn>>,
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in despawn_events.iter().copied() {
+        for FromClient { client_id, event } in despawn_events.read().copied() {
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
@@ -204,7 +204,7 @@ struct ObjectBundle {
 }
 
 impl ObjectBundle {
-    fn new(metadata_path: PathBuf, translation: Vec3, rotation: Quat) -> Self {
+    fn new(metadata_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
         Self {
             object_path: ObjectPath(metadata_path),
             transform: Transform::default()
@@ -219,11 +219,11 @@ impl ObjectBundle {
 /// Contains path to the object metadata file.
 #[derive(Clone, Component, Debug, Default, Event, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(crate) struct ObjectPath(PathBuf);
+pub(crate) struct ObjectPath(AssetPath<'static>);
 
 #[derive(Clone, Deserialize, Event, Serialize)]
 struct ObjectSpawn {
-    metadata_path: PathBuf,
+    metadata_path: AssetPath<'static>,
     position: Vec2,
     rotation: Quat,
 }

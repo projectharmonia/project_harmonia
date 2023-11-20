@@ -96,7 +96,7 @@ impl CursorHoverPlugin {
         mut outlines: Query<&mut OutlineVolume>,
         children: Query<&Children>,
     ) {
-        for parent_entity in &mut unhovered {
+        for parent_entity in unhovered.read() {
             for child_entity in children.iter_descendants(parent_entity) {
                 if let Ok(mut outline) = outlines.get_mut(child_entity) {
                     outline.visible = false;

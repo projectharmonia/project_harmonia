@@ -74,7 +74,7 @@ impl MoveHerePlugin {
         children: Query<&Children>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
-        for children in children.iter_many(&mut removed_navigations) {
+        for children in children.iter_many(removed_navigations.read()) {
             if let Some((entity, _)) = tasks
                 .iter_many(children)
                 .find(|(_, &task_state)| task_state == TaskState::Active)

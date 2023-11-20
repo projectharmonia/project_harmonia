@@ -69,7 +69,7 @@ impl WallPlugin {
         children: Query<&Children>,
         mut walls: Query<&mut WallEdges, Without<CreatingWall>>,
     ) {
-        for FromClient { client_id, event } in create_events.iter().copied() {
+        for FromClient { client_id, event } in create_events.read().copied() {
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: WallEventConfirmed,

@@ -119,7 +119,7 @@ impl WorldBrowserPlugin {
         labels: Query<&Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             let Ok((world_button, &world_node)) = buttons.get(event.0) else {
                 continue;
             };
@@ -162,7 +162,7 @@ impl WorldBrowserPlugin {
         text_edits: Query<&Text, With<PortEdit>>,
         mut labels: Query<&mut Text, Without<PortEdit>>,
     ) -> Result<()> {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(&button) = buttons.get(event.0) {
                 let (dialog_entity, world_node) = dialogs.single();
                 if button == HostDialogButton::Host {
@@ -201,7 +201,7 @@ impl WorldBrowserPlugin {
         buttons: Query<&RemoveDialogButton>,
         labels: Query<&Text>,
     ) -> Result<()> {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(&button) = buttons.get(event.0) {
                 let (dialog_entity, world_node) = dialogs.single();
                 let world_name = labels
@@ -227,7 +227,7 @@ impl WorldBrowserPlugin {
         buttons: Query<&WorldBrowserButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(button) = buttons.get(event.0) {
                 match button {
                     WorldBrowserButton::Create => {
@@ -249,7 +249,7 @@ impl WorldBrowserPlugin {
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(&button) = buttons.get(event.0) {
                 if button == CreateDialogButton::Create {
                     let mut world_name = text_edits.single_mut();
@@ -271,7 +271,7 @@ impl WorldBrowserPlugin {
         ip_edits: Query<&Text, With<IpEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) -> Result<()> {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(&button) = buttons.get(event.0) {
                 match button {
                     JoinDialogButton::Join => {

@@ -188,7 +188,7 @@ impl WorldMenuPlugin {
         nodes: Query<&WorldEntity>,
         families: Query<&FamilyMembers>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok((entity_node, family_button)) = buttons.get(event.0) {
                 let world_entity = nodes
                     .get(entity_node.0)
@@ -218,7 +218,7 @@ impl WorldMenuPlugin {
         buttons: Query<(&WorldEntityNode, &CityButton)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok((entity_node, family_button)) = buttons.get(event.0) {
                 let world_entity = nodes
                     .get(entity_node.0)
@@ -244,7 +244,7 @@ impl WorldMenuPlugin {
         tabs: Query<(&Toggled, &WorldTab)>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if buttons.get(event.0).is_ok() {
                 let current_tab = tabs
                     .iter()
@@ -268,7 +268,7 @@ impl WorldMenuPlugin {
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(dialog_button) = buttons.get(event.0) {
                 if let CityDialogButton::Create = dialog_button {
                     let mut city_name = text_edits.single_mut();
@@ -287,7 +287,7 @@ impl WorldMenuPlugin {
         mut removed_families: RemovedComponents<Family>,
         nodes: Query<(Entity, &WorldEntity)>,
     ) {
-        for removed_entity in removed_cities.iter().chain(&mut removed_families) {
+        for removed_entity in removed_cities.read().chain(removed_families.read()) {
             let (node_entity, _) = nodes
                 .iter()
                 .find(|(_, world_entity)| world_entity.0 == removed_entity)

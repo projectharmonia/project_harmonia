@@ -11,7 +11,7 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        TypeRegistryInternal,
+        TypeRegistry,
     },
     utils::HashMap,
 };
@@ -147,7 +147,7 @@ impl FamilyPlugin {
         mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
         families: Query<(Entity, &mut FamilyMembers)>,
     ) {
-        for event in despawn_events.iter().map(|event| event.event) {
+        for event in despawn_events.read().map(|event| event.event) {
             match families.get(event.0) {
                 Ok((family_entity, members)) => {
                     commands.entity(family_entity).despawn();
@@ -189,7 +189,7 @@ impl FamilyPlugin {
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
-        for event in &mut spawn_events {
+        for event in spawn_events.read() {
             let message = serialize_family_spawn(event, &registry)
                 .expect("client event should be serializable");
 
@@ -223,7 +223,7 @@ impl FamilyPlugin {
 
 fn serialize_family_spawn(
     event: &FamilySpawn,
-    registry: &TypeRegistryInternal,
+    registry: &TypeRegistry,
 ) -> bincode::Result<Vec<u8>> {
     let mut message = Vec::new();
     DefaultOptions::new().serialize_into(&mut message, &event.city_entity)?;
@@ -239,10 +239,7 @@ fn serialize_family_spawn(
     Ok(message)
 }
 
-fn deserialize_family_spawn(
-    message: &[u8],
-    registry: &TypeRegistryInternal,
-) -> Result<FamilySpawn> {
+fn deserialize_family_spawn(message: &[u8], registry: &TypeRegistry) -> Result<FamilySpawn> {
     let mut cursor = Cursor::new(message);
     let city_entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
     let name = DefaultOptions::new().deserialize_from(&mut cursor)?;
@@ -253,16 +250,17 @@ fn deserialize_family_spawn(
         let mut deserializer =
             bincode::Deserializer::with_reader(&mut cursor, DefaultOptions::new());
         let reflect = UntypedReflectDeserializer::new(registry).deserialize(&mut deserializer)?;
-        let type_name = reflect.type_name();
+        let type_info = reflect.get_represented_type_info().unwrap();
+        let type_path = type_info.type_path();
         let registration = registry
-            .get(reflect.type_id())
-            .with_context(|| format!("{type_name} is not registered"))?;
+            .get(type_info.type_id())
+            .with_context(|| format!("{type_path} is not registered"))?;
         let reflect_actor = registration
             .data::<ReflectActorBundle>()
-            .with_context(|| format!("{type_name} doesn't have reflect(ActorBundle)"))?;
+            .with_context(|| format!("{type_path} doesn't have reflect(ActorBundle)"))?;
         let actor = reflect_actor
             .get_boxed(reflect)
-            .map_err(|reflect| anyhow!("{} is not a ActorBundle", reflect.type_name()))?;
+            .map_err(|_| anyhow!("{type_path} is not an ActorBundle"))?;
         actors.push(actor);
     }
     let select = DefaultOptions::new().deserialize_from(&mut cursor)?;

@@ -162,7 +162,7 @@ impl SettingsMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
         buttons: Query<(Entity, &Mapping)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             let Ok((entity, mapping)) = buttons.get(event.0) else {
                 continue;
             };
@@ -264,7 +264,7 @@ impl SettingsMenuPlugin {
         dialog_buttons: Query<&BindingDialogButton>,
         dialogs: Query<(Entity, Option<&ConflictButton>, &BindingButton)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(dialog_button) = dialog_buttons.get(event.0) {
                 let (entity, conflict_button, binding_button) = dialogs.single();
                 match dialog_button {
@@ -305,7 +305,7 @@ impl SettingsMenuPlugin {
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             let Ok(&settings_button) = settings_buttons.get(event.0) else {
                 continue;
             };

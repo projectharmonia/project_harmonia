@@ -21,7 +21,7 @@ impl ErrorDialogPlugin {
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for error in &mut error_events {
+        for error in error_events.read() {
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn((ErrorDialog, DialogBundle::new(&theme)))
@@ -57,7 +57,7 @@ impl ErrorDialogPlugin {
         buttons: Query<(), With<OkButton>>,
         error_dialogs: Query<Entity, With<ErrorDialog>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if buttons.get(event.0).is_ok() {
                 commands.entity(error_dialogs.single()).despawn_recursive();
             }

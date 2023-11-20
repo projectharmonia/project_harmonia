@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     core::{
-        asset::metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
         city::CityMode,
         game_state::GameState,
         lot::LotTool,
@@ -36,6 +36,7 @@ impl CityHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
+        asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
     ) {
         commands
@@ -82,6 +83,7 @@ impl CityHudPlugin {
                                     parent,
                                     &mut tab_commands,
                                     &theme,
+                                    &asset_server,
                                     &object_metadata,
                                     ObjectCategory::CITY_CATEGORIES,
                                 );

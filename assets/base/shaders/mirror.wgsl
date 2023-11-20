@@ -1,4 +1,4 @@
-#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+#import bevy_pbr::mesh_vertex_output::VertexOutput
 
 @group(1) @binding(0)
 var texture: texture_2d<f32>;
@@ -7,7 +7,7 @@ var texture_sampler: sampler;
 
 @fragment
 fn fragment(
-    in: MeshVertexOutput,
+    in: VertexOutput,
 ) -> @location(0) vec4<f32> {
     return textureSample(texture, texture_sampler, vec2<f32>(1.0 - in.uv.x, in.uv.y));
 }

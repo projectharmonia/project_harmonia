@@ -85,7 +85,7 @@ impl LotPlugin {
         mut spawn_events: EventReader<FromClient<LotSpawn>>,
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in spawn_events.iter().cloned() {
+        for FromClient { client_id, event } in spawn_events.read().cloned() {
             commands.entity(event.city_entity).with_children(|parent| {
                 parent.spawn(LotBundle::new(event.vertices));
             });
@@ -101,7 +101,7 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
         mut lots: Query<&mut LotVertices>,
     ) {
-        for FromClient { client_id, event } in move_events.iter().copied() {
+        for FromClient { client_id, event } in move_events.read().copied() {
             match lots.get_mut(event.entity) {
                 Ok(mut vertices) => {
                     for vertex in &mut vertices.0 {
@@ -122,7 +122,7 @@ impl LotPlugin {
         mut despawn_events: EventReader<FromClient<LotDespawn>>,
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in despawn_events.iter().copied() {
+        for FromClient { client_id, event } in despawn_events.read().copied() {
             commands.entity(event.0).despawn();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),

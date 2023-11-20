@@ -26,7 +26,7 @@ impl TextEditPlugin {
         mut text_edits: Query<&mut Text, With<ActiveEdit>>,
     ) {
         if let Ok(mut text) = text_edits.get_single_mut() {
-            for event in &mut char_events {
+            for event in char_events.read() {
                 text.sections[0].value.push(event.char);
             }
             if keys.pressed(KeyCode::Back) {

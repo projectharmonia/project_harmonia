@@ -56,7 +56,7 @@ impl CheckboxPlugin {
         mut checkboxes: Query<&mut Checkbox>,
         parents: Query<&Parent>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(parent) = parents.get(event.0) {
                 if let Ok(mut checkbox) = checkboxes.get_mut(**parent) {
                     checkbox.0 = !checkbox.0;

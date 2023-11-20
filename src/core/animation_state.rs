@@ -28,7 +28,7 @@ impl AnimationStatePlugin {
         mut animation_players: Query<&mut AnimationPlayer>,
     ) {
         for (entity, animation_state) in ready_events
-            .iter()
+            .read()
             .filter_map(|event| scenes.get(event.parent).ok())
         {
             if let Some(mut animation_player) = animation_players

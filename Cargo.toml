@@ -6,24 +6,24 @@ license = "AGPL-3.0-or-later"
 rust-version = "1.65"
 
 [dependencies]
-bevy = { version = "0.11", default-features = false, features = [
+bevy = { version = "0.12", default-features = false, features = [
   "animation",
   "bevy_gltf",
   "bevy_ui",
   "bevy_sprite",
   "bevy_text",
-  "filesystem_watcher",
+  "file_watcher",
   "png",
   "x11",
 ] }
-bevy_atmosphere = "0.7"
-bevy_replicon = "0.16"
-bevy_rapier3d = "0.22"
-bevy_mod_outline = "0.5"
-bevy_polyline = "0.7"
+bevy_atmosphere = "0.8"
+bevy_replicon = "0.17"
+bevy_rapier3d = "0.23"
+bevy_mod_outline = "0.6"
+bevy_polyline = { git = "https://github.com/rszemplinski/bevy_polyline" }
 app_dirs2 = "2.5"
-oxidized_navigation = { version = "0.7", features = ["rapier"] }
-leafwing-input-manager = "0.10"
+oxidized_navigation = { version = "0.8", features = ["rapier"] }
+leafwing-input-manager = "0.11"
 serde = "1.0"
 strum = { version = "0.25", features = ["derive"] }
 num_enum = "0.6"
@@ -42,33 +42,27 @@ bitflags = "2.4"
 futures-lite = "1.13"
 
 [patch.crates-io]
-bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_animation = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_app = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_asset = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_core = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_core_pipeline = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_derive = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_diagnostic = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_ecs = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_encase_derive = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_gilrs = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_gltf = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_hierarchy = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_input = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_internal = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_log = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_macro_utils = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_math = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_mikktspace = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_pbr = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_ptr = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_reflect = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_render = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_scene = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_tasks = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_time = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_transform = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_utils = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
-bevy_winit = { git = "https://github.com/lifescapegame/bevy", branch = "release-0.11.2-patched" }
+bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_app = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_asset = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_asset_macros = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_core = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_derive = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_ecs = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_encase_derive = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_hierarchy = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_input = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_log = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_math = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_mikktspace = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_reflect = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_render = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_render_macros = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_tasks = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_time = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_transform = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_utils = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_macro_utils = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy_internal = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }
+bevy = { git = "https://github.com/lifescapegame/bevy", branch = "0.12.0-patched" }

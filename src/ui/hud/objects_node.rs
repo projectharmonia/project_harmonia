@@ -1,8 +1,8 @@
-use bevy::{asset::HandleId, prelude::*, window::PrimaryWindow};
+use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::{
     core::{
-        asset::metadata::{ObjectCategory, ObjectMetadata},
+        asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
         city::ActiveCity,
         family::FamilyMode,
         game_state::GameState,
@@ -36,14 +36,14 @@ impl ObjectsNodePlugin {
     fn button_system(
         mut commands: Commands,
         active_cities: Query<Entity, With<ActiveCity>>,
-        buttons: Query<(&Toggled, &MetadataId), Changed<Toggled>>,
+        buttons: Query<(&Toggled, &Handle<ObjectMetadata>), Changed<Toggled>>,
     ) {
-        for (toggled, id) in &buttons {
+        for (toggled, metadata_handle) in &buttons {
             if toggled.0 {
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
-                        parent.spawn(PlacingObject::spawning(id.0));
+                        parent.spawn(PlacingObject::spawning(metadata_handle.clone()));
                     });
             }
         }
@@ -51,15 +51,22 @@ impl ObjectsNodePlugin {
 
     fn popup_system(
         mut commands: Commands,
-        asset_server: Res<AssetServer>,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        buttons: Query<(&Interaction, &Style, &GlobalTransform, &MetadataId), Changed<Interaction>>,
+        buttons: Query<
+            (
+                &Interaction,
+                &Style,
+                &GlobalTransform,
+                &Handle<ObjectMetadata>,
+            ),
+            Changed<Interaction>,
+        >,
         windows: Query<&Window, With<PrimaryWindow>>,
         popups: Query<Entity, With<ObjectPopup>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, style, transform, id) in &buttons {
+        for (&interaction, style, transform, metadata_handle) in &buttons {
             match interaction {
                 Interaction::Hovered => {
                     let (Val::Px(button_width), Val::Px(button_height)) =
@@ -72,15 +79,7 @@ impl ObjectsNodePlugin {
                     let left = button_translation.x - button_width / 2.0;
                     let bottom =
                         window.resolution.height() - button_translation.y + button_height / 2.0;
-
-                    let metadata_path = asset_server
-                        .get_handle_path(id.0)
-                        .expect("spawning object metadata should have a path");
-                    let object_metadata = object_metadata
-                        .get(&asset_server.get_handle(id.0))
-                        .unwrap_or_else(|| {
-                            panic!("{metadata_path:?} should correspond to metadata")
-                        });
+                    let metadata = object_metadata.get(metadata_handle).unwrap();
 
                     commands.entity(roots.single()).with_children(|parent| {
                         parent
@@ -102,14 +101,13 @@ impl ObjectsNodePlugin {
                             .with_children(|parent| {
                                 parent.spawn(TextBundle::from_sections([
                                     TextSection::new(
-                                        object_metadata.general.name.clone() + "\n\n",
+                                        metadata.general.name.clone() + "\n\n",
                                         theme.label.normal.clone(),
                                     ),
                                     TextSection::new(
                                         format!(
                                             "{}\n{}",
-                                            object_metadata.general.license,
-                                            object_metadata.general.author,
+                                            metadata.general.license, metadata.general.author,
                                         ),
                                         theme.label.small.clone(),
                                     ),
@@ -129,9 +127,9 @@ impl ObjectsNodePlugin {
     fn toggle_system(
         mut removed_objects: RemovedComponents<PlacingObject>,
         placing_objects: Query<(), With<PlacingObject>>,
-        mut buttons: Query<&mut Toggled, With<MetadataId>>,
+        mut buttons: Query<&mut Toggled, With<Handle<ObjectMetadata>>>,
     ) {
-        if removed_objects.iter().count() != 0 {
+        if removed_objects.read().count() != 0 {
             // If there is no button, then the object was moved.
             if let Some(mut toggled) = buttons.iter_mut().find(|toggled| toggled.0) {
                 if placing_objects.is_empty() {
@@ -146,6 +144,7 @@ pub(super) fn setup_objects_node(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
+    asset_server: &AssetServer,
     object_metadata: &Assets<ObjectMetadata>,
     categories: &[ObjectCategory],
 ) {
@@ -178,8 +177,8 @@ pub(super) fn setup_objects_node(
                     .filter(|(_, metadata)| metadata.category == category)
                 {
                     parent.spawn((
-                        MetadataId(id),
-                        Preview::object(id, &theme.button.image),
+                        asset_server.get_id_handle(id).unwrap(),
+                        Preview::object(&theme.button.image),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),
@@ -199,9 +198,6 @@ pub(super) fn setup_objects_node(
             .set_parent(tabs_entity);
     }
 }
-
-#[derive(Component)]
-struct MetadataId(HandleId);
 
 #[derive(Component)]
 struct ObjectPopup;

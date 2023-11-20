@@ -49,7 +49,7 @@ impl PathDebugPlugin {
         mut removed_paths: RemovedComponents<NavPath>,
         debug_paths: Query<(Entity, &NavActor)>,
     ) {
-        for actor_entity in &mut removed_paths {
+        for actor_entity in removed_paths.read() {
             if let Some((debug_entity, _)) = debug_paths
                 .iter()
                 .find(|(_, nav_actor)| nav_actor.0 == actor_entity)

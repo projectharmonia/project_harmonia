@@ -68,7 +68,7 @@ impl TellSecretPlugin {
         mut actors: Query<(&Children, &mut AnimationState)>,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
-        for actor_entity in &mut removed_navigations {
+        for actor_entity in removed_navigations.read() {
             let Ok((children, mut animation_state)) = actors.get_mut(actor_entity) else {
                 continue;
             };
@@ -115,7 +115,7 @@ impl TellSecretPlugin {
         children: Query<&Children>,
         tasks: Query<(Entity, &TaskState), With<TellSecret>>,
     ) {
-        for children in children.iter_many(finish_events.iter().map(|event| event.0)) {
+        for children in children.iter_many(finish_events.read().map(|event| event.0)) {
             if let Some((entity, _)) = tasks
                 .iter_many(children)
                 .find(|(_, &task_state)| task_state == TaskState::Active)

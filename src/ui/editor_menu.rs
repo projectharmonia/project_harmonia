@@ -84,7 +84,7 @@ impl EditorMenuPlugin {
         buttons: Query<(), With<PlusButton>>,
         families: Query<Entity, With<EditableFamily>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if buttons.get(event.0).is_ok() {
                 commands.entity(families.single()).with_children(|parent| {
                     parent.spawn(EditableActorBundle::default());
@@ -136,7 +136,7 @@ impl EditorMenuPlugin {
         mut removed_actors: RemovedComponents<EditableActor>,
         buttons: Query<(Entity, &EditActor)>,
     ) {
-        for actor_entity in &mut removed_actors {
+        for actor_entity in removed_actors.read() {
             let (button_entity, _) = buttons
                 .iter()
                 .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
@@ -238,7 +238,7 @@ impl EditorMenuPlugin {
         buttons: Query<&FamilyMenuButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(button) = buttons.get(event.0) {
                 match button {
                     FamilyMenuButton::Confirm => {
@@ -260,7 +260,7 @@ impl EditorMenuPlugin {
         cities: Query<(Entity, &Name), With<City>>,
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
-        for event in &mut click_events {
+        for event in click_events.read() {
             let Ok(&button) = buttons.get(event.0) else {
                 continue;
             };
@@ -292,7 +292,7 @@ impl EditorMenuPlugin {
         dialogs: Query<Entity, With<Dialog>>,
         buttons: Query<&PlaceDialogButton>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok(&button) = buttons.get(event.0) {
                 if button == PlaceDialogButton::CreateNew {
                     reset_events.send_default();
@@ -310,7 +310,7 @@ impl EditorMenuPlugin {
         buttons: Query<(&CityPlaceButton, &PlaceCity)>,
         mut dialogs: Query<(Entity, &mut FamilyScene)>,
     ) {
-        for event in &mut click_events {
+        for event in click_events.read() {
             if let Ok((button, place_city)) = buttons.get(event.0) {
                 let (dialog_entity, mut scene) = dialogs.single_mut();
                 match button {

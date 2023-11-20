@@ -44,7 +44,7 @@ impl LinkedTaskPlugin {
         tasks: Query<(Entity, &Parent, &TaskState, &LinkedTask)>,
         mut actors: Query<&mut AnimationState>,
     ) {
-        for removed_entity in &mut removed_tasks {
+        for removed_entity in removed_tasks.read() {
             if let Some((linked_entity, parent, &task_state, _)) = tasks
                 .iter()
                 .find(|(.., linked_task)| linked_task.0 == removed_entity)

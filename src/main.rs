@@ -5,20 +5,16 @@
 mod core;
 mod ui;
 
-use std::time::Duration;
-
 use bevy::{
-    asset::ChangeWatcher,
     log::LogPlugin,
     pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{
-        settings::{WgpuFeatures, WgpuSettings},
+        settings::{RenderCreation, WgpuFeatures, WgpuSettings},
         RenderPlugin,
     },
 };
 use bevy_atmosphere::prelude::*;
-use bevy_mod_outline::OutlinePlugin;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -42,15 +38,11 @@ fn main() {
                     filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,lifescape=debug".into(),
                     level: bevy::log::Level::DEBUG,
                 })
-                .set(AssetPlugin {
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                    ..Default::default()
-                })
                 .set(RenderPlugin {
-                    wgpu_settings: WgpuSettings {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
                         features: WgpuFeatures::POLYGON_MODE_LINE,
                         ..Default::default()
-                    },
+                    }),
                 }),
             ReplicationPlugins,
             WireframePlugin,
@@ -74,7 +66,7 @@ fn main() {
             }),
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
-            OutlinePlugin,
+            // OutlinePlugin, // TODO: Re-enable when https://github.com/komadori/bevy_mod_outline/issues/27 will be fixed.
             PolylinePlugin,
             CorePlugins,
             UiPlugins,

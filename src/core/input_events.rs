@@ -20,7 +20,7 @@ impl InputEvents<'_, '_> {
     pub(crate) fn input_kind(&mut self) -> Option<InputKind> {
         if let Some(input) = self
             .keys
-            .iter()
+            .read()
             .filter(|input| input.state == ButtonState::Released)
             .find_map(|input| input.key_code)
         {
@@ -29,13 +29,13 @@ impl InputEvents<'_, '_> {
 
         if let Some(input) = self
             .mouse_buttons
-            .iter()
+            .read()
             .find(|input| input.state == ButtonState::Released)
         {
             return Some(input.button.into());
         }
 
-        if let Some(input) = self.gamepad_buttons.iter().next() {
+        if let Some(input) = self.gamepad_buttons.read().next() {
             if input.value == 1.0 {
                 return Some(input.button_type.into());
             }
