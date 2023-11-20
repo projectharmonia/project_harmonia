@@ -1,4 +1,8 @@
-use std::{env, fs::DirEntry, path::PathBuf};
+use std::{
+    env,
+    fs::{self, DirEntry},
+    path::PathBuf,
+};
 
 use anyhow::{Context, Result};
 use app_dirs2::{AppDataType, AppInfo};
@@ -62,6 +66,8 @@ impl Default for GamePaths {
 
         let mut worlds = config_dir;
         worlds.push("worlds");
+        fs::create_dir_all(&worlds)
+            .unwrap_or_else(|e| panic!("{worlds:?} should be writable: {e}"));
 
         Self { settings, worlds }
     }
