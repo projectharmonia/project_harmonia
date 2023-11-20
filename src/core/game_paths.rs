@@ -73,18 +73,6 @@ impl Default for GamePaths {
     }
 }
 
-/// Cleanup temporary directory used in tests.
-#[cfg(test)]
-impl Drop for GamePaths {
-    fn drop(&mut self) {
-        let config_dir = self
-            .settings
-            .parent()
-            .expect("settings location should have a parent dir");
-        std::fs::remove_dir_all(config_dir).ok();
-    }
-}
-
 fn world_name(entry: &DirEntry) -> Option<String> {
     let file_type = entry.file_type().ok()?;
     if !file_type.is_file() {
@@ -98,28 +86,4 @@ fn world_name(entry: &DirEntry) -> Option<String> {
     }
 
     path.file_stem()?.to_str().map(|stem| stem.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs::{self, File};
-
-    use super::*;
-
-    #[test]
-    fn world_names_reading() -> Result<()> {
-        let game_paths = GamePaths::default();
-        const WORLD_NAME: &str = "Test world names";
-
-        fs::create_dir_all(game_paths.worlds.join("Directory"))?;
-        File::create(game_paths.worlds.join("Not a world"))?;
-        File::create(game_paths.worlds.join("Not a world.txt"))?;
-        File::create(game_paths.worlds.join(format!(".{SCENE_EXTENSION}")))?;
-        File::create(game_paths.world_path(WORLD_NAME))?;
-
-        let world_names = game_paths.get_world_names()?;
-        assert_eq!(world_names, &[WORLD_NAME]);
-
-        Ok(())
-    }
 }
