@@ -29,6 +29,7 @@ skip = [
   { name = "futures-lite", version = "2.0" },
   { name = "hashbrown", version = "0.12" },
   { name = "indexmap", version = "1.9" },
+  { name = "inotify", version = "0.9" },
   { name = "libloading", version = "0.7" },
   { name = "naga", version = "0.13" },
   { name = "num_enum", version = "0.5" },
