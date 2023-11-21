@@ -40,35 +40,28 @@ impl PreviewPlugin {
         mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        previews: Query<
-            (Entity, &Preview, Option<&Handle<ObjectMetadata>>),
-            Without<PreviewProcessed>,
-        >,
+        previews: Query<(Entity, &Preview), Without<PreviewProcessed>>,
         parents: Query<&Parent>,
         styles: Query<&Style>,
         actors: Query<&Handle<Scene>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
-        if let Some((preview_entity, preview, metadata_handle)) =
-            previews.iter().find(|&(entity, ..)| {
-                styles
-                    .iter_many(parents.iter_ancestors(entity))
-                    .all(|style| style.display != Display::None)
-            })
-        {
-            let (translation, scene_handle) = match *preview {
+        if let Some((preview_entity, preview)) = previews.iter().find(|&(entity, ..)| {
+            styles
+                .iter_many(parents.iter_ancestors(entity))
+                .all(|style| style.display != Display::None)
+        }) {
+            let (translation, scene_handle) = match preview {
                 Preview::Actor(entity) => {
                     debug!("generating preview for actor {entity:?}");
 
                     let scene_handle = actors
-                        .get(entity)
+                        .get(*entity)
                         .expect("actor for preview should have a scene handle");
 
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
-                Preview::Object => {
-                    let metadata_handle = metadata_handle
-                        .expect("metadata handle component should be present for object previews");
+                Preview::Object(metadata_handle) => {
                     let metadata_path = metadata_handle.path().unwrap();
                     debug!("generating preview for object {metadata_path:?}");
 
@@ -233,10 +226,8 @@ struct PreviewCamera;
 /// Processed entities will be marked with [`PreviewProcessed`].
 #[derive(Component)]
 pub(crate) enum Preview {
-    /// Actor entity.
     Actor(Entity),
-    /// An object whose metadata handle is a component of the entity.
-    Object,
+    Object(Handle<ObjectMetadata>),
 }
 
 /// Marks entity with [`Preview`] as processed end excludes it from preview generation.

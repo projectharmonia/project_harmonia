@@ -36,9 +36,13 @@ impl ObjectsNodePlugin {
     fn button_system(
         mut commands: Commands,
         active_cities: Query<Entity, With<ActiveCity>>,
-        buttons: Query<(&Toggled, &Handle<ObjectMetadata>), Changed<Toggled>>,
+        buttons: Query<(&Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
     ) {
-        for (toggled, metadata_handle) in &buttons {
+        for (toggled, preview) in &buttons {
+            let Preview::Object(metadata_handle) = preview else {
+                continue;
+            };
+
             if toggled.0 {
                 commands
                     .entity(active_cities.single())
@@ -54,19 +58,18 @@ impl ObjectsNodePlugin {
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         buttons: Query<
-            (
-                &Interaction,
-                &Style,
-                &GlobalTransform,
-                &Handle<ObjectMetadata>,
-            ),
-            Changed<Interaction>,
+            (&Interaction, &Style, &GlobalTransform, &Preview),
+            (Changed<Interaction>, With<ObjectButton>),
         >,
         windows: Query<&Window, With<PrimaryWindow>>,
         popups: Query<Entity, With<ObjectPopup>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, style, transform, metadata_handle) in &buttons {
+        for (&interaction, style, transform, preview) in &buttons {
+            let Preview::Object(metadata_handle) = preview else {
+                continue;
+            };
+
             match interaction {
                 Interaction::Hovered => {
                     let (Val::Px(button_width), Val::Px(button_height)) =
@@ -127,7 +130,7 @@ impl ObjectsNodePlugin {
     fn toggle_system(
         mut removed_objects: RemovedComponents<PlacingObject>,
         placing_objects: Query<(), With<PlacingObject>>,
-        mut buttons: Query<&mut Toggled, With<Handle<ObjectMetadata>>>,
+        mut buttons: Query<&mut Toggled, With<ObjectButton>>,
     ) {
         if removed_objects.read().count() != 0 {
             // If there is no button, then the object was moved.
@@ -177,8 +180,8 @@ pub(super) fn setup_objects_node(
                     .filter(|(_, metadata)| metadata.category == category)
                 {
                     parent.spawn((
-                        asset_server.get_id_handle(id).unwrap(),
-                        Preview::Object,
+                        ObjectButton,
+                        Preview::Object(asset_server.get_id_handle(id).unwrap()),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),
@@ -198,6 +201,9 @@ pub(super) fn setup_objects_node(
             .set_parent(tabs_entity);
     }
 }
+
+#[derive(Component)]
+struct ObjectButton;
 
 #[derive(Component)]
 struct ObjectPopup;
