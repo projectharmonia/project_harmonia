@@ -105,7 +105,7 @@ impl EditorMenuPlugin {
                 .with_children(|parent| {
                     parent.spawn((
                         EditActor(entity),
-                        Preview::actor(entity, &theme.button.image),
+                        Preview::Actor(entity),
                         ExclusiveButton,
                         Toggled(true),
                         ImageButtonBundle::placeholder(&theme),

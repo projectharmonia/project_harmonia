@@ -56,8 +56,8 @@ impl PreviewPlugin {
                     .all(|style| style.display != Display::None)
             })
         {
-            let (translation, scene_handle) = match preview.kind {
-                PreviewKind::Actor(entity) => {
+            let (translation, scene_handle) = match *preview {
+                Preview::Actor(entity) => {
                     debug!("generating preview for actor {entity:?}");
 
                     let scene_handle = actors
@@ -66,7 +66,7 @@ impl PreviewPlugin {
 
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
-                PreviewKind::Object => {
+                Preview::Object => {
                     let metadata_handle = metadata_handle
                         .expect("metadata handle component should be present for object previews");
                     let metadata_path = metadata_handle.path().unwrap();
@@ -95,14 +95,13 @@ impl PreviewPlugin {
     }
 
     fn loading_system(
-        mut commands: Commands,
         mut asset_events: EventWriter<AssetEvent<Image>>,
         mut preview_state: ResMut<NextState<PreviewState>>,
         mut images: ResMut<Assets<Image>>,
         asset_server: Res<AssetServer>,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
         preview_scenes: Query<(&PreviewTarget, &Handle<Scene>)>,
-        previews: Query<&Preview>,
+        mut targets: Query<(&mut Handle<Image>, &Style)>,
     ) {
         let (preview_target, scene_handle) = preview_scenes.single();
         match asset_server.get_load_state(scene_handle).unwrap() {
@@ -110,24 +109,25 @@ impl PreviewPlugin {
             LoadState::Loaded => {
                 debug!("asset for preview was sucessfully loaded");
 
-                let Ok(preview) = previews.get(preview_target.0) else {
-                    // Entity target is longer valid.
+                let Ok((mut image_handle, style)) = targets.get_mut(preview_target.0) else {
+                    debug!("preview target is no longer valid");
                     preview_state.set(PreviewState::Inactive);
                     return;
+                };
+
+                let (Val::Px(width), Val::Px(height)) = (style.width, style.height) else {
+                    panic!("width and height should be set in pixels");
                 };
 
                 let mut image = Image::default();
                 image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
                 image.resize(Extent3d {
-                    width: preview.width,
-                    height: preview.height,
+                    width: width as u32,
+                    height: height as u32,
                     ..Default::default()
                 });
 
-                let image_handle = images.add(image);
-                commands
-                    .entity(preview_target.0)
-                    .insert(image_handle.clone());
+                *image_handle = images.add(image);
 
                 // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
                 asset_events.send(AssetEvent::Modified {
@@ -136,13 +136,12 @@ impl PreviewPlugin {
 
                 let mut camera = preview_cameras.single_mut();
                 camera.is_active = true;
-                camera.target = RenderTarget::Image(image_handle);
+                camera.target = RenderTarget::Image(image_handle.clone());
 
                 preview_state.set(PreviewState::Rendering);
             }
             LoadState::Failed => {
                 error!("unable to load asset for preview");
-
                 preview_state.set(PreviewState::Inactive);
             }
         }
@@ -227,41 +226,13 @@ enum PreviewState {
 #[derive(Component)]
 struct PreviewCamera;
 
-/// Contains information about the preview, generated image handle will be added as a child.
+/// Specifies preview that should be generated for specific actor in the world or for an object by its metadata.
 ///
+/// Generated image handle will be written to the image handle on this entity.
 /// Preview generation happens only if UI element entity is visible.
 /// Processed entities will be marked with [`PreviewProcessed`].
 #[derive(Component)]
-pub(crate) struct Preview {
-    kind: PreviewKind,
-    width: u32,
-    height: u32,
-}
-
-impl Preview {
-    pub(crate) fn object(style: &Style) -> Self {
-        Self::new(PreviewKind::Object, style)
-    }
-
-    pub(crate) fn actor(entity: Entity, style: &Style) -> Self {
-        Self::new(PreviewKind::Actor(entity), style)
-    }
-
-    fn new(kind: PreviewKind, style: &Style) -> Self {
-        let (Val::Px(width), Val::Px(height)) = (style.width, style.height) else {
-            panic!("button size should be set in pixels");
-        };
-
-        Self {
-            kind,
-            width: width as u32,
-            height: height as u32,
-        }
-    }
-}
-
-/// Specifies where preview should be generated for specific actor in the world or for an object by its metadata.
-enum PreviewKind {
+pub(crate) enum Preview {
     /// Actor entity.
     Actor(Entity),
     /// An object whose metadata handle is a component of the entity.

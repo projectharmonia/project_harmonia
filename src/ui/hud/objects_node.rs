@@ -178,7 +178,7 @@ pub(super) fn setup_objects_node(
                 {
                     parent.spawn((
                         asset_server.get_id_handle(id).unwrap(),
-                        Preview::object(&theme.button.image),
+                        Preview::Object,
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),
