@@ -94,7 +94,7 @@ impl PreviewPlugin {
         asset_server: Res<AssetServer>,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
         preview_scenes: Query<(&PreviewTarget, &Handle<Scene>)>,
-        mut targets: Query<(&mut Handle<Image>, &Style)>,
+        targets: Query<&Style>,
     ) {
         let (preview_target, scene_handle) = preview_scenes.single();
         match asset_server.get_load_state(scene_handle).unwrap() {
@@ -102,7 +102,7 @@ impl PreviewPlugin {
             LoadState::Loaded => {
                 debug!("asset for preview was sucessfully loaded");
 
-                let Ok((mut image_handle, style)) = targets.get_mut(preview_target.0) else {
+                let Ok(style) = targets.get(preview_target.0) else {
                     debug!("preview target is no longer valid");
                     preview_state.set(PreviewState::Inactive);
                     return;
@@ -120,7 +120,7 @@ impl PreviewPlugin {
                     ..Default::default()
                 });
 
-                *image_handle = images.add(image);
+                let image_handle = images.add(image);
 
                 // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
                 asset_events.send(AssetEvent::Modified {
@@ -163,14 +163,25 @@ impl PreviewPlugin {
     fn deactivation_system(
         mut commands: Commands,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
-        preview_scenes: Query<Entity, With<PreviewTarget>>,
+        preview_scenes: Query<(Entity, &PreviewTarget)>,
+        mut targets: Query<&mut Handle<Image>>,
     ) {
-        if let Ok(entity) = preview_scenes.get_single() {
+        let mut preview_camera = preview_cameras.single_mut();
+        preview_camera.is_active = false;
+
+        if let Ok((entity, preview_target)) = preview_scenes.get_single() {
+            if let Ok(mut target_handle) = targets.get_mut(preview_target.0) {
+                let RenderTarget::Image(image_handle) = &preview_camera.target else {
+                    panic!("preview camera should render only to images");
+                };
+                *target_handle = image_handle.clone();
+                debug!("preview rendered");
+            } else {
+                debug!("preview target is no longer valid");
+            }
+
             commands.entity(entity).despawn_recursive();
         }
-
-        preview_cameras.single_mut().is_active = false;
-        debug!("preview rendered");
     }
 }
 
