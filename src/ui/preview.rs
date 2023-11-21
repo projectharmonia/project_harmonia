@@ -176,7 +176,9 @@ impl PreviewPlugin {
         if let Ok(entity) = preview_scenes.get_single() {
             commands.entity(entity).despawn_recursive();
         }
+
         preview_cameras.single_mut().is_active = false;
+        debug!("preview rendered");
     }
 }
 
@@ -201,7 +203,6 @@ impl Default for PreviewCameraBundle {
             camera_bundle: Camera3dBundle {
                 transform: Transform::from_translation(Vec3::Y * 1000.0), // High above the player to avoid noticing.
                 camera: Camera {
-                    hdr: true,
                     is_active: false,
                     ..Default::default()
                 },
