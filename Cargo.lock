@@ -2304,6 +2304,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2397,17 +2406,17 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "leafwing-input-manager"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f5730f7b7b516b7ede475443aca506769e7527b576975133d97d6d912ece4d2"
+checksum = "61e0ad1622a1664b055990aac9efd90a9012b82737847e6a85d36ce38d2bf7c4"
 dependencies = [
  "bevy",
  "derive_more",
  "fixedbitset",
- "itertools",
+ "itertools 0.12.0",
  "leafwing_input_manager_macros",
+ "multimap",
  "once_cell",
- "petitset",
  "serde",
 ]
 
@@ -2492,7 +2501,7 @@ dependencies = [
  "bitflags 2.4.1",
  "clap",
  "futures-lite 1.13.0",
- "itertools",
+ "itertools 0.11.0",
  "leafwing-input-manager",
  "num_enum 0.6.1",
  "oxidized_navigation",
@@ -2607,6 +2616,15 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "multimap"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1a5d38b9b352dbd913288736af36af41c48d61b1a8cd34bcecd727561b7d511"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -3075,15 +3093,6 @@ checksum = "e1d3afd2628e69da2be385eb6f2fd57c8ac7977ceeff6dc166ff1657b0e386a9"
 dependencies = [
  "fixedbitset",
  "indexmap 2.1.0",
-]
-
-[[package]]
-name = "petitset"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b1a50d821a2526af6d5756c23c68e453532a986e361a3e12c9cc7fe61d862ac"
-dependencies = [
- "serde",
 ]
 
 [[package]]
