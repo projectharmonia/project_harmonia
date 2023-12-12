@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{
-    asset::LoadState,
+    asset::{LoadState, RecursiveDependencyLoadState},
     prelude::*,
     render::{
         camera::RenderTarget,
@@ -97,46 +97,46 @@ impl PreviewPlugin {
         targets: Query<&Style>,
     ) {
         let (preview_target, scene_handle) = preview_scenes.single();
-        match asset_server.get_load_state(scene_handle).unwrap() {
-            LoadState::NotLoaded | LoadState::Loading => (),
-            LoadState::Loaded => {
-                debug!("asset for preview was sucessfully loaded");
+        let asset_state = asset_server.load_state(scene_handle);
+        let deps_state = asset_server.recursive_dependency_load_state(scene_handle);
+        if asset_state == LoadState::Loaded && deps_state == RecursiveDependencyLoadState::Loaded {
+            debug!("asset for preview was sucessfully loaded");
 
-                let Ok(style) = targets.get(preview_target.0) else {
-                    debug!("preview target is no longer valid");
-                    preview_state.set(PreviewState::Inactive);
-                    return;
-                };
-
-                let (Val::Px(width), Val::Px(height)) = (style.width, style.height) else {
-                    panic!("width and height should be set in pixels");
-                };
-
-                let mut image = Image::default();
-                image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
-                image.resize(Extent3d {
-                    width: width as u32,
-                    height: height as u32,
-                    ..Default::default()
-                });
-
-                let image_handle = images.add(image);
-
-                // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
-                asset_events.send(AssetEvent::Modified {
-                    id: image_handle.id(),
-                });
-
-                let mut camera = preview_cameras.single_mut();
-                camera.is_active = true;
-                camera.target = RenderTarget::Image(image_handle.clone());
-
-                preview_state.set(PreviewState::Rendering);
-            }
-            LoadState::Failed => {
-                error!("unable to load asset for preview");
+            let Ok(style) = targets.get(preview_target.0) else {
+                debug!("preview target is no longer valid");
                 preview_state.set(PreviewState::Inactive);
-            }
+                return;
+            };
+
+            let (Val::Px(width), Val::Px(height)) = (style.width, style.height) else {
+                panic!("width and height should be set in pixels");
+            };
+
+            let mut image = Image::default();
+            image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
+            image.resize(Extent3d {
+                width: width as u32,
+                height: height as u32,
+                ..Default::default()
+            });
+
+            let image_handle = images.add(image);
+
+            // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
+            asset_events.send(AssetEvent::Modified {
+                id: image_handle.id(),
+            });
+
+            let mut camera = preview_cameras.single_mut();
+            camera.is_active = true;
+            camera.target = RenderTarget::Image(image_handle.clone());
+
+            preview_state.set(PreviewState::Rendering);
+        } else if asset_state == LoadState::Failed
+            || deps_state == RecursiveDependencyLoadState::Failed
+        {
+            error!("unable to load asset for preview");
+            preview_state.set(PreviewState::Inactive);
         }
     }
 

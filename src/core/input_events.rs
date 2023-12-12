@@ -14,6 +14,7 @@ pub(crate) struct InputEvents<'w, 's> {
     keys: EventReader<'w, 's, KeyboardInput>,
     mouse_buttons: EventReader<'w, 's, MouseButtonInput>,
     gamepad_buttons: EventReader<'w, 's, GamepadButtonChangedEvent>,
+    interactions: Query<'w, 's, &'static Interaction>,
 }
 
 impl InputEvents<'_, '_> {
@@ -27,12 +28,20 @@ impl InputEvents<'_, '_> {
             return Some(input.into());
         }
 
-        if let Some(input) = self
-            .mouse_buttons
-            .read()
-            .find(|input| input.state == ButtonState::Released)
+        // Ignore mouse buttons if any UI element is interacting
+        // to avoid registering button clicks as input.
+        if self
+            .interactions
+            .iter()
+            .all(|&interaction| interaction == Interaction::None)
         {
-            return Some(input.button.into());
+            if let Some(input) = self
+                .mouse_buttons
+                .read()
+                .find(|input| input.state == ButtonState::Released)
+            {
+                return Some(input.button.into());
+            }
         }
 
         if let Some(input) = self.gamepad_buttons.read().next() {

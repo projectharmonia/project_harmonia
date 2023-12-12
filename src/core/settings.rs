@@ -1,8 +1,8 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::prelude::*;
-use leafwing_input_manager::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
+use leafwing_input_manager::{prelude::*, user_input::InputKind};
 use serde::{Deserialize, Serialize};
 
 use super::{action::Action, error_report, game_paths::GamePaths};
@@ -38,9 +38,6 @@ pub(crate) struct SettingsApply;
 #[serde(default)]
 pub(crate) struct Settings {
     pub(crate) video: VideoSettings,
-    // TODO: TOML implementations have issues with [`HashSet`]:
-    // https://github.com/alexcrichton/toml-rs/issues/469 and https://github.com/ordian/toml_edit/issues/319
-    #[serde(skip)]
     #[reflect(ignore)]
     pub(crate) controls: ControlsSettings,
     pub(crate) developer: DeveloperSettings,
@@ -84,29 +81,30 @@ pub(crate) struct VideoSettings {
 #[derive(Clone, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub(crate) struct ControlsSettings {
-    pub(crate) mappings: InputMap<Action>,
+    pub(crate) mappings: HashMap<Action, Vec<InputKind>>,
 }
 
 impl Default for ControlsSettings {
     fn default() -> Self {
-        let mut input = InputMap::default();
-        input
-            .insert(KeyCode::W, Action::CameraForward)
-            .insert(KeyCode::S, Action::CameraBackward)
-            .insert(KeyCode::A, Action::CameraLeft)
-            .insert(KeyCode::D, Action::CameraRight)
-            .insert(KeyCode::Up, Action::CameraForward)
-            .insert(KeyCode::Down, Action::CameraBackward)
-            .insert(KeyCode::Left, Action::CameraLeft)
-            .insert(KeyCode::Right, Action::CameraRight)
-            .insert(MouseButton::Right, Action::RotateCamera)
-            .insert(SingleAxis::mouse_wheel_y(), Action::ZoomCamera)
-            .insert(MouseButton::Right, Action::RotateObject)
-            .insert(MouseButton::Left, Action::Confirm)
-            .insert(KeyCode::Delete, Action::Delete)
-            .insert(KeyCode::Escape, Action::Cancel);
+        let mappings = [
+            (Action::CameraForward, vec![KeyCode::W.into()]),
+            (Action::CameraBackward, vec![KeyCode::S.into()]),
+            (Action::CameraLeft, vec![KeyCode::A.into()]),
+            (Action::CameraRight, vec![KeyCode::D.into()]),
+            (Action::CameraForward, vec![KeyCode::Up.into()]),
+            (Action::CameraBackward, vec![KeyCode::Down.into()]),
+            (Action::CameraLeft, vec![KeyCode::Left.into()]),
+            (Action::CameraRight, vec![KeyCode::Right.into()]),
+            (Action::RotateCamera, vec![MouseButton::Right.into()]),
+            (Action::ZoomCamera, vec![SingleAxis::mouse_wheel_y().into()]),
+            (Action::RotateObject, vec![MouseButton::Right.into()]),
+            (Action::Confirm, vec![MouseButton::Left.into()]),
+            (Action::Delete, vec![KeyCode::Delete.into()]),
+            (Action::Cancel, vec![KeyCode::Escape.into()]),
+        ]
+        .into();
 
-        Self { mappings: input }
+        Self { mappings }
     }
 }
 

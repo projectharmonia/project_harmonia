@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::TypePath};
+use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -20,7 +20,11 @@ impl Plugin for ActionPlugin {
 
 impl ActionPlugin {
     fn load_mappings_system(mut commands: Commands, settings: Res<Settings>) {
-        commands.insert_resource(settings.controls.mappings.clone());
+        let mut input_map = InputMap::default();
+        for (&action, inputs) in &settings.controls.mappings {
+            input_map.insert_many_to_one(inputs.iter().cloned(), action);
+        }
+        commands.insert_resource(input_map);
     }
 }
 
@@ -36,8 +40,8 @@ impl ActionPlugin {
     Ord,
     PartialEq,
     PartialOrd,
+    Reflect,
     Serialize,
-    TypePath,
 )]
 pub(crate) enum Action {
     #[strum(serialize = "Camera Forward")]

@@ -1,8 +1,5 @@
 use bevy::{prelude::*, reflect::GetPath, ui::FocusPolicy};
-use leafwing_input_manager::{
-    user_input::{InputKind, UserInput},
-    Actionlike,
-};
+use leafwing_input_manager::user_input::InputKind;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
@@ -317,18 +314,15 @@ impl SettingsMenuPlugin {
                         .expect("fields with checkboxes should be stored as bools");
                     *field_value = checkbox.0;
                 }
+                settings.controls.mappings.clear();
                 for mapping in &mapping_buttons {
                     if let Some(input_kind) = mapping.input_kind {
-                        settings.controls.mappings.insert_at(
-                            input_kind,
-                            mapping.action,
-                            mapping.index,
-                        );
-                    } else {
                         settings
                             .controls
                             .mappings
-                            .remove_at(mapping.action, mapping.index);
+                            .entry(mapping.action)
+                            .or_default()
+                            .push(input_kind);
                     }
                 }
                 apply_events.send_default();
@@ -383,25 +377,17 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             ..Default::default()
         })
         .with_children(|parent| {
-            for action in Action::variants() {
+            for (&action, inputs) in &settings.controls.mappings {
                 parent.spawn(TextBundle::from_section(
                     action.to_string(),
                     theme.label.normal.clone(),
                 ));
 
                 for index in 0..INPUTS_PER_ACTION {
-                    let inputs = settings.controls.mappings.get(action);
-                    let input = inputs.get_at(index).cloned();
-                    let input_kind = if let Some(UserInput::Single(input_kind)) = input {
-                        Some(input_kind)
-                    } else {
-                        None
-                    };
                     parent.spawn((
                         Mapping {
                             action,
-                            input_kind,
-                            index,
+                            input_kind: inputs.get(index).cloned(),
                         },
                         TextButtonBundle::normal(theme, String::new()),
                     ));
@@ -471,7 +457,6 @@ enum BindingDialogButton {
 /// Stores information about button mapping.
 #[derive(Component)]
 struct Mapping {
-    index: usize,
     action: Action,
     input_kind: Option<InputKind>,
 }
