@@ -17,7 +17,7 @@ bevy = { version = "0.12.1", default-features = false, features = [
   "x11",
 ] }
 bevy_atmosphere = "0.8"
-bevy_replicon = "0.17"
+bevy_replicon = "0.18"
 bevy_rapier3d = "0.23"
 bevy_mod_outline = "0.6"
 bevy_polyline = { git = "https://github.com/rszemplinski/bevy_polyline" }

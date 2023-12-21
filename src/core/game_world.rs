@@ -1,11 +1,8 @@
 use std::fs;
 
 use anyhow::{Context, Result};
-use bevy::{
-    prelude::*,
-    scene::{self, serde::SceneDeserializer},
-};
-use bevy_replicon::{prelude::*, server};
+use bevy::{prelude::*, scene::serde::SceneDeserializer};
+use bevy_replicon::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{error_report, game_paths::GamePaths, game_state::GameState};
@@ -21,7 +18,7 @@ impl Plugin for GameWorldPlugin {
                 Self::loading_system
                     .pipe(error_report::report)
                     .run_if(on_event::<GameLoad>())
-                    .before(scene::scene_spawner_system),
+                    .before(bevy::scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
@@ -46,7 +43,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
         let mut scene = DynamicScene::default();
-        server::replicate_into_scene(&mut scene, world);
+        bevy_replicon::scene::replicate_into(&mut scene, world);
         let bytes = scene
             .serialize_ron(&registry)
             .expect("game world should be serialized");
