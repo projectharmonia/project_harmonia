@@ -184,7 +184,7 @@ impl FamilyPlugin {
     fn sending_spawn_system(
         mut spawn_events: EventReader<FamilySpawn>,
         mut client: ResMut<RenetClient>,
-        channel: Res<EventChannel<FamilySpawn>>,
+        channel: Res<ClientEventChannel<FamilySpawn>>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
@@ -199,7 +199,7 @@ impl FamilyPlugin {
     fn receiving_spawn_system(
         mut spawn_events: EventWriter<FromClient<FamilySpawn>>,
         mut server: ResMut<RenetServer>,
-        channel: Res<EventChannel<FamilySpawn>>,
+        channel: Res<ServerEventChannel<FamilySpawn>>,
         registry: Res<AppTypeRegistry>,
         entity_map: Res<ServerEntityMap>,
     ) {
