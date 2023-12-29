@@ -151,7 +151,7 @@ impl TaskPlugin {
     fn sending_task_system(
         mut task_events: EventReader<TaskRequest>,
         mut client: ResMut<RenetClient>,
-        channel: Res<EventChannel<TaskRequest>>,
+        channel: Res<ClientEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
@@ -166,7 +166,7 @@ impl TaskPlugin {
     fn receiving_task_system(
         mut task_events: EventWriter<FromClient<TaskRequest>>,
         mut server: ResMut<RenetServer>,
-        channel: Res<EventChannel<TaskRequest>>,
+        channel: Res<ServerEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
         entity_map: Res<ServerEntityMap>,
     ) {
