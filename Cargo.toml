@@ -26,7 +26,7 @@ oxidized_navigation = { version = "0.8", features = ["rapier"] }
 leafwing-input-manager = "0.11"
 serde = "1.0"
 strum = { version = "0.25", features = ["derive"] }
-num_enum = "0.6"
+num_enum = "0.7"
 clap = { version = "4.4", features = ["derive"] }
 anyhow = "1.0"
 toml = "0.7"
