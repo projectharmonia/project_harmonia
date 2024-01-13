@@ -114,7 +114,7 @@ impl WallPlugin {
                 positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
                 positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
 
-                const HEIGHT: f32 = 2.0;
+                const HEIGHT: f32 = 2.8;
                 positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
                 positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
                 positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
@@ -197,7 +197,7 @@ impl WallPlugin {
     }
 }
 
-const WIDTH: f32 = 0.25;
+const WIDTH: f32 = 0.15;
 pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
 
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
