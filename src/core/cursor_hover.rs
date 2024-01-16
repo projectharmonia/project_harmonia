@@ -5,7 +5,7 @@ use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 use bevy_rapier3d::prelude::*;
 
 use super::{
-    city::CityMode, collision_groups::LifescapeGroupsExt, condition, family::BuildingMode,
+    city::CityMode, collision_groups::HarmoniaGroupsExt, condition, family::BuildingMode,
     game_state::GameState, object::placing_object::PlacingObject, player_camera::PlayerCamera,
 };
 

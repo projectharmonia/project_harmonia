@@ -35,7 +35,8 @@ fn main() {
         .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
-                    filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,lifescape=debug".into(),
+                    filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,project_harmonia=debug"
+                        .into(),
                     level: bevy::log::Level::DEBUG,
                 })
                 .set(RenderPlugin {

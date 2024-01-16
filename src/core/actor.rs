@@ -18,7 +18,7 @@ use super::{
     game_world::WorldName,
 };
 use crate::core::{
-    animation_state::AnimationState, collision_groups::LifescapeGroupsExt, cursor_hover::Hoverable,
+    animation_state::AnimationState, collision_groups::HarmoniaGroupsExt, cursor_hover::Hoverable,
 };
 use human::HumanPlugin;
 use movement::MovementPlugin;

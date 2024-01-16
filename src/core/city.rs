@@ -8,7 +8,7 @@ use strum::{Display, EnumIter};
 
 use super::{
     actor::ActiveActor,
-    collision_groups::LifescapeGroupsExt,
+    collision_groups::HarmoniaGroupsExt,
     cursor_hover::Hoverable,
     game_state::GameState,
     game_world::WorldName,

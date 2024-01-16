@@ -1,6 +1,6 @@
-# Lifescape
+# Project Harmonia
 
-A life simulation game made with [Bevy](https://bevyengine.org).
+A work-in-progress life simulation game made with [Bevy](https://bevyengine.org).
 
 ## License
 

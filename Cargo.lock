@@ -2517,33 +2517,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lifescape"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "app_dirs2",
- "bevy",
- "bevy_atmosphere",
- "bevy_mod_outline",
- "bevy_polyline",
- "bevy_rapier3d",
- "bevy_replicon",
- "bincode",
- "bitflags 2.4.1",
- "clap",
- "futures-lite 1.13.0",
- "itertools",
- "leafwing-input-manager",
- "num_enum 0.6.1",
- "oxidized_navigation",
- "ron",
- "serde",
- "strum",
- "toml",
- "walkdir",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3214,6 +3187,33 @@ name = "profiling"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f89dff0959d98c9758c88826cc002e2c3d0b9dfac4139711d1f30de442f1139b"
+
+[[package]]
+name = "project_harmonia"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_dirs2",
+ "bevy",
+ "bevy_atmosphere",
+ "bevy_mod_outline",
+ "bevy_polyline",
+ "bevy_rapier3d",
+ "bevy_replicon",
+ "bincode",
+ "bitflags 2.4.1",
+ "clap",
+ "futures-lite 1.13.0",
+ "itertools",
+ "leafwing-input-manager",
+ "num_enum 0.6.1",
+ "oxidized_navigation",
+ "ron",
+ "serde",
+ "strum",
+ "toml",
+ "walkdir",
+]
 
 [[package]]
 name = "quote"

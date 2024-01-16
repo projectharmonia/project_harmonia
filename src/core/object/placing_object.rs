@@ -17,7 +17,7 @@ use crate::core::{
     action::Action,
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::CityMode,
-    collision_groups::LifescapeGroupsExt,
+    collision_groups::HarmoniaGroupsExt,
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,

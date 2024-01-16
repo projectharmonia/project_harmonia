@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
-    collision_groups::LifescapeGroupsExt,
+    collision_groups::HarmoniaGroupsExt,
     cursor_hover::Hoverable,
     cursor_hover::OutlineHoverExt,
     game_world::WorldName,
