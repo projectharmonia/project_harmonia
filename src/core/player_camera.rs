@@ -41,10 +41,10 @@ impl PlayerCameraPlugin {
         mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
     ) {
         let mut orbit_rotation = cameras.single_mut();
+        let motion = motion_events.read().map(|event| &event.delta).sum::<Vec2>();
         if action_state.pressed(Action::RotateCamera) {
             const SENSETIVITY: f32 = 0.01;
-            orbit_rotation.dest -=
-                SENSETIVITY * motion_events.read().map(|event| &event.delta).sum::<Vec2>();
+            orbit_rotation.dest -= SENSETIVITY * motion;
             orbit_rotation.dest.y = orbit_rotation.dest.y.clamp(0.0, FRAC_PI_2);
         }
         orbit_rotation.smooth(time.delta_seconds());
