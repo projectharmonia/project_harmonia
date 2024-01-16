@@ -382,20 +382,20 @@ mod tests {
         let b_edges = minmax_angles(B, A, EDGES);
         let (left_b, right_b) = offset_points(B, A, b_edges, width);
 
-        assert_eq!(left_a, Vec2::new(0.0, 0.125));
-        assert_eq!(right_a, Vec2::new(0.0, -0.125));
-        assert_eq!(left_b, Vec2::new(1.0, 0.125));
-        assert_eq!(right_b, Vec2::new(1.0, -0.125));
+        assert_eq!(left_a, Vec2::new(0.0, 0.075));
+        assert_eq!(right_a, Vec2::new(0.0, -0.075));
+        assert_eq!(left_b, Vec2::new(1.0, 0.075));
+        assert_eq!(right_b, Vec2::new(1.0, -0.075));
     }
 
     #[test]
     fn opposite_walls() {
         const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::X), (Vec2::NEG_X, Vec2::ZERO)];
         const LEFT: [Vec2; 4] = [
-            Vec2::new(0.0, 0.125),
-            Vec2::new(0.0, -0.125),
-            Vec2::new(1.0, 0.125),
-            Vec2::new(1.0, -0.125),
+            Vec2::new(0.0, 0.075),
+            Vec2::new(0.0, -0.075),
+            Vec2::new(1.0, 0.075),
+            Vec2::new(1.0, -0.075),
         ];
         let mut right = LEFT.map(|vertex| -vertex);
         right.reverse();
@@ -418,10 +418,10 @@ mod tests {
     fn diagonal_walls() {
         const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::ONE), (Vec2::ZERO, Vec2::NEG_ONE)];
         const LEFT: [Vec2; 4] = [
-            Vec2::new(-0.088388346, 0.088388346),
-            Vec2::new(0.088388346, -0.088388346),
-            Vec2::new(0.9116117, 1.0883883),
-            Vec2::new(1.0883883, 0.9116117),
+            Vec2::new(-0.05303301, 0.05303301),
+            Vec2::new(0.05303301, -0.05303301),
+            Vec2::new(0.946967, 1.053033),
+            Vec2::new(1.053033, 0.946967),
         ];
 
         for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, LEFT.map(|vertex| -vertex)]) {
@@ -447,16 +447,16 @@ mod tests {
             (Vec2::ZERO, Vec2::NEG_Y),
         ];
         const HORIZONTAL: [Vec2; 4] = [
-            Vec2::new(0.125, 0.125),
-            Vec2::new(0.125, -0.125),
-            Vec2::new(1.0, 0.125),
-            Vec2::new(1.0, -0.125),
+            Vec2::new(0.075, 0.075),
+            Vec2::new(0.075, -0.075),
+            Vec2::new(1.0, 0.075),
+            Vec2::new(1.0, -0.075),
         ];
         const VERTICAL: [Vec2; 4] = [
-            Vec2::new(-0.125, 0.125),
-            Vec2::new(0.125, 0.125),
-            Vec2::new(-0.125, 1.0),
-            Vec2::new(0.125, 1.0),
+            Vec2::new(-0.075, 0.075),
+            Vec2::new(0.075, 0.075),
+            Vec2::new(-0.075, 1.0),
+            Vec2::new(0.075, 1.0),
         ];
 
         for (&(a, b), expected) in EDGES.iter().zip(&[
