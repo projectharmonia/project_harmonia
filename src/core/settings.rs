@@ -87,14 +87,22 @@ pub(crate) struct ControlsSettings {
 impl Default for ControlsSettings {
     fn default() -> Self {
         let mappings = [
-            (Action::CameraForward, vec![KeyCode::W.into()]),
-            (Action::CameraBackward, vec![KeyCode::S.into()]),
-            (Action::CameraLeft, vec![KeyCode::A.into()]),
-            (Action::CameraRight, vec![KeyCode::D.into()]),
-            (Action::CameraForward, vec![KeyCode::Up.into()]),
-            (Action::CameraBackward, vec![KeyCode::Down.into()]),
-            (Action::CameraLeft, vec![KeyCode::Left.into()]),
-            (Action::CameraRight, vec![KeyCode::Right.into()]),
+            (
+                Action::CameraForward,
+                vec![KeyCode::W.into(), KeyCode::Up.into()],
+            ),
+            (
+                Action::CameraBackward,
+                vec![KeyCode::S.into(), KeyCode::Down.into()],
+            ),
+            (
+                Action::CameraLeft,
+                vec![KeyCode::A.into(), KeyCode::Left.into()],
+            ),
+            (
+                Action::CameraRight,
+                vec![KeyCode::D.into(), KeyCode::Right.into()],
+            ),
             (Action::RotateCamera, vec![MouseButton::Right.into()]),
             (Action::ZoomCamera, vec![SingleAxis::mouse_wheel_y().into()]),
             (Action::RotateObject, vec![MouseButton::Right.into()]),
