@@ -42,8 +42,7 @@ impl Plugin for NeedsPlugin {
                 Self::tick_system
                     .run_if(on_timer(Duration::from_secs(1)))
                     .run_if(has_authority()),
-            )
-            .add_systems(PostUpdate, Self::ignore_name_system.before(ServerSet::Send));
+            );
     }
 }
 
@@ -52,7 +51,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Hunger"), NeedGlyph("🍴"), NeedRate(-0.4)));
+                .insert((Name::new("Hunger"), NeedGlyph("🍴"), NeedRate(-0.4)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -60,7 +60,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Social"), NeedGlyph("💬"), NeedRate(-0.1)));
+                .insert((Name::new("Social"), NeedGlyph("💬"), NeedRate(-0.1)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -68,7 +69,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Hygiene"), NeedGlyph("🚿"), NeedRate(-0.3)));
+                .insert((Name::new("Hygiene"), NeedGlyph("🚿"), NeedRate(-0.3)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -76,7 +78,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Fun"), NeedGlyph("🎉"), NeedRate(-0.1)));
+                .insert((Name::new("Fun"), NeedGlyph("🎉"), NeedRate(-0.1)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -84,7 +87,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Energy"), NeedGlyph("🔋"), NeedRate(-0.2)));
+                .insert((Name::new("Energy"), NeedGlyph("🔋"), NeedRate(-0.2)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -92,7 +96,8 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Bladder"), NeedGlyph("🚽"), NeedRate(-0.5)));
+                .insert((Name::new("Bladder"), NeedGlyph("🚽"), NeedRate(-0.5)))
+                .dont_replicate::<Name>();
         }
     }
 
@@ -103,12 +108,6 @@ impl NeedsPlugin {
             } else {
                 need.0 = 0.0;
             }
-        }
-    }
-
-    fn ignore_name_system(mut commands: Commands, needs: Query<Entity, Added<Need>>) {
-        for entity in &needs {
-            commands.entity(entity).insert(Ignored::<Name>::default());
         }
     }
 }

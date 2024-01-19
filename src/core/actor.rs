@@ -51,13 +51,7 @@ impl Plugin for ActorPlugin {
                 (Self::scene_init_system, Self::name_update_system)
                     .run_if(resource_exists::<WorldName>()),
             )
-            .add_systems(
-                PostUpdate,
-                (
-                    Self::ignore_name_system.before(ServerSet::Send),
-                    Self::exclusive_system,
-                ),
-            );
+            .add_systems(PostUpdate, Self::exclusive_system);
     }
 }
 
@@ -113,14 +107,16 @@ impl ActorPlugin {
     fn name_update_system(
         mut commands: Commands,
         mut changed_names: Query<
-            (Entity, &FirstName, &LastName),
+            (Entity, Ref<FirstName>, Ref<LastName>),
             Or<(Changed<FirstName>, Changed<LastName>)>,
         >,
     ) {
         for (entity, first_name, last_name) in &mut changed_names {
-            commands
-                .entity(entity)
-                .insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
+            let mut entity = commands.entity(entity);
+            entity.insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
+            if first_name.is_added() && last_name.is_added() {
+                entity.dont_replicate::<Name>();
+            }
         }
     }
 
@@ -139,12 +135,6 @@ impl ActorPlugin {
             for actor_entity in actors.iter().filter(|&entity| entity != activated_entity) {
                 commands.entity(actor_entity).remove::<ActiveActor>();
             }
-        }
-    }
-
-    fn ignore_name_system(mut commands: Commands, actors: Query<Entity, Added<FirstName>>) {
-        for entity in &actors {
-            commands.entity(entity).insert(Ignored::<Name>::default());
         }
     }
 }

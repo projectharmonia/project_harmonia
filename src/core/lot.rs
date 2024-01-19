@@ -39,10 +39,6 @@ impl Plugin for LotPlugin {
                     Self::despawn_system,
                 )
                     .run_if(has_authority()),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::ignore_transform_system.before(ServerSet::Send),
             );
     }
 }
@@ -55,13 +51,16 @@ impl LotPlugin {
         spawned_lots: Query<(Entity, &LotVertices), Added<LotVertices>>,
     ) {
         for (entity, vertices) in &spawned_lots {
-            commands.entity(entity).insert(PolylineBundle {
-                polyline: polylines.add(Polyline {
-                    vertices: vertices.to_plain(),
-                }),
-                material: lot_material.0.clone(),
-                ..Default::default()
-            });
+            commands
+                .entity(entity)
+                .insert(PolylineBundle {
+                    polyline: polylines.add(Polyline {
+                        vertices: vertices.to_plain(),
+                    }),
+                    material: lot_material.0.clone(),
+                    ..Default::default()
+                })
+                .dont_replicate::<Transform>();
         }
     }
 
@@ -127,14 +126,6 @@ impl LotPlugin {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
             });
-        }
-    }
-
-    fn ignore_transform_system(mut commands: Commands, lots: Query<Entity, Added<LotVertices>>) {
-        for entity in &lots {
-            commands
-                .entity(entity)
-                .insert(Ignored::<Transform>::default());
         }
     }
 }

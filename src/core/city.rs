@@ -43,10 +43,7 @@ impl Plugin for CityPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::ignore_transform_system.before(ServerSet::Send),
-                    Self::cleanup_system.run_if(resource_removed::<WorldName>()),
-                ),
+                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
             );
     }
 }
@@ -76,6 +73,7 @@ impl CityPlugin {
                         ..Default::default()
                     },
                 ))
+                .dont_replicate::<Transform>()
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {
@@ -147,17 +145,6 @@ impl CityPlugin {
         placed_citites.0 = 0;
         for entity in &cities {
             commands.entity(entity).despawn_recursive();
-        }
-    }
-
-    fn ignore_transform_system(
-        mut commands: Commands,
-        cities: Query<Entity, (Added<Transform>, With<City>)>,
-    ) {
-        for entity in &cities {
-            commands
-                .entity(entity)
-                .insert(Ignored::<Transform>::default());
         }
     }
 }
