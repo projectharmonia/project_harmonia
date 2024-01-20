@@ -1,4 +1,3 @@
-pub(super) mod mirror;
 pub(crate) mod placing_object;
 
 use bevy::{
@@ -18,14 +17,13 @@ use super::{
     game_world::WorldName,
     lot::LotVertices,
 };
-use mirror::MirrorPlugin;
 use placing_object::PlacingObjectPlugin;
 
 pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((PlacingObjectPlugin, MirrorPlugin))
+        app.add_plugins(PlacingObjectPlugin)
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>(EventType::Unordered)
