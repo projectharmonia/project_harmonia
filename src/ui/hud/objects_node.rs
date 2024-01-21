@@ -24,10 +24,17 @@ impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (Self::button_system, Self::popup_system, Self::toggle_system).run_if(
-                in_state(GameState::City)
-                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
-            ),
+            (
+                Self::button_system,
+                Self::popup_system,
+                Self::toggle_system,
+                Self::reload_system,
+            )
+                .run_if(
+                    in_state(GameState::City).or_else(
+                        in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                    ),
+                ),
         );
     }
 }
@@ -141,6 +148,48 @@ impl ObjectsNodePlugin {
             }
         }
     }
+
+    fn reload_system(
+        mut commands: Commands,
+        mut change_events: EventReader<AssetEvent<ObjectMetadata>>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
+        theme: Res<Theme>,
+        buttons: Query<(Entity, &Preview), With<ObjectButton>>,
+        categories: Query<(&ObjectCategory, &TabContent)>,
+    ) {
+        for &event in change_events.read() {
+            if let AssetEvent::Modified { id } = event {
+                debug!("recreating button for asset {id}");
+
+                for (entity, &preview) in &buttons {
+                    if let Preview::Object(metadata_id) = preview {
+                        if id == metadata_id {
+                            commands.entity(entity).despawn_recursive();
+                            break;
+                        }
+                    }
+                }
+
+                let object_metadata = object_metadata
+                    .get(id)
+                    .expect("metadata should always come from file");
+
+                let tab_content = categories.iter().find_map(|(&category, &tab_content)| {
+                    if category == object_metadata.category {
+                        Some(tab_content)
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(tab_content) = tab_content {
+                    commands.entity(tab_content.0).with_children(|parent| {
+                        parent.spawn(ObjectButtonBundle::new(id, &theme));
+                    });
+                }
+            }
+        }
+    }
 }
 
 pub(super) fn setup_objects_node(
@@ -178,13 +227,7 @@ pub(super) fn setup_objects_node(
                     .iter()
                     .filter(|(_, metadata)| metadata.category == category)
                 {
-                    parent.spawn((
-                        ObjectButton,
-                        Preview::Object(metadata_id),
-                        Toggled(false),
-                        ExclusiveButton,
-                        ImageButtonBundle::placeholder(theme),
-                    ));
+                    parent.spawn(ObjectButtonBundle::new(metadata_id, theme));
                 }
             })
             .id();
@@ -206,3 +249,24 @@ struct ObjectButton;
 
 #[derive(Component)]
 struct ObjectPopup;
+
+#[derive(Bundle)]
+struct ObjectButtonBundle {
+    object_button: ObjectButton,
+    preview: Preview,
+    toggled: Toggled,
+    exclusive_button: ExclusiveButton,
+    image_button_bundle: ImageButtonBundle,
+}
+
+impl ObjectButtonBundle {
+    fn new(metadata_id: AssetId<ObjectMetadata>, theme: &Theme) -> Self {
+        Self {
+            object_button: ObjectButton,
+            preview: Preview::Object(metadata_id),
+            toggled: Toggled(false),
+            exclusive_button: ExclusiveButton,
+            image_button_bundle: ImageButtonBundle::placeholder(theme),
+        }
+    }
+}

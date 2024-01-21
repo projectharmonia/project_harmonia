@@ -174,7 +174,7 @@ struct PreviousDisplay(Display);
 pub(crate) struct ExclusiveButton;
 
 /// Makes button behave like tab by changing visibility of the stored entity depending on the value of [`Pressed`].
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub(crate) struct TabContent(pub(crate) Entity);
 
 #[derive(Component)]
