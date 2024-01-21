@@ -46,7 +46,7 @@ impl PreviewPlugin {
         actors: Query<&Handle<Scene>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
-        if let Some((preview_entity, preview)) = previews.iter().find(|&(entity, ..)| {
+        if let Some((preview_entity, &preview)) = previews.iter().find(|&(entity, ..)| {
             styles
                 .iter_many(parents.iter_ancestors(entity))
                 .all(|style| style.display != Display::None)
@@ -56,17 +56,17 @@ impl PreviewPlugin {
                     debug!("generating preview for actor {entity:?}");
 
                     let scene_handle = actors
-                        .get(*entity)
+                        .get(entity)
                         .expect("actor for preview should have a scene handle");
 
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
-                Preview::Object(metadata_handle) => {
-                    let metadata_path = metadata_handle.path().unwrap();
-                    debug!("generating preview for object {metadata_path:?}");
+                Preview::Object(id) => {
+                    let scene_path = metadata::scene_path(&asset_server, id);
+                    debug!("generating preview for object {scene_path:?}");
 
-                    let metadata = object_metadata.get(metadata_handle).unwrap();
-                    let scene_handle = asset_server.load(metadata::scene_path(metadata_path));
+                    let metadata = object_metadata.get(id).unwrap();
+                    let scene_handle = asset_server.load(scene_path);
 
                     (metadata.general.preview_translation, scene_handle)
                 }
@@ -235,10 +235,10 @@ struct PreviewCamera;
 /// Generated image handle will be written to the image handle on this entity.
 /// Preview generation happens only if UI element entity is visible.
 /// Processed entities will be marked with [`PreviewProcessed`].
-#[derive(Component)]
+#[derive(Clone, Component, Copy)]
 pub(crate) enum Preview {
     Actor(Entity),
-    Object(Handle<ObjectMetadata>),
+    Object(AssetId<ObjectMetadata>),
 }
 
 /// Marks entity with [`Preview`] as processed end excludes it from preview generation.

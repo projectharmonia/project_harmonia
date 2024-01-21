@@ -143,13 +143,14 @@ trait Metadata {
     fn deserializer(registry: &TypeRegistry, general: GeneralMetadata) -> Self::Deserializer<'_>;
 }
 
-/// Converts metadata path (path to a TOML file) into
-/// the corresponding scene path loadable by [`AssetServer`].
-///
-/// # Panics
-///
-/// Panics if path is an invalid UTF-8 string.
-pub(crate) fn scene_path(metadata_path: &AssetPath) -> AssetPath<'static> {
+/// Converts metadata ID into the corresponding scene path loadable by [`AssetServer`].
+pub(crate) fn scene_path(
+    asset_server: &AssetServer,
+    metadata_id: impl Into<AssetId<ObjectMetadata>>,
+) -> AssetPath<'static> {
+    let metadata_path = asset_server
+        .get_path(metadata_id.into())
+        .expect("metadata should always come from file");
     let scene_path: AssetPath = metadata_path.path().with_extension("gltf").into();
     scene_path.with_label("Scene0")
 }

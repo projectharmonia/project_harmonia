@@ -38,8 +38,8 @@ impl ObjectsNodePlugin {
         active_cities: Query<Entity, With<ActiveCity>>,
         buttons: Query<(&Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
     ) {
-        for (toggled, preview) in &buttons {
-            let Preview::Object(metadata_handle) = preview else {
+        for (toggled, &preview) in &buttons {
+            let Preview::Object(metadata_id) = preview else {
                 continue;
             };
 
@@ -47,7 +47,7 @@ impl ObjectsNodePlugin {
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
-                        parent.spawn(PlacingObject::spawning(metadata_handle.clone()));
+                        parent.spawn(PlacingObject::spawning(metadata_id));
                     });
             }
         }
@@ -65,8 +65,8 @@ impl ObjectsNodePlugin {
         popups: Query<Entity, With<ObjectPopup>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for (&interaction, style, transform, preview) in &buttons {
-            let Preview::Object(metadata_handle) = preview else {
+        for (&interaction, style, transform, &preview) in &buttons {
+            let Preview::Object(metadata_id) = preview else {
                 continue;
             };
 
@@ -82,7 +82,7 @@ impl ObjectsNodePlugin {
                     let left = button_translation.x - button_width / 2.0;
                     let bottom =
                         window.resolution.height() - button_translation.y + button_height / 2.0;
-                    let metadata = object_metadata.get(metadata_handle).unwrap();
+                    let metadata = object_metadata.get(metadata_id).unwrap();
 
                     commands.entity(roots.single()).with_children(|parent| {
                         parent
@@ -147,7 +147,6 @@ pub(super) fn setup_objects_node(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
-    asset_server: &AssetServer,
     object_metadata: &Assets<ObjectMetadata>,
     categories: &[ObjectCategory],
 ) {
@@ -175,13 +174,13 @@ pub(super) fn setup_objects_node(
                 ..Default::default()
             })
             .with_children(|parent| {
-                for (id, _) in object_metadata
+                for (metadata_id, _) in object_metadata
                     .iter()
                     .filter(|(_, metadata)| metadata.category == category)
                 {
                     parent.spawn((
                         ObjectButton,
-                        Preview::Object(asset_server.get_id_handle(id).unwrap()),
+                        Preview::Object(metadata_id),
                         Toggled(false),
                         ExclusiveButton,
                         ImageButtonBundle::placeholder(theme),

@@ -105,11 +105,11 @@ impl PlacingObjectPlugin {
 
             let mut placing_entity = commands.entity(placing_entity);
 
-            let (transform, scene_handle, metadata) = match &placing_object.kind {
-                PlacingObjectKind::Spawning(metadata_handle) => {
-                    let metadata = object_metadata.get(metadata_handle).unwrap();
-                    let metadata_path = metadata_handle.path().unwrap();
-                    let scene_handle = asset_server.load(metadata::scene_path(metadata_path));
+            let (transform, scene_handle, metadata) = match placing_object.kind {
+                PlacingObjectKind::Spawning(metadata_id) => {
+                    let scene_handle =
+                        asset_server.load(metadata::scene_path(&asset_server, metadata_id));
+                    let metadata = object_metadata.get(metadata_id).unwrap();
                     placing_entity.insert(CursorOffset::default());
                     let transform = Transform::from_rotation(Quat::from_rotation_y(PI)); // Rotate towards camera.
 
@@ -117,7 +117,7 @@ impl PlacingObjectPlugin {
                 }
                 PlacingObjectKind::Moving(object_entity) => {
                     let (transform, scene_handle, object_path) = objects
-                        .get(*object_entity)
+                        .get(object_entity)
                         .expect("moving object should exist with these components");
                     let metadata_handle = asset_server.load(&object_path.0);
                     let metadata = object_metadata.get(&metadata_handle).unwrap();
@@ -329,21 +329,25 @@ impl PlacingObjectPlugin {
     fn confirmation_system(
         mut move_events: EventWriter<ObjectMove>,
         mut spawn_events: EventWriter<ObjectSpawn>,
+        asset_server: Res<AssetServer>,
         placing_objects: Query<(&Transform, &PlacingObject)>,
     ) {
         if let Ok((transform, placing_object)) = placing_objects.get_single() {
             if !placing_object.collides && placing_object.allowed_place {
                 debug!("confirmed placing object {placing_object:?}");
-                match &placing_object.kind {
-                    PlacingObjectKind::Spawning(handle) => {
+                match placing_object.kind {
+                    PlacingObjectKind::Spawning(metadata_id) => {
+                        let metadata_path = asset_server
+                            .get_path(metadata_id)
+                            .expect("metadata should always come from file");
                         spawn_events.send(ObjectSpawn {
-                            metadata_path: handle.path().unwrap().into(),
+                            metadata_path: metadata_path.into_owned(),
                             position: transform.translation.xz(),
                             rotation: transform.rotation,
                         });
                     }
                     PlacingObjectKind::Moving(entity) => move_events.send(ObjectMove {
-                        entity: *entity,
+                        entity,
                         translation: transform.translation,
                         rotation: transform.rotation,
                     }),
@@ -381,7 +385,7 @@ impl PlacingObjectPlugin {
                 if placing_entity != new_entity {
                     cleanup(
                         commands.entity(placing_entity),
-                        &placing_object.kind,
+                        placing_object.kind,
                         &children,
                         &mut visibility,
                         &mut groups,
@@ -401,7 +405,7 @@ impl PlacingObjectPlugin {
         for (placing_entity, placing_object) in &placing_objects {
             cleanup(
                 commands.entity(placing_entity),
-                &placing_object.kind,
+                placing_object.kind,
                 &children,
                 &mut visibility,
                 &mut groups,
@@ -412,7 +416,7 @@ impl PlacingObjectPlugin {
 
 fn cleanup(
     placing_entity: EntityCommands,
-    kind: &PlacingObjectKind,
+    kind: PlacingObjectKind,
     children: &Query<&Children>,
     visibility: &mut Query<&mut Visibility>,
     groups: &mut Query<&mut CollisionGroups>,
@@ -422,12 +426,12 @@ fn cleanup(
 
     if let PlacingObjectKind::Moving(object_entity) = kind {
         // Object could be invalid in case of removal.
-        if let Ok(mut visibility) = visibility.get_mut(*object_entity) {
+        if let Ok(mut visibility) = visibility.get_mut(object_entity) {
             *visibility = Visibility::Visible;
         }
 
         // Restore object's collisions back.
-        for child_entity in children.iter_descendants(*object_entity) {
+        for child_entity in children.iter_descendants(object_entity) {
             if let Ok(mut group) = groups.get_mut(child_entity) {
                 group.memberships |= Group::OBJECT;
             }
@@ -459,9 +463,9 @@ impl PlacingObject {
         }
     }
 
-    pub(crate) fn spawning(handle: Handle<ObjectMetadata>) -> Self {
+    pub(crate) fn spawning(metadata_id: AssetId<ObjectMetadata>) -> Self {
         Self {
-            kind: PlacingObjectKind::Spawning(handle),
+            kind: PlacingObjectKind::Spawning(metadata_id),
             collides: false,
             allowed_place: true,
         }
@@ -469,9 +473,9 @@ impl PlacingObject {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Debug, Clone)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum PlacingObjectKind {
-    Spawning(Handle<ObjectMetadata>),
+    Spawning(AssetId<ObjectMetadata>),
     Moving(Entity),
 }
 

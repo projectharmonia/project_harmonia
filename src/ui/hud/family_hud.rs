@@ -59,7 +59,6 @@ impl FamilyHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         families: Query<(&Budget, &FamilyMembers), With<ActiveFamily>>,
         actors: Query<Entity, With<ActiveActor>>,
@@ -112,7 +111,6 @@ impl FamilyHudPlugin {
                                 parent,
                                 &mut tab_commands,
                                 &theme,
-                                &asset_server,
                                 &object_metadata,
                             ),
                         })
@@ -490,7 +488,6 @@ fn setup_building_hud(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
-    asset_server: &AssetServer,
     object_metadata: &Assets<ObjectMetadata>,
 ) {
     let tabs_entity = parent
@@ -524,7 +521,6 @@ fn setup_building_hud(
                         parent,
                         tab_commands,
                         theme,
-                        asset_server,
                         object_metadata,
                         ObjectCategory::FAMILY_CATEGORIES,
                     );
