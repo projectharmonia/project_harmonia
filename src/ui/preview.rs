@@ -47,6 +47,7 @@ impl PreviewPlugin {
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
         if let Some((preview_entity, &preview)) = previews.iter().find(|&(entity, ..)| {
+            // TODO 0.13: Use `CalculatedClip` which was suggested in https://github.com/bevyengine/bevy/issues/11441.
             styles
                 .iter_many(parents.iter_ancestors(entity))
                 .all(|style| style.display != Display::None)
