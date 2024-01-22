@@ -2997,9 +2997,9 @@ dependencies = [
 
 [[package]]
 name = "oxidized_navigation"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6588a1cf7510571473f465b7bffda4a13a2feb93a594215665d0b7b0de19645"
+checksum = "bb4ab0ab1cad97fbd83f85969f3ece1bba243e164444c459fd28aa302785c80c"
 dependencies = [
  "bevy",
  "bevy_rapier3d",
