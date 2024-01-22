@@ -50,6 +50,7 @@ pub(crate) enum ObjectCategory {
     #[serde(rename = "Outdoor furniture")]
     OutdoorFurniture,
     Decorations,
+    Electronics,
 }
 
 impl ObjectCategory {
@@ -64,6 +65,7 @@ impl ObjectCategory {
         ObjectCategory::Foliage,
         ObjectCategory::OutdoorFurniture,
         ObjectCategory::Decorations,
+        ObjectCategory::Electronics,
     ];
 
     pub(crate) fn glyph(self) -> &'static str {
@@ -72,6 +74,7 @@ impl ObjectCategory {
             ObjectCategory::Foliage => "🍀",
             ObjectCategory::OutdoorFurniture => "🏡",
             ObjectCategory::Decorations => "🌸",
+            ObjectCategory::Electronics => "📺",
         }
     }
 }

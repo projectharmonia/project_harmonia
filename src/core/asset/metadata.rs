@@ -23,7 +23,7 @@ use serde::{
 };
 use walkdir::WalkDir;
 
-use self::object_metadata::ObjectMetadata;
+use object_metadata::ObjectMetadata;
 
 pub(super) struct MetadataPlugins;
 
