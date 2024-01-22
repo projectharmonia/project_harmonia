@@ -31,6 +31,7 @@ impl Plugin for WallPlugin {
             .add_systems(
                 PreUpdate,
                 (Self::init_system, Self::mesh_update_system)
+                    .chain()
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
