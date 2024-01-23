@@ -24,6 +24,8 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(PlacingObjectPlugin)
+            // TODO 0.13: Remove.
+            .register_type::<AssetPath>()
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>(EventType::Unordered)
