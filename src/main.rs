@@ -29,8 +29,8 @@ fn main() {
         .init_resource::<Cli>()
         .insert_resource(Msaa::Off)
         .insert_resource(AmbientLight {
-            color: Color::WHITE,
-            brightness: 3.0,
+            color: Color::ANTIQUE_WHITE,
+            brightness: 1.0,
         })
         .add_plugins((
             DefaultPlugins
