@@ -97,6 +97,7 @@ impl WallPlugin {
         for (entity, edges) in &walls {
             let mut positions = Vec::new();
             let mut indices = Vec::new();
+            let mut normals = Vec::new();
             for &(a, b) in edges.iter() {
                 let last_index: u32 = positions
                     .len()
@@ -108,86 +109,121 @@ impl WallPlugin {
                 let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
                 let b_edges = minmax_angles(b, a, edges);
-                let (left_b, right_b) = offset_points(b, a, b_edges, -width);
+                let (right_b, left_b) = offset_points(b, a, b_edges, -width);
 
-                positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
-                positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
-                positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
-                positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
-
+                // Top
                 const HEIGHT: f32 = 2.8;
                 positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
                 positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
-                positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
                 positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
+                positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
+                normals.extend_from_slice(&[Vec3::Y; 4]);
+                indices.push(last_index);
+                indices.push(last_index + 3);
+                indices.push(last_index + 1);
+                indices.push(last_index + 1);
+                indices.push(last_index + 3);
+                indices.push(last_index + 2);
 
-                // Top
+                // Right
+                positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
+                positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
+                positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
+                positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
+                normals.extend_from_slice(&[Vec3::new(-width.x, 0.0, -width.y); 4]);
+                indices.push(last_index + 4);
+                indices.push(last_index + 7);
                 indices.push(last_index + 5);
-                indices.push(last_index + 4);
-                indices.push(last_index + 6);
-                indices.push(last_index + 4);
+                indices.push(last_index + 5);
                 indices.push(last_index + 7);
                 indices.push(last_index + 6);
 
                 // Left
-                indices.push(last_index + 3);
-                indices.push(last_index + 4);
-                indices.push(last_index);
-                indices.push(last_index + 3);
-                indices.push(last_index + 7);
-                indices.push(last_index + 4);
-
-                // Right
-                indices.push(last_index + 1);
-                indices.push(last_index + 5);
-                indices.push(last_index + 2);
-                indices.push(last_index + 5);
-                indices.push(last_index + 6);
-                indices.push(last_index + 2);
+                positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
+                positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
+                positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
+                positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
+                normals.extend_from_slice(&[Vec3::new(width.x, 0.0, width.y); 4]);
+                indices.push(last_index + 8);
+                indices.push(last_index + 9);
+                indices.push(last_index + 11);
+                indices.push(last_index + 9);
+                indices.push(last_index + 10);
+                indices.push(last_index + 11);
 
                 match a_edges {
                     MinMaxResult::OneElement(_) => (),
                     MinMaxResult::NoElements => {
-                        // Back
-                        indices.push(last_index);
-                        indices.push(last_index + 5);
-                        indices.push(last_index + 1);
-                        indices.push(last_index);
-                        indices.push(last_index + 4);
-                        indices.push(last_index + 5);
+                        let normal = a - b;
+
+                        // Front
+                        positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
+                        positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
+                        positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
+                        positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
+                        normals.extend_from_slice(&[Vec3::new(normal.x, 0.0, normal.y); 4]);
+                        indices.push(last_index + 12);
+                        indices.push(last_index + 13);
+                        indices.push(last_index + 15);
+                        indices.push(last_index + 13);
+                        indices.push(last_index + 14);
+                        indices.push(last_index + 15);
                     }
                     MinMaxResult::MinMax(_, _) => {
+                        let a_index: u32 = positions
+                            .len()
+                            .try_into()
+                            .expect("vertex a index should fit u32");
+
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push(Vec3::new(a.x, HEIGHT, a.y));
-                        indices.push(last_index + 5);
-                        indices.push(last_index + 8); // Point `b` added above.
-                        indices.push(last_index + 4);
+                        normals.push(Vec3::Y);
+                        indices.push(last_index + 1);
+                        indices.push(a_index);
+                        indices.push(last_index);
                     }
                 }
 
                 match b_edges {
                     MinMaxResult::OneElement(_) => (),
                     MinMaxResult::NoElements => {
-                        // Front
-                        indices.push(last_index + 2);
-                        indices.push(last_index + 6);
-                        indices.push(last_index + 3);
-                        indices.push(last_index + 6);
-                        indices.push(last_index + 7);
-                        indices.push(last_index + 3);
+                        let normal = b - a;
+                        let back_index: u32 = positions
+                            .len()
+                            .try_into()
+                            .expect("vertex back index should fit u32");
+
+                        // Back
+                        positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
+                        positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
+                        positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
+                        positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
+                        normals.extend_from_slice(&[Vec3::new(normal.x, 0.0, normal.y); 4]);
+                        indices.push(back_index);
+                        indices.push(back_index + 3);
+                        indices.push(back_index + 1);
+                        indices.push(back_index + 1);
+                        indices.push(back_index + 3);
+                        indices.push(back_index + 2);
                     }
                     MinMaxResult::MinMax(_, _) => {
+                        let b_index: u32 = positions
+                            .len()
+                            .try_into()
+                            .expect("vertex b index should fit u32");
+
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push(Vec3::new(b.x, HEIGHT, b.y));
-                        indices.push(last_index + 6);
-                        indices.push(last_index + 7);
-                        indices.push(last_index + 8); // Point `b` added above.
+                        normals.push(Vec3::Y);
+                        indices.push(last_index + 2);
+                        indices.push(last_index + 3);
+                        indices.push(b_index);
                     }
                 }
             }
 
             let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![Vec3::Z; positions.len()]);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
             mesh.set_indices(Some(Indices::U32(indices)));
 
@@ -381,7 +417,7 @@ mod tests {
         let (left_a, right_a) = offset_points(A, B, a_edges, width);
 
         let b_edges = minmax_angles(B, A, EDGES);
-        let (left_b, right_b) = offset_points(B, A, b_edges, width);
+        let (right_b, left_b) = offset_points(B, A, b_edges, -width);
 
         assert_eq!(left_a, Vec2::new(0.0, 0.075));
         assert_eq!(right_a, Vec2::new(0.0, -0.075));
@@ -407,7 +443,7 @@ mod tests {
             let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
             let b_edges = minmax_angles(b, a, EDGES);
-            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
 
             for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
                 assert_eq!(actual, expected);
@@ -431,7 +467,7 @@ mod tests {
             let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
             let b_edges = minmax_angles(b, a, EDGES);
-            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
 
             for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
                 assert_eq!(actual, expected);
@@ -471,7 +507,7 @@ mod tests {
             let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
             let b_edges = minmax_angles(b, a, EDGES);
-            let (left_b, right_b) = offset_points(b, a, b_edges, width);
+            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
 
             for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
                 assert_eq!(actual, expected);
