@@ -59,6 +59,7 @@ impl WallPlugin {
             entity.insert((
                 Name::new("Walls"),
                 CollisionGroups::new(Group::WALL, Group::ALL),
+                NoFrustumCulling,
                 PbrBundle {
                     material: materials.add(StandardMaterial::default()),
                     mesh: meshes.add(mesh),
