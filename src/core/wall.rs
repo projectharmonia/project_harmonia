@@ -8,6 +8,7 @@ use bevy::{
     render::{
         mesh::{Indices, VertexAttributeValues},
         render_resource::PrimitiveTopology,
+        view::NoFrustumCulling,
     },
 };
 use bevy_rapier3d::prelude::*;
@@ -47,11 +48,27 @@ impl WallPlugin {
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
+        asset_server: Res<AssetServer>,
         spawned_walls: Query<(Entity, Has<CreatingWall>), Added<WallEdges>>,
     ) {
         for (entity, creating_wall) in &spawned_walls {
+            let material = StandardMaterial {
+                base_color_texture: Some(
+                    asset_server.load("base/walls/brick/brick_base_color.png"),
+                ),
+                metallic_roughness_texture: Some(
+                    asset_server.load("base/walls/brick/brick_roughnes_metalic.png"),
+                ),
+                normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
+                occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
+                depth_bias: if creating_wall { 100.0 } else { 0.0 }, // Avoid z-fighting with already spawned walls.
+                perceptual_roughness: 0.0,
+                reflectance: 0.0,
+                ..Default::default()
+            };
             let mesh = Mesh::new(PrimitiveTopology::TriangleList)
                 .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
+                .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
                 .with_indices(Some(Indices::U32(Vec::new())));
 
@@ -61,7 +78,7 @@ impl WallPlugin {
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 NoFrustumCulling,
                 PbrBundle {
-                    material: materials.add(StandardMaterial::default()),
+                    material: materials.add(material),
                     mesh: meshes.add(mesh),
                     ..Default::default()
                 },
@@ -116,6 +133,11 @@ impl WallPlugin {
             else {
                 panic!("all walls should be initialized with position attribute");
             };
+            let Some(VertexAttributeValues::Float32x2(mut uvs)) =
+                mesh.remove_attribute(Mesh::ATTRIBUTE_UV_0)
+            else {
+                panic!("all walls should be initialized with UV attribute");
+            };
             let Some(VertexAttributeValues::Float32x3(mut normals)) =
                 mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL)
             else {
@@ -126,6 +148,7 @@ impl WallPlugin {
             };
 
             positions.clear();
+            uvs.clear();
             normals.clear();
             indices.clear();
 
@@ -135,7 +158,11 @@ impl WallPlugin {
                     .try_into()
                     .expect("vertex index should fit u32");
 
+                const HEIGHT: f32 = 2.8;
                 let width = width_vec(a, b);
+                let ab = b - a;
+                let rotation_mat = Mat2::from_angle(-ab.y.atan2(ab.x)); // TODO 0.13: Use `to_angle`.
+
                 let a_edges = minmax_angles(a, b, edges);
                 let (left_a, right_a) = offset_points(a, b, a_edges, width);
 
@@ -143,11 +170,14 @@ impl WallPlugin {
                 let (right_b, left_b) = offset_points(b, a, b_edges, -width);
 
                 // Top
-                const HEIGHT: f32 = 2.8;
                 positions.push([left_a.x, HEIGHT, left_a.y]);
                 positions.push([right_a.x, HEIGHT, right_a.y]);
                 positions.push([right_b.x, HEIGHT, right_b.y]);
                 positions.push([left_b.x, HEIGHT, left_b.y]);
+                uvs.push(position_to_uv(left_a, rotation_mat, a));
+                uvs.push(position_to_uv(right_a, rotation_mat, a));
+                uvs.push(position_to_uv(right_b, rotation_mat, a));
+                uvs.push(position_to_uv(left_b, rotation_mat, a));
                 normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
                 indices.push(last_index);
                 indices.push(last_index + 3);
@@ -161,6 +191,14 @@ impl WallPlugin {
                 positions.push([right_b.x, 0.0, right_b.y]);
                 positions.push([right_b.x, HEIGHT, right_b.y]);
                 positions.push([right_a.x, HEIGHT, right_a.y]);
+                let right_a_uv = position_to_uv(right_a, rotation_mat, a);
+                let right_b_uv = position_to_uv(right_b, rotation_mat, a);
+                let right_a_top_uv = [right_a_uv[0], right_a_uv[1] + HEIGHT];
+                let right_b_top_uv = [right_b_uv[0], right_b_uv[1] + HEIGHT];
+                uvs.push(right_a_uv);
+                uvs.push(right_b_uv);
+                uvs.push(right_b_top_uv);
+                uvs.push(right_a_top_uv);
                 normals.extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
                 indices.push(last_index + 4);
                 indices.push(last_index + 7);
@@ -174,6 +212,14 @@ impl WallPlugin {
                 positions.push([left_b.x, 0.0, left_b.y]);
                 positions.push([left_b.x, HEIGHT, left_b.y]);
                 positions.push([left_a.x, HEIGHT, left_a.y]);
+                let left_a_uv = position_to_uv(left_a, rotation_mat, a);
+                let left_b_uv = position_to_uv(left_b, rotation_mat, a);
+                let left_a_top_uv = [left_a_uv[0], left_a_uv[1] + HEIGHT];
+                let left_b_top_uv = [left_b_uv[0], left_b_uv[1] + HEIGHT];
+                uvs.push(left_a_uv);
+                uvs.push(left_b_uv);
+                uvs.push(left_b_top_uv);
+                uvs.push(left_a_top_uv);
                 normals.extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
                 indices.push(last_index + 8);
                 indices.push(last_index + 9);
@@ -192,6 +238,10 @@ impl WallPlugin {
                         positions.push([left_a.x, HEIGHT, left_a.y]);
                         positions.push([right_a.x, HEIGHT, right_a.y]);
                         positions.push([right_a.x, 0.0, right_a.y]);
+                        uvs.push([0.0, 0.0]);
+                        uvs.push([0.0, HEIGHT]);
+                        uvs.push([WIDTH, HEIGHT]);
+                        uvs.push([WIDTH, 0.0]);
                         normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
                         indices.push(last_index + 12);
                         indices.push(last_index + 13);
@@ -208,6 +258,7 @@ impl WallPlugin {
 
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push([a.x, HEIGHT, a.y]);
+                        uvs.push(position_to_uv(a, rotation_mat, a));
                         normals.push([0.0, 1.0, 0.0]);
                         indices.push(last_index + 1);
                         indices.push(a_index);
@@ -229,6 +280,10 @@ impl WallPlugin {
                         positions.push([left_b.x, HEIGHT, left_b.y]);
                         positions.push([right_b.x, HEIGHT, right_b.y]);
                         positions.push([right_b.x, 0.0, right_b.y]);
+                        uvs.push([0.0, 0.0]);
+                        uvs.push([0.0, HEIGHT]);
+                        uvs.push([WIDTH, HEIGHT]);
+                        uvs.push([WIDTH, 0.0]);
                         normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
                         indices.push(back_index);
                         indices.push(back_index + 3);
@@ -245,6 +300,7 @@ impl WallPlugin {
 
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push([b.x, HEIGHT, b.y]);
+                        uvs.push(position_to_uv(b, rotation_mat, a));
                         normals.push([0.0, 1.0, 0.0]);
                         indices.push(last_index + 3);
                         indices.push(b_index);
@@ -254,8 +310,9 @@ impl WallPlugin {
             }
 
             // Reinsert removed attributes back.
-            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
             let collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
                 .expect("wall mesh should be in compatible format");
@@ -266,6 +323,13 @@ impl WallPlugin {
 
 const WIDTH: f32 = 0.15;
 pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
+
+/// Rotates a point using rotation matrix relatively to the specified origin point.
+fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] {
+    let translated_pos = position - origin;
+    let rotated_point = rotation_mat * translated_pos;
+    (rotated_point + origin).into()
+}
 
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
 fn width_vec(start: Vec2, end: Vec2) -> Vec2 {
