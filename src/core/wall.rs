@@ -5,7 +5,10 @@ use std::f32::consts::PI;
 use bevy::{
     ecs::query::Has,
     prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
+    render::{
+        mesh::{Indices, VertexAttributeValues},
+        render_resource::PrimitiveTopology,
+    },
 };
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -30,11 +33,11 @@ impl Plugin for WallPlugin {
             .add_server_event::<WallEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::init_system, Self::mesh_update_system)
-                    .chain()
+                Self::mesh_update_system
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
+            .add_systems(PostUpdate, Self::init_system)
             .add_systems(Update, Self::wall_creation_system.run_if(has_authority()));
     }
 }
@@ -43,15 +46,22 @@ impl WallPlugin {
     fn init_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
+        mut meshes: ResMut<Assets<Mesh>>,
         spawned_walls: Query<(Entity, Has<CreatingWall>), Added<WallEdges>>,
     ) {
         for (entity, creating_wall) in &spawned_walls {
+            let mesh = Mesh::new(PrimitiveTopology::TriangleList)
+                .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
+                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
+                .with_indices(Some(Indices::U32(Vec::new())));
+
             let mut entity = commands.entity(entity);
             entity.insert((
                 Name::new("Walls"),
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 PbrBundle {
                     material: materials.add(StandardMaterial::default()),
+                    mesh: meshes.add(mesh),
                     ..Default::default()
                 },
             ));
@@ -92,12 +102,32 @@ impl WallPlugin {
     fn mesh_update_system(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &WallEdges), Changed<WallEdges>>,
+        walls: Query<(Entity, &WallEdges, &Handle<Mesh>), Changed<WallEdges>>,
     ) {
-        for (entity, edges) in &walls {
-            let mut positions = Vec::new();
-            let mut indices = Vec::new();
-            let mut normals = Vec::new();
+        for (entity, edges, mesh_handle) in &walls {
+            let mesh = meshes
+                .get_mut(mesh_handle)
+                .expect("wall handles should be valid");
+
+            // Remove attributes to avoid mutability issues.
+            let Some(VertexAttributeValues::Float32x3(mut positions)) =
+                mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION)
+            else {
+                panic!("all walls should be initialized with position attribute");
+            };
+            let Some(VertexAttributeValues::Float32x3(mut normals)) =
+                mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL)
+            else {
+                panic!("all walls should be initialized with normal attribute");
+            };
+            let Some(Indices::U32(indices)) = mesh.indices_mut() else {
+                panic!("all walls should have U32 indices");
+            };
+
+            positions.clear();
+            normals.clear();
+            indices.clear();
+
             for &(a, b) in edges.iter() {
                 let last_index: u32 = positions
                     .len()
@@ -113,11 +143,11 @@ impl WallPlugin {
 
                 // Top
                 const HEIGHT: f32 = 2.8;
-                positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
-                positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
-                positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
-                positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
-                normals.extend_from_slice(&[Vec3::Y; 4]);
+                positions.push([left_a.x, HEIGHT, left_a.y]);
+                positions.push([right_a.x, HEIGHT, right_a.y]);
+                positions.push([right_b.x, HEIGHT, right_b.y]);
+                positions.push([left_b.x, HEIGHT, left_b.y]);
+                normals.extend_from_slice(&[Vec3::Y.into(); 4]);
                 indices.push(last_index);
                 indices.push(last_index + 3);
                 indices.push(last_index + 1);
@@ -126,11 +156,11 @@ impl WallPlugin {
                 indices.push(last_index + 2);
 
                 // Right
-                positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
-                positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
-                positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
-                positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
-                normals.extend_from_slice(&[Vec3::new(-width.x, 0.0, -width.y); 4]);
+                positions.push([right_a.x, 0.0, right_a.y]);
+                positions.push([right_b.x, 0.0, right_b.y]);
+                positions.push([right_b.x, HEIGHT, right_b.y]);
+                positions.push([right_a.x, HEIGHT, right_a.y]);
+                normals.extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
                 indices.push(last_index + 4);
                 indices.push(last_index + 7);
                 indices.push(last_index + 5);
@@ -139,11 +169,11 @@ impl WallPlugin {
                 indices.push(last_index + 6);
 
                 // Left
-                positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
-                positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
-                positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
-                positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
-                normals.extend_from_slice(&[Vec3::new(width.x, 0.0, width.y); 4]);
+                positions.push([left_a.x, 0.0, left_a.y]);
+                positions.push([left_b.x, 0.0, left_b.y]);
+                positions.push([left_b.x, HEIGHT, left_b.y]);
+                positions.push([left_a.x, HEIGHT, left_a.y]);
+                normals.extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
                 indices.push(last_index + 8);
                 indices.push(last_index + 9);
                 indices.push(last_index + 11);
@@ -157,11 +187,11 @@ impl WallPlugin {
                         let normal = a - b;
 
                         // Front
-                        positions.push(Vec3::new(left_a.x, 0.0, left_a.y));
-                        positions.push(Vec3::new(left_a.x, HEIGHT, left_a.y));
-                        positions.push(Vec3::new(right_a.x, HEIGHT, right_a.y));
-                        positions.push(Vec3::new(right_a.x, 0.0, right_a.y));
-                        normals.extend_from_slice(&[Vec3::new(normal.x, 0.0, normal.y); 4]);
+                        positions.push([left_a.x, 0.0, left_a.y]);
+                        positions.push([left_a.x, HEIGHT, left_a.y]);
+                        positions.push([right_a.x, HEIGHT, right_a.y]);
+                        positions.push([right_a.x, 0.0, right_a.y]);
+                        normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
                         indices.push(last_index + 12);
                         indices.push(last_index + 13);
                         indices.push(last_index + 15);
@@ -176,8 +206,8 @@ impl WallPlugin {
                             .expect("vertex a index should fit u32");
 
                         // Inside triangle to fill the gap between 3+ walls.
-                        positions.push(Vec3::new(a.x, HEIGHT, a.y));
-                        normals.push(Vec3::Y);
+                        positions.push([a.x, HEIGHT, a.y]);
+                        normals.push(Vec3::Y.into());
                         indices.push(last_index + 1);
                         indices.push(a_index);
                         indices.push(last_index);
@@ -194,11 +224,11 @@ impl WallPlugin {
                             .expect("vertex back index should fit u32");
 
                         // Back
-                        positions.push(Vec3::new(left_b.x, 0.0, left_b.y));
-                        positions.push(Vec3::new(left_b.x, HEIGHT, left_b.y));
-                        positions.push(Vec3::new(right_b.x, HEIGHT, right_b.y));
-                        positions.push(Vec3::new(right_b.x, 0.0, right_b.y));
-                        normals.extend_from_slice(&[Vec3::new(normal.x, 0.0, normal.y); 4]);
+                        positions.push([left_b.x, 0.0, left_b.y]);
+                        positions.push([left_b.x, HEIGHT, left_b.y]);
+                        positions.push([right_b.x, HEIGHT, right_b.y]);
+                        positions.push([right_b.x, 0.0, right_b.y]);
+                        normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
                         indices.push(back_index);
                         indices.push(back_index + 3);
                         indices.push(back_index + 1);
@@ -213,8 +243,8 @@ impl WallPlugin {
                             .expect("vertex b index should fit u32");
 
                         // Inside triangle to fill the gap between 3+ walls.
-                        positions.push(Vec3::new(b.x, HEIGHT, b.y));
-                        normals.push(Vec3::Y);
+                        positions.push([b.x, HEIGHT, b.y]);
+                        normals.push(Vec3::Y.into());
                         indices.push(last_index + 2);
                         indices.push(last_index + 3);
                         indices.push(b_index);
@@ -222,14 +252,13 @@ impl WallPlugin {
                 }
             }
 
-            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+            // Reinsert removed attributes back.
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-            mesh.set_indices(Some(Indices::U32(indices)));
 
             let collider = Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::TriMesh)
                 .expect("wall mesh should be in compatible format");
-            commands.entity(entity).insert((collider, meshes.add(mesh)));
+            commands.entity(entity).insert(collider);
         }
     }
 }
