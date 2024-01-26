@@ -147,7 +147,7 @@ impl WallPlugin {
                 positions.push([right_a.x, HEIGHT, right_a.y]);
                 positions.push([right_b.x, HEIGHT, right_b.y]);
                 positions.push([left_b.x, HEIGHT, left_b.y]);
-                normals.extend_from_slice(&[Vec3::Y.into(); 4]);
+                normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
                 indices.push(last_index);
                 indices.push(last_index + 3);
                 indices.push(last_index + 1);
@@ -207,7 +207,7 @@ impl WallPlugin {
 
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push([a.x, HEIGHT, a.y]);
-                        normals.push(Vec3::Y.into());
+                        normals.push([0.0, 1.0, 0.0]);
                         indices.push(last_index + 1);
                         indices.push(a_index);
                         indices.push(last_index);
@@ -244,10 +244,10 @@ impl WallPlugin {
 
                         // Inside triangle to fill the gap between 3+ walls.
                         positions.push([b.x, HEIGHT, b.y]);
-                        normals.push(Vec3::Y.into());
-                        indices.push(last_index + 2);
+                        normals.push([0.0, 1.0, 0.0]);
                         indices.push(last_index + 3);
                         indices.push(b_index);
+                        indices.push(last_index + 2);
                     }
                 }
             }
@@ -256,7 +256,7 @@ impl WallPlugin {
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
 
-            let collider = Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::TriMesh)
+            let collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
                 .expect("wall mesh should be in compatible format");
             commands.entity(entity).insert(collider);
         }
