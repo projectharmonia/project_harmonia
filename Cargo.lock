@@ -840,7 +840,7 @@ dependencies = [
 [[package]]
 name = "bevy_polyline"
 version = "0.7.0"
-source = "git+https://github.com/Donvlouss/bevy_polyline?branch=v0.12#b880bf00e60c22fd053e421b5c24a5815c1c3f53"
+source = "git+https://github.com/ForesightMiningSoftwareCorporation/bevy_polyline#bcc24799fcc46de405f1daf8d302828c08ff3865"
 dependencies = [
  "bevy",
  "bitflags 2.4.2",
