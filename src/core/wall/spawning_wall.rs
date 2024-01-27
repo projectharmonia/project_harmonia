@@ -3,7 +3,7 @@ use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
 };
 
-use super::{WallCreate, WallEdges, WallEventConfirmed};
+use super::{WallEdges, WallEventConfirmed, WallSpawn};
 use crate::core::{
     action::Action,
     cursor_hover::CursorHover,
@@ -12,22 +12,22 @@ use crate::core::{
     lot::LotVertices,
 };
 
-pub(super) struct CreatingWallPlugin;
+pub(super) struct SpawningWallPlugin;
 
-impl Plugin for CreatingWallPlugin {
+impl Plugin for SpawningWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
             (
                 Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<CreatingWall>())),
+                    .run_if(not(any_with_component::<SpawningWall>())),
                 Self::movement_system
                     .run_if(action_pressed(Action::Confirm))
-                    .run_if(any_with_component::<CreatingWall>()),
-                Self::creation_system
+                    .run_if(any_with_component::<SpawningWall>()),
+                Self::confirm_system
                     .run_if(action_just_released(Action::Confirm))
-                    .run_if(any_with_component::<CreatingWall>()),
+                    .run_if(any_with_component::<SpawningWall>()),
                 Self::despawn_system.run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<WallEventConfirmed>()),
                 ),
@@ -41,7 +41,7 @@ impl Plugin for CreatingWallPlugin {
 
 const SNAP_DELTA: f32 = 0.5;
 
-impl CreatingWallPlugin {
+impl SpawningWallPlugin {
     fn spawn_system(
         mut commands: Commands,
         walls: Query<&WallEdges>,
@@ -62,24 +62,24 @@ impl CreatingWallPlugin {
                     .unwrap_or(position);
 
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((WallEdges(vec![(vertex, vertex)]), CreatingWall));
+                    parent.spawn((WallEdges(vec![(vertex, vertex)]), SpawningWall));
                 });
             }
         }
     }
 
     fn movement_system(
-        mut creating_walls: Query<(&mut WallEdges, &Parent), With<CreatingWall>>,
-        walls: Query<&WallEdges, Without<CreatingWall>>,
+        mut spawning_walls: Query<(&mut WallEdges, &Parent), With<SpawningWall>>,
+        walls: Query<&WallEdges, Without<SpawningWall>>,
         children: Query<&Children>,
         hovered: Query<&CursorHover>,
     ) {
         if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
-            let (mut edges, parent) = creating_walls.single_mut();
+            let (mut edges, parent) = spawning_walls.single_mut();
             let children = children.get(**parent).unwrap();
             let edge = edges
                 .last_mut()
-                .expect("creating wall should always consist of one edge");
+                .expect("spawning wall should always consist of one edge");
 
             // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
             let vertex = walls
@@ -93,26 +93,26 @@ impl CreatingWallPlugin {
         }
     }
 
-    fn creation_system(
-        mut create_events: EventWriter<WallCreate>,
-        creating_walls: Query<(&Parent, &WallEdges), With<CreatingWall>>,
+    fn confirm_system(
+        mut spawn_events: EventWriter<WallSpawn>,
+        spawning_walls: Query<(&Parent, &WallEdges), With<SpawningWall>>,
     ) {
-        let (parent, edges) = creating_walls.single();
+        let (parent, edges) = spawning_walls.single();
         let edge = *edges
             .last()
-            .expect("creating wall should always consist of one edge");
-        create_events.send(WallCreate {
+            .expect("spawning wall should always consist of one edge");
+        spawn_events.send(WallSpawn {
             lot_entity: **parent,
             edge,
         });
     }
 
-    fn despawn_system(mut commands: Commands, creating_walls: Query<Entity, With<CreatingWall>>) {
-        if let Ok(entity) = creating_walls.get_single() {
+    fn despawn_system(mut commands: Commands, spawning_walls: Query<Entity, With<SpawningWall>>) {
+        if let Ok(entity) = spawning_walls.get_single() {
             commands.entity(entity).despawn();
         }
     }
 }
 
 #[derive(Component, Default)]
-pub(crate) struct CreatingWall;
+pub(crate) struct SpawningWall;

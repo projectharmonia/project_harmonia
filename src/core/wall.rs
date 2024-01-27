@@ -1,4 +1,4 @@
-pub(crate) mod creating_wall;
+pub(crate) mod spawning_wall;
 
 use std::f32::consts::PI;
 
@@ -18,19 +18,19 @@ use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
 use super::{collision_groups::HarmoniaGroupsExt, game_world::WorldName};
-use creating_wall::{CreatingWall, CreatingWallPlugin};
+use spawning_wall::{SpawningWall, SpawningWallPlugin};
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(CreatingWallPlugin)
+        app.add_plugins(SpawningWallPlugin)
             .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
             .register_type::<WallEdges>()
             .replicate::<WallEdges>()
-            .add_mapped_client_event::<WallCreate>(EventType::Unordered)
+            .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
             .add_server_event::<WallEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
@@ -39,7 +39,7 @@ impl Plugin for WallPlugin {
                     .run_if(resource_exists::<WorldName>()),
             )
             .add_systems(PostUpdate, Self::init_system)
-            .add_systems(Update, Self::wall_creation_system.run_if(has_authority()));
+            .add_systems(Update, Self::spawn_system.run_if(has_authority()));
     }
 }
 
@@ -49,9 +49,9 @@ impl WallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
-        spawned_walls: Query<(Entity, Has<CreatingWall>), Added<WallEdges>>,
+        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<WallEdges>>,
     ) {
-        for (entity, creating_wall) in &spawned_walls {
+        for (entity, spawning_wall) in &spawned_walls {
             let material = StandardMaterial {
                 base_color_texture: Some(
                     asset_server.load("base/walls/brick/brick_base_color.png"),
@@ -61,7 +61,7 @@ impl WallPlugin {
                 ),
                 normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
                 occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
-                depth_bias: if creating_wall { 100.0 } else { 0.0 }, // Avoid z-fighting with already spawned walls.
+                depth_bias: if spawning_wall { 100.0 } else { 0.0 }, // Avoid z-fighting with already spawned walls.
                 perceptual_roughness: 0.0,
                 reflectance: 0.0,
                 ..Default::default()
@@ -84,21 +84,21 @@ impl WallPlugin {
                 },
             ));
 
-            // Creating walls shouldn't affect navigation.
-            if !creating_wall {
+            // Spawning walls shouldn't affect navigation.
+            if !spawning_wall {
                 entity.insert(NavMeshAffector);
             }
         }
     }
 
-    fn wall_creation_system(
+    fn spawn_system(
         mut commands: Commands,
-        mut create_events: EventReader<FromClient<WallCreate>>,
+        mut spawn_events: EventReader<FromClient<WallSpawn>>,
         mut confirm_events: EventWriter<ToClients<WallEventConfirmed>>,
         children: Query<&Children>,
-        mut walls: Query<&mut WallEdges, Without<CreatingWall>>,
+        mut walls: Query<&mut WallEdges, Without<SpawningWall>>,
     ) {
-        for FromClient { client_id, event } in create_events.read().copied() {
+        for FromClient { client_id, event } in spawn_events.read().copied() {
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: WallEventConfirmed,
@@ -110,7 +110,7 @@ impl WallPlugin {
                 }
             }
 
-            // No wall entity found, create a new one
+            // No wall entity found, spawn a new one
             commands.entity(event.lot_entity).with_children(|parent| {
                 parent.spawn(WallBundle::new(vec![event.edge]));
             });
@@ -461,12 +461,12 @@ pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
 
 /// Client event to request a wall creation.
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct WallCreate {
+struct WallSpawn {
     lot_entity: Entity,
     edge: (Vec2, Vec2),
 }
 
-impl MapNetworkEntities for WallCreate {
+impl MapNetworkEntities for WallSpawn {
     fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
         self.lot_entity = mapper.map(self.lot_entity);
     }
