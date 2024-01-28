@@ -15,6 +15,7 @@ use bevy::{
     },
 };
 use bevy_atmosphere::prelude::*;
+use bevy_mod_outline::OutlinePlugin;
 use bevy_polyline::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -67,7 +68,7 @@ fn main() {
             }),
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
-            // OutlinePlugin, // TODO: Re-enable when https://github.com/komadori/bevy_mod_outline/issues/27 will be fixed.
+            OutlinePlugin,
             PolylinePlugin,
             CorePlugins,
             UiPlugins,
