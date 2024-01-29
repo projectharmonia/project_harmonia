@@ -12,7 +12,7 @@ use serde::{
     de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer,
 };
-use strum::{Display, EnumVariantNames, IntoStaticStr, VariantNames};
+use strum::{Display, IntoStaticStr, VariantNames};
 
 use super::{GeneralMetadata, Metadata};
 
@@ -35,7 +35,7 @@ impl Metadata for ObjectMetadata {
 }
 
 /// Fields of [`ObjectMetadata`] for manual deserialization.
-#[derive(Deserialize, EnumVariantNames, IntoStaticStr)]
+#[derive(Deserialize, VariantNames, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 #[serde(field_identifier, rename_all = "snake_case")]
 enum ObjectMetadataField {
