@@ -25,7 +25,6 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpawningWallPlugin)
-            .register_type::<WallObject>()
             .register_type::<(Vec2, Vec2)>()
             .register_type::<Vec<(Vec2, Vec2)>>()
             .register_type::<WallEdges>()
@@ -474,11 +473,6 @@ impl MapNetworkEntities for WallSpawn {
 
 #[derive(Event, Serialize, Deserialize)]
 struct WallEventConfirmed;
-
-/// A component that marks that entity can be placed only on walls.
-#[derive(Component, Default, Reflect)]
-#[reflect(Component, Default)]
-pub(super) struct WallObject;
 
 #[cfg(test)]
 mod tests {

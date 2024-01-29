@@ -23,14 +23,15 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{WallEdges, WallObject, HALF_WIDTH},
+    wall::{WallEdges, HALF_WIDTH},
 };
 
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
+        app.register_type::<WallObject>()
+            .add_systems(OnExit(CityMode::Objects), Self::cancel_system)
             .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
             .add_systems(
                 Update,
@@ -228,9 +229,10 @@ impl PlacingObjectPlugin {
 
     fn snapping_system(
         walls: Query<&WallEdges>,
-        mut placing_objects: Query<(&mut Transform, &mut PlacingObject), With<WallObject>>,
+        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
     ) {
-        let Ok((mut transform, mut placing_object)) = placing_objects.get_single_mut() else {
+        let Ok((mut transform, mut placing_object, wall_object)) = placing_objects.get_single_mut()
+        else {
             return;
         };
 
@@ -247,7 +249,11 @@ impl PlacingObjectPlugin {
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let sign = edge.perp_dot(translation_2d - edge_point).signum();
-            let snap_point = edge_point + sign * edge.perp().normalize() * (HALF_WIDTH + GAP);
+            let offset = match wall_object {
+                WallObject::InsideWall => Vec2::ZERO,
+                WallObject::OnWall => sign * edge.perp().normalize() * (HALF_WIDTH + GAP),
+            };
+            let snap_point = edge_point + offset;
             let edge_angle = edge.angle_between(Vec2::X * sign);
             transform.translation.x = snap_point.x;
             transform.translation.z = snap_point.y;
@@ -262,12 +268,17 @@ impl PlacingObjectPlugin {
 
     fn collision_system(
         rapier_ctx: Res<RapierContext>,
-        mut placing_objects: Query<(Entity, &mut PlacingObject)>,
+        mut placing_objects: Query<(Entity, &mut PlacingObject, &WallObject)>,
         children: Query<&Children>,
         child_meshes: Query<(&Collider, &GlobalTransform)>,
     ) {
-        let Ok((object_entity, mut placing_object)) = placing_objects.get_single_mut() else {
+        let Ok((object_entity, mut placing_object, wall_object)) = placing_objects.get_single_mut()
+        else {
             return;
+        };
+        let collision_filters = match wall_object {
+            WallObject::InsideWall => Group::OBJECT,
+            WallObject::OnWall => Group::OBJECT | Group::WALL,
         };
 
         for (collider, transform) in children
@@ -280,7 +291,7 @@ impl PlacingObjectPlugin {
                 translation,
                 rotation,
                 collider,
-                CollisionGroups::new(Group::ALL, Group::OBJECT | Group::WALL).into(),
+                CollisionGroups::new(Group::ALL, collision_filters).into(),
                 |_| {
                     intersects = true;
                     false
@@ -482,3 +493,18 @@ pub(crate) enum PlacingObjectKind {
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
 struct CursorOffset(Vec2);
+
+/// A component that marks that entity can be placed only on walls or inside them.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub(crate) enum WallObject {
+    InsideWall,
+    OnWall,
+}
+
+// To implement `Reflect`.
+impl FromWorld for WallObject {
+    fn from_world(_world: &mut World) -> Self {
+        Self::OnWall
+    }
+}

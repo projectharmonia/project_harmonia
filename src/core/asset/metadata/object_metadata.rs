@@ -51,6 +51,7 @@ pub(crate) enum ObjectCategory {
     OutdoorFurniture,
     Decorations,
     Electronics,
+    Doors,
 }
 
 impl ObjectCategory {
@@ -66,6 +67,7 @@ impl ObjectCategory {
         ObjectCategory::OutdoorFurniture,
         ObjectCategory::Decorations,
         ObjectCategory::Electronics,
+        ObjectCategory::Doors,
     ];
 
     pub(crate) fn glyph(self) -> &'static str {
@@ -75,6 +77,7 @@ impl ObjectCategory {
             ObjectCategory::OutdoorFurniture => "🏡",
             ObjectCategory::Decorations => "🌸",
             ObjectCategory::Electronics => "📺",
+            ObjectCategory::Doors => "🚪",
         }
     }
 }
@@ -240,7 +243,7 @@ mod tests {
     use super::*;
     use crate::core::{
         asset::metadata::{MetadataDeserializer, METADATA_EXTENSION},
-        wall::WallObject,
+        object::placing_object::WallObject,
     };
 
     #[test]
