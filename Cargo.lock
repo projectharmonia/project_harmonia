@@ -862,7 +862,20 @@ dependencies = [
  "bitflags 2.4.2",
  "log",
  "nalgebra",
- "rapier3d",
+ "rapier3d 0.17.2",
+]
+
+[[package]]
+name = "bevy_rapier3d"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e5b3726758a819c486c72d8fab1f52c8f2758ee98968b66d4b4f502b104410a"
+dependencies = [
+ "bevy",
+ "bitflags 2.4.2",
+ "log",
+ "nalgebra",
+ "rapier3d 0.18.0",
 ]
 
 [[package]]
@@ -2817,6 +2830,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-derive"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfb77679af88f8b125209d354a202862602672222e7f2313fdd6dc349bad4712"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3002,7 +3026,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb4ab0ab1cad97fbd83f85969f3ece1bba243e164444c459fd28aa302785c80c"
 dependencies = [
  "bevy",
- "bevy_rapier3d",
+ "bevy_rapier3d 0.23.0",
  "nalgebra",
  "parry3d",
  "smallvec",
@@ -3049,7 +3073,7 @@ dependencies = [
  "downcast-rs",
  "either",
  "nalgebra",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "rustc-hash",
  "simba",
@@ -3180,7 +3204,7 @@ dependencies = [
  "bevy_atmosphere",
  "bevy_mod_outline",
  "bevy_polyline",
- "bevy_rapier3d",
+ "bevy_rapier3d 0.24.0",
  "bevy_replicon",
  "bincode",
  "bitflags 2.4.2",
@@ -3240,7 +3264,27 @@ dependencies = [
  "crossbeam",
  "downcast-rs",
  "nalgebra",
- "num-derive",
+ "num-derive 0.3.3",
+ "num-traits",
+ "parry3d",
+ "rustc-hash",
+ "simba",
+]
+
+[[package]]
+name = "rapier3d"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92d07a833e0aa3bc57010caaa50bf75fa78afc03a74207607db740da4e4579a1"
+dependencies = [
+ "approx",
+ "arrayvec",
+ "bit-vec",
+ "bitflags 1.3.2",
+ "crossbeam",
+ "downcast-rs",
+ "nalgebra",
+ "num-derive 0.4.1",
  "num-traits",
  "parry3d",
  "rustc-hash",

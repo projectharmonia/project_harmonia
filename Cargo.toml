@@ -18,7 +18,7 @@ bevy = { version = "0.12.1", default-features = false, features = [
 ] }
 bevy_atmosphere = "0.8"
 bevy_replicon = { version = "0.21", default-features = false }
-bevy_rapier3d = "0.23"
+bevy_rapier3d = "0.24"
 bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline" }
 bevy_polyline = { git = "https://github.com/ForesightMiningSoftwareCorporation/bevy_polyline" }
 app_dirs2 = "2.5"
