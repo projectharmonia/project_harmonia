@@ -33,12 +33,18 @@ impl Plugin for WallPlugin {
             .add_server_event::<WallEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::mesh_update_system
+                Self::init_system
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
-            .add_systems(PostUpdate, Self::init_system)
-            .add_systems(Update, Self::spawn_system.run_if(has_authority()));
+            .add_systems(
+                Update,
+                (
+                    Self::spawn_system.run_if(has_authority()),
+                    Self::mesh_update_system,
+                )
+                    .run_if(resource_exists::<WorldName>()),
+            );
     }
 }
 
