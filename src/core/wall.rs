@@ -1,6 +1,6 @@
 pub(crate) mod spawning_wall;
 
-use std::f32::consts::PI;
+use std::{f32::consts::PI, mem};
 
 use bevy::{
     ecs::query::Has,
@@ -25,12 +25,9 @@ pub(super) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpawningWallPlugin)
-            .register_type::<(Vec2, Vec2)>()
-            .register_type::<Vec<(Vec2, Vec2)>>()
-            .register_type::<WallEdges>()
-            .replicate::<WallEdges>()
+            .register_type::<Wall>()
+            .replicate::<Wall>()
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
-            .add_server_event::<WallEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 Self::init_system
@@ -40,8 +37,13 @@ impl Plugin for WallPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::spawn_system.run_if(has_authority()),
-                    Self::mesh_update_system,
+                    Self::spawn_system.run_if(resource_exists::<RenetServer>()),
+                    (
+                        Self::cleanup_system,
+                        Self::connection_update_system,
+                        Self::mesh_update_system,
+                    )
+                        .chain(),
                 )
                     .run_if(resource_exists::<WorldName>()),
             );
@@ -54,7 +56,7 @@ impl WallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
-        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<WallEdges>>,
+        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<Wall>>,
     ) {
         for (entity, spawning_wall) in &spawned_walls {
             let material = StandardMaterial {
@@ -80,6 +82,7 @@ impl WallPlugin {
             let mut entity = commands.entity(entity);
             entity.insert((
                 Name::new("Walls"),
+                WallConnections::default(),
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 NoFrustumCulling,
                 PbrBundle {
@@ -90,7 +93,9 @@ impl WallPlugin {
             ));
 
             // Spawning walls shouldn't affect navigation.
+            // Should be inserted later after spawning marker removal.
             if !spawning_wall {
+                entity.insert(Collider::default());
                 entity.insert(NavMeshAffector);
             }
         }
@@ -98,36 +103,86 @@ impl WallPlugin {
 
     fn spawn_system(
         mut commands: Commands,
+        mut entity_map: ResMut<ClientEntityMap>,
         mut spawn_events: EventReader<FromClient<WallSpawn>>,
-        mut confirm_events: EventWriter<ToClients<WallEventConfirmed>>,
-        children: Query<&Children>,
-        mut walls: Query<&mut WallEdges, Without<SpawningWall>>,
     ) {
         for FromClient { client_id, event } in spawn_events.read().copied() {
-            confirm_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: WallEventConfirmed,
-            });
-            if let Ok(children) = children.get(event.lot_entity) {
-                if let Some(mut edges) = walls.iter_many_mut(children.iter()).fetch_next() {
-                    edges.push(event.edge);
-                    return;
-                }
-            }
-
-            // No wall entity found, spawn a new one
             commands.entity(event.lot_entity).with_children(|parent| {
-                parent.spawn(WallBundle::new(vec![event.edge]));
+                // TODO: validate if wall can be spawned.
+                let server_entity = parent.spawn(WallBundle::new(event.wall)).id();
+                entity_map.insert(
+                    client_id,
+                    ClientMapping {
+                        client_entity: event.wall_entity,
+                        server_entity,
+                    },
+                );
             });
         }
     }
 
-    fn mesh_update_system(
-        mut commands: Commands,
-        mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &WallEdges, &Handle<Mesh>), Changed<WallEdges>>,
+    fn connection_update_system(
+        mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
+        children: Query<&Children>,
+        changed_walls: Query<(Entity, &Parent, &Wall), Changed<Wall>>,
     ) {
-        for (entity, edges, mesh_handle) in &walls {
+        for (changed_entity, parent, changed_wall) in &changed_walls {
+            // Take changed connections to avoid mutability issues.
+            let mut changed_connections =
+                mem::take(&mut *walls.component_mut::<WallConnections>(changed_entity));
+
+            // Cleanup old connections.
+            for connected_entity in changed_connections.drain() {
+                let mut connections = walls.component_mut::<WallConnections>(connected_entity);
+                if let Some((point, index)) = connections.position(changed_entity) {
+                    connections.remove(point, index);
+                }
+            }
+
+            // If wall have zero length, exclude it from connections.
+            if changed_wall.start != changed_wall.end {
+                // Scan all walls from this lot for possible connections.
+                let children = children.get(**parent).unwrap();
+                let mut iter = walls.iter_many_mut(children);
+                while let Some((entity, wall, mut connections)) = iter
+                    .fetch_next()
+                    .filter(|(entity, ..)| *entity != changed_entity)
+                {
+                    if changed_wall.start == wall.start {
+                        changed_connections.start.push((entity, WallPoint::Start));
+                        connections.start.push((changed_entity, WallPoint::Start));
+                    } else if changed_wall.start == wall.end {
+                        changed_connections.start.push((entity, WallPoint::End));
+                        connections.end.push((changed_entity, WallPoint::Start));
+                    } else if changed_wall.end == wall.end {
+                        changed_connections.end.push((entity, WallPoint::End));
+                        connections.end.push((changed_entity, WallPoint::End));
+                    } else if changed_wall.end == wall.start {
+                        changed_connections.end.push((entity, WallPoint::Start));
+                        connections.start.push((changed_entity, WallPoint::End));
+                    }
+                }
+            }
+
+            // Reinsert updated connections back.
+            *walls.component_mut::<WallConnections>(changed_entity) = changed_connections;
+        }
+    }
+
+    fn mesh_update_system(
+        mut meshes: ResMut<Assets<Mesh>>,
+        walls: Query<&Wall>,
+        mut changed_walls: Query<
+            (
+                &Handle<Mesh>,
+                &Wall,
+                &WallConnections,
+                Option<&mut Collider>,
+            ),
+            Changed<WallConnections>,
+        >,
+    ) {
+        for (mesh_handle, wall, connections, collider) in &mut changed_walls {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
@@ -157,177 +212,205 @@ impl WallPlugin {
             normals.clear();
             indices.clear();
 
-            for &(a, b) in edges.iter() {
-                let last_index: u32 = positions
-                    .len()
-                    .try_into()
-                    .expect("vertex index should fit u32");
-
-                const HEIGHT: f32 = 2.8;
-                let width = width_vec(a, b);
-                let ab = b - a;
-                let rotation_mat = Mat2::from_angle(-ab.y.atan2(ab.x)); // TODO 0.13: Use `to_angle`.
-
-                let a_edges = minmax_angles(a, b, edges);
-                let (left_a, right_a) = offset_points(a, b, a_edges, width);
-
-                let b_edges = minmax_angles(b, a, edges);
-                let (right_b, left_b) = offset_points(b, a, b_edges, -width);
-
-                // Top
-                positions.push([left_a.x, HEIGHT, left_a.y]);
-                positions.push([right_a.x, HEIGHT, right_a.y]);
-                positions.push([right_b.x, HEIGHT, right_b.y]);
-                positions.push([left_b.x, HEIGHT, left_b.y]);
-                uvs.push(position_to_uv(left_a, rotation_mat, a));
-                uvs.push(position_to_uv(right_a, rotation_mat, a));
-                uvs.push(position_to_uv(right_b, rotation_mat, a));
-                uvs.push(position_to_uv(left_b, rotation_mat, a));
-                normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
-                indices.push(last_index);
-                indices.push(last_index + 3);
-                indices.push(last_index + 1);
-                indices.push(last_index + 1);
-                indices.push(last_index + 3);
-                indices.push(last_index + 2);
-
-                // Right
-                positions.push([right_a.x, 0.0, right_a.y]);
-                positions.push([right_b.x, 0.0, right_b.y]);
-                positions.push([right_b.x, HEIGHT, right_b.y]);
-                positions.push([right_a.x, HEIGHT, right_a.y]);
-                let right_a_uv = position_to_uv(right_a, rotation_mat, a);
-                let right_b_uv = position_to_uv(right_b, rotation_mat, a);
-                let right_a_top_uv = [right_a_uv[0], right_a_uv[1] + HEIGHT];
-                let right_b_top_uv = [right_b_uv[0], right_b_uv[1] + HEIGHT];
-                uvs.push(right_a_uv);
-                uvs.push(right_b_uv);
-                uvs.push(right_b_top_uv);
-                uvs.push(right_a_top_uv);
-                normals.extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
-                indices.push(last_index + 4);
-                indices.push(last_index + 7);
-                indices.push(last_index + 5);
-                indices.push(last_index + 5);
-                indices.push(last_index + 7);
-                indices.push(last_index + 6);
-
-                // Left
-                positions.push([left_a.x, 0.0, left_a.y]);
-                positions.push([left_b.x, 0.0, left_b.y]);
-                positions.push([left_b.x, HEIGHT, left_b.y]);
-                positions.push([left_a.x, HEIGHT, left_a.y]);
-                let left_a_uv = position_to_uv(left_a, rotation_mat, a);
-                let left_b_uv = position_to_uv(left_b, rotation_mat, a);
-                let left_a_top_uv = [left_a_uv[0], left_a_uv[1] + HEIGHT];
-                let left_b_top_uv = [left_b_uv[0], left_b_uv[1] + HEIGHT];
-                uvs.push(left_a_uv);
-                uvs.push(left_b_uv);
-                uvs.push(left_b_top_uv);
-                uvs.push(left_a_top_uv);
-                normals.extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
-                indices.push(last_index + 8);
-                indices.push(last_index + 9);
-                indices.push(last_index + 11);
-                indices.push(last_index + 9);
-                indices.push(last_index + 10);
-                indices.push(last_index + 11);
-
-                match a_edges {
-                    MinMaxResult::OneElement(_) => (),
-                    MinMaxResult::NoElements => {
-                        let normal = a - b;
-
-                        // Front
-                        positions.push([left_a.x, 0.0, left_a.y]);
-                        positions.push([left_a.x, HEIGHT, left_a.y]);
-                        positions.push([right_a.x, HEIGHT, right_a.y]);
-                        positions.push([right_a.x, 0.0, right_a.y]);
-                        uvs.push([0.0, 0.0]);
-                        uvs.push([0.0, HEIGHT]);
-                        uvs.push([WIDTH, HEIGHT]);
-                        uvs.push([WIDTH, 0.0]);
-                        normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
-                        indices.push(last_index + 12);
-                        indices.push(last_index + 13);
-                        indices.push(last_index + 15);
-                        indices.push(last_index + 13);
-                        indices.push(last_index + 14);
-                        indices.push(last_index + 15);
-                    }
-                    MinMaxResult::MinMax(_, _) => {
-                        let a_index: u32 = positions
-                            .len()
-                            .try_into()
-                            .expect("vertex a index should fit u32");
-
-                        // Inside triangle to fill the gap between 3+ walls.
-                        positions.push([a.x, HEIGHT, a.y]);
-                        uvs.push(position_to_uv(a, rotation_mat, a));
-                        normals.push([0.0, 1.0, 0.0]);
-                        indices.push(last_index + 1);
-                        indices.push(a_index);
-                        indices.push(last_index);
-                    }
-                }
-
-                match b_edges {
-                    MinMaxResult::OneElement(_) => (),
-                    MinMaxResult::NoElements => {
-                        let normal = b - a;
-                        let back_index: u32 = positions
-                            .len()
-                            .try_into()
-                            .expect("vertex back index should fit u32");
-
-                        // Back
-                        positions.push([left_b.x, 0.0, left_b.y]);
-                        positions.push([left_b.x, HEIGHT, left_b.y]);
-                        positions.push([right_b.x, HEIGHT, right_b.y]);
-                        positions.push([right_b.x, 0.0, right_b.y]);
-                        uvs.push([0.0, 0.0]);
-                        uvs.push([0.0, HEIGHT]);
-                        uvs.push([WIDTH, HEIGHT]);
-                        uvs.push([WIDTH, 0.0]);
-                        normals.extend_from_slice(&[[normal.x, 0.0, normal.y]; 4]);
-                        indices.push(back_index);
-                        indices.push(back_index + 3);
-                        indices.push(back_index + 1);
-                        indices.push(back_index + 1);
-                        indices.push(back_index + 3);
-                        indices.push(back_index + 2);
-                    }
-                    MinMaxResult::MinMax(_, _) => {
-                        let b_index: u32 = positions
-                            .len()
-                            .try_into()
-                            .expect("vertex b index should fit u32");
-
-                        // Inside triangle to fill the gap between 3+ walls.
-                        positions.push([b.x, HEIGHT, b.y]);
-                        uvs.push(position_to_uv(b, rotation_mat, a));
-                        normals.push([0.0, 1.0, 0.0]);
-                        indices.push(last_index + 3);
-                        indices.push(b_index);
-                        indices.push(last_index + 2);
-                    }
-                }
-            }
+            generate_wall(
+                wall,
+                connections,
+                &walls,
+                &mut positions,
+                &mut uvs,
+                &mut normals,
+                indices,
+            );
 
             // Reinsert removed attributes back.
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
-            let collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
-                .expect("wall mesh should be in compatible format");
-            commands.entity(entity).insert(collider);
+            if let Some(mut collider) = collider {
+                *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+                    .expect("wall mesh should be in compatible format");
+            }
+        }
+    }
+
+    fn cleanup_system(
+        mut removed_walls: RemovedComponents<Wall>,
+        mut walls: Query<&mut WallConnections>,
+    ) {
+        for entity in removed_walls.read() {
+            for mut connections in &mut walls {
+                if let Some((point, index)) = connections.position(entity) {
+                    connections.remove(point, index);
+                }
+            }
         }
     }
 }
 
 const WIDTH: f32 = 0.15;
 pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
+
+fn generate_wall(
+    wall: &Wall,
+    connections: &WallConnections,
+    walls: &Query<&Wall>,
+    positions: &mut Vec<[f32; 3]>,
+    uvs: &mut Vec<[f32; 2]>,
+    normals: &mut Vec<[f32; 3]>,
+    indices: &mut Vec<u32>,
+) {
+    if wall.start == wall.end {
+        return;
+    }
+
+    const HEIGHT: f32 = 2.8;
+    let dir = wall.end - wall.start;
+    let width = width_vec(wall.start, wall.end);
+    let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
+
+    let start_edges = minmax_angles(dir, WallPoint::Start, &connections.start, walls);
+    let (start_left, start_right) = offset_points(wall.start, wall.end, start_edges, width);
+
+    let end_edges = minmax_angles(-dir, WallPoint::End, &connections.end, walls);
+    let (end_right, end_left) = offset_points(wall.end, wall.start, end_edges, -width);
+
+    // Top
+    positions.push([start_left.x, HEIGHT, start_left.y]);
+    positions.push([start_right.x, HEIGHT, start_right.y]);
+    positions.push([end_right.x, HEIGHT, end_right.y]);
+    positions.push([end_left.x, HEIGHT, end_left.y]);
+    uvs.push(position_to_uv(start_left, rotation_mat, wall.start));
+    uvs.push(position_to_uv(start_right, rotation_mat, wall.start));
+    uvs.push(position_to_uv(end_right, rotation_mat, wall.start));
+    uvs.push(position_to_uv(end_left, rotation_mat, wall.start));
+    normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
+    indices.push(0);
+    indices.push(3);
+    indices.push(1);
+    indices.push(1);
+    indices.push(3);
+    indices.push(2);
+
+    // Right
+    positions.push([start_right.x, 0.0, start_right.y]);
+    positions.push([end_right.x, 0.0, end_right.y]);
+    positions.push([end_right.x, HEIGHT, end_right.y]);
+    positions.push([start_right.x, HEIGHT, start_right.y]);
+    let start_right_uv = position_to_uv(start_right, rotation_mat, wall.start);
+    let end_right_uv = position_to_uv(end_right, rotation_mat, wall.start);
+    let start_right_top_uv = [start_right_uv[0], start_right_uv[1] + HEIGHT];
+    let end_right_top_uv = [end_right_uv[0], end_right_uv[1] + HEIGHT];
+    uvs.push(start_right_uv);
+    uvs.push(end_right_uv);
+    uvs.push(end_right_top_uv);
+    uvs.push(start_right_top_uv);
+    normals.extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
+    indices.push(4);
+    indices.push(7);
+    indices.push(5);
+    indices.push(5);
+    indices.push(7);
+    indices.push(6);
+
+    // Left
+    positions.push([start_left.x, 0.0, start_left.y]);
+    positions.push([end_left.x, 0.0, end_left.y]);
+    positions.push([end_left.x, HEIGHT, end_left.y]);
+    positions.push([start_left.x, HEIGHT, start_left.y]);
+    let start_left_uv = position_to_uv(start_left, rotation_mat, wall.start);
+    let end_left_uv = position_to_uv(end_left, rotation_mat, wall.start);
+    let start_left_top_uv = [start_left_uv[0], start_left_uv[1] + HEIGHT];
+    let end_left_top_uv = [end_left_uv[0], end_left_uv[1] + HEIGHT];
+    uvs.push(start_left_uv);
+    uvs.push(end_left_uv);
+    uvs.push(end_left_top_uv);
+    uvs.push(start_left_top_uv);
+    normals.extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
+    indices.push(8);
+    indices.push(9);
+    indices.push(11);
+    indices.push(9);
+    indices.push(10);
+    indices.push(11);
+
+    match start_edges {
+        MinMaxResult::OneElement(_) => (),
+        MinMaxResult::NoElements => {
+            // Front
+            positions.push([start_left.x, 0.0, start_left.y]);
+            positions.push([start_left.x, HEIGHT, start_left.y]);
+            positions.push([start_right.x, HEIGHT, start_right.y]);
+            positions.push([start_right.x, 0.0, start_right.y]);
+            uvs.push([0.0, 0.0]);
+            uvs.push([0.0, HEIGHT]);
+            uvs.push([WIDTH, HEIGHT]);
+            uvs.push([WIDTH, 0.0]);
+            normals.extend_from_slice(&[[-dir.x, 0.0, -dir.y]; 4]);
+            indices.push(12);
+            indices.push(13);
+            indices.push(15);
+            indices.push(13);
+            indices.push(14);
+            indices.push(15);
+        }
+        MinMaxResult::MinMax(_, _) => {
+            let start_index: u32 = positions
+                .len()
+                .try_into()
+                .expect("start vertex index should fit u32");
+
+            // Inside triangle to fill the gap between 3+ walls.
+            positions.push([wall.start.x, HEIGHT, wall.start.y]);
+            uvs.push(position_to_uv(wall.start, rotation_mat, wall.start));
+            normals.push([0.0, 1.0, 0.0]);
+            indices.push(1);
+            indices.push(start_index);
+            indices.push(0);
+        }
+    }
+
+    match end_edges {
+        MinMaxResult::OneElement(_) => (),
+        MinMaxResult::NoElements => {
+            let back_index: u32 = positions
+                .len()
+                .try_into()
+                .expect("vertex back index should fit u32");
+
+            // Back
+            positions.push([end_left.x, 0.0, end_left.y]);
+            positions.push([end_left.x, HEIGHT, end_left.y]);
+            positions.push([end_right.x, HEIGHT, end_right.y]);
+            positions.push([end_right.x, 0.0, end_right.y]);
+            uvs.push([0.0, 0.0]);
+            uvs.push([0.0, HEIGHT]);
+            uvs.push([WIDTH, HEIGHT]);
+            uvs.push([WIDTH, 0.0]);
+            normals.extend_from_slice(&[[dir.x, 0.0, dir.y]; 4]);
+            indices.push(back_index);
+            indices.push(back_index + 3);
+            indices.push(back_index + 1);
+            indices.push(back_index + 1);
+            indices.push(back_index + 3);
+            indices.push(back_index + 2);
+        }
+        MinMaxResult::MinMax(_, _) => {
+            let end_index: u32 = positions
+                .len()
+                .try_into()
+                .expect("end vertex index should fit u32");
+
+            // Inside triangle to fill the gap between 3+ walls.
+            positions.push([wall.end.x, HEIGHT, wall.end.y]);
+            uvs.push(position_to_uv(wall.end, rotation_mat, wall.start));
+            normals.push([0.0, 1.0, 0.0]);
+            indices.push(3);
+            indices.push(end_index);
+            indices.push(2);
+        }
+    }
+}
 
 /// Rotates a point using rotation matrix relatively to the specified origin point.
 fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] {
@@ -363,22 +446,29 @@ fn offset_points(
 }
 
 /// Returns the points with the maximum and minimum angle relative
-/// to the wall vector that come out of point `start`.
-fn minmax_angles(start: Vec2, end: Vec2, edges: &[(Vec2, Vec2)]) -> MinMaxResult<(Vec2, Vec2)> {
-    let dir = end - start;
-    edges
+/// to the direction vector.
+fn minmax_angles(
+    dir: Vec2,
+    origin_point: WallPoint,
+    connections: &[(Entity, WallPoint)],
+    walls: &Query<&Wall>,
+) -> MinMaxResult<(Vec2, Vec2)> {
+    connections
         .iter()
-        .filter_map(|&(a, b)| {
-            if a == start && b != end {
-                Some((a, b))
-            } else if b == start && a != end {
-                Some((b, a))
-            } else {
-                None
+        .map(|&(entity, connected_point)| {
+            let wall = walls
+                .get(entity)
+                .expect("connected entities should be walls");
+
+            match (origin_point, connected_point) {
+                (WallPoint::Start, WallPoint::End) => (wall.end, wall.start),
+                (WallPoint::End, WallPoint::Start) => (wall.start, wall.end),
+                (WallPoint::Start, WallPoint::Start) => (wall.start, wall.end),
+                (WallPoint::End, WallPoint::End) => (wall.end, wall.start),
             }
         })
-        .minmax_by_key(|&(a, b)| {
-            let angle = (b - a).angle_between(dir);
+        .minmax_by_key(|&(start, end)| {
+            let angle = (end - start).angle_between(dir);
             if angle < 0.0 {
                 angle + 2.0 * PI
             } else {
@@ -445,167 +535,96 @@ impl FromWorld for WallMaterial {
 
 #[derive(Bundle)]
 struct WallBundle {
-    edges: WallEdges,
+    wall: Wall,
     parent_sync: ParentSync,
     replication: Replication,
 }
 
 impl WallBundle {
-    fn new(edges: Vec<(Vec2, Vec2)>) -> Self {
+    fn new(wall: Wall) -> Self {
         Self {
-            edges: WallEdges(edges),
+            wall,
             parent_sync: Default::default(),
             replication: Replication,
         }
     }
 }
 
-#[derive(Clone, Component, Default, Deref, DerefMut, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize, Debug)]
 #[reflect(Component)]
-pub(super) struct WallEdges(Vec<(Vec2, Vec2)>);
+pub(super) struct Wall {
+    pub(super) start: Vec2,
+    pub(super) end: Vec2,
+}
+
+impl Wall {
+    fn zero_length(position: Vec2) -> Self {
+        Self {
+            start: position,
+            end: position,
+        }
+    }
+}
+
+/// Dynamically updated component with precalculated connected entities for each wall point.
+#[derive(Component, Default, Debug)]
+struct WallConnections {
+    start: Vec<(Entity, WallPoint)>,
+    end: Vec<(Entity, WallPoint)>,
+}
+
+impl WallConnections {
+    fn drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
+        self.start
+            .drain(..)
+            .chain(self.end.drain(..))
+            .map(|(entity, _)| entity)
+    }
+
+    /// Returns position and point to which it connected for an entity.
+    ///
+    /// Used for [`Self::remove`] later.
+    /// It's two different functions to avoid triggering change detection if there is no such entity.
+    fn position(&self, position_entity: Entity) -> Option<(WallPoint, usize)> {
+        if let Some(index) = self
+            .start
+            .iter()
+            .position(|&(entity, _)| entity == position_entity)
+        {
+            Some((WallPoint::Start, index))
+        } else {
+            self.end
+                .iter()
+                .position(|&(entity, _)| entity == position_entity)
+                .map(|index| (WallPoint::End, index))
+        }
+    }
+
+    /// Removes connection by its index from specific point.
+    fn remove(&mut self, point: WallPoint, index: usize) {
+        match point {
+            WallPoint::Start => self.start.remove(index),
+            WallPoint::End => self.end.remove(index),
+        };
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WallPoint {
+    Start,
+    End,
+}
 
 /// Client event to request a wall creation.
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct WallSpawn {
     lot_entity: Entity,
-    edge: (Vec2, Vec2),
+    wall_entity: Entity,
+    wall: Wall,
 }
 
 impl MapNetworkEntities for WallSpawn {
     fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
         self.lot_entity = mapper.map(self.lot_entity);
-    }
-}
-
-#[derive(Event, Serialize, Deserialize)]
-struct WallEventConfirmed;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn intersecting_lines() {
-        let line_a = Line::new(Vec2::X, Vec2::ONE);
-        let line_b = Line::new(Vec2::ZERO, Vec2::X * 2.0);
-
-        assert_eq!(line_a.intersection(line_b), Some(Vec2::X));
-    }
-
-    #[test]
-    fn parallel_lines() {
-        let line_a = Line::new(Vec2::X, Vec2::ONE);
-        let line_b = Line::new(Vec2::X * 2.0, Vec2::ONE * 2.0);
-
-        assert_eq!(line_a.intersection(line_b), None);
-    }
-
-    #[test]
-    fn single_wall() {
-        const A: Vec2 = Vec2::ZERO;
-        const B: Vec2 = Vec2::X;
-        const EDGES: &[(Vec2, Vec2)] = &[(A, B)];
-
-        let width = width_vec(A, B);
-        let a_edges = minmax_angles(A, B, EDGES);
-        let (left_a, right_a) = offset_points(A, B, a_edges, width);
-
-        let b_edges = minmax_angles(B, A, EDGES);
-        let (right_b, left_b) = offset_points(B, A, b_edges, -width);
-
-        assert_eq!(left_a, Vec2::new(0.0, 0.075));
-        assert_eq!(right_a, Vec2::new(0.0, -0.075));
-        assert_eq!(left_b, Vec2::new(1.0, 0.075));
-        assert_eq!(right_b, Vec2::new(1.0, -0.075));
-    }
-
-    #[test]
-    fn opposite_walls() {
-        const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::X), (Vec2::NEG_X, Vec2::ZERO)];
-        const LEFT: [Vec2; 4] = [
-            Vec2::new(0.0, 0.075),
-            Vec2::new(0.0, -0.075),
-            Vec2::new(1.0, 0.075),
-            Vec2::new(1.0, -0.075),
-        ];
-        let mut right = LEFT.map(|vertex| -vertex);
-        right.reverse();
-
-        for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, right]) {
-            let width = width_vec(a, b);
-            let a_edges = minmax_angles(a, b, EDGES);
-            let (left_a, right_a) = offset_points(a, b, a_edges, width);
-
-            let b_edges = minmax_angles(b, a, EDGES);
-            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
-
-            for (actual, expected) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
-                assert_eq!(actual, expected);
-            }
-        }
-    }
-
-    #[test]
-    fn diagonal_walls() {
-        const EDGES: &[(Vec2, Vec2)] = &[(Vec2::ZERO, Vec2::ONE), (Vec2::ZERO, Vec2::NEG_ONE)];
-        const LEFT: [Vec2; 4] = [
-            Vec2::new(-0.05303301, 0.05303301),
-            Vec2::new(0.05303301, -0.05303301),
-            Vec2::new(0.946967, 1.053033),
-            Vec2::new(1.053033, 0.946967),
-        ];
-
-        for (&(a, b), expected) in EDGES.iter().zip(&[LEFT, LEFT.map(|vertex| -vertex)]) {
-            let width = width_vec(a, b);
-            let a_edges = minmax_angles(a, b, EDGES);
-            let (left_a, right_a) = offset_points(a, b, a_edges, width);
-
-            let b_edges = minmax_angles(b, a, EDGES);
-            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
-
-            for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
-                assert_eq!(actual, expected);
-            }
-        }
-    }
-
-    #[test]
-    fn crossed_walls() {
-        const EDGES: &[(Vec2, Vec2)] = &[
-            (Vec2::ZERO, Vec2::X),
-            (Vec2::ZERO, Vec2::NEG_X),
-            (Vec2::ZERO, Vec2::Y),
-            (Vec2::ZERO, Vec2::NEG_Y),
-        ];
-        const HORIZONTAL: [Vec2; 4] = [
-            Vec2::new(0.075, 0.075),
-            Vec2::new(0.075, -0.075),
-            Vec2::new(1.0, 0.075),
-            Vec2::new(1.0, -0.075),
-        ];
-        const VERTICAL: [Vec2; 4] = [
-            Vec2::new(-0.075, 0.075),
-            Vec2::new(0.075, 0.075),
-            Vec2::new(-0.075, 1.0),
-            Vec2::new(0.075, 1.0),
-        ];
-
-        for (&(a, b), expected) in EDGES.iter().zip(&[
-            HORIZONTAL,
-            HORIZONTAL.map(|vertex| -vertex),
-            VERTICAL,
-            VERTICAL.map(|vertex| -vertex),
-        ]) {
-            let width = width_vec(a, b);
-            let a_edges = minmax_angles(a, b, EDGES);
-            let (left_a, right_a) = offset_points(a, b, a_edges, width);
-
-            let b_edges = minmax_angles(b, a, EDGES);
-            let (right_b, left_b) = offset_points(b, a, b_edges, -width);
-
-            for (expected, actual) in expected.iter().zip(&[left_a, right_a, left_b, right_b]) {
-                assert_eq!(actual, expected);
-            }
-        }
     }
 }

@@ -23,7 +23,7 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{WallEdges, HALF_WIDTH},
+    wall::{Wall, HALF_WIDTH},
 };
 
 pub(super) struct PlacingObjectPlugin;
@@ -228,7 +228,7 @@ impl PlacingObjectPlugin {
     }
 
     fn snapping_system(
-        walls: Query<&WallEdges>,
+        walls: Query<&Wall>,
         mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
     ) {
         let Ok((mut transform, mut placing_object, wall_object)) = placing_objects.get_single_mut()
@@ -238,26 +238,25 @@ impl PlacingObjectPlugin {
 
         const SNAP_DELTA: f32 = 1.0;
         let translation_2d = transform.translation.xz();
-        if let Some((edge, edge_point)) = walls
+        if let Some((dir, wall_point)) = walls
             .iter()
-            .flat_map(|edges| edges.iter())
-            .map(|&(a, b)| {
-                let edge = b - a;
-                (edge, closest_point(a, edge, translation_2d))
+            .map(|wall| {
+                let dir = wall.end - wall.start;
+                (dir, closest_point(wall.start, dir, translation_2d))
             })
-            .find(|(_, edge_point)| edge_point.distance(translation_2d) <= SNAP_DELTA)
+            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
-            let sign = edge.perp_dot(translation_2d - edge_point).signum();
+            let sign = dir.perp_dot(translation_2d - wall_point).signum();
             let offset = match wall_object {
                 WallObject::InsideWall => Vec2::ZERO,
-                WallObject::OnWall => sign * edge.perp().normalize() * (HALF_WIDTH + GAP),
+                WallObject::OnWall => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
             };
-            let snap_point = edge_point + offset;
-            let edge_angle = edge.angle_between(Vec2::X * sign);
+            let snap_point = wall_point + offset;
+            let angle = dir.angle_between(Vec2::X * sign);
             transform.translation.x = snap_point.x;
             transform.translation.z = snap_point.y;
-            transform.rotation = Quat::from_rotation_y(edge_angle);
+            transform.rotation = Quat::from_rotation_y(angle);
             if !placing_object.allowed_place {
                 placing_object.allowed_place = true;
             }
