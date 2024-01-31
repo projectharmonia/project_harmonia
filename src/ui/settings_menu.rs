@@ -416,6 +416,10 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
                 setting_field!(settings.developer.debug_collisions),
             ));
             parent.spawn((
+                CheckboxBundle::new(theme, settings.developer.wireframe, "Wireframe"),
+                setting_field!(settings.developer.wireframe),
+            ));
+            parent.spawn((
                 CheckboxBundle::new(
                     theme,
                     settings.developer.debug_paths,
