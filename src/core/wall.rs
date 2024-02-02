@@ -26,6 +26,7 @@ impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpawningWallPlugin)
             .register_type::<Wall>()
+            .register_type::<WallObject>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
             .add_systems(
@@ -613,6 +614,21 @@ impl WallConnections {
 enum WallPoint {
     Start,
     End,
+}
+
+/// A component that marks that entity can be placed only on walls or inside them.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub(crate) enum WallObject {
+    InsideWall,
+    OnWall,
+}
+
+// To implement `Reflect`.
+impl FromWorld for WallObject {
+    fn from_world(_world: &mut World) -> Self {
+        Self::OnWall
+    }
 }
 
 /// Client event to request a wall creation.

@@ -23,15 +23,14 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{Wall, HALF_WIDTH},
+    wall::{Wall, WallObject, HALF_WIDTH},
 };
 
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<WallObject>()
-            .add_systems(OnExit(CityMode::Objects), Self::cancel_system)
+        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
             .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
             .add_systems(
                 Update,
@@ -492,18 +491,3 @@ pub(crate) enum PlacingObjectKind {
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
 struct CursorOffset(Vec2);
-
-/// A component that marks that entity can be placed only on walls or inside them.
-#[derive(Component, Reflect)]
-#[reflect(Component)]
-pub(crate) enum WallObject {
-    InsideWall,
-    OnWall,
-}
-
-// To implement `Reflect`.
-impl FromWorld for WallObject {
-    fn from_world(_world: &mut World) -> Self {
-        Self::OnWall
-    }
-}
