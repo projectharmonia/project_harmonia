@@ -6,4 +6,4 @@ preview_translation = [0.0, -1.0, -2.9]
 
 [object]
 category = "Doors"
-components = [{ WallObject = "InsideWall" }]
+components = [{ WallObject = "Builtin" }]
