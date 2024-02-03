@@ -1,9 +1,8 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
-use bevy_rapier3d::prelude::*;
+use bevy_replicon::prelude::*;
 use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
 };
-use oxidized_navigation::NavMeshAffector;
 
 use super::{Wall, WallSpawn};
 use crate::core::{
@@ -27,7 +26,7 @@ impl Plugin for SpawningWallPlugin {
                 Self::movement_system
                     .run_if(action_pressed(Action::Confirm))
                     .run_if(any_with_component::<SpawningWall>()),
-                Self::confirm_system
+                Self::confirmation_system
                     .run_if(action_just_released(Action::Confirm))
                     .run_if(any_with_component::<SpawningWall>()),
             )
@@ -60,7 +59,7 @@ impl SpawningWallPlugin {
                     .unwrap_or(position);
 
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((Wall::zero_length(point), SpawningWall));
+                    parent.spawn(SpawningWallBundle::new(point));
                 });
             }
         }
@@ -87,7 +86,7 @@ impl SpawningWallPlugin {
         }
     }
 
-    fn confirm_system(
+    fn confirmation_system(
         mut commands: Commands,
         mut spawn_events: EventWriter<WallSpawn>,
         spawning_walls: Query<(Entity, &Parent, &Wall), With<SpawningWall>>,
@@ -95,13 +94,34 @@ impl SpawningWallPlugin {
         let (wall_entity, parent, &wall) = spawning_walls.single();
         commands
             .entity(wall_entity)
-            .insert((Collider::default(), NavMeshAffector))
-            .remove::<SpawningWall>();
+            .remove::<SpawningWall>()
+            .insert(Replication);
+
         spawn_events.send(WallSpawn {
             lot_entity: **parent,
             wall_entity,
             wall,
         });
+    }
+}
+
+#[derive(Bundle)]
+struct SpawningWallBundle {
+    wall: Wall,
+    parent_sync: ParentSync,
+    spawning_wall: SpawningWall,
+}
+
+impl SpawningWallBundle {
+    fn new(point: Vec2) -> Self {
+        Self {
+            wall: Wall {
+                start: point,
+                end: point,
+            },
+            parent_sync: Default::default(),
+            spawning_wall: SpawningWall,
+        }
     }
 }
 

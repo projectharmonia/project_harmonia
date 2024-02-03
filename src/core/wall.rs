@@ -3,7 +3,6 @@ pub(crate) mod spawning_wall;
 use std::{f32::consts::PI, mem};
 
 use bevy::{
-    ecs::query::Has,
     prelude::*,
     render::{
         mesh::{Indices, VertexAttributeValues},
@@ -31,7 +30,7 @@ impl Plugin for WallPlugin {
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::init_system
+                (Self::wall_init_system, Self::collision_init_system)
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
@@ -52,14 +51,14 @@ impl Plugin for WallPlugin {
 }
 
 impl WallPlugin {
-    fn init_system(
+    fn wall_init_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
-        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<Wall>>,
+        spawned_walls: Query<Entity, Added<Wall>>,
     ) {
-        for (entity, spawning_wall) in &spawned_walls {
+        for entity in &spawned_walls {
             let material = StandardMaterial {
                 base_color_texture: Some(
                     asset_server.load("base/walls/brick/brick_base_color.png"),
@@ -69,7 +68,6 @@ impl WallPlugin {
                 ),
                 normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
                 occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
-                depth_bias: if spawning_wall { 100.0 } else { 0.0 }, // Avoid z-fighting with already spawned walls.
                 perceptual_roughness: 0.0,
                 reflectance: 0.0,
                 ..Default::default()
@@ -80,8 +78,7 @@ impl WallPlugin {
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
                 .with_indices(Some(Indices::U32(Vec::new())));
 
-            let mut entity = commands.entity(entity);
-            entity.insert((
+            commands.entity(entity).insert((
                 Name::new("Walls"),
                 WallConnections::default(),
                 CollisionGroups::new(Group::WALL, Group::ALL),
@@ -92,12 +89,19 @@ impl WallPlugin {
                     ..Default::default()
                 },
             ));
+        }
+    }
 
-            // Spawning walls shouldn't affect navigation.
-            // Should be inserted later after spawning marker removal.
-            if !spawning_wall {
-                entity.insert(Collider::default());
-                entity.insert(NavMeshAffector);
+    fn collision_init_system(
+        mut commands: Commands,
+        walls: Query<Entity, (Added<Wall>, Without<SpawningWall>)>,
+        mut confirmed_walls: RemovedComponents<SpawningWall>,
+    ) {
+        // Spawning walls shouldn't affect navigation, so we initialize
+        // it on confirmation or for regular walls.
+        for entity in walls.iter().chain(confirmed_walls.read()) {
+            if let Some(mut entity) = commands.get_entity(entity) {
+                entity.insert((Collider::default(), NavMeshAffector));
             }
         }
     }
@@ -556,15 +560,6 @@ impl WallBundle {
 pub(super) struct Wall {
     pub(super) start: Vec2,
     pub(super) end: Vec2,
-}
-
-impl Wall {
-    fn zero_length(position: Vec2) -> Self {
-        Self {
-            start: position,
-            end: position,
-        }
-    }
 }
 
 /// Dynamically updated component with precalculated connected entities for each wall point.
