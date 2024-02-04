@@ -187,7 +187,7 @@ impl WallPlugin {
             Changed<WallConnections>,
         >,
     ) {
-        for (mesh_handle, wall, connections, collider) in &mut changed_walls {
+        for (mesh_handle, &wall, connections, collider) in &mut changed_walls {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
@@ -257,7 +257,7 @@ const WIDTH: f32 = 0.15;
 pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
 
 fn generate_wall(
-    wall: &Wall,
+    wall: Wall,
     connections: &WallConnections,
     walls: &Query<&Wall>,
     positions: &mut Vec<[f32; 3]>,
@@ -270,15 +270,15 @@ fn generate_wall(
     }
 
     const HEIGHT: f32 = 2.8;
-    let dir = wall.end - wall.start;
-    let width = width_vec(wall.start, wall.end);
+    let dir = wall.dir();
+    let width = wall.width();
     let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
 
-    let start_edges = minmax_angles(dir, WallPoint::Start, &connections.start, walls);
-    let (start_left, start_right) = offset_points(wall.start, wall.end, start_edges, width);
+    let start_walls = minmax_angles(dir, WallPoint::Start, &connections.start, walls);
+    let (start_left, start_right) = offset_points(wall, start_walls, width);
 
-    let end_edges = minmax_angles(-dir, WallPoint::End, &connections.end, walls);
-    let (end_right, end_left) = offset_points(wall.end, wall.start, end_edges, -width);
+    let end_walls = minmax_angles(-dir, WallPoint::End, &connections.end, walls);
+    let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
 
     // Top
     positions.push([start_left.x, HEIGHT, start_left.y]);
@@ -339,7 +339,7 @@ fn generate_wall(
     indices.push(10);
     indices.push(11);
 
-    match start_edges {
+    match start_walls {
         MinMaxResult::OneElement(_) => (),
         MinMaxResult::NoElements => {
             // Front
@@ -375,7 +375,7 @@ fn generate_wall(
         }
     }
 
-    match end_edges {
+    match end_walls {
         MinMaxResult::OneElement(_) => (),
         MinMaxResult::NoElements => {
             let back_index: u32 = positions
@@ -424,28 +424,21 @@ fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] 
     (rotated_point + origin).into()
 }
 
-/// Calculates the wall thickness vector that faces to the left relative to the wall vector.
-fn width_vec(start: Vec2, end: Vec2) -> Vec2 {
-    (end - start).perp().normalize() * HALF_WIDTH
-}
-
 /// Calculates the left and right wall points for the `start` point of the wall,
 /// considering intersections with other walls.
-fn offset_points(
-    start: Vec2,
-    end: Vec2,
-    edges: MinMaxResult<(Vec2, Vec2)>,
-    width: Vec2,
-) -> (Vec2, Vec2) {
-    match edges {
-        MinMaxResult::NoElements => (start + width, start - width),
-        MinMaxResult::OneElement((a, b)) => (
-            wall_intersection(start, end, a, b, width),
-            wall_intersection(start, end, b, a, -width),
-        ),
-        MinMaxResult::MinMax((min_a, min_b), (max_a, max_b)) => (
-            wall_intersection(start, end, max_a, max_b, width),
-            wall_intersection(start, end, min_b, min_a, -width),
+fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> (Vec2, Vec2) {
+    match min_max_walls {
+        MinMaxResult::NoElements => (wall.start + width, wall.start - width),
+        MinMaxResult::OneElement(other_wall) => {
+            let other_width = other_wall.width();
+            (
+                wall_intersection(wall, width, other_wall, -other_width),
+                wall_intersection(wall, -width, other_wall.inverse(), other_width),
+            )
+        }
+        MinMaxResult::MinMax(min_wall, max_wall) => (
+            wall_intersection(wall, width, max_wall, -max_wall.width()),
+            wall_intersection(wall, -width, min_wall.inverse(), min_wall.width()),
         ),
     }
 }
@@ -457,23 +450,24 @@ fn minmax_angles(
     origin_point: WallPoint,
     connections: &[(Entity, WallPoint)],
     walls: &Query<&Wall>,
-) -> MinMaxResult<(Vec2, Vec2)> {
+) -> MinMaxResult<Wall> {
     connections
         .iter()
         .map(|&(entity, connected_point)| {
-            let wall = walls
+            let wall = *walls
                 .get(entity)
                 .expect("connected entities should be walls");
 
+            // Rotate points based on connection type.
             match (origin_point, connected_point) {
-                (WallPoint::Start, WallPoint::End) => (wall.end, wall.start),
-                (WallPoint::End, WallPoint::Start) => (wall.start, wall.end),
-                (WallPoint::Start, WallPoint::Start) => (wall.start, wall.end),
-                (WallPoint::End, WallPoint::End) => (wall.end, wall.start),
+                (WallPoint::Start, WallPoint::End) => wall.inverse(),
+                (WallPoint::End, WallPoint::Start) => wall,
+                (WallPoint::Start, WallPoint::Start) => wall,
+                (WallPoint::End, WallPoint::End) => wall.inverse(),
             }
         })
-        .minmax_by_key(|&(start, end)| {
-            let angle = (end - start).angle_between(dir);
+        .minmax_by_key(|wall| {
+            let angle = wall.dir().angle_between(dir);
             if angle < 0.0 {
                 angle + 2.0 * PI
             } else {
@@ -486,10 +480,12 @@ fn minmax_angles(
 /// at the line constructed from `start` and `end` points with another part of the wall.
 ///
 /// If the walls do not intersect, then returns a point that is a `width` away from the `start` point.
-fn wall_intersection(start: Vec2, end: Vec2, a: Vec2, b: Vec2, width: Vec2) -> Vec2 {
-    Line::with_offset(start, end, width)
-        .intersection(Line::with_offset(a, b, -width_vec(a, b)))
-        .unwrap_or_else(|| start + width)
+fn wall_intersection(wall: Wall, width: Vec2, other_wall: Wall, other_width: Vec2) -> Vec2 {
+    let other_line = Line::with_offset(other_wall.start, other_wall.end, other_width);
+
+    Line::with_offset(wall.start, wall.end, width)
+        .intersection(other_line)
+        .unwrap_or_else(|| wall.start + width)
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -513,6 +509,7 @@ impl Line {
         Self::new(p1 + offset, p2 + offset)
     }
 
+    #[must_use]
     fn intersection(self, rhs: Self) -> Option<Vec2> {
         let det = self.a * rhs.b - rhs.a * self.b;
         if det == 0.0 {
@@ -560,6 +557,24 @@ impl WallBundle {
 pub(super) struct Wall {
     pub(super) start: Vec2,
     pub(super) end: Vec2,
+}
+
+impl Wall {
+    fn inverse(&self) -> Self {
+        Self {
+            start: self.end,
+            end: self.start,
+        }
+    }
+
+    fn dir(&self) -> Vec2 {
+        self.end - self.start
+    }
+
+    /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
+    fn width(&self) -> Vec2 {
+        self.dir().perp().normalize() * HALF_WIDTH
+    }
 }
 
 /// Dynamically updated component with precalculated connected entities for each wall point.
