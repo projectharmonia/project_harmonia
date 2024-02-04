@@ -248,8 +248,8 @@ impl PlacingObjectPlugin {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let sign = dir.perp_dot(translation_2d - wall_point).signum();
             let offset = match wall_object {
-                WallObject::Builtin => Vec2::ZERO,
-                WallObject::Attached => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
+                WallObject::Opening => Vec2::ZERO,
+                WallObject::Fixture => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
             let angle = dir.angle_between(Vec2::X * sign);
@@ -275,8 +275,8 @@ impl PlacingObjectPlugin {
             return;
         };
         let collision_filters = match wall_object {
-            WallObject::Builtin => Group::OBJECT,
-            WallObject::Attached => Group::OBJECT | Group::WALL,
+            WallObject::Opening => Group::OBJECT,
+            WallObject::Fixture => Group::OBJECT | Group::WALL,
         };
 
         for (collider, transform) in children

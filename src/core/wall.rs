@@ -615,14 +615,14 @@ enum WallPoint {
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 pub(crate) enum WallObject {
-    Builtin,
-    Attached,
+    Fixture,
+    Opening,
 }
 
 // To implement `Reflect`.
 impl FromWorld for WallObject {
     fn from_world(_world: &mut World) -> Self {
-        Self::Attached
+        Self::Fixture
     }
 }
 
