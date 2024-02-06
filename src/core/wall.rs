@@ -421,7 +421,7 @@ fn generate_wall(
 fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] {
     let translated_pos = position - origin;
     let rotated_point = rotation_mat * translated_pos;
-    (rotated_point + origin).into()
+    rotated_point.into()
 }
 
 /// Calculates the left and right wall points for the `start` point of the wall,
