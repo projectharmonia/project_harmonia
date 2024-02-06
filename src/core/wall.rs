@@ -40,7 +40,7 @@ impl Plugin for WallPlugin {
                     Self::spawn_system.run_if(resource_exists::<RenetServer>()),
                     (
                         Self::cleanup_system,
-                        Self::connection_update_system,
+                        Self::connections_update_system,
                         Self::mesh_update_system,
                     )
                         .chain(),
@@ -126,7 +126,7 @@ impl WallPlugin {
         }
     }
 
-    fn connection_update_system(
+    fn connections_update_system(
         mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
         children: Query<&Children>,
         changed_walls: Query<(Entity, &Parent, &Wall), Changed<Wall>>,
