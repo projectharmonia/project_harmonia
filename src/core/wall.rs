@@ -131,52 +131,83 @@ impl WallPlugin {
         children: Query<&Children>,
         changed_walls: Query<(Entity, &Parent, &Wall), Changed<Wall>>,
     ) {
-        for (changed_entity, parent, changed_wall) in &changed_walls {
+        for (wall_entity, parent, &wall) in &changed_walls {
             // Take changed connections to avoid mutability issues.
-            let mut changed_connections =
-                mem::take(&mut *walls.component_mut::<WallConnections>(changed_entity));
+            let mut connections =
+                mem::take(&mut *walls.component_mut::<WallConnections>(wall_entity));
 
             // Cleanup old connections.
-            for connected_entity in changed_connections.drain() {
-                let mut connections = walls.component_mut::<WallConnections>(connected_entity);
-                if let Some((point, index)) = connections.position(changed_entity) {
-                    connections.remove(point, index);
+            for other_entity in connections.drain() {
+                let mut other_connections = walls.component_mut::<WallConnections>(other_entity);
+                if let Some((point, index)) = other_connections.position(wall_entity) {
+                    other_connections.remove(point, index);
                 }
             }
 
             // If wall have zero length, exclude it from connections.
-            if changed_wall.start != changed_wall.end {
+            if wall.start != wall.end {
                 // Scan all walls from this lot for possible connections.
                 let children = children.get(**parent).unwrap();
                 let mut iter = walls.iter_many_mut(children);
-                while let Some((entity, wall, mut connections)) = iter
+                while let Some((other_entity, &other_wall, mut other_connections)) = iter
                     .fetch_next()
-                    .filter(|(entity, ..)| *entity != changed_entity)
+                    .filter(|&(entity, ..)| entity != wall_entity)
                 {
-                    if changed_wall.start == wall.start {
-                        changed_connections.start.push((entity, PointKind::Start));
-                        connections.start.push((changed_entity, PointKind::Start));
-                    } else if changed_wall.start == wall.end {
-                        changed_connections.start.push((entity, PointKind::End));
-                        connections.end.push((changed_entity, PointKind::Start));
-                    } else if changed_wall.end == wall.end {
-                        changed_connections.end.push((entity, PointKind::End));
-                        connections.end.push((changed_entity, PointKind::End));
-                    } else if changed_wall.end == wall.start {
-                        changed_connections.end.push((entity, PointKind::Start));
-                        connections.start.push((changed_entity, PointKind::End));
+                    if wall.start == other_wall.start {
+                        connections.start.push(WallConnection {
+                            wall_entity: other_entity,
+                            point_kind: PointKind::Start,
+                            wall: other_wall,
+                        });
+                        other_connections.start.push(WallConnection {
+                            wall_entity,
+                            point_kind: PointKind::Start,
+                            wall,
+                        });
+                    } else if wall.start == other_wall.end {
+                        connections.start.push(WallConnection {
+                            wall_entity: other_entity,
+                            point_kind: PointKind::End,
+                            wall: other_wall,
+                        });
+                        other_connections.end.push(WallConnection {
+                            wall_entity,
+                            point_kind: PointKind::Start,
+                            wall,
+                        });
+                    } else if wall.end == other_wall.end {
+                        connections.end.push(WallConnection {
+                            wall_entity: other_entity,
+                            point_kind: PointKind::End,
+                            wall: other_wall,
+                        });
+                        other_connections.end.push(WallConnection {
+                            wall_entity,
+                            point_kind: PointKind::End,
+                            wall,
+                        });
+                    } else if wall.end == other_wall.start {
+                        connections.end.push(WallConnection {
+                            wall_entity: other_entity,
+                            point_kind: PointKind::Start,
+                            wall: other_wall,
+                        });
+                        other_connections.start.push(WallConnection {
+                            wall_entity,
+                            point_kind: PointKind::End,
+                            wall,
+                        });
                     }
                 }
             }
 
             // Reinsert updated connections back.
-            *walls.component_mut::<WallConnections>(changed_entity) = changed_connections;
+            *walls.component_mut::<WallConnections>(wall_entity) = connections;
         }
     }
 
     fn mesh_update_system(
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<&Wall>,
         mut changed_walls: Query<
             (
                 &Handle<Mesh>,
@@ -220,7 +251,6 @@ impl WallPlugin {
             generate_wall(
                 wall,
                 connections,
-                &walls,
                 &mut positions,
                 &mut uvs,
                 &mut normals,
@@ -259,7 +289,6 @@ pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
 fn generate_wall(
     wall: Wall,
     connections: &WallConnections,
-    walls: &Query<&Wall>,
     positions: &mut Vec<[f32; 3]>,
     uvs: &mut Vec<[f32; 2]>,
     normals: &mut Vec<[f32; 3]>,
@@ -274,10 +303,10 @@ fn generate_wall(
     let width = wall.width();
     let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
 
-    let start_walls = minmax_angles(dir, PointKind::Start, &connections.start, walls);
+    let start_walls = minmax_angles(dir, PointKind::Start, &connections.start);
     let (start_left, start_right) = offset_points(wall, start_walls, width);
 
-    let end_walls = minmax_angles(-dir, PointKind::End, &connections.end, walls);
+    let end_walls = minmax_angles(-dir, PointKind::End, &connections.end);
     let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
 
     // Top
@@ -447,23 +476,18 @@ fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> 
 /// to the direction vector.
 fn minmax_angles(
     dir: Vec2,
-    origin_kind: PointKind,
-    connections: &[(Entity, PointKind)],
-    walls: &Query<&Wall>,
+    point_kind: PointKind,
+    point_connections: &[WallConnection],
 ) -> MinMaxResult<Wall> {
-    connections
+    point_connections
         .iter()
-        .map(|&(entity, connected_kind)| {
-            let wall = *walls
-                .get(entity)
-                .expect("connected entities should be walls");
-
+        .map(|connection| {
             // Rotate points based on connection type.
-            match (origin_kind, connected_kind) {
-                (PointKind::Start, PointKind::End) => wall.inverse(),
-                (PointKind::End, PointKind::Start) => wall,
-                (PointKind::Start, PointKind::Start) => wall,
-                (PointKind::End, PointKind::End) => wall.inverse(),
+            match (point_kind, connection.point_kind) {
+                (PointKind::Start, PointKind::End) => connection.wall.inverse(),
+                (PointKind::End, PointKind::Start) => connection.wall,
+                (PointKind::Start, PointKind::Start) => connection.wall,
+                (PointKind::End, PointKind::End) => connection.wall.inverse(),
             }
         })
         .minmax_by_key(|wall| {
@@ -552,7 +576,7 @@ impl WallBundle {
     }
 }
 
-#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize, Debug)]
+#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub(super) struct Wall {
     pub(super) start: Vec2,
@@ -578,10 +602,10 @@ impl Wall {
 }
 
 /// Dynamically updated component with precalculated connected entities for each wall point.
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default)]
 struct WallConnections {
-    start: Vec<(Entity, PointKind)>,
-    end: Vec<(Entity, PointKind)>,
+    start: Vec<WallConnection>,
+    end: Vec<WallConnection>,
 }
 
 impl WallConnections {
@@ -589,24 +613,24 @@ impl WallConnections {
         self.start
             .drain(..)
             .chain(self.end.drain(..))
-            .map(|(entity, _)| entity)
+            .map(|WallConnection { wall_entity, .. }| wall_entity)
     }
 
     /// Returns position and point kind to which it connected for an entity.
     ///
     /// Used for [`Self::remove`] later.
     /// It's two different functions to avoid triggering change detection if there is no such entity.
-    fn position(&self, position_entity: Entity) -> Option<(PointKind, usize)> {
+    fn position(&self, entity: Entity) -> Option<(PointKind, usize)> {
         if let Some(index) = self
             .start
             .iter()
-            .position(|&(entity, _)| entity == position_entity)
+            .position(|&WallConnection { wall_entity, .. }| wall_entity == entity)
         {
             Some((PointKind::Start, index))
         } else {
             self.end
                 .iter()
-                .position(|&(entity, _)| entity == position_entity)
+                .position(|&WallConnection { wall_entity, .. }| wall_entity == entity)
                 .map(|index| (PointKind::End, index))
         }
     }
@@ -618,6 +642,12 @@ impl WallConnections {
             PointKind::End => self.end.remove(index),
         };
     }
+}
+
+struct WallConnection {
+    wall_entity: Entity,
+    point_kind: PointKind,
+    wall: Wall,
 }
 
 #[derive(Clone, Copy, Debug)]
