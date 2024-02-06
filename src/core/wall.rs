@@ -154,17 +154,17 @@ impl WallPlugin {
                     .filter(|(entity, ..)| *entity != changed_entity)
                 {
                     if changed_wall.start == wall.start {
-                        changed_connections.start.push((entity, WallPoint::Start));
-                        connections.start.push((changed_entity, WallPoint::Start));
+                        changed_connections.start.push((entity, PointKind::Start));
+                        connections.start.push((changed_entity, PointKind::Start));
                     } else if changed_wall.start == wall.end {
-                        changed_connections.start.push((entity, WallPoint::End));
-                        connections.end.push((changed_entity, WallPoint::Start));
+                        changed_connections.start.push((entity, PointKind::End));
+                        connections.end.push((changed_entity, PointKind::Start));
                     } else if changed_wall.end == wall.end {
-                        changed_connections.end.push((entity, WallPoint::End));
-                        connections.end.push((changed_entity, WallPoint::End));
+                        changed_connections.end.push((entity, PointKind::End));
+                        connections.end.push((changed_entity, PointKind::End));
                     } else if changed_wall.end == wall.start {
-                        changed_connections.end.push((entity, WallPoint::Start));
-                        connections.start.push((changed_entity, WallPoint::End));
+                        changed_connections.end.push((entity, PointKind::Start));
+                        connections.start.push((changed_entity, PointKind::End));
                     }
                 }
             }
@@ -274,10 +274,10 @@ fn generate_wall(
     let width = wall.width();
     let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
 
-    let start_walls = minmax_angles(dir, WallPoint::Start, &connections.start, walls);
+    let start_walls = minmax_angles(dir, PointKind::Start, &connections.start, walls);
     let (start_left, start_right) = offset_points(wall, start_walls, width);
 
-    let end_walls = minmax_angles(-dir, WallPoint::End, &connections.end, walls);
+    let end_walls = minmax_angles(-dir, PointKind::End, &connections.end, walls);
     let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
 
     // Top
@@ -447,23 +447,23 @@ fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> 
 /// to the direction vector.
 fn minmax_angles(
     dir: Vec2,
-    origin_point: WallPoint,
-    connections: &[(Entity, WallPoint)],
+    origin_kind: PointKind,
+    connections: &[(Entity, PointKind)],
     walls: &Query<&Wall>,
 ) -> MinMaxResult<Wall> {
     connections
         .iter()
-        .map(|&(entity, connected_point)| {
+        .map(|&(entity, connected_kind)| {
             let wall = *walls
                 .get(entity)
                 .expect("connected entities should be walls");
 
             // Rotate points based on connection type.
-            match (origin_point, connected_point) {
-                (WallPoint::Start, WallPoint::End) => wall.inverse(),
-                (WallPoint::End, WallPoint::Start) => wall,
-                (WallPoint::Start, WallPoint::Start) => wall,
-                (WallPoint::End, WallPoint::End) => wall.inverse(),
+            match (origin_kind, connected_kind) {
+                (PointKind::Start, PointKind::End) => wall.inverse(),
+                (PointKind::End, PointKind::Start) => wall,
+                (PointKind::Start, PointKind::Start) => wall,
+                (PointKind::End, PointKind::End) => wall.inverse(),
             }
         })
         .minmax_by_key(|wall| {
@@ -580,8 +580,8 @@ impl Wall {
 /// Dynamically updated component with precalculated connected entities for each wall point.
 #[derive(Component, Default, Debug)]
 struct WallConnections {
-    start: Vec<(Entity, WallPoint)>,
-    end: Vec<(Entity, WallPoint)>,
+    start: Vec<(Entity, PointKind)>,
+    end: Vec<(Entity, PointKind)>,
 }
 
 impl WallConnections {
@@ -592,36 +592,36 @@ impl WallConnections {
             .map(|(entity, _)| entity)
     }
 
-    /// Returns position and point to which it connected for an entity.
+    /// Returns position and point kind to which it connected for an entity.
     ///
     /// Used for [`Self::remove`] later.
     /// It's two different functions to avoid triggering change detection if there is no such entity.
-    fn position(&self, position_entity: Entity) -> Option<(WallPoint, usize)> {
+    fn position(&self, position_entity: Entity) -> Option<(PointKind, usize)> {
         if let Some(index) = self
             .start
             .iter()
             .position(|&(entity, _)| entity == position_entity)
         {
-            Some((WallPoint::Start, index))
+            Some((PointKind::Start, index))
         } else {
             self.end
                 .iter()
                 .position(|&(entity, _)| entity == position_entity)
-                .map(|index| (WallPoint::End, index))
+                .map(|index| (PointKind::End, index))
         }
     }
 
     /// Removes connection by its index from specific point.
-    fn remove(&mut self, point: WallPoint, index: usize) {
-        match point {
-            WallPoint::Start => self.start.remove(index),
-            WallPoint::End => self.end.remove(index),
+    fn remove(&mut self, kind: PointKind, index: usize) {
+        match kind {
+            PointKind::Start => self.start.remove(index),
+            PointKind::End => self.end.remove(index),
         };
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-enum WallPoint {
+enum PointKind {
     Start,
     End,
 }
