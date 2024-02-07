@@ -1,23 +1,20 @@
 pub(crate) mod spawning_wall;
+pub(crate) mod wall_mesh;
 
-use std::{f32::consts::PI, mem};
+use std::mem;
 
 use bevy::{
     prelude::*,
-    render::{
-        mesh::{Indices, VertexAttributeValues},
-        render_resource::PrimitiveTopology,
-        view::NoFrustumCulling,
-    },
+    render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
 };
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
-use itertools::{Itertools, MinMaxResult};
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
 use super::{collision_groups::HarmoniaGroupsExt, game_world::WorldName};
 use spawning_wall::{SpawningWall, SpawningWallPlugin};
+use wall_mesh::WallMesh;
 
 pub(super) struct WallPlugin;
 
@@ -223,44 +220,9 @@ impl WallPlugin {
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
 
-            // Remove attributes to avoid mutability issues.
-            let Some(VertexAttributeValues::Float32x3(mut positions)) =
-                mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION)
-            else {
-                panic!("all walls should be initialized with position attribute");
-            };
-            let Some(VertexAttributeValues::Float32x2(mut uvs)) =
-                mesh.remove_attribute(Mesh::ATTRIBUTE_UV_0)
-            else {
-                panic!("all walls should be initialized with UV attribute");
-            };
-            let Some(VertexAttributeValues::Float32x3(mut normals)) =
-                mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL)
-            else {
-                panic!("all walls should be initialized with normal attribute");
-            };
-            let Some(Indices::U32(indices)) = mesh.indices_mut() else {
-                panic!("all walls should have U32 indices");
-            };
-
-            positions.clear();
-            uvs.clear();
-            normals.clear();
-            indices.clear();
-
-            generate_wall(
-                wall,
-                connections,
-                &mut positions,
-                &mut uvs,
-                &mut normals,
-                indices,
-            );
-
-            // Reinsert removed attributes back.
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+            let mut wall_mesh = WallMesh::take(mesh);
+            wall_mesh.generate(wall, connections);
+            wall_mesh.apply(mesh);
 
             if let Some(mut collider) = collider {
                 *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
@@ -279,270 +241,6 @@ impl WallPlugin {
                     connections.remove(point, index);
                 }
             }
-        }
-    }
-}
-
-const WIDTH: f32 = 0.15;
-pub(super) const HALF_WIDTH: f32 = WIDTH / 2.0;
-
-fn generate_wall(
-    wall: Wall,
-    connections: &WallConnections,
-    positions: &mut Vec<[f32; 3]>,
-    uvs: &mut Vec<[f32; 2]>,
-    normals: &mut Vec<[f32; 3]>,
-    indices: &mut Vec<u32>,
-) {
-    if wall.start == wall.end {
-        return;
-    }
-
-    const HEIGHT: f32 = 2.8;
-    let dir = wall.dir();
-    let width = wall.width();
-    let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
-
-    let start_walls = minmax_angles(dir, PointKind::Start, &connections.start);
-    let (start_left, start_right) = offset_points(wall, start_walls, width);
-
-    let end_walls = minmax_angles(-dir, PointKind::End, &connections.end);
-    let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
-
-    // Top
-    positions.push([start_left.x, HEIGHT, start_left.y]);
-    positions.push([start_right.x, HEIGHT, start_right.y]);
-    positions.push([end_right.x, HEIGHT, end_right.y]);
-    positions.push([end_left.x, HEIGHT, end_left.y]);
-    uvs.push(position_to_uv(start_left, rotation_mat, wall.start));
-    uvs.push(position_to_uv(start_right, rotation_mat, wall.start));
-    uvs.push(position_to_uv(end_right, rotation_mat, wall.start));
-    uvs.push(position_to_uv(end_left, rotation_mat, wall.start));
-    normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
-    indices.push(0);
-    indices.push(3);
-    indices.push(1);
-    indices.push(1);
-    indices.push(3);
-    indices.push(2);
-
-    // Right
-    positions.push([start_right.x, 0.0, start_right.y]);
-    positions.push([end_right.x, 0.0, end_right.y]);
-    positions.push([end_right.x, HEIGHT, end_right.y]);
-    positions.push([start_right.x, HEIGHT, start_right.y]);
-    let start_right_uv = position_to_uv(start_right, rotation_mat, wall.start);
-    let end_right_uv = position_to_uv(end_right, rotation_mat, wall.start);
-    let start_right_top_uv = [start_right_uv[0], start_right_uv[1] + HEIGHT];
-    let end_right_top_uv = [end_right_uv[0], end_right_uv[1] + HEIGHT];
-    uvs.push(start_right_uv);
-    uvs.push(end_right_uv);
-    uvs.push(end_right_top_uv);
-    uvs.push(start_right_top_uv);
-    normals.extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
-    indices.push(4);
-    indices.push(7);
-    indices.push(5);
-    indices.push(5);
-    indices.push(7);
-    indices.push(6);
-
-    // Left
-    positions.push([start_left.x, 0.0, start_left.y]);
-    positions.push([end_left.x, 0.0, end_left.y]);
-    positions.push([end_left.x, HEIGHT, end_left.y]);
-    positions.push([start_left.x, HEIGHT, start_left.y]);
-    let start_left_uv = position_to_uv(start_left, rotation_mat, wall.start);
-    let end_left_uv = position_to_uv(end_left, rotation_mat, wall.start);
-    let start_left_top_uv = [start_left_uv[0], start_left_uv[1] + HEIGHT];
-    let end_left_top_uv = [end_left_uv[0], end_left_uv[1] + HEIGHT];
-    uvs.push(start_left_uv);
-    uvs.push(end_left_uv);
-    uvs.push(end_left_top_uv);
-    uvs.push(start_left_top_uv);
-    normals.extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
-    indices.push(8);
-    indices.push(9);
-    indices.push(11);
-    indices.push(9);
-    indices.push(10);
-    indices.push(11);
-
-    match start_walls {
-        MinMaxResult::OneElement(_) => (),
-        MinMaxResult::NoElements => {
-            // Front
-            positions.push([start_left.x, 0.0, start_left.y]);
-            positions.push([start_left.x, HEIGHT, start_left.y]);
-            positions.push([start_right.x, HEIGHT, start_right.y]);
-            positions.push([start_right.x, 0.0, start_right.y]);
-            uvs.push([0.0, 0.0]);
-            uvs.push([0.0, HEIGHT]);
-            uvs.push([WIDTH, HEIGHT]);
-            uvs.push([WIDTH, 0.0]);
-            normals.extend_from_slice(&[[-dir.x, 0.0, -dir.y]; 4]);
-            indices.push(12);
-            indices.push(13);
-            indices.push(15);
-            indices.push(13);
-            indices.push(14);
-            indices.push(15);
-        }
-        MinMaxResult::MinMax(_, _) => {
-            let start_index: u32 = positions
-                .len()
-                .try_into()
-                .expect("start vertex index should fit u32");
-
-            // Inside triangle to fill the gap between 3+ walls.
-            positions.push([wall.start.x, HEIGHT, wall.start.y]);
-            uvs.push(position_to_uv(wall.start, rotation_mat, wall.start));
-            normals.push([0.0, 1.0, 0.0]);
-            indices.push(1);
-            indices.push(start_index);
-            indices.push(0);
-        }
-    }
-
-    match end_walls {
-        MinMaxResult::OneElement(_) => (),
-        MinMaxResult::NoElements => {
-            let back_index: u32 = positions
-                .len()
-                .try_into()
-                .expect("vertex back index should fit u32");
-
-            // Back
-            positions.push([end_left.x, 0.0, end_left.y]);
-            positions.push([end_left.x, HEIGHT, end_left.y]);
-            positions.push([end_right.x, HEIGHT, end_right.y]);
-            positions.push([end_right.x, 0.0, end_right.y]);
-            uvs.push([0.0, 0.0]);
-            uvs.push([0.0, HEIGHT]);
-            uvs.push([WIDTH, HEIGHT]);
-            uvs.push([WIDTH, 0.0]);
-            normals.extend_from_slice(&[[dir.x, 0.0, dir.y]; 4]);
-            indices.push(back_index);
-            indices.push(back_index + 3);
-            indices.push(back_index + 1);
-            indices.push(back_index + 1);
-            indices.push(back_index + 3);
-            indices.push(back_index + 2);
-        }
-        MinMaxResult::MinMax(_, _) => {
-            let end_index: u32 = positions
-                .len()
-                .try_into()
-                .expect("end vertex index should fit u32");
-
-            // Inside triangle to fill the gap between 3+ walls.
-            positions.push([wall.end.x, HEIGHT, wall.end.y]);
-            uvs.push(position_to_uv(wall.end, rotation_mat, wall.start));
-            normals.push([0.0, 1.0, 0.0]);
-            indices.push(3);
-            indices.push(end_index);
-            indices.push(2);
-        }
-    }
-}
-
-/// Rotates a point using rotation matrix relatively to the specified origin point.
-fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] {
-    let translated_pos = position - origin;
-    let rotated_point = rotation_mat * translated_pos;
-    rotated_point.into()
-}
-
-/// Calculates the left and right wall points for the `start` point of the wall,
-/// considering intersections with other walls.
-fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> (Vec2, Vec2) {
-    match min_max_walls {
-        MinMaxResult::NoElements => (wall.start + width, wall.start - width),
-        MinMaxResult::OneElement(other_wall) => {
-            let other_width = other_wall.width();
-            (
-                wall_intersection(wall, width, other_wall, -other_width),
-                wall_intersection(wall, -width, other_wall.inverse(), other_width),
-            )
-        }
-        MinMaxResult::MinMax(min_wall, max_wall) => (
-            wall_intersection(wall, width, max_wall, -max_wall.width()),
-            wall_intersection(wall, -width, min_wall.inverse(), min_wall.width()),
-        ),
-    }
-}
-
-/// Returns the points with the maximum and minimum angle relative
-/// to the direction vector.
-fn minmax_angles(
-    dir: Vec2,
-    point_kind: PointKind,
-    point_connections: &[WallConnection],
-) -> MinMaxResult<Wall> {
-    point_connections
-        .iter()
-        .map(|connection| {
-            // Rotate points based on connection type.
-            match (point_kind, connection.point_kind) {
-                (PointKind::Start, PointKind::End) => connection.wall.inverse(),
-                (PointKind::End, PointKind::Start) => connection.wall,
-                (PointKind::Start, PointKind::Start) => connection.wall,
-                (PointKind::End, PointKind::End) => connection.wall.inverse(),
-            }
-        })
-        .minmax_by_key(|wall| {
-            let angle = wall.dir().angle_between(dir);
-            if angle < 0.0 {
-                angle + 2.0 * PI
-            } else {
-                angle
-            }
-        })
-}
-
-/// Returns the intersection of the part of the wall that is `width` away
-/// at the line constructed from `start` and `end` points with another part of the wall.
-///
-/// If the walls do not intersect, then returns a point that is a `width` away from the `start` point.
-fn wall_intersection(wall: Wall, width: Vec2, other_wall: Wall, other_width: Vec2) -> Vec2 {
-    let other_line = Line::with_offset(other_wall.start, other_wall.end, other_width);
-
-    Line::with_offset(wall.start, wall.end, width)
-        .intersection(other_line)
-        .unwrap_or_else(|| wall.start + width)
-}
-
-#[derive(Clone, Copy, PartialEq)]
-struct Line {
-    a: f32,
-    b: f32,
-    c: f32,
-}
-
-impl Line {
-    #[must_use]
-    fn new(p1: Vec2, p2: Vec2) -> Self {
-        let a = p2.y - p1.y;
-        let b = p1.x - p2.x;
-        let c = a * p1.x + b * p1.y;
-        Self { a, b, c }
-    }
-
-    #[must_use]
-    fn with_offset(p1: Vec2, p2: Vec2, offset: Vec2) -> Self {
-        Self::new(p1 + offset, p2 + offset)
-    }
-
-    #[must_use]
-    fn intersection(self, rhs: Self) -> Option<Vec2> {
-        let det = self.a * rhs.b - rhs.a * self.b;
-        if det == 0.0 {
-            None
-        } else {
-            Some(Vec2 {
-                x: (rhs.b * self.c - self.b * rhs.c) / det,
-                y: (self.a * rhs.c - rhs.a * self.c) / det,
-            })
         }
     }
 }
@@ -593,11 +291,6 @@ impl Wall {
 
     fn dir(&self) -> Vec2 {
         self.end - self.start
-    }
-
-    /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
-    fn width(&self) -> Vec2 {
-        self.dir().perp().normalize() * HALF_WIDTH
     }
 }
 

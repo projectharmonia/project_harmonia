@@ -387,8 +387,7 @@ checksum = "35636a1494ede3b646cc98f74f8e62c773a38a659ebc777a2cf26b9b74171df9"
 [[package]]
 name = "bevy"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4bc7e09282a82a48d70ade0c4c1154b0fd7882a735a39c66766a5d0f4718ea9"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_internal",
 ]
@@ -396,8 +395,7 @@ dependencies = [
 [[package]]
 name = "bevy_a11y"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68080288c932634f6563d3a8299efe0ddc9ea6787539c4c771ba250d089a94f0"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "accesskit",
  "bevy_app",
@@ -408,8 +406,7 @@ dependencies = [
 [[package]]
 name = "bevy_animation"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aa37683b1281e1ba8cf285644e6e3f0704f14b3901c5ee282067ff7ff6f4a56"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -427,8 +424,7 @@ dependencies = [
 [[package]]
 name = "bevy_app"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d41731817993f92e4363dd3335558e779e290bc71eefc0b5547052b85810907e"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -443,8 +439,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "935984568f75867dd7357133b06f4b1502cd2be55e4642d483ce597e46e63bff"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "async-broadcast",
  "async-fs",
@@ -476,8 +471,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset_macros"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f48b9bbe4ec605e4910b5cd1e1a0acbfbe0b80af5f3bcc4489a9fdd1e80058c"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -512,8 +506,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3daa24502a14839509f02407bc7e48299fe84d260877de23b60662de0f4f4b6c"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -528,8 +521,7 @@ dependencies = [
 [[package]]
 name = "bevy_core_pipeline"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b77c4fca6e90edbe2e72da7bc9aa7aed7dfdfded0920ae0a0c845f5e11084a"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -550,8 +542,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f484318350462c58ba3942a45a656c1fd6b6e484a6b6b7abc3a787ad1a51e500"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -561,8 +552,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa38ca5967d335cc1006a0e0f1a86c350e2f15fd1878449f61d04cd57a7c4060"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -576,8 +566,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709fbd22f81fb681534cd913c41e1cd18b17143368743281195d7f024b61aea"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "async-channel 1.9.0",
  "bevy_ecs_macros",
@@ -597,8 +586,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8843aa489f159f25cdcd9fee75cd7d221a7098a71eaa72cb2d6b40ac4e3f1ba"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -609,8 +597,7 @@ dependencies = [
 [[package]]
 name = "bevy_encase_derive"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5328a3715e933ebbff07d0e99528dc423c4f7a53590ed1ac19a120348b028990"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
@@ -619,8 +606,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b81ca2ebf66cbc7f998f1f142b15038ffe3c4ae1d51f70adda26dcf51b0c4ca"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -635,8 +621,7 @@ dependencies = [
 [[package]]
 name = "bevy_gizmos"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db232274ddca2ae452eb2731b98267b795d133ddd14013121bc7daddde1c7491"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -655,8 +640,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85adc6b1fc86687bf67149e0bafaa4d6da432232fa956472d1b37f19121d3ace"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "base64 0.13.1",
  "bevy_animation",
@@ -685,8 +669,7 @@ dependencies = [
 [[package]]
 name = "bevy_hierarchy"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06bd477152ce2ae1430f5e0a4f19216e5785c22fee1ab23788b5982dc59d1a55"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -700,8 +683,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cab9a599189b2a694c182d60cd52219dd9364f9892ff542d87799b8e45d9e6dc"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -715,8 +697,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f124bece9831afd80897815231072d51bfe3ac58c6bb58eca8880963b6d0487c"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_a11y",
  "bevy_animation",
@@ -753,8 +734,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dc10ba1d225a8477b9e80a1bf797d8a8b8274e83c9b24fb4d9351aec9229755"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "android_log-sys",
  "bevy_app",
@@ -769,8 +749,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e566640c6b6dced73d2006c764c2cffebe1a82be4809486c4a5d7b4b50efed4d"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -782,8 +761,7 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58ddc2b76783939c530178f88e5711a1b01044d7b02db4033e2eb8b43b6cf4ec"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "glam",
  "serde",
@@ -792,8 +770,7 @@ dependencies = [
 [[package]]
 name = "bevy_mikktspace"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ec4962977a746d870170532fc92759e04d3dbcae8b7b82e7ca3bb83b1d75277"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "glam",
 ]
@@ -814,8 +791,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "520bfd2a898c74f84ea52cfb8eb061f37373ad15e623489d5f75d27ebd6138fe"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -850,8 +826,7 @@ dependencies = [
 [[package]]
 name = "bevy_ptr"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c77ec20c8fafcdc196508ef5ccb4f0400a8d193cb61f7b14a36ed9a25ad423cf"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 
 [[package]]
 name = "bevy_rapier3d"
@@ -869,8 +844,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7921f15fc944c9c8ad01d7dbcea6505b8909c6655cd9382bab1407181556038"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_math",
  "bevy_ptr",
@@ -888,8 +862,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4a8c5475f216e751ef4452a1306b00711f33d2d04d9f149e4c845dfeb6753a0"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -901,8 +874,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdefdd3737125b0d94a6ff20bb70fa8cfe9d7d5dcd72ba4dfe6c5f1d30d9f6e4"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "async-channel 1.9.0",
  "bevy_app",
@@ -947,8 +919,7 @@ dependencies = [
 [[package]]
 name = "bevy_render_macros"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64d86bfc5a1e7fbeeaec0c4ceab18155530f5506624670965db3415f75826bea"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -983,8 +954,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7df078b5e406e37c8a1c6ba0d652bf105fde713ce3c3efda7263fe27467eee5"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -1004,8 +974,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7cc0c9d946e17e3e0aaa202f182837bc796c4f862b2e5a805134f873f21cf7f"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -1030,8 +999,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4fefa7fe0da8923525f7500e274f1bd60dbd79918a25cf7d0dfa0a6ba15c1cf"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "async-channel 1.9.0",
  "async-executor",
@@ -1044,8 +1012,7 @@ dependencies = [
 [[package]]
 name = "bevy_text"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a9a79d49ca06170d69149949b134c14e8b99ace1444c1ca2cd4743b19d5b055"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "ab_glyph",
  "bevy_app",
@@ -1066,8 +1033,7 @@ dependencies = [
 [[package]]
 name = "bevy_time"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6250d76eed3077128b6a3d004f9f198b01107800b9824051e32bb658054e837"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1081,8 +1047,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d541e0c292edbd96afae816ee680e02247422423ccd5dc635c1e211a20ed64be"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1096,8 +1061,7 @@ dependencies = [
 [[package]]
 name = "bevy_ui"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d785e3b75dabcb2a8ad0d50933f8f3446d59e512cabc2d2a145e28c2bb8792ba"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -1126,8 +1090,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7915222f4a08ccc782e08d10b751b42e5f9d786e697d0cb3fd09333cb7e8b6ea"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "ahash",
  "bevy_utils_proc_macros",
@@ -1144,8 +1107,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils_proc_macros"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aafecc952b6b8eb1a93c12590bd867d25df2f4ae1033a01dfdfc3c35ebccfff"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1155,8 +1117,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ee72bf7f974000e9b31bb971a89387f1432ba9413f35c4fef59fef49767260"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -1172,8 +1133,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1eb71f287eca9006dda998784c7b931e400ae2cc4c505da315882a8b082f21ad"
+source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#1b291226c941d21525cd454e6504e38314fdef10"
 dependencies = [
  "accesskit_winit",
  "approx",

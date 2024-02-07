@@ -23,7 +23,7 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{Wall, WallObject, HALF_WIDTH},
+    wall::{wall_mesh::HALF_WIDTH, Wall, WallObject},
 };
 
 pub(super) struct PlacingObjectPlugin;

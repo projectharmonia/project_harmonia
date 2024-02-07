@@ -36,3 +36,29 @@ walkdir = "2.4"
 itertools = "0.12"
 bitflags = "2.4"
 futures-lite = "1.13"
+
+[patch.crates-io]
+bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_app = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_asset = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_asset_macros = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_core = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_derive = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_ecs = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_encase_derive = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_hierarchy = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_input = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_log = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_math = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_mikktspace = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_reflect = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_render = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_render_macros = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_tasks = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_time = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_transform = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_utils = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_macro_utils = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy_internal = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
+bevy = { git = "https://github.com/lifescapegame/bevy", branch = "v0.12.1-patched" }
