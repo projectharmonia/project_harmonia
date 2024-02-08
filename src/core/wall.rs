@@ -32,7 +32,7 @@ impl Plugin for WallPlugin {
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::wall_init_system, Self::collision_init_system)
+                Self::wall_init_system
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
@@ -95,6 +95,8 @@ impl WallPlugin {
                 WallConnections::default(),
                 WallOpenings::default(),
                 CollisionGroups::new(Group::WALL, Group::ALL),
+                Collider::default(),
+                NavMeshAffector,
                 NoFrustumCulling,
                 PbrBundle {
                     material: materials.add(material),
@@ -102,20 +104,6 @@ impl WallPlugin {
                     ..Default::default()
                 },
             ));
-        }
-    }
-
-    fn collision_init_system(
-        mut commands: Commands,
-        walls: Query<Entity, (Added<Wall>, Without<SpawningWall>)>,
-        mut confirmed_walls: RemovedComponents<SpawningWall>,
-    ) {
-        // Spawning walls shouldn't affect navigation, so we initialize
-        // it on confirmation or for regular walls.
-        for entity in walls.iter().chain(confirmed_walls.read()) {
-            if let Some(mut entity) = commands.get_entity(entity) {
-                entity.insert((Collider::default(), NavMeshAffector));
-            }
         }
     }
 
@@ -313,12 +301,15 @@ impl WallPlugin {
                 &Wall,
                 &WallConnections,
                 &WallOpenings,
-                Option<&mut Collider>,
+                &mut Collider,
+                Has<SpawningWall>,
             ),
             Or<(Changed<WallConnections>, Changed<WallOpenings>)>,
         >,
     ) {
-        for (mesh_handle, &wall, connections, openings, collider) in &mut changed_walls {
+        for (mesh_handle, &wall, connections, openings, mut collider, spawning_wall) in
+            &mut changed_walls
+        {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
@@ -327,7 +318,8 @@ impl WallPlugin {
             wall_mesh.generate(wall, connections, openings);
             wall_mesh.apply(mesh);
 
-            if let Some(mut collider) = collider {
+            // Spawning walls shouldn't affect navigation.
+            if !spawning_wall {
                 *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
                     .expect("wall mesh should be in compatible format");
             }

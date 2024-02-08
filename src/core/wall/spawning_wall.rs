@@ -1,4 +1,5 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
 use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
@@ -88,10 +89,21 @@ impl SpawningWallPlugin {
 
     fn confirmation_system(
         mut commands: Commands,
+        meshes: Res<Assets<Mesh>>,
         mut spawn_events: EventWriter<WallSpawn>,
-        spawning_walls: Query<(Entity, &Parent, &Wall), With<SpawningWall>>,
+        mut spawning_walls: Query<
+            (Entity, &Parent, &Wall, &Handle<Mesh>, &mut Collider),
+            With<SpawningWall>,
+        >,
     ) {
-        let (wall_entity, parent, &wall) = spawning_walls.single();
+        let (wall_entity, parent, &wall, mesh_handle, mut collider) = spawning_walls.single_mut();
+
+        let mesh = meshes
+            .get(mesh_handle)
+            .expect("spawning wall mesh handle should be walid");
+        *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+            .expect("spawnign wall mesh should be in compatible format");
+
         commands
             .entity(wall_entity)
             .remove::<SpawningWall>()
