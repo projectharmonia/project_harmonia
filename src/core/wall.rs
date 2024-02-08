@@ -372,18 +372,6 @@ fn within_wall(wall: Wall, point: Vec2) -> bool {
     dot <= wall_dir.length_squared()
 }
 
-/// Stores a handle for the lot line material.
-#[derive(Resource)]
-struct WallMaterial(Handle<StandardMaterial>);
-
-impl FromWorld for WallMaterial {
-    fn from_world(world: &mut World) -> Self {
-        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let handle = materials.add(StandardMaterial::default());
-        Self(handle)
-    }
-}
-
 #[derive(Bundle)]
 struct WallBundle {
     wall: Wall,
