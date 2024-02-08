@@ -81,7 +81,7 @@ impl WallMesh {
         match start_walls {
             MinMaxResult::OneElement(_) => (),
             MinMaxResult::NoElements => self.generate_front(start_left, start_right, dir),
-            MinMaxResult::MinMax(_, _) => self.generate_start_connection(wall, rotation_mat),
+            MinMaxResult::MinMax(_, _) => self.generate_start_connection(wall),
         }
 
         match end_walls {
@@ -244,13 +244,12 @@ impl WallMesh {
     }
 
     /// Inside triangle to fill the gap between 3+ walls.
-    fn generate_start_connection(&mut self, wall: Wall, rotation_mat: Mat2) {
+    fn generate_start_connection(&mut self, wall: Wall) {
         let begin_index = self.positions_len();
 
         // Inside triangle to fill the gap between 3+ walls.
         self.positions.push([wall.start.x, HEIGHT, wall.start.y]);
-        self.uvs
-            .push(position_to_uv(wall.start, rotation_mat, wall.start));
+        self.uvs.push([0.0, 0.0]);
         self.normals.push([0.0, 1.0, 0.0]);
 
         self.indices.push(1);
