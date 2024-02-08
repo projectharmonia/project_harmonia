@@ -132,13 +132,13 @@ impl WallMesh {
         self.positions.push([end_left.x, HEIGHT, end_left.y]);
 
         self.uvs
-            .push(position_to_uv(start_left, rotation_mat, wall.start));
+            .push((rotation_mat * (start_left - wall.start)).into());
         self.uvs
-            .push(position_to_uv(start_right, rotation_mat, wall.start));
+            .push((rotation_mat * (start_right - wall.start)).into());
         self.uvs
-            .push(position_to_uv(end_right, rotation_mat, wall.start));
+            .push((rotation_mat * (end_right - wall.start)).into());
         self.uvs
-            .push(position_to_uv(end_left, rotation_mat, wall.start));
+            .push((rotation_mat * (end_left - wall.start)).into());
 
         self.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
 
@@ -168,15 +168,13 @@ impl WallMesh {
         self.positions.push([end_side.x, HEIGHT, end_side.y]);
         self.positions.push([start_side.x, HEIGHT, start_side.y]);
 
-        let start_bottom_uv = position_to_uv(start_side, rotation_mat, wall.start);
-        let end_bottom_uv = position_to_uv(end_side, rotation_mat, wall.start);
-        let start_top_uv = [start_bottom_uv[0], start_bottom_uv[1] + HEIGHT];
-        let end_top_uv = [end_bottom_uv[0], end_bottom_uv[1] + HEIGHT];
+        let start_uv = rotation_mat * (start_side - wall.start);
+        let end_uv = rotation_mat * (end_side - wall.start);
 
-        self.uvs.push(start_bottom_uv);
-        self.uvs.push(end_bottom_uv);
-        self.uvs.push(end_top_uv);
-        self.uvs.push(start_top_uv);
+        self.uvs.push(start_uv.into());
+        self.uvs.push(end_uv.into());
+        self.uvs.push([end_uv.x, end_uv.y + HEIGHT]);
+        self.uvs.push([start_uv.x, start_uv.y + HEIGHT]);
 
         self.normals
             .extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
@@ -190,9 +188,8 @@ impl WallMesh {
 
                 self.positions.push(translated.into());
 
-                let mut uv = position_to_uv(translated.xz(), rotation_mat, wall.start);
-                uv[1] += position.y;
-                self.uvs.push(uv);
+                let bottom_uv = rotation_mat * (translated.xz() - wall.start);
+                self.uvs.push([bottom_uv.x, bottom_uv.y + position.y]);
 
                 self.normals.push([width.x, 0.0, width.y])
             }
@@ -292,7 +289,7 @@ impl WallMesh {
 
         self.positions.push([wall.end.x, HEIGHT, wall.end.y]);
         self.uvs
-            .push(position_to_uv(wall.end, rotation_mat, wall.start));
+            .push((rotation_mat * (wall.end - wall.start)).into());
         self.normals.push([0.0, 1.0, 0.0]);
 
         self.indices.push(3);
@@ -330,13 +327,6 @@ enum Winding {
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
 fn wall_width(dir: Vec2) -> Vec2 {
     dir.perp().normalize() * HALF_WIDTH
-}
-
-/// Rotates a point using rotation matrix relatively to the specified origin point.
-fn position_to_uv(position: Vec2, rotation_mat: Mat2, origin: Vec2) -> [f32; 2] {
-    let translated_pos = position - origin;
-    let rotated_point = rotation_mat * translated_pos;
-    rotated_point.into()
 }
 
 /// Calculates the left and right wall points for the `start` point of the wall,
