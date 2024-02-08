@@ -1690,6 +1690,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
+name = "earcutr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79127ed59a85d7687c409e9978547cffb7dc79675355ed22da6b66fd5f6ead01"
+dependencies = [
+ "itertools 0.11.0",
+ "num-traits",
+]
+
+[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2296,6 +2306,15 @@ dependencies = [
 
 [[package]]
 name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
@@ -2404,7 +2423,7 @@ dependencies = [
  "bevy",
  "derive_more",
  "fixedbitset",
- "itertools",
+ "itertools 0.12.1",
  "leafwing_input_manager_macros",
  "multimap",
  "once_cell",
@@ -3146,8 +3165,9 @@ dependencies = [
  "bincode",
  "bitflags 2.4.2",
  "clap",
+ "earcutr",
  "futures-lite 1.13.0",
- "itertools",
+ "itertools 0.12.1",
  "leafwing-input-manager",
  "num_enum 0.6.1",
  "oxidized_navigation",

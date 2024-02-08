@@ -5,7 +5,12 @@ use std::mem;
 
 use bevy::{
     prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
+    render::{
+        mesh::{Indices, VertexAttributeValues},
+        render_resource::PrimitiveTopology,
+        view::NoFrustumCulling,
+    },
+    scene::SceneInstanceReady,
 };
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
@@ -36,13 +41,23 @@ impl Plugin for WallPlugin {
                 (
                     Self::spawn_system.run_if(resource_exists::<RenetServer>()),
                     (
-                        Self::cleanup_system,
-                        Self::connections_update_system,
+                        Self::connections_cleanup_system,
+                        (
+                            Self::connections_update_system,
+                            Self::openings_cleanup_system,
+                            Self::openings_update_system,
+                        ),
                         Self::mesh_update_system,
                     )
                         .chain(),
                 )
                     .run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
+                SpawnScene,
+                Self::cutout_init_system
+                    .run_if(resource_exists::<WorldName>())
+                    .after(bevy::scene::scene_spawner_system),
             );
     }
 }
@@ -78,6 +93,7 @@ impl WallPlugin {
             commands.entity(entity).insert((
                 Name::new("Walls"),
                 WallConnections::default(),
+                WallOpenings::default(),
                 CollisionGroups::new(Group::WALL, Group::ALL),
                 NoFrustumCulling,
                 PbrBundle {
@@ -100,6 +116,46 @@ impl WallPlugin {
             if let Some(mut entity) = commands.get_entity(entity) {
                 entity.insert((Collider::default(), NavMeshAffector));
             }
+        }
+    }
+
+    fn cutout_init_system(
+        mut commands: Commands,
+        mut ready_events: EventReader<SceneInstanceReady>,
+        meshes: Res<Assets<Mesh>>,
+        mesh_handles: Query<(Entity, &Handle<Mesh>, &Name)>,
+        children: Query<&Children>,
+        wall_objects: Query<(Entity, &WallObject), With<WallObject>>,
+    ) {
+        for event in ready_events.read() {
+            let Ok((object_entity, &wall_object)) = wall_objects.get(event.parent) else {
+                continue;
+            };
+            if wall_object != WallObject::Opening {
+                continue;
+            }
+
+            let (cutout_entity, mesh_handle, _) = children
+                .iter_descendants(object_entity)
+                .flat_map(|entity| mesh_handles.get(entity).ok())
+                .find(|&(.., name)| &**name == "Cutout")
+                .expect("openings should contain cutout mesh");
+
+            let mesh = meshes
+                .get(mesh_handle)
+                .expect("cutout should be loaded when its scene is ready");
+
+            let Some(VertexAttributeValues::Float32x3(positions)) =
+                mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            else {
+                panic!("cutout should contain vertices positions");
+            };
+
+            commands
+                .entity(object_entity)
+                .insert(ObjectCutout::new(positions));
+
+            commands.entity(cutout_entity).despawn();
         }
     }
 
@@ -203,6 +259,52 @@ impl WallPlugin {
         }
     }
 
+    fn openings_update_system(
+        mut walls: Query<(Entity, &mut WallOpenings, &Wall)>,
+        mut wall_objects: Query<
+            (Entity, &GlobalTransform, &mut ObjectCutout),
+            Or<(Changed<GlobalTransform>, Added<ObjectCutout>)>,
+        >,
+    ) {
+        for (object_entity, transform, mut cutout) in &mut wall_objects {
+            let translation = transform.translation();
+            if let Some((wall_entity, mut openings, _)) = walls
+                .iter_mut()
+                .find(|(.., &wall)| within_wall(wall, translation.xz()))
+            {
+                if let Some(current_entity) = cutout.wall_entity {
+                    if current_entity == wall_entity {
+                        openings.update_translation(object_entity, translation)
+                    } else {
+                        openings.push(WallOpening {
+                            object_entity,
+                            translation,
+                            positions: cutout.positions.clone(),
+                        });
+
+                        walls
+                            .component_mut::<WallOpenings>(current_entity)
+                            .remove_existing(object_entity);
+
+                        cutout.wall_entity = Some(wall_entity);
+                    }
+                } else {
+                    openings.push(WallOpening {
+                        object_entity,
+                        translation,
+                        positions: cutout.positions.clone(),
+                    });
+
+                    cutout.wall_entity = Some(wall_entity);
+                }
+            } else if let Some(surrounding_entity) = cutout.wall_entity.take() {
+                walls
+                    .component_mut::<WallOpenings>(surrounding_entity)
+                    .remove_existing(object_entity);
+            }
+        }
+    }
+
     fn mesh_update_system(
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
@@ -210,18 +312,19 @@ impl WallPlugin {
                 &Handle<Mesh>,
                 &Wall,
                 &WallConnections,
+                &WallOpenings,
                 Option<&mut Collider>,
             ),
-            Changed<WallConnections>,
+            Or<(Changed<WallConnections>, Changed<WallOpenings>)>,
         >,
     ) {
-        for (mesh_handle, &wall, connections, collider) in &mut changed_walls {
+        for (mesh_handle, &wall, connections, openings, collider) in &mut changed_walls {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
 
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(wall, connections);
+            wall_mesh.generate(wall, connections, openings);
             wall_mesh.apply(mesh);
 
             if let Some(mut collider) = collider {
@@ -231,7 +334,7 @@ impl WallPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn connections_cleanup_system(
         mut removed_walls: RemovedComponents<Wall>,
         mut walls: Query<&mut WallConnections>,
     ) {
@@ -243,6 +346,38 @@ impl WallPlugin {
             }
         }
     }
+
+    fn openings_cleanup_system(
+        mut removed_cutouts: RemovedComponents<ObjectCutout>,
+        mut walls: Query<&mut WallOpenings>,
+    ) {
+        for entity in removed_cutouts.read() {
+            for mut openings in &mut walls {
+                if let Some(index) = openings
+                    .iter()
+                    .position(|opening| opening.object_entity == entity)
+                {
+                    openings.remove(index);
+                }
+            }
+        }
+    }
+}
+
+/// Returns `true` if a point belongs to a wall.
+fn within_wall(wall: Wall, point: Vec2) -> bool {
+    let wall_dir = wall.end - wall.start;
+    let point_dir = point - wall.start;
+    if wall_dir.perp_dot(point_dir).abs() > 0.1 {
+        return false;
+    }
+
+    let dot = wall_dir.dot(point_dir);
+    if dot < 0.0 {
+        return false;
+    }
+
+    dot <= wall_dir.length_squared()
 }
 
 /// Stores a handle for the lot line material.
@@ -350,7 +485,7 @@ enum PointKind {
 }
 
 /// A component that marks that entity can be placed only on walls or inside them.
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, PartialEq, Clone, Copy)]
 #[reflect(Component)]
 pub(crate) enum WallObject {
     Fixture,
@@ -361,6 +496,50 @@ pub(crate) enum WallObject {
 impl FromWorld for WallObject {
     fn from_world(_world: &mut World) -> Self {
         Self::Fixture
+    }
+}
+
+#[derive(Component, Default, Deref, DerefMut)]
+struct WallOpenings(Vec<WallOpening>);
+
+impl WallOpenings {
+    fn update_translation(&mut self, entity: Entity, translation: Vec3) {
+        let opening = self
+            .iter_mut()
+            .find(|opening| opening.object_entity == entity)
+            .expect("object entity for update should exist");
+
+        opening.translation = translation;
+    }
+
+    fn remove_existing(&mut self, entity: Entity) {
+        let index = self
+            .iter()
+            .position(|opening| opening.object_entity == entity)
+            .expect("object entity for removal should exist");
+
+        self.remove(index);
+    }
+}
+
+struct WallOpening {
+    object_entity: Entity,
+    translation: Vec3,
+    positions: Vec<Vec3>,
+}
+
+#[derive(Component, Default)]
+struct ObjectCutout {
+    positions: Vec<Vec3>,
+    wall_entity: Option<Entity>,
+}
+
+impl ObjectCutout {
+    fn new(positions: &[[f32; 3]]) -> Self {
+        Self {
+            positions: positions.iter().copied().map(From::from).collect(),
+            wall_entity: Default::default(),
+        }
     }
 }
 

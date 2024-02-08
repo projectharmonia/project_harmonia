@@ -4,9 +4,9 @@ use bevy::{
     prelude::*,
     render::mesh::{Indices, VertexAttributeValues},
 };
-use itertools::{Itertools, MinMaxResult};
+use itertools::{Either, Itertools, MinMaxResult};
 
-use super::{PointKind, Wall, WallConnection, WallConnections};
+use super::{PointKind, Wall, WallConnection, WallConnections, WallOpenings};
 
 const WIDTH: f32 = 0.15;
 const HEIGHT: f32 = 2.8;
@@ -49,7 +49,12 @@ impl WallMesh {
         }
     }
 
-    pub(super) fn generate(&mut self, wall: Wall, connections: &WallConnections) {
+    pub(super) fn generate(
+        &mut self,
+        wall: Wall,
+        connections: &WallConnections,
+        openings: &WallOpenings,
+    ) {
         self.clear();
 
         if wall.start == wall.end {
@@ -57,8 +62,10 @@ impl WallMesh {
         }
 
         let dir = wall.dir();
+        let angle = -dir.y.atan2(dir.x);
         let width = wall_width(dir);
-        let rotation_mat = Mat2::from_angle(-dir.y.atan2(dir.x)); // TODO 0.13: Use `to_angle`.
+        let rotation_mat = Mat2::from_angle(angle); // TODO 0.13: Use `to_angle`.
+        let quat = Quat::from_axis_angle(Vec3::Y, angle);
 
         let start_walls = minmax_angles(dir, PointKind::Start, &connections.start);
         let (start_left, start_right) = offset_points(wall, start_walls, width);
@@ -75,8 +82,27 @@ impl WallMesh {
             rotation_mat,
         );
 
-        self.generate_right(wall, start_right, end_right, width, rotation_mat);
-        self.generate_left(wall, start_left, end_left, width, rotation_mat);
+        self.generate_side(
+            wall,
+            openings,
+            Winding::Clockwise,
+            start_right,
+            end_right,
+            -width,
+            rotation_mat,
+            quat,
+        );
+
+        self.generate_side(
+            wall,
+            openings,
+            Winding::CounterClockwise,
+            start_left,
+            end_left,
+            width,
+            rotation_mat,
+            quat,
+        );
 
         match start_walls {
             MinMaxResult::OneElement(_) => (),
@@ -124,59 +150,26 @@ impl WallMesh {
         self.indices.push(2);
     }
 
-    fn generate_right(
+    fn generate_side(
         &mut self,
         wall: Wall,
-        start_right: Vec2,
-        end_right: Vec2,
+        openings: &WallOpenings,
+        winding: Winding,
+        start_side: Vec2,
+        end_side: Vec2,
         width: Vec2,
         rotation_mat: Mat2,
+        quat: Quat,
     ) {
         let begin_index = self.positions_len();
 
-        self.positions.push([start_right.x, 0.0, start_right.y]);
-        self.positions.push([end_right.x, 0.0, end_right.y]);
-        self.positions.push([end_right.x, HEIGHT, end_right.y]);
-        self.positions.push([start_right.x, HEIGHT, start_right.y]);
+        self.positions.push([start_side.x, 0.0, start_side.y]);
+        self.positions.push([end_side.x, 0.0, end_side.y]);
+        self.positions.push([end_side.x, HEIGHT, end_side.y]);
+        self.positions.push([start_side.x, HEIGHT, start_side.y]);
 
-        let start_bottom_uv = position_to_uv(start_right, rotation_mat, wall.start);
-        let end_bottom_uv = position_to_uv(end_right, rotation_mat, wall.start);
-        let start_top_uv = [start_bottom_uv[0], start_bottom_uv[1] + HEIGHT];
-        let end_top_uv = [end_bottom_uv[0], end_bottom_uv[1] + HEIGHT];
-
-        self.uvs.push(start_bottom_uv);
-        self.uvs.push(end_bottom_uv);
-        self.uvs.push(end_top_uv);
-        self.uvs.push(start_top_uv);
-
-        self.normals
-            .extend_from_slice(&[[-width.x, 0.0, -width.y]; 4]);
-
-        self.indices.push(begin_index);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 2);
-    }
-
-    fn generate_left(
-        &mut self,
-        wall: Wall,
-        start_left: Vec2,
-        end_left: Vec2,
-        width: Vec2,
-        rotation_mat: Mat2,
-    ) {
-        let begin_index = self.positions_len();
-
-        self.positions.push([start_left.x, 0.0, start_left.y]);
-        self.positions.push([end_left.x, 0.0, end_left.y]);
-        self.positions.push([end_left.x, HEIGHT, end_left.y]);
-        self.positions.push([start_left.x, HEIGHT, start_left.y]);
-
-        let start_bottom_uv = position_to_uv(start_left, rotation_mat, wall.start);
-        let end_bottom_uv = position_to_uv(end_left, rotation_mat, wall.start);
+        let start_bottom_uv = position_to_uv(start_side, rotation_mat, wall.start);
+        let end_bottom_uv = position_to_uv(end_side, rotation_mat, wall.start);
         let start_top_uv = [start_bottom_uv[0], start_bottom_uv[1] + HEIGHT];
         let end_top_uv = [end_bottom_uv[0], end_bottom_uv[1] + HEIGHT];
 
@@ -188,12 +181,48 @@ impl WallMesh {
         self.normals
             .extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
 
-        self.indices.push(begin_index);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 2);
-        self.indices.push(begin_index + 3);
+        let mut hole_indices = Vec::new();
+        let mut last_index = 4; // 4 initial vertices for sizes.
+        for opening in &openings.0 {
+            for &position in &opening.positions {
+                let translated =
+                    quat * position + opening.translation + Vec3::new(width.x, 0.0, width.y);
+
+                self.positions.push(translated.into());
+
+                let mut uv = position_to_uv(translated.xz(), rotation_mat, wall.start);
+                uv[1] += position.y;
+                self.uvs.push(uv);
+
+                self.normals.push([width.x, 0.0, width.y])
+            }
+
+            hole_indices.push(last_index);
+            last_index += opening.positions.len();
+        }
+
+        let added_positions = &self.positions[begin_index as usize..];
+        let positions_iter = match winding {
+            Winding::CounterClockwise => Either::Left(added_positions.iter()),
+            Winding::Clockwise => {
+                let (side_positions, openings_positions) = added_positions.split_at(4);
+                let side_iter = side_positions.iter().rev();
+                let openings_iter = openings_positions.iter().rev();
+                Either::Right(side_iter.chain(openings_iter))
+            }
+        };
+
+        let vertices: Vec<_> = positions_iter
+            .into_iter()
+            .flat_map(|&[x, y, _]| [x, y])
+            .collect();
+
+        let indices = earcutr::earcut(&vertices, &hole_indices, 2)
+            .expect("vertices should be triangulatable");
+
+        for index in indices {
+            self.indices.push(begin_index + index as u32);
+        }
     }
 
     fn generate_front(&mut self, start_left: Vec2, start_right: Vec2, dir: Vec2) {
@@ -291,6 +320,11 @@ impl WallMesh {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.set_indices(Some(Indices::U32(self.indices)))
     }
+}
+
+enum Winding {
+    CounterClockwise,
+    Clockwise,
 }
 
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
