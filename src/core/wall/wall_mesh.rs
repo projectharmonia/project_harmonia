@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
     prelude::*,
@@ -65,7 +65,6 @@ impl WallMesh {
         let angle = -dir.y.atan2(dir.x);
         let width = wall_width(dir);
         let rotation_mat = Mat2::from_angle(angle); // TODO 0.13: Use `to_angle`.
-        let quat = Quat::from_axis_angle(Vec3::Y, angle);
 
         let start_walls = minmax_angles(dir, PointKind::Start, &connections.start);
         let (start_left, start_right) = offset_points(wall, start_walls, width);
@@ -82,26 +81,29 @@ impl WallMesh {
             rotation_mat,
         );
 
+        let inverse_winding = angle.abs() < FRAC_PI_2;
+        let quat = Quat::from_axis_angle(Vec3::Y, angle);
+
         self.generate_side(
             wall,
             openings,
-            Winding::Clockwise,
             start_right,
             end_right,
             -width,
             rotation_mat,
             quat,
+            inverse_winding,
         );
 
         self.generate_side(
             wall,
             openings,
-            Winding::CounterClockwise,
             start_left,
             end_left,
             width,
             rotation_mat,
             quat,
+            !inverse_winding,
         );
 
         match start_walls {
@@ -154,12 +156,12 @@ impl WallMesh {
         &mut self,
         wall: Wall,
         openings: &WallOpenings,
-        winding: Winding,
         start_side: Vec2,
         end_side: Vec2,
         width: Vec2,
         rotation_mat: Mat2,
         quat: Quat,
+        inverse_winding: bool,
     ) {
         let begin_index = self.positions_len();
 
@@ -199,14 +201,13 @@ impl WallMesh {
         }
 
         let added_positions = &self.positions[begin_index as usize..];
-        let positions_iter = match winding {
-            Winding::CounterClockwise => Either::Left(added_positions.iter()),
-            Winding::Clockwise => {
-                let (side_positions, openings_positions) = added_positions.split_at(4);
-                let side_iter = side_positions.iter().rev();
-                let openings_iter = openings_positions.iter().rev();
-                Either::Right(side_iter.chain(openings_iter))
-            }
+        let positions_iter = if inverse_winding {
+            let (side_positions, openings_positions) = added_positions.split_at(4);
+            let side_iter = side_positions.iter().rev();
+            let openings_iter = openings_positions.iter().rev();
+            Either::Right(side_iter.chain(openings_iter))
+        } else {
+            Either::Left(added_positions.iter())
         };
 
         let vertices: Vec<_> = positions_iter
@@ -317,11 +318,6 @@ impl WallMesh {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.set_indices(Some(Indices::U32(self.indices)))
     }
-}
-
-enum Winding {
-    CounterClockwise,
-    Clockwise,
 }
 
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
