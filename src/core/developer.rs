@@ -1,7 +1,7 @@
 mod path_debug;
 
 use bevy::{pbr::wireframe::WireframeConfig, prelude::*};
-use bevy_rapier3d::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 
 use super::settings::{Settings, SettingsApply};
 use path_debug::PathDebugPlugin;
@@ -33,9 +33,9 @@ impl Plugin for DeveloperPlugin {
 impl DeveloperPlugin {
     fn debug_collisions_toggle_system(
         settings: Res<Settings>,
-        mut debug_render_ctx: ResMut<DebugRenderContext>,
+        mut physics_debug_config: ResMut<PhysicsDebugConfig>,
     ) {
-        debug_render_ctx.enabled = settings.developer.debug_collisions;
+        physics_debug_config.enabled = settings.developer.debug_collisions;
     }
 
     fn wireframe_toggle_system(

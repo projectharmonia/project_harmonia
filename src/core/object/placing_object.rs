@@ -10,20 +10,20 @@ use bevy::{
     scene::SceneInstanceReady,
     window::PrimaryWindow,
 };
-use bevy_rapier3d::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
     action::Action,
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::CityMode,
-    collision_groups::HarmoniaGroupsExt,
     cursor_hover::{CursorHover, CursorHoverSettings},
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
     wall::{wall_mesh::HALF_WIDTH, Wall, WallObject},
+    Layer,
 };
 
 pub(super) struct PlacingObjectPlugin;
@@ -76,20 +76,11 @@ impl PlacingObjectPlugin {
     fn picking_system(
         mut commands: Commands,
         hovered_objects: Query<(Entity, &Parent), (With<ObjectPath>, With<CursorHover>)>,
-        children: Query<&Children>,
-        mut groups: Query<&mut CollisionGroups>,
     ) {
         if let Ok((placing_entity, parent)) = hovered_objects.get_single() {
             commands.entity(**parent).with_children(|parent| {
                 parent.spawn(PlacingObject::moving(placing_entity));
             });
-
-            // To exclude from collision with the placing object.
-            for child_entity in children.iter_descendants(placing_entity) {
-                if let Ok(mut group) = groups.get_mut(child_entity) {
-                    group.memberships ^= Group::OBJECT;
-                }
-            }
         }
     }
 
@@ -167,12 +158,10 @@ impl PlacingObjectPlugin {
                 mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {
                 if let Some(mesh) = meshes.get(mesh_handle) {
-                    if let Some(collider) =
-                        Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
-                    {
+                    if let Some(collider) = Collider::trimesh_from_mesh(mesh) {
                         commands
                             .entity(child_entity)
-                            .insert((collider, CollisionGroups::new(Group::NONE, Group::NONE)));
+                            .insert((collider, CollisionLayers::none()));
                     }
                 }
             }
@@ -188,15 +177,19 @@ impl PlacingObjectPlugin {
 
     fn movement_system(
         mut commands: Commands,
-        rapier_ctx: Res<RapierContext>,
+        spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
-        mut placing_objects: Query<
-            (Entity, &mut Transform, Option<&CursorOffset>),
-            With<PlacingObject>,
-        >,
+        mut placing_objects: Query<(
+            Entity,
+            &mut Transform,
+            &PlacingObject,
+            Option<&CursorOffset>,
+        )>,
     ) {
-        let Ok((entity, mut transform, cursor_offset)) = placing_objects.get_single_mut() else {
+        let Ok((entity, mut transform, placing_object, cursor_offset)) =
+            placing_objects.get_single_mut()
+        else {
             return;
         };
         let Some(cursor_pos) = windows.single().cursor_position() else {
@@ -208,18 +201,17 @@ impl PlacingObjectPlugin {
             .viewport_to_world(&camera_transform, cursor_pos)
             .expect("ray should be created from screen coordinates");
 
-        let toi = rapier_ctx
-            .cast_ray(
-                ray.origin,
-                ray.direction,
-                f32::MAX,
-                false,
-                CollisionGroups::new(Group::ALL, Group::GROUND | Group::WALL).into(),
-            )
-            .map(|(_, toi)| toi)
-            .unwrap_or_default();
+        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Ground, Layer::Wall]);
+        if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+            filter.excluded_entities.insert(entity);
+        }
 
-        let mut ray_translation = ray.origin + ray.direction * toi;
+        let Some(hit) = spatial_query.cast_ray(ray.origin, ray.direction, f32::MAX, false, filter)
+        else {
+            return;
+        };
+
+        let mut ray_translation = ray.origin + ray.direction * hit.time_of_impact;
         ray_translation.y = 0.0;
         let offset = cursor_offset.copied().unwrap_or_else(|| {
             let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
@@ -268,18 +260,20 @@ impl PlacingObjectPlugin {
     }
 
     fn collision_system(
-        rapier_ctx: Res<RapierContext>,
+        spatial_query: SpatialQuery,
         mut placing_objects: Query<(Entity, &mut PlacingObject, &WallObject)>,
         children: Query<&Children>,
         child_meshes: Query<(&Collider, &GlobalTransform)>,
     ) {
-        let Ok((object_entity, mut placing_object, wall_object)) = placing_objects.get_single_mut()
+        let Ok((object_entity, mut placing_object, &wall_object)) =
+            placing_objects.get_single_mut()
         else {
             return;
         };
-        let collision_filters = match wall_object {
-            WallObject::Opening => Group::OBJECT,
-            WallObject::Fixture => Group::OBJECT | Group::WALL,
+
+        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Object]);
+        if wall_object == WallObject::Fixture {
+            filter.masks |= Layer::Wall.to_bits();
         };
 
         for (collider, transform) in children
@@ -287,18 +281,10 @@ impl PlacingObjectPlugin {
             .flat_map(|entity| child_meshes.get(entity))
         {
             let (_, rotation, translation) = transform.to_scale_rotation_translation();
-            let mut intersects = false;
-            rapier_ctx.intersections_with_shape(
-                translation,
-                rotation,
-                collider,
-                CollisionGroups::new(Group::ALL, collision_filters).into(),
-                |_| {
-                    intersects = true;
-                    false
-                },
-            );
-            if intersects {
+            if !spatial_query
+                .shape_intersections(collider, translation, rotation, filter.clone())
+                .is_empty()
+            {
                 if !placing_object.collides {
                     placing_object.collides = true;
                 }
@@ -389,8 +375,6 @@ impl PlacingObjectPlugin {
         new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<(Entity, &PlacingObject)>,
         mut visibility: Query<&mut Visibility>,
-        children: Query<&Children>,
-        mut groups: Query<&mut CollisionGroups>,
     ) {
         if let Some(new_entity) = new_placing_objects.iter().last() {
             for (placing_entity, placing_object) in &placing_objects {
@@ -398,9 +382,7 @@ impl PlacingObjectPlugin {
                     cleanup(
                         commands.entity(placing_entity),
                         placing_object.kind,
-                        &children,
                         &mut visibility,
-                        &mut groups,
                     );
                 }
             }
@@ -412,8 +394,6 @@ impl PlacingObjectPlugin {
         mut hover_settings: ResMut<CursorHoverSettings>,
         placing_objects: Query<(Entity, &PlacingObject)>,
         mut visibility: Query<&mut Visibility>,
-        children: Query<&Children>,
-        mut groups: Query<&mut CollisionGroups>,
     ) {
         hover_settings.enabled = true;
 
@@ -421,9 +401,7 @@ impl PlacingObjectPlugin {
             cleanup(
                 commands.entity(placing_entity),
                 placing_object.kind,
-                &children,
                 &mut visibility,
-                &mut groups,
             );
         }
     }
@@ -432,9 +410,7 @@ impl PlacingObjectPlugin {
 fn cleanup(
     placing_entity: EntityCommands,
     kind: PlacingObjectKind,
-    children: &Query<&Children>,
     visibility: &mut Query<&mut Visibility>,
-    groups: &mut Query<&mut CollisionGroups>,
 ) {
     debug!("despawned placing object {kind:?}");
     placing_entity.despawn_recursive();
@@ -443,13 +419,6 @@ fn cleanup(
         // Object could be invalid in case of removal.
         if let Ok(mut visibility) = visibility.get_mut(object_entity) {
             *visibility = Visibility::Visible;
-        }
-
-        // Restore object's collisions back.
-        for child_entity in children.iter_descendants(object_entity) {
-            if let Ok(mut group) = groups.get_mut(child_entity) {
-                group.memberships |= Group::OBJECT;
-            }
         }
     }
 }

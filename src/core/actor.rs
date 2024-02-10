@@ -5,8 +5,8 @@ pub(crate) mod task;
 
 use bevy::{prelude::*, scene::SceneInstanceReady};
 use bevy_mod_outline::OutlineBundle;
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -17,10 +17,7 @@ use super::{
     game_world::WorldName,
     highlighting::OutlineHighlightingExt,
 };
-use crate::core::{
-    animation_state::AnimationState, collision_groups::HarmoniaGroupsExt,
-    cursor_hover::CursorHoverable,
-};
+use crate::core::{animation_state::AnimationState, cursor_hover::CursorHoverable};
 use human::HumanPlugin;
 use movement::MovementPlugin;
 use needs::NeedsPlugin;
@@ -63,7 +60,7 @@ impl ActorPlugin {
         actors: Query<Entity, Added<Actor>>,
     ) {
         for entity in &actors {
-            const HALF_HEIGHT: f32 = 0.6;
+            const HEIGHT: f32 = 1.2;
             const RADIUS: f32 = 0.3;
             commands
                 .entity(entity)
@@ -76,10 +73,9 @@ impl ActorPlugin {
                 .with_children(|parent| {
                     parent.spawn((
                         SpatialBundle::from_transform(Transform::from_translation(
-                            Vec3::Y * (HALF_HEIGHT + RADIUS),
+                            Vec3::Y * (HEIGHT / 2.0 + RADIUS),
                         )),
-                        CollisionGroups::new(Group::ACTOR, Group::ALL),
-                        Collider::capsule_y(HALF_HEIGHT, RADIUS),
+                        Collider::capsule(HEIGHT, RADIUS),
                     ));
                 });
         }

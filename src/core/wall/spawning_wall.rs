@@ -1,6 +1,6 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
 };
@@ -101,7 +101,7 @@ impl SpawningWallPlugin {
         let mesh = meshes
             .get(mesh_handle)
             .expect("spawning wall mesh handle should be walid");
-        *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+        *collider = Collider::trimesh_from_mesh(mesh)
             .expect("spawnign wall mesh should be in compatible format");
 
         commands

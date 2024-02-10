@@ -1,18 +1,18 @@
 use bevy::prelude::{shape::Plane, *};
 use bevy_atmosphere::prelude::*;
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
     actor::ActiveActor,
-    collision_groups::HarmoniaGroupsExt,
     cursor_hover::CursorHoverable,
     game_state::GameState,
     game_world::WorldName,
     player_camera::{PlayerCamera, PlayerCameraBundle},
+    Layer,
 };
 
 pub(super) struct CityPlugin;
@@ -202,7 +202,7 @@ struct PlacedCities(usize);
 struct GroundBundle {
     name: Name,
     collider: Collider,
-    collision_groups: CollisionGroups,
+    collision_layers: CollisionLayers,
     ground: Ground,
     cursor_hoverable: CursorHoverable,
     nav_mesh_affector: NavMeshAffector,
@@ -214,7 +214,10 @@ impl Default for GroundBundle {
         Self {
             name: Name::new("Ground"),
             collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
-            collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
+            collision_layers: CollisionLayers::from_bits(
+                Layer::Ground.to_bits(),
+                Layer::all_bits(),
+            ),
             ground: Ground,
             cursor_hoverable: CursorHoverable,
             nav_mesh_affector: NavMeshAffector,

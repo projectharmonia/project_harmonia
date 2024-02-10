@@ -4,18 +4,18 @@ use bevy::{
     asset::AssetPath, ecs::reflect::ReflectCommandExt, prelude::*, scene::SceneInstanceReady,
 };
 use bevy_mod_outline::OutlineBundle;
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
-    collision_groups::HarmoniaGroupsExt,
     cursor_hover::CursorHoverable,
     game_world::WorldName,
     highlighting::OutlineHighlightingExt,
     lot::LotVertices,
+    Layer,
 };
 use placing_object::PlacingObjectPlugin;
 
@@ -97,12 +97,10 @@ impl ObjectPlugin {
                 mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {
                 if let Some(mesh) = meshes.get(mesh_handle) {
-                    if let Some(collider) =
-                        Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
-                    {
+                    if let Some(collider) = Collider::trimesh_from_mesh(mesh) {
                         commands.entity(child_entity).insert((
                             collider,
-                            CollisionGroups::new(Group::OBJECT, Group::ALL),
+                            CollisionLayers::from_bits(Layer::Object.to_bits(), Layer::all_bits()),
                             OutlineBundle::highlighting(),
                         ));
                     }

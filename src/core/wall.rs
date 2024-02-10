@@ -12,12 +12,12 @@ use bevy::{
     },
     scene::SceneInstanceReady,
 };
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::{collision_groups::HarmoniaGroupsExt, game_world::WorldName};
+use super::{cursor_hover::CursorHoverable, game_world::WorldName, Layer};
 use spawning_wall::{SpawningWall, SpawningWallPlugin};
 use wall_mesh::WallMesh;
 
@@ -94,8 +94,9 @@ impl WallPlugin {
                 Name::new("Walls"),
                 WallConnections::default(),
                 WallOpenings::default(),
-                CollisionGroups::new(Group::WALL, Group::ALL),
                 Collider::default(),
+                CollisionLayers::from_bits(Layer::Wall.to_bits(), Layer::all_bits()),
+                CursorHoverable,
                 NavMeshAffector,
                 NoFrustumCulling,
                 PbrBundle {
@@ -320,7 +321,7 @@ impl WallPlugin {
 
             // Spawning walls shouldn't affect navigation.
             if !spawning_wall {
-                *collider = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh)
+                *collider = Collider::trimesh_from_mesh(mesh)
                     .expect("wall mesh should be in compatible format");
             }
         }

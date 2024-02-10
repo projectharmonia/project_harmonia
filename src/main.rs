@@ -17,8 +17,8 @@ use bevy::{
 use bevy_atmosphere::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_polyline::prelude::*;
-use bevy_rapier3d::prelude::*;
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
 use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
 
@@ -66,8 +66,8 @@ fn main() {
                 max_edge_length: 80,
                 max_tile_generation_tasks: None,
             }),
-            RapierPhysicsPlugin::<NoUserData>::default(),
-            RapierDebugRenderPlugin::default(),
+            PhysicsPlugins::default(),
+            PhysicsDebugPlugin::default(),
             OutlinePlugin,
             PolylinePlugin,
             CorePlugins,

@@ -4,7 +4,6 @@ mod animation_state;
 pub(super) mod asset;
 pub(super) mod city;
 pub(super) mod cli;
-mod collision_groups;
 mod component_commands;
 pub(super) mod cursor_hover;
 pub(super) mod developer;
@@ -24,6 +23,7 @@ pub(super) mod settings;
 pub(super) mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy_xpbd_3d::prelude::*;
 
 use action::ActionPlugin;
 use actor::ActorPlugin;
@@ -74,4 +74,11 @@ impl PluginGroup for CorePlugins {
             .add(WallPlugin)
             .add(AssetPlugin) // Should run after registering components.
     }
+}
+
+#[derive(PhysicsLayer)]
+enum Layer {
+    Ground,
+    Object,
+    Wall,
 }

@@ -1,12 +1,9 @@
 use std::iter;
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_rapier3d::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 
-use super::{
-    city::CityMode, collision_groups::HarmoniaGroupsExt, family::BuildingMode,
-    game_state::GameState, player_camera::PlayerCamera,
-};
+use super::{game_state::GameState, player_camera::PlayerCamera};
 
 pub(super) struct CursorHoverPlugin;
 
@@ -15,7 +12,9 @@ impl Plugin for CursorHoverPlugin {
         app.init_resource::<CursorHoverSettings>().add_systems(
             Update,
             (
-                Self::raycast_system.run_if(cursor_hover_enabled),
+                Self::raycast_system
+                    .pipe(Self::hover_update_system)
+                    .run_if(cursor_hover_enabled),
                 Self::cleanup_system
                     .run_if(resource_changed::<CursorHoverSettings>())
                     .run_if(not(cursor_hover_enabled)),
@@ -27,52 +26,50 @@ impl Plugin for CursorHoverPlugin {
 
 impl CursorHoverPlugin {
     fn raycast_system(
-        mut commands: Commands,
-        rapier_ctx: Res<RapierContext>,
-        building_mode: Res<State<BuildingMode>>,
-        city_mode: Res<State<CityMode>>,
+        spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
         cursor_hoverable: Query<(), With<CursorHoverable>>,
-        cursor_hovers: Query<Entity, With<CursorHover>>,
-    ) {
-        let Some(cursor_pos) = windows.single().cursor_position() else {
-            return;
-        };
-
-        let (&transform, camera) = cameras.single();
-        let Some(ray) = camera.viewport_to_world(&transform, cursor_pos) else {
-            return;
-        };
-
-        let mut groups = Group::GROUND | Group::ACTOR;
-        if *building_mode != BuildingMode::Walls || *city_mode != CityMode::Lots {
-            groups |= Group::OBJECT;
-        }
-
-        if let Some((child_entity, toi)) = rapier_ctx.cast_ray(
+    ) -> Option<(Entity, Vec3)> {
+        let cursor_position = windows.get_single().ok()?.cursor_position()?;
+        let (transform, camera) = cameras.single();
+        let ray = camera.viewport_to_world(transform, cursor_position)?;
+        let hit = spatial_query.cast_ray(
             ray.origin,
             ray.direction,
             f32::MAX,
             false,
-            CollisionGroups::new(Group::ALL, groups).into(),
-        ) {
-            let hovered_entity = iter::once(child_entity)
-                .chain(parents.iter_ancestors(child_entity))
-                .find(|&ancestor_entity| cursor_hoverable.get(ancestor_entity).is_ok())
-                .expect("entity should have a hoverable parent");
-            let position = ray.origin + ray.direction * toi;
-            commands
-                .entity(hovered_entity)
-                .insert(CursorHover(position));
-            if let Ok(previous_entity) = cursor_hovers.get_single() {
-                if hovered_entity != previous_entity {
+            Default::default(),
+        )?;
+
+        let hovered_entity = iter::once(hit.entity)
+            .chain(parents.iter_ancestors(hit.entity))
+            .find(|&ancestor_entity| cursor_hoverable.get(ancestor_entity).is_ok())?;
+
+        let position = ray.origin + ray.direction * hit.time_of_impact;
+        Some((hovered_entity, position))
+    }
+
+    fn hover_update_system(
+        In(hit): In<Option<(Entity, Vec3)>>,
+        mut commands: Commands,
+        cursor_hovers: Query<Entity, With<CursorHover>>,
+    ) {
+        match (hit, cursor_hovers.get_single().ok()) {
+            (Some((hit_entity, position)), None) => {
+                commands.entity(hit_entity).insert(CursorHover(position));
+            }
+            (None, Some(previous_entity)) => {
+                commands.entity(previous_entity).remove::<CursorHover>();
+            }
+            (Some((hit_entity, position)), Some(previous_entity)) => {
+                commands.entity(hit_entity).insert(CursorHover(position));
+                if hit_entity != previous_entity {
                     commands.entity(previous_entity).remove::<CursorHover>();
                 }
             }
-        } else if let Ok(previous_entity) = cursor_hovers.get_single() {
-            commands.entity(previous_entity).remove::<CursorHover>();
+            (None, None) => (),
         }
     }
 
