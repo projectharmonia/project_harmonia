@@ -9,7 +9,7 @@ use strum::{Display, EnumIter};
 use super::{
     actor::ActiveActor,
     collision_groups::HarmoniaGroupsExt,
-    cursor_hover::Hoverable,
+    cursor_hover::CursorHoverable,
     game_state::GameState,
     game_world::WorldName,
     player_camera::{PlayerCamera, PlayerCameraBundle},
@@ -204,7 +204,7 @@ struct GroundBundle {
     collider: Collider,
     collision_groups: CollisionGroups,
     ground: Ground,
-    hoverable: Hoverable,
+    cursor_hoverable: CursorHoverable,
     nav_mesh_affector: NavMeshAffector,
     pbr_bundle: PbrBundle,
 }
@@ -216,7 +216,7 @@ impl Default for GroundBundle {
             collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
             collision_groups: CollisionGroups::new(Group::GROUND, Group::ALL),
             ground: Ground,
-            hoverable: Hoverable,
+            cursor_hoverable: CursorHoverable,
             nav_mesh_affector: NavMeshAffector,
             pbr_bundle: Default::default(),
         }

@@ -6,7 +6,6 @@ pub(super) mod city;
 pub(super) mod cli;
 mod collision_groups;
 mod component_commands;
-pub(super) mod condition;
 pub(super) mod cursor_hover;
 pub(super) mod developer;
 pub(super) mod error_report;
@@ -14,6 +13,7 @@ pub(super) mod family;
 pub(super) mod game_paths;
 pub(super) mod game_state;
 pub(super) mod game_world;
+mod highlighting;
 pub(super) mod input_events;
 pub(super) mod lot;
 mod navigation;
@@ -38,6 +38,7 @@ use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
+use highlighting::HighlightingPlugin;
 use lot::LotPlugin;
 use navigation::NavigationPlugin;
 use network::NetworkPlugin;
@@ -57,6 +58,7 @@ impl PluginGroup for CorePlugins {
             .add(CityPlugin)
             .add(CliPlugin)
             .add(CursorHoverPlugin)
+            .add(HighlightingPlugin)
             .add(ActorPlugin)
             .add(AnimationStatePlugin)
             .add(LotPlugin)

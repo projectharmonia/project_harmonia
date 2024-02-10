@@ -13,12 +13,13 @@ use strum::{Display, EnumIter};
 
 use super::{
     asset::collection::{AssetCollection, Collection},
-    cursor_hover::OutlineHoverExt,
     game_state::GameState,
     game_world::WorldName,
+    highlighting::OutlineHighlightingExt,
 };
 use crate::core::{
-    animation_state::AnimationState, collision_groups::HarmoniaGroupsExt, cursor_hover::Hoverable,
+    animation_state::AnimationState, collision_groups::HarmoniaGroupsExt,
+    cursor_hover::CursorHoverable,
 };
 use human::HumanPlugin;
 use movement::MovementPlugin;
@@ -70,7 +71,7 @@ impl ActorPlugin {
                     AnimationState::new(actor_animations.handle(ActorAnimation::Idle)),
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
-                    Hoverable,
+                    CursorHoverable,
                 ))
                 .with_children(|parent| {
                     parent.spawn((
@@ -99,7 +100,9 @@ impl ActorPlugin {
                 .iter_descendants(actor_entity)
                 .filter(|&entity| meshes.get(entity).is_ok())
             {
-                commands.entity(child_entity).insert(OutlineBundle::hover());
+                commands
+                    .entity(child_entity)
+                    .insert(OutlineBundle::highlighting());
             }
         }
     }

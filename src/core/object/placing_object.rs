@@ -18,7 +18,7 @@ use crate::core::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::CityMode,
     collision_groups::HarmoniaGroupsExt,
-    cursor_hover::CursorHover,
+    cursor_hover::{CursorHover, CursorHoverSettings},
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
@@ -95,6 +95,7 @@ impl PlacingObjectPlugin {
 
     fn init_system(
         mut commands: Commands,
+        mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         objects: Query<(&Transform, &Handle<Scene>, &ObjectPath)>,
@@ -137,6 +138,8 @@ impl PlacingObjectPlugin {
             for component in &metadata.components {
                 placing_entity.insert_reflect(component.clone_value());
             }
+
+            hover_settings.enabled = false;
         }
     }
 
@@ -406,11 +409,14 @@ impl PlacingObjectPlugin {
 
     fn cancel_system(
         mut commands: Commands,
+        mut hover_settings: ResMut<CursorHoverSettings>,
         placing_objects: Query<(Entity, &PlacingObject)>,
         mut visibility: Query<&mut Visibility>,
         children: Query<&Children>,
         mut groups: Query<&mut CollisionGroups>,
     ) {
+        hover_settings.enabled = true;
+
         for (placing_entity, placing_object) in &placing_objects {
             cleanup(
                 commands.entity(placing_entity),

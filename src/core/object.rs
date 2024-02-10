@@ -12,9 +12,9 @@ use super::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     collision_groups::HarmoniaGroupsExt,
-    cursor_hover::Hoverable,
-    cursor_hover::OutlineHoverExt,
+    cursor_hover::CursorHoverable,
     game_world::WorldName,
+    highlighting::OutlineHighlightingExt,
     lot::LotVertices,
 };
 use placing_object::PlacingObjectPlugin;
@@ -71,7 +71,7 @@ impl ObjectPlugin {
             entity.insert((
                 scene_handle,
                 Name::new(metadata.general.name.clone()),
-                Hoverable,
+                CursorHoverable,
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
             ));
@@ -103,7 +103,7 @@ impl ObjectPlugin {
                         commands.entity(child_entity).insert((
                             collider,
                             CollisionGroups::new(Group::OBJECT, Group::ALL),
-                            OutlineBundle::hover(),
+                            OutlineBundle::highlighting(),
                         ));
                     }
                 }

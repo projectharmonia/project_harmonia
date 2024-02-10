@@ -1,25 +1,24 @@
 use std::iter;
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 use bevy_rapier3d::prelude::*;
 
 use super::{
-    city::CityMode, collision_groups::HarmoniaGroupsExt, condition, family::BuildingMode,
-    game_state::GameState, object::placing_object::PlacingObject, player_camera::PlayerCamera,
+    city::CityMode, collision_groups::HarmoniaGroupsExt, family::BuildingMode,
+    game_state::GameState, player_camera::PlayerCamera,
 };
 
 pub(super) struct CursorHoverPlugin;
 
 impl Plugin for CursorHoverPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.init_resource::<CursorHoverSettings>().add_systems(
             Update,
             (
-                Self::raycast_system,
-                Self::outline_enabling_system,
-                Self::outline_disabling_system,
-                Self::cleanup_system.run_if(condition::any_component_added::<PlacingObject>()),
+                Self::raycast_system.run_if(cursor_hover_enabled),
+                Self::cleanup_system
+                    .run_if(resource_changed::<CursorHoverSettings>())
+                    .run_if(not(cursor_hover_enabled)),
             )
                 .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
         );
@@ -35,8 +34,8 @@ impl CursorHoverPlugin {
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
-        hoverable: Query<(), With<Hoverable>>,
-        hovered: Query<Entity, With<CursorHover>>,
+        cursor_hoverable: Query<(), With<CursorHoverable>>,
+        cursor_hovers: Query<Entity, With<CursorHover>>,
     ) {
         let Some(cursor_pos) = windows.single().cursor_position() else {
             return;
@@ -61,86 +60,46 @@ impl CursorHoverPlugin {
         ) {
             let hovered_entity = iter::once(child_entity)
                 .chain(parents.iter_ancestors(child_entity))
-                .find(|&ancestor_entity| hoverable.get(ancestor_entity).is_ok())
+                .find(|&ancestor_entity| cursor_hoverable.get(ancestor_entity).is_ok())
                 .expect("entity should have a hoverable parent");
             let position = ray.origin + ray.direction * toi;
             commands
                 .entity(hovered_entity)
                 .insert(CursorHover(position));
-            if let Ok(previous_entity) = hovered.get_single() {
+            if let Ok(previous_entity) = cursor_hovers.get_single() {
                 if hovered_entity != previous_entity {
                     commands.entity(previous_entity).remove::<CursorHover>();
                 }
             }
-        } else if let Ok(previous_entity) = hovered.get_single() {
+        } else if let Ok(previous_entity) = cursor_hovers.get_single() {
             commands.entity(previous_entity).remove::<CursorHover>();
         }
     }
 
-    fn outline_enabling_system(
-        mut outlines: Query<&mut OutlineVolume>,
-        children: Query<&Children>,
-        hovered: Query<Entity, Added<CursorHover>>,
-    ) {
+    fn cleanup_system(mut commands: Commands, hovered: Query<Entity, With<CursorHover>>) {
         if let Ok(hovered_entity) = hovered.get_single() {
-            for child_entity in children.iter_descendants(hovered_entity) {
-                if let Ok(mut outline) = outlines.get_mut(child_entity) {
-                    outline.visible = true;
-                }
-            }
-        }
-    }
-
-    fn outline_disabling_system(
-        mut unhovered: RemovedComponents<CursorHover>,
-        mut outlines: Query<&mut OutlineVolume>,
-        children: Query<&Children>,
-    ) {
-        for parent_entity in unhovered.read() {
-            for child_entity in children.iter_descendants(parent_entity) {
-                if let Ok(mut outline) = outlines.get_mut(child_entity) {
-                    outline.visible = false;
-                }
-            }
-        }
-    }
-
-    fn cleanup_system(
-        mut commands: Commands,
-        mut outlines: Query<&mut OutlineVolume>,
-        children: Query<&Children>,
-        hovered: Query<Entity, With<CursorHover>>,
-    ) {
-        if let Ok(hovered_entity) = hovered.get_single() {
-            for child_entity in children.iter_descendants(hovered_entity) {
-                if let Ok(mut outline) = outlines.get_mut(child_entity) {
-                    outline.visible = false;
-                }
-            }
             commands.entity(hovered_entity).remove::<CursorHover>();
         }
     }
 }
 
+fn cursor_hover_enabled(hover_settings: Res<CursorHoverSettings>) -> bool {
+    hover_settings.enabled
+}
+
+#[derive(Resource)]
+pub(super) struct CursorHoverSettings {
+    pub(super) enabled: bool,
+}
+
+impl Default for CursorHoverSettings {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
 #[derive(Component)]
-pub(super) struct Hoverable;
+pub(super) struct CursorHoverable;
 
 #[derive(Component, Deref)]
 pub(crate) struct CursorHover(pub(crate) Vec3);
-
-pub(super) trait OutlineHoverExt {
-    fn hover() -> Self;
-}
-
-impl OutlineHoverExt for OutlineBundle {
-    fn hover() -> Self {
-        Self {
-            outline: OutlineVolume {
-                visible: false,
-                colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
-                width: 2.0,
-            },
-            ..Default::default()
-        }
-    }
-}
