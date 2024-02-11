@@ -102,7 +102,7 @@ impl CityPlugin {
             .insert(ActiveCity);
     }
 
-    pub(super) fn activation_system(
+    fn activation_system(
         mut commands: Commands,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
