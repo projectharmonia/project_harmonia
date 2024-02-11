@@ -404,7 +404,7 @@ impl Wall {
         }
     }
 
-    fn dir(&self) -> Vec2 {
+    pub(super) fn dir(&self) -> Vec2 {
         self.end - self.start
     }
 }

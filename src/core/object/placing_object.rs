@@ -53,7 +53,7 @@ impl Plugin for PlacingObjectPlugin {
                     (
                         Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
                         Self::movement_system,
-                        Self::snapping_system,
+                        Self::wall_snapping_system,
                         Self::collision_system,
                         Self::material_system,
                     )
@@ -221,7 +221,7 @@ impl PlacingObjectPlugin {
         transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
     }
 
-    fn snapping_system(
+    fn wall_snapping_system(
         walls: Query<&Wall>,
         mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
     ) {
@@ -235,7 +235,7 @@ impl PlacingObjectPlugin {
         if let Some((dir, wall_point)) = walls
             .iter()
             .map(|wall| {
-                let dir = wall.end - wall.start;
+                let dir = wall.dir();
                 (dir, closest_point(wall.start, dir, translation_2d))
             })
             .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
