@@ -146,12 +146,10 @@ impl PreviewPlugin {
         mut preview_state: ResMut<NextState<PreviewState>>,
         preview_scenes: Query<Entity, With<PreviewTarget>>,
         chidlren: Query<&Children>,
-        meshes: Query<(), With<Handle<Mesh>>>,
+        meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
-        for child_entity in chidlren
-            .iter_descendants(preview_scenes.single())
-            .filter(|&entity| meshes.get(entity).is_ok())
-        {
+        let scene_entity = preview_scenes.single();
+        for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
             commands
                 .entity(child_entity)
                 .insert((PREVIEW_RENDER_LAYER, NoFrustumCulling));

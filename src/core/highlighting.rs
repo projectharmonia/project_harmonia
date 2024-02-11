@@ -21,11 +21,10 @@ impl HighlightingPlugin {
         children: Query<&Children>,
         hovered: Query<Entity, Added<CursorHover>>,
     ) {
-        if let Ok(hovered_entity) = hovered.get_single() {
-            for child_entity in children.iter_descendants(hovered_entity) {
-                if let Ok(mut outline) = outlines.get_mut(child_entity) {
-                    outline.visible = true;
-                }
+        if let Ok(entity) = hovered.get_single() {
+            let mut iter = outlines.iter_many_mut(children.iter_descendants(entity));
+            while let Some(mut outline) = iter.fetch_next() {
+                outline.visible = true;
             }
         }
     }
@@ -35,11 +34,10 @@ impl HighlightingPlugin {
         mut outlines: Query<&mut OutlineVolume>,
         children: Query<&Children>,
     ) {
-        for parent_entity in unhovered.read() {
-            for child_entity in children.iter_descendants(parent_entity) {
-                if let Ok(mut outline) = outlines.get_mut(child_entity) {
-                    outline.visible = false;
-                }
+        for entity in unhovered.read() {
+            let mut iter = outlines.iter_many_mut(children.iter_descendants(entity));
+            while let Some(mut outline) = iter.fetch_next() {
+                outline.visible = false;
             }
         }
     }

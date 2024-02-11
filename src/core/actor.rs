@@ -86,16 +86,13 @@ impl ActorPlugin {
         mut ready_events: EventReader<SceneInstanceReady>,
         actors: Query<Entity, With<Actor>>,
         chidlren: Query<&Children>,
-        meshes: Query<(), With<Handle<Mesh>>>,
+        meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
         for actor_entity in ready_events
             .read()
             .filter_map(|event| actors.get(event.parent).ok())
         {
-            for child_entity in chidlren
-                .iter_descendants(actor_entity)
-                .filter(|&entity| meshes.get(entity).is_ok())
-            {
+            for child_entity in meshes.iter_many(chidlren.iter_descendants(actor_entity)) {
                 commands
                     .entity(child_entity)
                     .insert(OutlineBundle::highlighting());

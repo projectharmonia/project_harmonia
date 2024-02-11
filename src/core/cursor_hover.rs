@@ -30,7 +30,7 @@ impl CursorHoverPlugin {
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
         parents: Query<&Parent>,
-        cursor_hoverable: Query<(), With<CursorHoverable>>,
+        cursor_hoverable: Query<Entity, With<CursorHoverable>>,
     ) -> Option<(Entity, Vec3)> {
         let cursor_position = windows.get_single().ok()?.cursor_position()?;
         let (transform, camera) = cameras.single();
@@ -43,11 +43,11 @@ impl CursorHoverPlugin {
             Default::default(),
         )?;
 
-        let hovered_entity = iter::once(hit.entity)
-            .chain(parents.iter_ancestors(hit.entity))
-            .find(|&ancestor_entity| cursor_hoverable.get(ancestor_entity).is_ok())?;
-
+        let hovered_entity = cursor_hoverable
+            .iter_many(iter::once(hit.entity).chain(parents.iter_ancestors(hit.entity)))
+            .next()?;
         let position = ray.origin + ray.direction * hit.time_of_impact;
+
         Some((hovered_entity, position))
     }
 

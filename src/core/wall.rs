@@ -124,9 +124,8 @@ impl WallPlugin {
                 continue;
             }
 
-            let (cutout_entity, mesh_handle, _) = children
-                .iter_descendants(object_entity)
-                .flat_map(|entity| mesh_handles.get(entity).ok())
+            let (cutout_entity, mesh_handle, _) = mesh_handles
+                .iter_many(children.iter_descendants(object_entity))
                 .find(|&(.., name)| &**name == "Cutout")
                 .expect("openings should contain cutout mesh");
 

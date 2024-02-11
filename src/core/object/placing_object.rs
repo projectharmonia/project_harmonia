@@ -276,9 +276,8 @@ impl PlacingObjectPlugin {
             filter.masks |= Layer::Wall.to_bits();
         };
 
-        for (collider, transform) in children
-            .iter_descendants(object_entity)
-            .flat_map(|entity| child_meshes.get(entity))
+        for (collider, transform) in
+            child_meshes.iter_many(children.iter_descendants(object_entity))
         {
             let (_, rotation, translation) = transform.to_scale_rotation_translation();
             if !spatial_query
@@ -304,21 +303,20 @@ impl PlacingObjectPlugin {
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
         if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
-            for child_entity in children.iter_descendants(placing_entity) {
-                if let Ok(mut material_handle) = material_handles.get_mut(child_entity) {
-                    let mut material = materials
-                        .get(&*material_handle)
-                        .cloned()
-                        .expect("material handle should be valid");
+            let mut iter =
+                material_handles.iter_many_mut(children.iter_descendants(placing_entity));
+            while let Some(mut material_handle) = iter.fetch_next() {
+                let mut material = materials
+                    .get(&*material_handle)
+                    .cloned()
+                    .expect("material handle should be valid");
 
-                    material.base_color =
-                        if placing_object.collides || !placing_object.allowed_place {
-                            Color::RED
-                        } else {
-                            Color::WHITE
-                        };
-                    *material_handle = materials.add(material);
-                }
+                material.base_color = if placing_object.collides || !placing_object.allowed_place {
+                    Color::RED
+                } else {
+                    Color::WHITE
+                };
+                *material_handle = materials.add(material);
             }
             debug!("assigned material color for {placing_object:?}");
         }
