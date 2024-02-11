@@ -23,7 +23,7 @@ impl Plugin for WallObjectPlugin {
             )
             .add_systems(
                 SpawnScene,
-                Self::init_system
+                Self::scene_init_system
                     .run_if(resource_exists::<WorldName>())
                     .after(bevy::scene::scene_spawner_system),
             );
@@ -31,7 +31,7 @@ impl Plugin for WallObjectPlugin {
 }
 
 impl WallObjectPlugin {
-    fn init_system(
+    fn scene_init_system(
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,

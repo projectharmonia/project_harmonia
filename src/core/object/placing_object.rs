@@ -7,7 +7,7 @@ use bevy::{
     ecs::{reflect::ReflectCommandExt, system::EntityCommands},
     math::Vec3Swizzles,
     prelude::*,
-    scene::SceneInstanceReady,
+    scene::{self, SceneInstanceReady},
     window::PrimaryWindow,
 };
 use bevy_xpbd_3d::prelude::*;
@@ -53,7 +53,6 @@ impl Plugin for PlacingObjectPlugin {
             (
                 (
                     Self::init_system,
-                    Self::scene_init_system,
                     Self::picking_system
                         .run_if(action_just_pressed(Action::Confirm))
                         .run_if(not(any_with_component::<PlacingObject>())),
@@ -81,6 +80,18 @@ impl Plugin for PlacingObjectPlugin {
                             in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
                         ),
                 ),
+        )
+        .add_systems(
+            SpawnScene,
+            Self::scene_init_system
+                .run_if(
+                    in_state(GameState::City)
+                        .and_then(in_state(CityMode::Objects))
+                        .or_else(
+                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                        ),
+                )
+                .after(scene::scene_spawner_system),
         )
         .add_systems(PostUpdate, Self::exclusive_system);
     }

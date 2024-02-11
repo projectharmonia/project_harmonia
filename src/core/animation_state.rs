@@ -1,6 +1,10 @@
 use std::time::Duration;
 
-use bevy::{animation::RepeatAnimation, prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    animation::RepeatAnimation,
+    prelude::*,
+    scene::{self, SceneInstanceReady},
+};
 
 use super::game_world::WorldName;
 
@@ -8,15 +12,17 @@ pub(super) struct AnimationStatePlugin;
 
 impl Plugin for AnimationStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<AnimationFinished>().add_systems(
-            Update,
-            (
-                Self::scene_init_system,
-                Self::playing_system,
-                Self::finish_system,
+        app.add_event::<AnimationFinished>()
+            .add_systems(
+                Update,
+                (Self::playing_system, Self::finish_system).run_if(resource_exists::<WorldName>()),
             )
-                .run_if(resource_exists::<WorldName>()),
-        );
+            .add_systems(
+                SpawnScene,
+                Self::scene_init_system
+                    .run_if(resource_exists::<WorldName>())
+                    .after(scene::scene_spawner_system),
+            );
     }
 }
 

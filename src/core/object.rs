@@ -1,7 +1,10 @@
 pub(crate) mod placing_object;
 
 use bevy::{
-    asset::AssetPath, ecs::reflect::ReflectCommandExt, prelude::*, scene::SceneInstanceReady,
+    asset::AssetPath,
+    ecs::reflect::ReflectCommandExt,
+    prelude::*,
+    scene::{self, SceneInstanceReady},
 };
 use bevy_mod_outline::OutlineBundle;
 use bevy_replicon::prelude::*;
@@ -34,7 +37,7 @@ impl Plugin for ObjectPlugin {
             .add_server_event::<ObjectEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::init_system, Self::scene_init_system)
+                Self::init_system
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
@@ -46,6 +49,12 @@ impl Plugin for ObjectPlugin {
                     Self::despawn_system,
                 )
                     .run_if(has_authority()),
+            )
+            .add_systems(
+                SpawnScene,
+                Self::scene_init_system
+                    .run_if(resource_exists::<WorldName>())
+                    .after(scene::scene_spawner_system),
             );
     }
 }

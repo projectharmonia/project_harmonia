@@ -3,7 +3,10 @@ mod movement;
 pub(crate) mod needs;
 pub(crate) mod task;
 
-use bevy::{prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    prelude::*,
+    scene::{self, SceneInstanceReady},
+};
 use bevy_mod_outline::OutlineBundle;
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
@@ -46,8 +49,13 @@ impl Plugin for ActorPlugin {
             )
             .add_systems(
                 Update,
-                (Self::scene_init_system, Self::name_update_system)
-                    .run_if(resource_exists::<WorldName>()),
+                Self::name_update_system.run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
+                SpawnScene,
+                Self::scene_init_system
+                    .run_if(resource_exists::<WorldName>())
+                    .after(scene::scene_spawner_system),
             )
             .add_systems(PostUpdate, Self::exclusive_system);
     }
