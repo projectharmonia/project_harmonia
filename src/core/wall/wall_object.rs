@@ -1,7 +1,11 @@
 use bevy::{prelude::*, render::mesh::VertexAttributeValues, scene::SceneInstanceReady};
 
 use super::{Wall, WallOpening, WallOpenings, WallPlugin};
-use crate::core::game_world::WorldName;
+use crate::core::{
+    game_world::WorldName,
+    object::placing_object::{ObjectSnappingSet, PlacingObject},
+    wall::wall_mesh::HALF_WIDTH,
+};
 
 pub(super) struct WallObjectPlugin;
 
@@ -10,9 +14,12 @@ impl Plugin for WallObjectPlugin {
         app.register_type::<WallObject>()
             .add_systems(
                 Update,
-                (Self::openings_update_system, Self::cutout_cleanup_system)
-                    .before(WallPlugin::mesh_update_system)
-                    .run_if(resource_exists::<WorldName>()),
+                (
+                    (Self::openings_update_system, Self::cutout_cleanup_system)
+                        .before(WallPlugin::mesh_update_system)
+                        .run_if(resource_exists::<WorldName>()),
+                    Self::wall_snapping_system.in_set(ObjectSnappingSet),
+                ),
             )
             .add_systems(
                 SpawnScene,
@@ -108,6 +115,44 @@ impl WallObjectPlugin {
         }
     }
 
+    fn wall_snapping_system(
+        walls: Query<&Wall>,
+        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
+    ) {
+        let Ok((mut transform, mut placing_object, wall_object)) = placing_objects.get_single_mut()
+        else {
+            return;
+        };
+
+        const SNAP_DELTA: f32 = 1.0;
+        let translation_2d = transform.translation.xz();
+        if let Some((dir, wall_point)) = walls
+            .iter()
+            .map(|wall| {
+                let dir = wall.dir();
+                (dir, closest_point(wall.start, dir, translation_2d))
+            })
+            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
+        {
+            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
+            let sign = dir.perp_dot(translation_2d - wall_point).signum();
+            let offset = match wall_object {
+                WallObject::Opening => Vec2::ZERO,
+                WallObject::Fixture => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
+            };
+            let snap_point = wall_point + offset;
+            let angle = dir.angle_between(Vec2::X * sign);
+            transform.translation.x = snap_point.x;
+            transform.translation.z = snap_point.y;
+            transform.rotation = Quat::from_rotation_y(angle);
+            if !placing_object.allowed_place {
+                placing_object.allowed_place = true;
+            }
+        } else if placing_object.allowed_place {
+            placing_object.allowed_place = false;
+        }
+    }
+
     fn cutout_cleanup_system(
         mut removed_cutouts: RemovedComponents<ObjectCutout>,
         mut walls: Query<&mut WallOpenings>,
@@ -139,6 +184,14 @@ fn within_wall(wall: Wall, point: Vec2) -> bool {
     }
 
     dot <= wall_dir.length_squared()
+}
+
+/// Returns the minimal distance from point `p` to the segment defined by its `origin` and `displacement` vector.
+fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
+    // Consider the line extending the segment, parameterized as `origin + t * displacement`.
+    let t = (p - origin).dot(displacement) / displacement.length_squared();
+    // We clamp `t` to handle points outside the segment.
+    origin + t.clamp(0.0, 1.0) * displacement // Projection of point `p` onto the segment.
 }
 
 /// A component that marks that entity can be placed only on walls or inside them.

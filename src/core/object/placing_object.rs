@@ -22,53 +22,67 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{wall_mesh::HALF_WIDTH, wall_object::WallObject, Wall},
+    wall::wall_object::WallObject,
     Layer,
 };
 
-pub(super) struct PlacingObjectPlugin;
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub(crate) struct ObjectSnappingSet;
+
+pub(crate) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
-            .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
-            .add_systems(
-                Update,
-                (
-                    (
-                        Self::init_system,
-                        Self::scene_init_system,
-                        Self::picking_system
-                            .run_if(action_just_pressed(Action::Confirm))
-                            .run_if(not(any_with_component::<PlacingObject>())),
-                        Self::confirmation_system
-                            .after(Self::collision_system)
-                            .run_if(action_just_pressed(Action::Confirm)),
-                        Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel_system.run_if(
-                            action_just_pressed(Action::Cancel)
-                                .or_else(on_event::<ObjectEventConfirmed>()),
+        app.configure_sets(
+            Update,
+            ObjectSnappingSet
+                .after(Self::movement_system)
+                .before(Self::collision_system)
+                .run_if(
+                    in_state(GameState::City)
+                        .and_then(in_state(CityMode::Objects))
+                        .or_else(
+                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
                         ),
+                ),
+        )
+        .add_systems(OnExit(CityMode::Objects), Self::cancel_system)
+        .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
+        .add_systems(
+            Update,
+            (
+                (
+                    Self::init_system,
+                    Self::scene_init_system,
+                    Self::picking_system
+                        .run_if(action_just_pressed(Action::Confirm))
+                        .run_if(not(any_with_component::<PlacingObject>())),
+                    Self::confirmation_system
+                        .after(Self::collision_system)
+                        .run_if(action_just_pressed(Action::Confirm)),
+                    Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                    Self::cancel_system.run_if(
+                        action_just_pressed(Action::Cancel)
+                            .or_else(on_event::<ObjectEventConfirmed>()),
                     ),
-                    (
-                        Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
-                        Self::movement_system,
-                        Self::wall_snapping_system,
-                        Self::collision_system,
-                        Self::material_system,
-                    )
-                        .chain(),
+                ),
+                (
+                    Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
+                    Self::movement_system,
+                    Self::collision_system,
+                    Self::material_system,
                 )
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
-                            ),
-                    ),
+                    .chain(),
             )
-            .add_systems(PostUpdate, Self::exclusive_system);
+                .run_if(
+                    in_state(GameState::City)
+                        .and_then(in_state(CityMode::Objects))
+                        .or_else(
+                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                        ),
+                ),
+        )
+        .add_systems(PostUpdate, Self::exclusive_system);
     }
 }
 
@@ -218,44 +232,6 @@ impl PlacingObjectPlugin {
             offset
         });
         transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
-    }
-
-    fn wall_snapping_system(
-        walls: Query<&Wall>,
-        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
-    ) {
-        let Ok((mut transform, mut placing_object, wall_object)) = placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
-        const SNAP_DELTA: f32 = 1.0;
-        let translation_2d = transform.translation.xz();
-        if let Some((dir, wall_point)) = walls
-            .iter()
-            .map(|wall| {
-                let dir = wall.dir();
-                (dir, closest_point(wall.start, dir, translation_2d))
-            })
-            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
-        {
-            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
-            let sign = dir.perp_dot(translation_2d - wall_point).signum();
-            let offset = match wall_object {
-                WallObject::Opening => Vec2::ZERO,
-                WallObject::Fixture => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
-            };
-            let snap_point = wall_point + offset;
-            let angle = dir.angle_between(Vec2::X * sign);
-            transform.translation.x = snap_point.x;
-            transform.translation.z = snap_point.y;
-            transform.rotation = Quat::from_rotation_y(angle);
-            if !placing_object.allowed_place {
-                placing_object.allowed_place = true;
-            }
-        } else if placing_object.allowed_place {
-            placing_object.allowed_place = false;
-        }
     }
 
     fn collision_system(
@@ -420,19 +396,11 @@ fn cleanup(
     }
 }
 
-/// Returns the minimal distance from point `p` to the segment defined by its `origin` and `displacement` vector.
-fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
-    // Consider the line extending the segment, parameterized as `origin + t * displacement`.
-    let t = (p - origin).dot(displacement) / displacement.length_squared();
-    // We clamp `t` to handle points outside the segment.
-    origin + t.clamp(0.0, 1.0) * displacement // Projection of point `p` onto the segment.
-}
-
 #[derive(Component, Debug, Clone)]
 pub(crate) struct PlacingObject {
     kind: PlacingObjectKind,
     collides: bool,
-    allowed_place: bool,
+    pub(crate) allowed_place: bool,
 }
 
 impl PlacingObject {

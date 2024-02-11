@@ -1,5 +1,5 @@
 pub(crate) mod spawning_wall;
-pub(super) mod wall_mesh;
+mod wall_mesh;
 pub(super) mod wall_object;
 
 use std::mem;
