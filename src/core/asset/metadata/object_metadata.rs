@@ -243,7 +243,7 @@ mod tests {
     use super::*;
     use crate::core::{
         asset::metadata::{MetadataDeserializer, METADATA_EXTENSION},
-        wall::WallObject,
+        wall::wall_object::WallObject,
     };
 
     #[test]

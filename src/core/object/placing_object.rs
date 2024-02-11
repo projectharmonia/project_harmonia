@@ -22,7 +22,7 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::{wall_mesh::HALF_WIDTH, Wall, WallObject},
+    wall::{wall_mesh::HALF_WIDTH, wall_object::WallObject, Wall},
     Layer,
 };
 
