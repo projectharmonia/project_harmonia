@@ -135,8 +135,7 @@ impl WallPlugin {
             // If wall have zero length, exclude it from connections.
             if wall.start != wall.end {
                 // Scan all walls from this lot for possible connections.
-                let children = children.get(**parent).unwrap();
-                let mut iter = walls.iter_many_mut(children);
+                let mut iter = walls.iter_many_mut(children.get(**parent).unwrap());
                 while let Some((other_entity, &other_wall, mut other_connections)) = iter
                     .fetch_next()
                     .filter(|&(entity, ..)| entity != wall_entity)

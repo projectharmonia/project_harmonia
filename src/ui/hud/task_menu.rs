@@ -96,16 +96,14 @@ impl TaskMenuPlugin {
         mut task_menus: Query<&mut TaskMenu>,
         active_actors: Query<Entity, With<ActiveActor>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(task_index) = buttons.get(event.0) {
-                let mut task_menu = task_menus.single_mut();
-                let task = task_menu.swap_remove(task_index.0);
+        for task_index in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let mut task_menu = task_menus.single_mut();
+            let task = task_menu.swap_remove(task_index.0);
 
-                task_events.send(TaskRequest {
-                    entity: active_actors.single(),
-                    task,
-                });
-            }
+            task_events.send(TaskRequest {
+                entity: active_actors.single(),
+                task,
+            });
         }
     }
 

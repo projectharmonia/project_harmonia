@@ -146,8 +146,8 @@ impl FamilyPlugin {
         mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
         families: Query<(Entity, &mut FamilyMembers)>,
     ) {
-        for event in despawn_events.read().map(|event| event.event) {
-            match families.get(event.0) {
+        for entity in despawn_events.read().map(|event| event.event.0) {
+            match families.get(entity) {
                 Ok((family_entity, members)) => {
                     commands.entity(family_entity).despawn();
                     for &entity in &members.0 {

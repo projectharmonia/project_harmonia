@@ -118,11 +118,9 @@ impl WorldBrowserPlugin {
         labels: Query<&Text>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in click_events.read() {
-            let Ok((world_button, &world_node)) = buttons.get(event.0) else {
-                continue;
-            };
-
+        for (world_button, &world_node) in
+            buttons.iter_many(click_events.read().map(|event| event.0))
+        {
             let world_name = labels
                 .get(world_node.label_entity)
                 .expect("world label should contain text");
@@ -161,32 +159,29 @@ impl WorldBrowserPlugin {
         text_edits: Query<&Text, With<PortEdit>>,
         mut labels: Query<&mut Text, Without<PortEdit>>,
     ) -> Result<()> {
-        for event in click_events.read() {
-            if let Ok(&button) = buttons.get(event.0) {
-                let (dialog_entity, world_node) = dialogs.single();
-                if button == HostDialogButton::Host {
-                    let server = RenetServer::new(ConnectionConfig {
-                        server_channels_config: network_channels.get_server_configs(),
-                        client_channels_config: network_channels.get_client_configs(),
-                        ..Default::default()
-                    });
-                    let port = text_edits.single();
-                    let transport = network::create_server(port.sections[0].value.parse()?)
-                        .context("unable to create server")?;
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let (dialog_entity, world_node) = dialogs.single();
+            if button == HostDialogButton::Host {
+                let server = RenetServer::new(ConnectionConfig {
+                    server_channels_config: network_channels.get_server_configs(),
+                    client_channels_config: network_channels.get_client_configs(),
+                    ..Default::default()
+                });
+                let port = text_edits.single();
+                let transport = network::create_server(port.sections[0].value.parse()?)
+                    .context("unable to create server")?;
 
-                    commands.insert_resource(server);
-                    commands.insert_resource(transport);
+                commands.insert_resource(server);
+                commands.insert_resource(transport);
 
-                    let mut world_name = labels
-                        .get_mut(world_node.label_entity)
-                        .expect("world label should contain text");
-                    commands
-                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
+                let mut world_name = labels
+                    .get_mut(world_node.label_entity)
+                    .expect("world label should contain text");
+                commands.insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
 
-                    load_events.send_default();
-                }
-                commands.entity(dialog_entity).despawn_recursive();
+                load_events.send_default();
             }
+            commands.entity(dialog_entity).despawn_recursive();
         }
 
         Ok(())
@@ -200,20 +195,18 @@ impl WorldBrowserPlugin {
         buttons: Query<&RemoveDialogButton>,
         labels: Query<&Text>,
     ) -> Result<()> {
-        for event in click_events.read() {
-            if let Ok(&button) = buttons.get(event.0) {
-                let (dialog_entity, world_node) = dialogs.single();
-                let world_name = labels
-                    .get(world_node.label_entity)
-                    .expect("world label should contain text");
-                if button == RemoveDialogButton::Remove {
-                    let world_path = game_paths.world_path(&world_name.sections[0].value);
-                    fs::remove_file(&world_path)
-                        .with_context(|| format!("unable to remove {world_path:?}"))?;
-                    commands.entity(world_node.node_entity).despawn_recursive();
-                }
-                commands.entity(dialog_entity).despawn_recursive();
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let (dialog_entity, world_node) = dialogs.single();
+            let world_name = labels
+                .get(world_node.label_entity)
+                .expect("world label should contain text");
+            if button == RemoveDialogButton::Remove {
+                let world_path = game_paths.world_path(&world_name.sections[0].value);
+                fs::remove_file(&world_path)
+                    .with_context(|| format!("unable to remove {world_path:?}"))?;
+                commands.entity(world_node.node_entity).despawn_recursive();
             }
+            commands.entity(dialog_entity).despawn_recursive();
         }
 
         Ok(())
@@ -226,15 +219,13 @@ impl WorldBrowserPlugin {
         buttons: Query<&WorldBrowserButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button) = buttons.get(event.0) {
-                match button {
-                    WorldBrowserButton::Create => {
-                        setup_create_world_dialog(&mut commands, roots.single(), &theme)
-                    }
-                    WorldBrowserButton::Join => {
-                        setup_join_world_dialog(&mut commands, roots.single(), &theme)
-                    }
+        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            match button {
+                WorldBrowserButton::Create => {
+                    setup_create_world_dialog(&mut commands, roots.single(), &theme)
+                }
+                WorldBrowserButton::Join => {
+                    setup_join_world_dialog(&mut commands, roots.single(), &theme)
                 }
             }
         }
@@ -248,16 +239,13 @@ impl WorldBrowserPlugin {
         mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(&button) = buttons.get(event.0) {
-                if button == CreateDialogButton::Create {
-                    let mut world_name = text_edits.single_mut();
-                    commands
-                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
-                    game_state.set(GameState::World);
-                }
-                commands.entity(dialogs.single()).despawn_recursive();
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            if button == CreateDialogButton::Create {
+                let mut world_name = text_edits.single_mut();
+                commands.insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
+                game_state.set(GameState::World);
             }
+            commands.entity(dialogs.single()).despawn_recursive();
         }
     }
 
@@ -270,30 +258,26 @@ impl WorldBrowserPlugin {
         ip_edits: Query<&Text, With<IpEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) -> Result<()> {
-        for event in click_events.read() {
-            if let Ok(&button) = buttons.get(event.0) {
-                match button {
-                    JoinDialogButton::Join => {
-                        let client = RenetClient::new(ConnectionConfig {
-                            server_channels_config: network_channels.get_server_configs(),
-                            client_channels_config: network_channels.get_client_configs(),
-                            ..Default::default()
-                        });
-                        let ip = ip_edits.single();
-                        let port = port_edits.single();
-                        let transport = network::create_client(
-                            ip.sections[0].value.parse()?,
-                            port.sections[0].value.parse()?,
-                        )
-                        .context("unable to create connection")?;
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            match button {
+                JoinDialogButton::Join => {
+                    let client = RenetClient::new(ConnectionConfig {
+                        server_channels_config: network_channels.get_server_configs(),
+                        client_channels_config: network_channels.get_client_configs(),
+                        ..Default::default()
+                    });
+                    let ip = ip_edits.single();
+                    let port = port_edits.single();
+                    let transport = network::create_client(
+                        ip.sections[0].value.parse()?,
+                        port.sections[0].value.parse()?,
+                    )
+                    .context("unable to create connection")?;
 
-                        commands.insert_resource(client);
-                        commands.insert_resource(transport);
-                    }
-                    JoinDialogButton::Cancel => {
-                        commands.entity(dialogs.single()).despawn_recursive()
-                    }
+                    commands.insert_resource(client);
+                    commands.insert_resource(transport);
                 }
+                JoinDialogButton::Cancel => commands.entity(dialogs.single()).despawn_recursive(),
             }
         }
 

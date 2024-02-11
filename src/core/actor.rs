@@ -88,10 +88,7 @@ impl ActorPlugin {
         chidlren: Query<&Children>,
         meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
-        for actor_entity in ready_events
-            .read()
-            .filter_map(|event| actors.get(event.parent).ok())
-        {
+        for actor_entity in actors.iter_many(ready_events.read().map(|event| event.parent)) {
             for child_entity in meshes.iter_many(chidlren.iter_descendants(actor_entity)) {
                 commands
                     .entity(child_entity)

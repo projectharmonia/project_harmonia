@@ -89,27 +89,22 @@ impl InGameMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
         ingame_menus: Query<Entity, With<IngameMenu>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button) = buttons.get(event.0) {
-                match button {
-                    IngameMenuButton::Resume => {
-                        commands.entity(ingame_menus.single()).despawn_recursive()
-                    }
-                    IngameMenuButton::Save => {
-                        save_events.send_default();
-                        commands.entity(ingame_menus.single()).despawn_recursive();
-                    }
-                    IngameMenuButton::Settings => settings_events.send_default(),
-                    IngameMenuButton::World => game_state.set(GameState::World),
-                    IngameMenuButton::MainMenu => setup_exit_dialog(
-                        &mut commands,
-                        roots.single(),
-                        &theme,
-                        ExitDialog::MainMenu,
-                    ),
-                    IngameMenuButton::ExitGame => {
-                        setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::Game)
-                    }
+        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            match button {
+                IngameMenuButton::Resume => {
+                    commands.entity(ingame_menus.single()).despawn_recursive()
+                }
+                IngameMenuButton::Save => {
+                    save_events.send_default();
+                    commands.entity(ingame_menus.single()).despawn_recursive();
+                }
+                IngameMenuButton::Settings => settings_events.send_default(),
+                IngameMenuButton::World => game_state.set(GameState::World),
+                IngameMenuButton::MainMenu => {
+                    setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::MainMenu)
+                }
+                IngameMenuButton::ExitGame => {
+                    setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::Game)
                 }
             }
         }
@@ -124,29 +119,27 @@ impl InGameMenuPlugin {
         buttons: Query<&ExitDialogButton>,
         exit_dialogs: Query<(Entity, &ExitDialog)>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button) = buttons.get(event.0) {
-                let (dialog_entity, exit_dialog) = exit_dialogs.single();
-                match button {
-                    ExitDialogButton::SaveAndExit => {
-                        save_events.send_default();
-                        match exit_dialog {
-                            ExitDialog::MainMenu => {
-                                commands.remove_resource::<WorldName>();
-                                game_state.set(GameState::MainMenu);
-                            }
-                            ExitDialog::Game => exit_events.send_default(),
-                        }
-                    }
-                    ExitDialogButton::Exit => match exit_dialog {
+        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let (dialog_entity, exit_dialog) = exit_dialogs.single();
+            match button {
+                ExitDialogButton::SaveAndExit => {
+                    save_events.send_default();
+                    match exit_dialog {
                         ExitDialog::MainMenu => {
                             commands.remove_resource::<WorldName>();
                             game_state.set(GameState::MainMenu);
                         }
                         ExitDialog::Game => exit_events.send_default(),
-                    },
-                    ExitDialogButton::Cancel => commands.entity(dialog_entity).despawn_recursive(),
+                    }
                 }
+                ExitDialogButton::Exit => match exit_dialog {
+                    ExitDialog::MainMenu => {
+                        commands.remove_resource::<WorldName>();
+                        game_state.set(GameState::MainMenu);
+                    }
+                    ExitDialog::Game => exit_events.send_default(),
+                },
+                ExitDialogButton::Cancel => commands.entity(dialog_entity).despawn_recursive(),
             }
         }
     }

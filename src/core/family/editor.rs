@@ -52,10 +52,7 @@ impl EditorPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         families: Query<&FamilyMembers>,
     ) {
-        for event in spawn_select_events.read() {
-            let members = families
-                .get(event.0)
-                .expect("spawned family should have actors");
+        for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
             let actor_entity = *members
                 .first()
                 .expect("family should always have at least one member");

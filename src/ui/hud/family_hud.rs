@@ -204,10 +204,8 @@ impl FamilyHudPlugin {
         mut click_events: EventReader<Click>,
         buttons: Query<&ButtonTask>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button_task) = buttons.get(event.0) {
-                cancel_events.send(TaskCancel(button_task.0));
-            }
+        for button_task in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            cancel_events.send(TaskCancel(button_task.0));
         }
     }
 

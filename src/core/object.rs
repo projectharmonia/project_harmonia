@@ -89,10 +89,7 @@ impl ObjectPlugin {
         chidlren: Query<&Children>,
         mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
-        for object_entity in ready_events
-            .read()
-            .filter_map(|event| objects.get(event.parent).ok())
-        {
+        for object_entity in objects.iter_many(ready_events.read().map(|event| event.parent)) {
             for (child_entity, mesh_handle) in
                 mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {

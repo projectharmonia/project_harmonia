@@ -143,9 +143,8 @@ impl PlacingObjectPlugin {
         mut objects: Query<&mut Visibility>,
         mesh_handles: Query<(Entity, &Handle<Mesh>)>,
     ) {
-        for (object_entity, placing_object) in ready_events
-            .read()
-            .filter_map(|event| placing_objects.get(event.parent).ok())
+        for (object_entity, placing_object) in
+            placing_objects.iter_many(ready_events.read().map(|event| event.parent))
         {
             if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
                 let mut visibility = objects

@@ -55,11 +55,9 @@ impl ConnectionDialogPlugin {
         buttons: Query<(), With<CancelButton>>,
         dialogs: Query<Entity, With<ConnectionDialog>>,
     ) {
-        for event in click_events.read() {
-            if buttons.get(event.0).is_ok() {
-                commands.remove_resource::<RenetClient>();
-                commands.entity(dialogs.single()).despawn_recursive();
-            }
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            commands.remove_resource::<RenetClient>();
+            commands.entity(dialogs.single()).despawn_recursive();
         }
     }
 

@@ -27,9 +27,8 @@ impl AnimationStatePlugin {
         children: Query<&Children>,
         mut animation_players: Query<&mut AnimationPlayer>,
     ) {
-        for (entity, animation_state) in ready_events
-            .read()
-            .filter_map(|event| scenes.get(event.parent).ok())
+        for (entity, animation_state) in
+            scenes.iter_many(ready_events.read().map(|event| event.parent))
         {
             if let Some(mut animation_player) = animation_players
                 .iter_many_mut(children.iter_descendants(entity))

@@ -84,12 +84,10 @@ impl EditorMenuPlugin {
         buttons: Query<(), With<PlusButton>>,
         families: Query<Entity, With<EditableFamily>>,
     ) {
-        for event in click_events.read() {
-            if buttons.get(event.0).is_ok() {
-                commands.entity(families.single()).with_children(|parent| {
-                    parent.spawn(EditableActorBundle::default());
-                });
-            }
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            commands.entity(families.single()).with_children(|parent| {
+                parent.spawn(EditableActorBundle::default());
+            });
         }
     }
 
@@ -238,14 +236,12 @@ impl EditorMenuPlugin {
         buttons: Query<&FamilyMenuButton>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button) = buttons.get(event.0) {
-                match button {
-                    FamilyMenuButton::Confirm => {
-                        setup_save_family_dialog(&mut commands, roots.single(), &theme);
-                    }
-                    FamilyMenuButton::Cancel => game_state.set(GameState::World),
+        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            match button {
+                FamilyMenuButton::Confirm => {
+                    setup_save_family_dialog(&mut commands, roots.single(), &theme);
                 }
+                FamilyMenuButton::Cancel => game_state.set(GameState::World),
             }
         }
     }
@@ -260,11 +256,7 @@ impl EditorMenuPlugin {
         cities: Query<(Entity, &Name), With<City>>,
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
-        for event in click_events.read() {
-            let Ok(&button) = buttons.get(event.0) else {
-                continue;
-            };
-
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if button == SaveDialogButton::Save {
                 let mut family_name = text_edits.single_mut();
                 let family_scene =
@@ -292,13 +284,11 @@ impl EditorMenuPlugin {
         dialogs: Query<Entity, With<Dialog>>,
         buttons: Query<&PlaceDialogButton>,
     ) {
-        for event in click_events.read() {
-            if let Ok(&button) = buttons.get(event.0) {
-                if button == PlaceDialogButton::CreateNew {
-                    reset_events.send_default();
-                }
-                commands.entity(dialogs.single()).despawn_recursive()
+        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            if button == PlaceDialogButton::CreateNew {
+                reset_events.send_default();
             }
+            commands.entity(dialogs.single()).despawn_recursive()
         }
     }
 
@@ -310,26 +300,24 @@ impl EditorMenuPlugin {
         buttons: Query<(&CityPlaceButton, &PlaceCity)>,
         mut dialogs: Query<(Entity, &mut FamilyScene)>,
     ) {
-        for event in click_events.read() {
-            if let Ok((button, place_city)) = buttons.get(event.0) {
-                let (dialog_entity, mut scene) = dialogs.single_mut();
-                match button {
-                    CityPlaceButton::PlaceAndPlay => {
-                        spawn_events.send(FamilySpawn {
-                            city_entity: place_city.0,
-                            scene: mem::take(&mut scene),
-                            select: true,
-                        });
-                    }
-                    CityPlaceButton::Place => {
-                        spawn_events.send(FamilySpawn {
-                            city_entity: place_city.0,
-                            scene: mem::take(&mut scene),
-                            select: false,
-                        });
-                        commands.entity(dialog_entity).despawn_recursive();
-                        reset_events.send_default();
-                    }
+        for (button, place_city) in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let (dialog_entity, mut scene) = dialogs.single_mut();
+            match button {
+                CityPlaceButton::PlaceAndPlay => {
+                    spawn_events.send(FamilySpawn {
+                        city_entity: place_city.0,
+                        scene: mem::take(&mut scene),
+                        select: true,
+                    });
+                }
+                CityPlaceButton::Place => {
+                    spawn_events.send(FamilySpawn {
+                        city_entity: place_city.0,
+                        scene: mem::take(&mut scene),
+                        select: false,
+                    });
+                    commands.entity(dialog_entity).despawn_recursive();
+                    reset_events.send_default();
                 }
             }
         }

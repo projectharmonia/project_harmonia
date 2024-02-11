@@ -53,13 +53,11 @@ impl MainMenuPlugin {
         mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<&MainMenuButton>,
     ) {
-        for event in click_events.read() {
-            if let Ok(button) = buttons.get(event.0) {
-                match button {
-                    MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
-                    MainMenuButton::Settings => settings_events.send_default(),
-                    MainMenuButton::Exit => exit_events.send_default(),
-                }
+        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            match button {
+                MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
+                MainMenuButton::Settings => settings_events.send_default(),
+                MainMenuButton::Exit => exit_events.send_default(),
             }
         }
     }

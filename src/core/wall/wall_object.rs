@@ -32,10 +32,9 @@ impl WallObjectPlugin {
         children: Query<&Children>,
         wall_objects: Query<(Entity, &WallObject), With<WallObject>>,
     ) {
-        for event in ready_events.read() {
-            let Ok((object_entity, &wall_object)) = wall_objects.get(event.parent) else {
-                continue;
-            };
+        for (object_entity, &wall_object) in
+            wall_objects.iter_many(ready_events.read().map(|event| event.parent))
+        {
             if wall_object != WallObject::Opening {
                 continue;
             }

@@ -187,25 +187,25 @@ impl WorldMenuPlugin {
         nodes: Query<&WorldEntity>,
         families: Query<&FamilyMembers>,
     ) {
-        for event in click_events.read() {
-            if let Ok((entity_node, family_button)) = buttons.get(event.0) {
-                let world_entity = nodes
-                    .get(entity_node.0)
-                    .expect("family button should reference world entity node");
-                match family_button {
-                    FamilyButton::Play => {
-                        let members = families
-                            .get(world_entity.0)
-                            .expect("world entity node should reference a family");
-                        let actor_entity = *members
-                            .first()
-                            .expect("family always have at least one member");
+        for (entity_node, family_button) in
+            buttons.iter_many(click_events.read().map(|event| event.0))
+        {
+            let world_entity = nodes
+                .get(entity_node.0)
+                .expect("family button should reference world entity node");
+            match family_button {
+                FamilyButton::Play => {
+                    let members = families
+                        .get(world_entity.0)
+                        .expect("world entity node should reference a family");
+                    let actor_entity = *members
+                        .first()
+                        .expect("family always have at least one member");
 
-                        commands.entity(actor_entity).insert(ActiveActor);
-                        game_state.set(GameState::Family);
-                    }
-                    FamilyButton::Delete => despawn_events.send(FamilyDespawn(world_entity.0)),
+                    commands.entity(actor_entity).insert(ActiveActor);
+                    game_state.set(GameState::Family);
                 }
+                FamilyButton::Delete => despawn_events.send(FamilyDespawn(world_entity.0)),
             }
         }
     }
@@ -217,19 +217,19 @@ impl WorldMenuPlugin {
         buttons: Query<(&WorldEntityNode, &CityButton)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for event in click_events.read() {
-            if let Ok((entity_node, family_button)) = buttons.get(event.0) {
-                let world_entity = nodes
-                    .get(entity_node.0)
-                    .expect("family button should reference world entity node");
-                // TODO: use event for despawn, otherwise client will despawn the city locally.
-                match family_button {
-                    CityButton::Edit => {
-                        commands.entity(world_entity.0).insert(ActiveCity);
-                        game_state.set(GameState::City);
-                    }
-                    CityButton::Delete => commands.entity(world_entity.0).despawn(),
+        for (entity_node, family_button) in
+            buttons.iter_many(click_events.read().map(|event| event.0))
+        {
+            let world_entity = nodes
+                .get(entity_node.0)
+                .expect("family button should reference world entity node");
+            // TODO: use event for despawn, otherwise client will despawn the city locally.
+            match family_button {
+                CityButton::Edit => {
+                    commands.entity(world_entity.0).insert(ActiveCity);
+                    game_state.set(GameState::City);
                 }
+                CityButton::Delete => commands.entity(world_entity.0).despawn(),
             }
         }
     }
@@ -243,18 +243,16 @@ impl WorldMenuPlugin {
         tabs: Query<(&Toggled, &WorldTab)>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for event in click_events.read() {
-            if buttons.get(event.0).is_ok() {
-                let current_tab = tabs
-                    .iter()
-                    .find_map(|(toggled, world_tab)| toggled.0.then_some(world_tab))
-                    .expect("one tab should always be active");
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let current_tab = tabs
+                .iter()
+                .find_map(|(toggled, world_tab)| toggled.0.then_some(world_tab))
+                .expect("one tab should always be active");
 
-                match current_tab {
-                    WorldTab::Families => game_state.set(GameState::FamilyEditor),
-                    WorldTab::Cities => {
-                        setup_create_city_dialog(&mut commands, roots.single(), &theme);
-                    }
+            match current_tab {
+                WorldTab::Families => game_state.set(GameState::FamilyEditor),
+                WorldTab::Cities => {
+                    setup_create_city_dialog(&mut commands, roots.single(), &theme);
                 }
             }
         }
@@ -267,16 +265,14 @@ impl WorldMenuPlugin {
         mut text_edits: Query<&mut Text, With<CityNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
-        for event in click_events.read() {
-            if let Ok(dialog_button) = buttons.get(event.0) {
-                if let CityDialogButton::Create = dialog_button {
-                    let mut city_name = text_edits.single_mut();
-                    commands.spawn(CityBundle::new(
-                        mem::take(&mut city_name.sections[0].value).into(),
-                    ));
-                }
-                commands.entity(dialogs.single()).despawn_recursive();
+        for &dialog_button in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            if dialog_button == CityDialogButton::Create {
+                let mut city_name = text_edits.single_mut();
+                commands.spawn(CityBundle::new(
+                    mem::take(&mut city_name.sections[0].value).into(),
+                ));
             }
+            commands.entity(dialogs.single()).despawn_recursive();
         }
     }
 
@@ -430,7 +426,7 @@ struct WorldEntityNode(Entity);
 #[derive(Component)]
 struct CreateEntityButton;
 
-#[derive(Component, EnumIter, Clone, Copy, Display)]
+#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum CityDialogButton {
     Create,
     Cancel,

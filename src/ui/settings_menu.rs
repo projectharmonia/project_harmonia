@@ -159,11 +159,7 @@ impl SettingsMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
         buttons: Query<(Entity, &Mapping)>,
     ) {
-        for event in click_events.read() {
-            let Ok((entity, mapping)) = buttons.get(event.0) else {
-                continue;
-            };
-
+        for (entity, mapping) in buttons.iter_many(click_events.read().map(|event| event.0)) {
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn((BindingButton(entity), DialogBundle::new(&theme)))
@@ -261,34 +257,32 @@ impl SettingsMenuPlugin {
         dialog_buttons: Query<&BindingDialogButton>,
         dialogs: Query<(Entity, Option<&ConflictButton>, &BindingButton)>,
     ) {
-        for event in click_events.read() {
-            if let Ok(dialog_button) = dialog_buttons.get(event.0) {
-                let (entity, conflict_button, binding_button) = dialogs.single();
-                match dialog_button {
-                    BindingDialogButton::Replace => {
-                        let conflict_button = conflict_button
-                            .expect("replace button should be clickable only with conflict");
-                        let mut conflict_mapping = mapping_buttons
-                            .get_mut(conflict_button.0)
-                            .expect("binding conflict should point to a button");
-                        let input_kind = conflict_mapping.input_kind;
-                        conflict_mapping.input_kind = None;
+        for dialog_button in dialog_buttons.iter_many(click_events.read().map(|event| event.0)) {
+            let (entity, conflict_button, binding_button) = dialogs.single();
+            match dialog_button {
+                BindingDialogButton::Replace => {
+                    let conflict_button = conflict_button
+                        .expect("replace button should be clickable only with conflict");
+                    let mut conflict_mapping = mapping_buttons
+                        .get_mut(conflict_button.0)
+                        .expect("binding conflict should point to a button");
+                    let input_kind = conflict_mapping.input_kind;
+                    conflict_mapping.input_kind = None;
 
-                        let mut mapping = mapping_buttons
-                            .get_mut(binding_button.0)
-                            .expect("binding should point to a button");
-                        mapping.input_kind = input_kind;
-                    }
-                    BindingDialogButton::Delete => {
-                        let mut mapping = mapping_buttons
-                            .get_mut(binding_button.0)
-                            .expect("binding should point to a button");
-                        mapping.input_kind = None;
-                    }
-                    BindingDialogButton::Cancel => (),
+                    let mut mapping = mapping_buttons
+                        .get_mut(binding_button.0)
+                        .expect("binding should point to a button");
+                    mapping.input_kind = input_kind;
                 }
-                commands.entity(entity).despawn_recursive();
+                BindingDialogButton::Delete => {
+                    let mut mapping = mapping_buttons
+                        .get_mut(binding_button.0)
+                        .expect("binding should point to a button");
+                    mapping.input_kind = None;
+                }
+                BindingDialogButton::Cancel => (),
             }
+            commands.entity(entity).despawn_recursive();
         }
     }
 
@@ -302,11 +296,8 @@ impl SettingsMenuPlugin {
         mapping_buttons: Query<&Mapping>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
-        for event in click_events.read() {
-            let Ok(&settings_button) = settings_buttons.get(event.0) else {
-                continue;
-            };
-
+        for &settings_button in settings_buttons.iter_many(click_events.read().map(|event| event.0))
+        {
             if settings_button == SettingsButton::Ok {
                 for (checkbox, field) in &checkboxes {
                     let field_value = settings

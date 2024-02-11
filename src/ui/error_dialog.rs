@@ -57,10 +57,8 @@ impl ErrorDialogPlugin {
         buttons: Query<(), With<OkButton>>,
         error_dialogs: Query<Entity, With<ErrorDialog>>,
     ) {
-        for event in click_events.read() {
-            if buttons.get(event.0).is_ok() {
-                commands.entity(error_dialogs.single()).despawn_recursive();
-            }
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            commands.entity(error_dialogs.single()).despawn_recursive();
         }
     }
 }
