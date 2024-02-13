@@ -6,4 +6,23 @@ preview_translation = [0.0, -1.0, -2.9]
 
 [object]
 category = "Doors"
-components = [{ WallMount = "Embed" }]
+components = [
+  { WallMount = { Embed = [
+    [
+      -0.4358678,
+      1.1920929e-7,
+    ],
+    [
+      0.4358678,
+      1.1920929e-7,
+    ],
+    [
+      0.4358678,
+      2.0339782,
+    ],
+    [
+      -0.4358678,
+      2.0339782,
+    ],
+  ] } },
+]

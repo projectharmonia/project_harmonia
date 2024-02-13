@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::mesh::VertexAttributeValues, scene::SceneInstanceReady};
+use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
 use super::{Aperture, Apertures, Wall, WallPlugin};
@@ -13,74 +13,36 @@ pub(super) struct WallMountPlugin;
 
 impl Plugin for WallMountPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<WallMount>()
-            .add_systems(
-                Update,
-                (
-                    (Self::apertures_update_system, Self::cutout_cleanup_system)
-                        .before(WallPlugin::mesh_update_system)
-                        .run_if(resource_exists::<WorldName>()),
-                    Self::wall_snapping_system.in_set(ObjectSnappingSet),
-                ),
-            )
+        app.register_type::<Vec2>()
+            .register_type::<Vec<Vec2>>()
+            .register_type::<WallMount>()
+            .add_systems(Update, Self::wall_snapping_system.in_set(ObjectSnappingSet))
             .add_systems(
                 SpawnScene,
-                Self::scene_init_system
-                    .run_if(resource_exists::<WorldName>())
-                    .after(bevy::scene::scene_spawner_system),
+                Self::scene_init_system.run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
                 PostUpdate,
-                Self::collision_layer_system.run_if(resource_exists::<WorldName>()),
+                (
+                    Self::post_scene_init_system,
+                    (Self::apertures_update_system, Self::cleanup_system)
+                        .before(WallPlugin::mesh_update_system),
+                )
+                    .run_if(resource_exists::<WorldName>()),
             );
     }
 }
 
 impl WallMountPlugin {
-    fn scene_init_system(
-        mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
-        meshes: Res<Assets<Mesh>>,
-        mut mesh_handles: Query<(&Name, &Handle<Mesh>, &mut Visibility)>,
-        children: Query<&Children>,
-        objects: Query<(Entity, &WallMount)>,
-    ) {
-        for (object_entity, &wall_mount) in
-            objects.iter_many(ready_events.read().map(|event| event.parent))
-        {
-            if wall_mount != WallMount::Embed {
-                continue;
-            }
-
-            let mut iter = mesh_handles.iter_many_mut(children.iter_descendants(object_entity));
-            while let Some((name, mesh_handle, mut visibility)) = iter.fetch_next() {
-                if &**name != "Cutout" {
-                    continue;
-                }
-
-                let mesh = meshes
-                    .get(mesh_handle)
-                    .expect("cutout should be loaded when its scene is ready");
-
-                let Some(VertexAttributeValues::Float32x3(positions)) =
-                    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
-                else {
-                    panic!("cutout should contain vertices positions");
-                };
-
-                commands
-                    .entity(object_entity)
-                    .insert(ObjectCutout::new(&positions));
-
-                // Cutout entity shouldn't be rendered.
-                // We don't despawn it because object init system depends on it.
-                *visibility = Visibility::Hidden;
-                break;
-            }
+    fn scene_init_system(mut commands: Commands, mut objects: Query<Entity, Added<WallMount>>) {
+        for entity in &mut objects {
+            commands.entity(entity).insert(ObjectWall::default());
         }
     }
 
-    fn collision_layer_system(mut objects: Query<&mut CollisionLayers, Added<WallMount>>) {
+    fn post_scene_init_system(
+        mut objects: Query<&mut CollisionLayers, (Added<CollisionLayers>, With<WallMount>)>,
+    ) {
         for mut collision_layers in &mut objects {
             *collision_layers = collision_layers.remove_mask(Layer::Wall);
         }
@@ -88,43 +50,47 @@ impl WallMountPlugin {
 
     fn apertures_update_system(
         mut walls: Query<(Entity, &mut Apertures, &Wall)>,
-        mut objects: Query<
-            (Entity, &GlobalTransform, &mut ObjectCutout),
-            Or<(Changed<GlobalTransform>, Added<ObjectCutout>)>,
+        mut wall_mounts: Query<
+            (Entity, &GlobalTransform, &WallMount, &mut ObjectWall),
+            Changed<GlobalTransform>,
         >,
     ) {
-        for (object_entity, transform, mut cutout) in &mut objects {
+        for (object_entity, transform, wall_mount, mut object_wall) in &mut wall_mounts {
+            let WallMount::Embed(positions) = wall_mount else {
+                continue;
+            };
+
             let translation = transform.translation();
             if let Some((wall_entity, mut apertures, _)) = walls
                 .iter_mut()
                 .find(|(.., &wall)| within_wall(wall, translation.xz()))
             {
-                if let Some(current_entity) = cutout.wall_entity {
+                if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
                         apertures.update_translation(object_entity, translation)
                     } else {
                         apertures.push(Aperture {
                             object_entity,
                             translation,
-                            positions: cutout.positions.clone(),
+                            positions: positions.clone(),
                         });
 
                         walls
                             .component_mut::<Apertures>(current_entity)
                             .remove_existing(object_entity);
 
-                        cutout.wall_entity = Some(wall_entity);
+                        object_wall.0 = Some(wall_entity);
                     }
                 } else {
                     apertures.push(Aperture {
                         object_entity,
                         translation,
-                        positions: cutout.positions.clone(),
+                        positions: positions.clone(),
                     });
 
-                    cutout.wall_entity = Some(wall_entity);
+                    object_wall.0 = Some(wall_entity);
                 }
-            } else if let Some(surrounding_entity) = cutout.wall_entity.take() {
+            } else if let Some(surrounding_entity) = object_wall.0.take() {
                 walls
                     .component_mut::<Apertures>(surrounding_entity)
                     .remove_existing(object_entity);
@@ -154,7 +120,7 @@ impl WallMountPlugin {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let sign = dir.perp_dot(translation_2d - wall_point).signum();
             let offset = match wall_mount {
-                WallMount::Embed => Vec2::ZERO,
+                WallMount::Embed(_) => Vec2::ZERO,
                 WallMount::Attach => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
@@ -170,11 +136,11 @@ impl WallMountPlugin {
         }
     }
 
-    fn cutout_cleanup_system(
-        mut removed_cutouts: RemovedComponents<ObjectCutout>,
+    fn cleanup_system(
+        mut removed_objects: RemovedComponents<ObjectWall>,
         mut walls: Query<&mut Apertures>,
     ) {
-        for entity in removed_cutouts.read() {
+        for entity in removed_objects.read() {
             for mut apertures in &mut walls {
                 if let Some(index) = apertures
                     .iter()
@@ -212,11 +178,11 @@ fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
 }
 
 /// A component that marks that entity can be placed only on walls or inside them.
-#[derive(Component, Reflect, PartialEq, Clone, Copy)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 pub(crate) enum WallMount {
     Attach,
-    Embed,
+    Embed(Vec<Vec2>),
 }
 
 // To implement `Reflect`.
@@ -227,16 +193,4 @@ impl FromWorld for WallMount {
 }
 
 #[derive(Component, Default)]
-struct ObjectCutout {
-    positions: Vec<Vec3>,
-    wall_entity: Option<Entity>,
-}
-
-impl ObjectCutout {
-    fn new(positions: &[[f32; 3]]) -> Self {
-        Self {
-            positions: positions.iter().copied().map(From::from).collect(),
-            wall_entity: Default::default(),
-        }
-    }
-}
+struct ObjectWall(Option<Entity>);

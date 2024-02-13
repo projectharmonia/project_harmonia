@@ -185,8 +185,9 @@ impl WallMesh {
         let mut last_index = 4; // 4 initial vertices for sizes.
         for aperture in &apertures.0 {
             for &position in &aperture.positions {
-                let translated =
-                    quat * position + aperture.translation + Vec3::new(width.x, 0.0, width.y);
+                let translated = quat * position.extend(0.0)
+                    + aperture.translation
+                    + Vec3::new(width.x, 0.0, width.y);
 
                 self.positions.push(translated.into());
 

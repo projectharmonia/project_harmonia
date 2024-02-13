@@ -28,21 +28,21 @@ impl Plugin for WallPlugin {
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::init_system
+                (
+                    Self::init_system,
+                    Self::spawn_system.run_if(resource_exists::<RenetServer>()),
+                )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 (
-                    Self::spawn_system.run_if(resource_exists::<RenetServer>()),
-                    (
-                        Self::cleanup_system,
-                        Self::connections_update_system,
-                        Self::mesh_update_system,
-                    )
-                        .chain(),
+                    Self::cleanup_system,
+                    Self::connections_update_system,
+                    Self::mesh_update_system,
                 )
+                    .chain()
                     .run_if(resource_exists::<WorldName>()),
             );
     }
@@ -358,7 +358,7 @@ impl Apertures {
 struct Aperture {
     object_entity: Entity,
     translation: Vec3,
-    positions: Vec<Vec3>,
+    positions: Vec<Vec2>,
 }
 
 /// Client event to request a wall creation.
