@@ -66,6 +66,7 @@ fn main() {
                 max_edge_length: 80,
                 max_tile_generation_tasks: None,
             }),
+            // TODO 0.13: Disable `IntegratorPlugin`, `SolverPlugin` and `SleepingPlugin`.
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
             OutlinePlugin,
