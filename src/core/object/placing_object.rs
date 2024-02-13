@@ -3,26 +3,19 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{
-    ecs::{reflect::ReflectCommandExt, system::EntityCommands},
-    math::Vec3Swizzles,
-    prelude::*,
-    scene::{self, SceneInstanceReady},
-    window::PrimaryWindow,
-};
+use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::core::{
     action::Action,
-    asset::metadata::{self, object_metadata::ObjectMetadata},
+    asset::metadata::object_metadata::ObjectMetadata,
     city::CityMode,
     cursor_hover::{CursorHover, CursorHoverSettings},
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
     player_camera::PlayerCamera,
-    wall::wall_object::WallObject,
     Layer,
 };
 
@@ -82,18 +75,13 @@ impl Plugin for PlacingObjectPlugin {
                 ),
         )
         .add_systems(
-            SpawnScene,
-            Self::scene_init_system
-                .run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                        ),
-                )
-                .after(scene::scene_spawner_system),
-        )
-        .add_systems(PostUpdate, Self::exclusive_system);
+            PostUpdate,
+            Self::exclusive_system.run_if(
+                in_state(GameState::City)
+                    .and_then(in_state(CityMode::Objects))
+                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
+            ),
+        );
     }
 }
 
@@ -113,83 +101,58 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
-        objects: Query<(&Transform, &Handle<Scene>, &ObjectPath)>,
-        new_placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
+        placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
+        objects: Query<(&Transform, &ObjectPath)>,
+        windows: Query<&Window, With<PrimaryWindow>>,
+        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) {
-        for (placing_entity, placing_object) in &new_placing_objects {
-            debug!("created placing object {placing_object:?}");
+        let Some((placing_entity, placing_object)) = placing_objects.iter().last() else {
+            return;
+        };
 
-            let mut placing_entity = commands.entity(placing_entity);
+        // Insert necessary components to trigger object initialization.
+        // TODO 0.13: Remove kinematic body hack.
+        debug!("creating {placing_object:?}");
+        match placing_object.kind {
+            PlacingObjectKind::Spawning(metadata_id) => {
+                let metadata_path = asset_server
+                    .get_path(metadata_id)
+                    .expect("metadata should always come from file");
 
-            let (transform, scene_handle, metadata) = match placing_object.kind {
-                PlacingObjectKind::Spawning(metadata_id) => {
-                    let scene_handle =
-                        asset_server.load(metadata::scene_path(&asset_server, metadata_id));
-                    let metadata = object_metadata.get(metadata_id).unwrap();
-                    placing_entity.insert(CursorOffset::default());
-                    let transform = Transform::from_rotation(Quat::from_rotation_y(PI)); // Rotate towards camera.
-
-                    (transform, scene_handle, metadata)
-                }
-                PlacingObjectKind::Moving(object_entity) => {
-                    let (transform, scene_handle, object_path) = objects
-                        .get(object_entity)
-                        .expect("moving object should exist with these components");
-                    let metadata_handle = asset_server.load(&object_path.0);
-                    let metadata = object_metadata.get(&metadata_handle).unwrap();
-
-                    (*transform, scene_handle.clone(), metadata)
-                }
-            };
-
-            placing_entity.insert((
-                Name::new("Placing object"),
-                SceneBundle {
-                    scene: scene_handle,
-                    transform,
-                    ..Default::default()
-                },
-            ));
-            for component in &metadata.components {
-                placing_entity.insert_reflect(component.clone_value());
+                commands.entity(placing_entity).insert((
+                    RigidBody::Kinematic,
+                    Sensor,
+                    ObjectPath(metadata_path.into_owned()),
+                    CursorOffset::default(),
+                    Transform::from_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
+                ));
             }
+            PlacingObjectKind::Moving(object_entity) => {
+                let (&object_transform, object_path) = objects
+                    .get(object_entity)
+                    .expect("moving object should have scene and path");
 
-            hover_settings.enabled = false;
-        }
-    }
+                let (&camera_transform, camera) = cameras.single();
+                let cursor_pos = windows.single().cursor_position().unwrap_or_default();
+                let ray = camera
+                    .viewport_to_world(&camera_transform, cursor_pos)
+                    .expect("camera should always have a viewport");
+                let distance = ray
+                    .intersect_plane(Vec3::ZERO, Vec3::Y)
+                    .expect("camera should always look at the ground");
+                let offset = object_transform.translation - ray.get_point(distance);
 
-    fn scene_init_system(
-        mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
-        meshes: Res<Assets<Mesh>>,
-        placing_objects: Query<(Entity, &PlacingObject)>,
-        chidlren: Query<&Children>,
-        mut objects: Query<&mut Visibility>,
-        mesh_handles: Query<(Entity, &Handle<Mesh>)>,
-    ) {
-        for (object_entity, placing_object) in
-            placing_objects.iter_many(ready_events.read().map(|event| event.parent))
-        {
-            if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
-                let mut visibility = objects
-                    .get_mut(object_entity)
-                    .expect("moving object reference a valid object");
-                *visibility = Visibility::Hidden;
-            }
-
-            for (child_entity, mesh_handle) in
-                mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
-            {
-                if let Some(mesh) = meshes.get(mesh_handle) {
-                    if let Some(collider) = Collider::trimesh_from_mesh(mesh) {
-                        commands
-                            .entity(child_entity)
-                            .insert((collider, CollisionLayers::none()));
-                    }
-                }
+                commands.entity(placing_entity).insert((
+                    RigidBody::Kinematic,
+                    Sensor,
+                    object_transform,
+                    CursorOffset(offset),
+                    object_path.clone(),
+                ));
             }
         }
+
+        hover_settings.enabled = false;
     }
 
     fn rotation_system(mut placing_objects: Query<&mut Transform, With<PlacingObject>>) {
@@ -200,19 +163,12 @@ impl PlacingObjectPlugin {
     }
 
     fn movement_system(
-        mut commands: Commands,
         spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
-        mut placing_objects: Query<(
-            Entity,
-            &mut Transform,
-            &PlacingObject,
-            Option<&CursorOffset>,
-        )>,
+        mut placing_objects: Query<(&mut Transform, &PlacingObject, &CursorOffset)>,
     ) {
-        let Ok((entity, mut transform, placing_object, cursor_offset)) =
-            placing_objects.get_single_mut()
+        let Ok((mut transform, placing_object, cursor_offset)) = placing_objects.get_single_mut()
         else {
             return;
         };
@@ -225,7 +181,7 @@ impl PlacingObjectPlugin {
             .viewport_to_world(&camera_transform, cursor_pos)
             .expect("ray should be created from screen coordinates");
 
-        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Ground, Layer::Wall]);
+        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Ground]);
         if let PlacingObjectKind::Moving(entity) = placing_object.kind {
             filter.excluded_entities.insert(entity);
         }
@@ -235,56 +191,34 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        let mut ray_translation = ray.origin + ray.direction * hit.time_of_impact;
-        ray_translation.y = 0.0;
-        let offset = cursor_offset.copied().unwrap_or_else(|| {
-            let offset = CursorOffset(transform.translation.xz() - ray_translation.xz());
-            commands.entity(entity).insert(offset);
-            offset
-        });
-        transform.translation = ray_translation + Vec3::new(offset.x, 0.0, offset.y);
+        let mut hit_position = ray.origin + ray.direction * hit.time_of_impact;
+        hit_position.y = 0.0;
+        transform.translation = hit_position + cursor_offset.0;
     }
 
-    fn collision_system(
-        spatial_query: SpatialQuery,
-        mut placing_objects: Query<(Entity, &mut PlacingObject, &WallObject)>,
-        children: Query<&Children>,
-        child_meshes: Query<(&Collider, &GlobalTransform)>,
-    ) {
-        let Ok((object_entity, mut placing_object, &wall_object)) =
-            placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
-        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Object]);
-        if wall_object == WallObject::Fixture {
-            filter.masks |= Layer::Wall.to_bits();
-        };
-
-        for (collider, transform) in
-            child_meshes.iter_many(children.iter_descendants(object_entity))
-        {
-            let (_, rotation, translation) = transform.to_scale_rotation_translation();
-            if !spatial_query
-                .shape_intersections(collider, translation, rotation, filter.clone())
-                .is_empty()
-            {
-                if !placing_object.collides {
-                    placing_object.collides = true;
+    fn collision_system(mut placing_objects: Query<(&mut PlacingObject, &CollidingEntities)>) {
+        if let Ok((mut placing_object, colliding_entities)) = placing_objects.get_single_mut() {
+            let mut collides = !colliding_entities.is_empty();
+            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+                if collides && colliding_entities.len() == 1 && colliding_entities.contains(&entity)
+                {
+                    // Ignore collision with the moving object.
+                    collides = false;
                 }
-                return;
             }
-        }
 
-        if placing_object.collides {
-            placing_object.collides = false;
+            if placing_object.collides != collides {
+                placing_object.collides = collides;
+            }
         }
     }
 
     fn material_system(
         mut materials: ResMut<Assets<StandardMaterial>>,
-        placing_objects: Query<(Entity, &PlacingObject), Changed<PlacingObject>>,
+        placing_objects: Query<
+            (Entity, &PlacingObject),
+            Or<(Added<Children>, Changed<PlacingObject>)>,
+        >,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
@@ -297,10 +231,11 @@ impl PlacingObjectPlugin {
                     .cloned()
                     .expect("material handle should be valid");
 
+                material.alpha_mode = AlphaMode::Add;
                 material.base_color = if placing_object.collides || !placing_object.allowed_place {
                     Color::RED
                 } else {
-                    Color::WHITE
+                    Color::rgba(1.0, 1.0, 1.0, 0.3)
                 };
                 *material_handle = materials.add(material);
             }
@@ -345,64 +280,35 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((entity, placing_object)) = placing_objects.get_single() {
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                debug!("sent despawn event for placing object {placing_object:?}");
                 despawn_events.send(ObjectDespawn(entity));
-            } else {
-                debug!("cancelled placing object {placing_object:?}");
-                commands.entity(entity).despawn_recursive();
             }
-        }
-    }
-
-    fn exclusive_system(
-        mut commands: Commands,
-        new_placing_objects: Query<Entity, Added<PlacingObject>>,
-        placing_objects: Query<(Entity, &PlacingObject)>,
-        mut visibility: Query<&mut Visibility>,
-    ) {
-        if let Some(new_entity) = new_placing_objects.iter().last() {
-            for (placing_entity, placing_object) in &placing_objects {
-                if placing_entity != new_entity {
-                    cleanup(
-                        commands.entity(placing_entity),
-                        placing_object.kind,
-                        &mut visibility,
-                    );
-                }
-            }
+            commands.entity(entity).despawn_recursive();
         }
     }
 
     fn cancel_system(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
-        placing_objects: Query<(Entity, &PlacingObject)>,
-        mut visibility: Query<&mut Visibility>,
+        placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
         hover_settings.enabled = true;
 
-        for (placing_entity, placing_object) in &placing_objects {
-            cleanup(
-                commands.entity(placing_entity),
-                placing_object.kind,
-                &mut visibility,
-            );
+        for placing_entity in &placing_objects {
+            commands.entity(placing_entity).despawn_recursive();
         }
     }
-}
 
-fn cleanup(
-    placing_entity: EntityCommands,
-    kind: PlacingObjectKind,
-    visibility: &mut Query<&mut Visibility>,
-) {
-    debug!("despawned placing object {kind:?}");
-    placing_entity.despawn_recursive();
-
-    if let PlacingObjectKind::Moving(object_entity) = kind {
-        // Object could be invalid in case of removal.
-        if let Ok(mut visibility) = visibility.get_mut(object_entity) {
-            *visibility = Visibility::Visible;
+    fn exclusive_system(
+        mut commands: Commands,
+        new_placing_objects: Query<Entity, Added<PlacingObject>>,
+        placing_objects: Query<Entity, With<PlacingObject>>,
+    ) {
+        if let Some(new_entity) = new_placing_objects.iter().last() {
+            for placing_entity in &placing_objects {
+                if placing_entity != new_entity {
+                    commands.entity(placing_entity).despawn_recursive();
+                }
+            }
         }
     }
 }
@@ -441,4 +347,4 @@ pub(crate) enum PlacingObjectKind {
 
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
-struct CursorOffset(Vec2);
+struct CursorOffset(Vec3);

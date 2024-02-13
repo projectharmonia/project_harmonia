@@ -4,6 +4,7 @@ use bevy::{
     asset::AssetPath,
     ecs::reflect::ReflectCommandExt,
     prelude::*,
+    render::{mesh::Indices, render_resource::PrimitiveTopology},
     scene::{self, SceneInstanceReady},
 };
 use bevy_mod_outline::OutlineBundle;
@@ -83,6 +84,10 @@ impl ObjectPlugin {
                 CursorHoverable,
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
+                CollisionLayers::from_bits(
+                    Layer::Object.to_bits(),
+                    Layer::Object.to_bits() | Layer::Wall.to_bits(),
+                ),
             ));
             for component in &metadata.components {
                 entity.insert_reflect(component.clone_value());
@@ -96,22 +101,29 @@ impl ObjectPlugin {
         meshes: Res<Assets<Mesh>>,
         objects: Query<Entity, With<ObjectPath>>,
         chidlren: Query<&Children>,
-        mesh_handles: Query<(Entity, &Handle<Mesh>)>,
+        mesh_handles: Query<(Entity, &Transform, &Handle<Mesh>)>,
     ) {
         for object_entity in objects.iter_many(ready_events.read().map(|event| event.parent)) {
-            for (child_entity, mesh_handle) in
+            let mut merged_mesh = Mesh::new(PrimitiveTopology::TriangleList)
+                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
+                .with_indices(Some(Indices::U32(Vec::new())));
+
+            for (child_entity, &transform, mesh_handle) in
                 mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
             {
-                if let Some(mesh) = meshes.get(mesh_handle) {
-                    if let Some(collider) = Collider::trimesh_from_mesh(mesh) {
-                        commands.entity(child_entity).insert((
-                            collider,
-                            CollisionLayers::from_bits(Layer::Object.to_bits(), Layer::all_bits()),
-                            OutlineBundle::highlighting(),
-                        ));
-                    }
+                if let Some(mut mesh) = meshes.get(mesh_handle).cloned() {
+                    mesh.transform_by(transform);
+                    merged_mesh.merge(mesh);
+                    commands
+                        .entity(child_entity)
+                        .insert(OutlineBundle::highlighting());
                 }
             }
+
+            let collider = Collider::trimesh_from_mesh(&merged_mesh)
+                .expect("object mesh should be in compatible format");
+
+            commands.entity(object_entity).insert(collider);
         }
     }
 
