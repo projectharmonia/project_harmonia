@@ -1,6 +1,6 @@
 pub(crate) mod spawning_wall;
 mod wall_mesh;
-pub(super) mod wall_object;
+pub(super) mod wall_mount;
 
 use std::mem;
 
@@ -16,13 +16,13 @@ use serde::{Deserialize, Serialize};
 use super::{cursor_hover::CursorHoverable, game_world::WorldName, Layer};
 use spawning_wall::{SpawningWall, SpawningWallPlugin};
 use wall_mesh::WallMesh;
-use wall_object::WallObjectPlugin;
+use wall_mount::WallMountPlugin;
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((SpawningWallPlugin, WallObjectPlugin))
+        app.add_plugins((SpawningWallPlugin, WallMountPlugin))
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
@@ -79,7 +79,7 @@ impl WallPlugin {
             commands.entity(entity).insert((
                 Name::new("Walls"),
                 WallConnections::default(),
-                WallOpenings::default(),
+                Apertures::default(),
                 Collider::default(),
                 CollisionLayers::from_bits(Layer::Wall.to_bits(), Layer::all_bits()),
                 CursorHoverable,
@@ -200,14 +200,14 @@ impl WallPlugin {
                 &Handle<Mesh>,
                 &Wall,
                 &WallConnections,
-                &WallOpenings,
+                &Apertures,
                 &mut Collider,
                 Has<SpawningWall>,
             ),
-            Or<(Changed<WallConnections>, Changed<WallOpenings>)>,
+            Or<(Changed<WallConnections>, Changed<Apertures>)>,
         >,
     ) {
-        for (mesh_handle, &wall, connections, openings, mut collider, spawning_wall) in
+        for (mesh_handle, &wall, connections, apertures, mut collider, spawning_wall) in
             &mut changed_walls
         {
             let mesh = meshes
@@ -215,7 +215,7 @@ impl WallPlugin {
                 .expect("wall handles should be valid");
 
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(wall, connections, openings);
+            wall_mesh.generate(wall, connections, apertures);
             wall_mesh.apply(mesh);
 
             // Spawning walls shouldn't affect navigation.
@@ -333,29 +333,29 @@ enum PointKind {
 }
 
 #[derive(Component, Default, Deref, DerefMut)]
-struct WallOpenings(Vec<WallOpening>);
+struct Apertures(Vec<Aperture>);
 
-impl WallOpenings {
+impl Apertures {
     fn update_translation(&mut self, entity: Entity, translation: Vec3) {
-        let opening = self
+        let aperture = self
             .iter_mut()
-            .find(|opening| opening.object_entity == entity)
+            .find(|aperture| aperture.object_entity == entity)
             .expect("object entity for update should exist");
 
-        opening.translation = translation;
+        aperture.translation = translation;
     }
 
     fn remove_existing(&mut self, entity: Entity) {
         let index = self
             .iter()
-            .position(|opening| opening.object_entity == entity)
+            .position(|aperture| aperture.object_entity == entity)
             .expect("object entity for removal should exist");
 
         self.remove(index);
     }
 }
 
-struct WallOpening {
+struct Aperture {
     object_entity: Entity,
     translation: Vec3,
     positions: Vec<Vec3>,

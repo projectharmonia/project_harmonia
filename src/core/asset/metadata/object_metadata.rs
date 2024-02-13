@@ -243,14 +243,14 @@ mod tests {
     use super::*;
     use crate::core::{
         asset::metadata::{MetadataDeserializer, METADATA_EXTENSION},
-        wall::wall_object::WallObject,
+        wall::wall_mount::WallMount,
     };
 
     #[test]
     fn deserialization() -> Result<()> {
         const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/base/objects");
         let mut type_registry = TypeRegistry::new();
-        type_registry.register::<WallObject>();
+        type_registry.register::<WallMount>();
 
         for entry in WalkDir::new(ASSETS_DIR)
             .into_iter()

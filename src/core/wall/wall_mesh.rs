@@ -6,7 +6,7 @@ use bevy::{
 };
 use itertools::{Either, Itertools, MinMaxResult};
 
-use super::{PointKind, Wall, WallConnection, WallConnections, WallOpenings};
+use super::{Apertures, PointKind, Wall, WallConnection, WallConnections};
 
 const WIDTH: f32 = 0.15;
 const HEIGHT: f32 = 2.8;
@@ -53,7 +53,7 @@ impl WallMesh {
         &mut self,
         wall: Wall,
         connections: &WallConnections,
-        openings: &WallOpenings,
+        apertures: &Apertures,
     ) {
         self.clear();
 
@@ -86,7 +86,7 @@ impl WallMesh {
 
         self.generate_side(
             wall,
-            openings,
+            apertures,
             start_right,
             end_right,
             -width,
@@ -97,7 +97,7 @@ impl WallMesh {
 
         self.generate_side(
             wall,
-            openings,
+            apertures,
             start_left,
             end_left,
             width,
@@ -155,7 +155,7 @@ impl WallMesh {
     fn generate_side(
         &mut self,
         wall: Wall,
-        openings: &WallOpenings,
+        apertures: &Apertures,
         start_side: Vec2,
         end_side: Vec2,
         width: Vec2,
@@ -183,10 +183,10 @@ impl WallMesh {
 
         let mut hole_indices = Vec::new();
         let mut last_index = 4; // 4 initial vertices for sizes.
-        for opening in &openings.0 {
-            for &position in &opening.positions {
+        for aperture in &apertures.0 {
+            for &position in &aperture.positions {
                 let translated =
-                    quat * position + opening.translation + Vec3::new(width.x, 0.0, width.y);
+                    quat * position + aperture.translation + Vec3::new(width.x, 0.0, width.y);
 
                 self.positions.push(translated.into());
 
@@ -197,15 +197,15 @@ impl WallMesh {
             }
 
             hole_indices.push(last_index);
-            last_index += opening.positions.len();
+            last_index += aperture.positions.len();
         }
 
         let added_positions = &self.positions[begin_index as usize..];
         let positions_iter = if inverse_winding {
-            let (side_positions, openings_positions) = added_positions.split_at(4);
+            let (side_positions, aperture_positions) = added_positions.split_at(4);
             let side_iter = side_positions.iter().rev();
-            let openings_iter = openings_positions.iter().rev();
-            Either::Right(side_iter.chain(openings_iter))
+            let aperture_iter = aperture_positions.iter().rev();
+            Either::Right(side_iter.chain(aperture_iter))
         } else {
             Either::Left(added_positions.iter())
         };

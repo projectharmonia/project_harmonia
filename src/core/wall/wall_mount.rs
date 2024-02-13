@@ -1,21 +1,21 @@
 use bevy::{prelude::*, render::mesh::VertexAttributeValues, scene::SceneInstanceReady};
 
-use super::{Wall, WallOpening, WallOpenings, WallPlugin};
+use super::{Aperture, Apertures, Wall, WallPlugin};
 use crate::core::{
     game_world::WorldName,
     object::placing_object::{ObjectSnappingSet, PlacingObject},
     wall::wall_mesh::HALF_WIDTH,
 };
 
-pub(super) struct WallObjectPlugin;
+pub(super) struct WallMountPlugin;
 
-impl Plugin for WallObjectPlugin {
+impl Plugin for WallMountPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<WallObject>()
+        app.register_type::<WallMount>()
             .add_systems(
                 Update,
                 (
-                    (Self::openings_update_system, Self::cutout_cleanup_system)
+                    (Self::apertures_update_system, Self::cutout_cleanup_system)
                         .before(WallPlugin::mesh_update_system)
                         .run_if(resource_exists::<WorldName>()),
                     Self::wall_snapping_system.in_set(ObjectSnappingSet),
@@ -30,26 +30,26 @@ impl Plugin for WallObjectPlugin {
     }
 }
 
-impl WallObjectPlugin {
+impl WallMountPlugin {
     fn scene_init_system(
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
         mesh_handles: Query<(Entity, &Handle<Mesh>, &Name)>,
         children: Query<&Children>,
-        wall_objects: Query<(Entity, &WallObject)>,
+        objects: Query<(Entity, &WallMount)>,
     ) {
-        for (object_entity, &wall_object) in
-            wall_objects.iter_many(ready_events.read().map(|event| event.parent))
+        for (object_entity, &wall_mount) in
+            objects.iter_many(ready_events.read().map(|event| event.parent))
         {
-            if wall_object != WallObject::Opening {
+            if wall_mount != WallMount::Embed {
                 continue;
             }
 
             let (cutout_entity, mesh_handle, _) = mesh_handles
                 .iter_many(children.iter_descendants(object_entity))
                 .find(|&(.., name)| &**name == "Cutout")
-                .expect("openings should contain cutout mesh");
+                .expect("apertures should contain cutout mesh");
 
             let mesh = meshes
                 .get(mesh_handle)
@@ -69,37 +69,37 @@ impl WallObjectPlugin {
         }
     }
 
-    fn openings_update_system(
-        mut walls: Query<(Entity, &mut WallOpenings, &Wall)>,
-        mut wall_objects: Query<
+    fn apertures_update_system(
+        mut walls: Query<(Entity, &mut Apertures, &Wall)>,
+        mut objects: Query<
             (Entity, &GlobalTransform, &mut ObjectCutout),
             Or<(Changed<GlobalTransform>, Added<ObjectCutout>)>,
         >,
     ) {
-        for (object_entity, transform, mut cutout) in &mut wall_objects {
+        for (object_entity, transform, mut cutout) in &mut objects {
             let translation = transform.translation();
-            if let Some((wall_entity, mut openings, _)) = walls
+            if let Some((wall_entity, mut apertures, _)) = walls
                 .iter_mut()
                 .find(|(.., &wall)| within_wall(wall, translation.xz()))
             {
                 if let Some(current_entity) = cutout.wall_entity {
                     if current_entity == wall_entity {
-                        openings.update_translation(object_entity, translation)
+                        apertures.update_translation(object_entity, translation)
                     } else {
-                        openings.push(WallOpening {
+                        apertures.push(Aperture {
                             object_entity,
                             translation,
                             positions: cutout.positions.clone(),
                         });
 
                         walls
-                            .component_mut::<WallOpenings>(current_entity)
+                            .component_mut::<Apertures>(current_entity)
                             .remove_existing(object_entity);
 
                         cutout.wall_entity = Some(wall_entity);
                     }
                 } else {
-                    openings.push(WallOpening {
+                    apertures.push(Aperture {
                         object_entity,
                         translation,
                         positions: cutout.positions.clone(),
@@ -109,7 +109,7 @@ impl WallObjectPlugin {
                 }
             } else if let Some(surrounding_entity) = cutout.wall_entity.take() {
                 walls
-                    .component_mut::<WallOpenings>(surrounding_entity)
+                    .component_mut::<Apertures>(surrounding_entity)
                     .remove_existing(object_entity);
             }
         }
@@ -117,9 +117,9 @@ impl WallObjectPlugin {
 
     fn wall_snapping_system(
         walls: Query<&Wall>,
-        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallObject)>,
+        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
     ) {
-        let Ok((mut transform, mut placing_object, wall_object)) = placing_objects.get_single_mut()
+        let Ok((mut transform, mut placing_object, wall_mount)) = placing_objects.get_single_mut()
         else {
             return;
         };
@@ -136,9 +136,9 @@ impl WallObjectPlugin {
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let sign = dir.perp_dot(translation_2d - wall_point).signum();
-            let offset = match wall_object {
-                WallObject::Opening => Vec2::ZERO,
-                WallObject::Fixture => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
+            let offset = match wall_mount {
+                WallMount::Embed => Vec2::ZERO,
+                WallMount::Attach => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
             let angle = dir.angle_between(Vec2::X * sign);
@@ -155,15 +155,15 @@ impl WallObjectPlugin {
 
     fn cutout_cleanup_system(
         mut removed_cutouts: RemovedComponents<ObjectCutout>,
-        mut walls: Query<&mut WallOpenings>,
+        mut walls: Query<&mut Apertures>,
     ) {
         for entity in removed_cutouts.read() {
-            for mut openings in &mut walls {
-                if let Some(index) = openings
+            for mut apertures in &mut walls {
+                if let Some(index) = apertures
                     .iter()
-                    .position(|opening| opening.object_entity == entity)
+                    .position(|aperture| aperture.object_entity == entity)
                 {
-                    openings.remove(index);
+                    apertures.remove(index);
                 }
             }
         }
@@ -197,15 +197,15 @@ fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
 /// A component that marks that entity can be placed only on walls or inside them.
 #[derive(Component, Reflect, PartialEq, Clone, Copy)]
 #[reflect(Component)]
-pub(crate) enum WallObject {
-    Fixture,
-    Opening,
+pub(crate) enum WallMount {
+    Attach,
+    Embed,
 }
 
 // To implement `Reflect`.
-impl FromWorld for WallObject {
+impl FromWorld for WallMount {
     fn from_world(_world: &mut World) -> Self {
-        Self::Fixture
+        Self::Attach
     }
 }
 
