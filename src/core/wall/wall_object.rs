@@ -37,7 +37,7 @@ impl WallObjectPlugin {
         meshes: Res<Assets<Mesh>>,
         mesh_handles: Query<(Entity, &Handle<Mesh>, &Name)>,
         children: Query<&Children>,
-        wall_objects: Query<(Entity, &WallObject), With<WallObject>>,
+        wall_objects: Query<(Entity, &WallObject)>,
     ) {
         for (object_entity, &wall_object) in
             wall_objects.iter_many(ready_events.read().map(|event| event.parent))
