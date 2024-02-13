@@ -235,7 +235,7 @@ impl PlacingObjectPlugin {
                 material.base_color = if placing_object.collides || !placing_object.allowed_place {
                     Color::RED
                 } else {
-                    Color::rgba(1.0, 1.0, 1.0, 0.3)
+                    Color::WHITE
                 };
                 *material_handle = materials.add(material);
             }
