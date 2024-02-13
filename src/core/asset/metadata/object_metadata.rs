@@ -250,6 +250,8 @@ mod tests {
     fn deserialization() -> Result<()> {
         const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/base/objects");
         let mut type_registry = TypeRegistry::new();
+        type_registry.register::<Vec2>();
+        type_registry.register::<Vec<Vec2>>();
         type_registry.register::<WallMount>();
 
         for entry in WalkDir::new(ASSETS_DIR)

@@ -1,10 +1,12 @@
 use bevy::{prelude::*, render::mesh::VertexAttributeValues, scene::SceneInstanceReady};
+use bevy_xpbd_3d::prelude::*;
 
 use super::{Aperture, Apertures, Wall, WallPlugin};
 use crate::core::{
     game_world::WorldName,
     object::placing_object::{ObjectSnappingSet, PlacingObject},
     wall::wall_mesh::HALF_WIDTH,
+    Layer,
 };
 
 pub(super) struct WallMountPlugin;
@@ -26,6 +28,10 @@ impl Plugin for WallMountPlugin {
                 Self::scene_init_system
                     .run_if(resource_exists::<WorldName>())
                     .after(bevy::scene::scene_spawner_system),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::collision_layer_system.run_if(resource_exists::<WorldName>()),
             );
     }
 }
@@ -35,7 +41,7 @@ impl WallMountPlugin {
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        mesh_handles: Query<(Entity, &Handle<Mesh>, &Name)>,
+        mut mesh_handles: Query<(&Name, &Handle<Mesh>, &mut Visibility)>,
         children: Query<&Children>,
         objects: Query<(Entity, &WallMount)>,
     ) {
@@ -46,26 +52,37 @@ impl WallMountPlugin {
                 continue;
             }
 
-            let (cutout_entity, mesh_handle, _) = mesh_handles
-                .iter_many(children.iter_descendants(object_entity))
-                .find(|&(.., name)| &**name == "Cutout")
-                .expect("apertures should contain cutout mesh");
+            let mut iter = mesh_handles.iter_many_mut(children.iter_descendants(object_entity));
+            while let Some((name, mesh_handle, mut visibility)) = iter.fetch_next() {
+                if &**name != "Cutout" {
+                    continue;
+                }
 
-            let mesh = meshes
-                .get(mesh_handle)
-                .expect("cutout should be loaded when its scene is ready");
+                let mesh = meshes
+                    .get(mesh_handle)
+                    .expect("cutout should be loaded when its scene is ready");
 
-            let Some(VertexAttributeValues::Float32x3(positions)) =
-                mesh.attribute(Mesh::ATTRIBUTE_POSITION)
-            else {
-                panic!("cutout should contain vertices positions");
-            };
+                let Some(VertexAttributeValues::Float32x3(positions)) =
+                    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+                else {
+                    panic!("cutout should contain vertices positions");
+                };
 
-            commands
-                .entity(object_entity)
-                .insert(ObjectCutout::new(positions));
+                commands
+                    .entity(object_entity)
+                    .insert(ObjectCutout::new(&positions));
 
-            commands.entity(cutout_entity).despawn();
+                // Cutout entity shouldn't be rendered.
+                // We don't despawn it because object init system depends on it.
+                *visibility = Visibility::Hidden;
+                break;
+            }
+        }
+    }
+
+    fn collision_layer_system(mut objects: Query<&mut CollisionLayers, Added<WallMount>>) {
+        for mut collision_layers in &mut objects {
+            *collision_layers = collision_layers.remove_mask(Layer::Wall);
         }
     }
 
