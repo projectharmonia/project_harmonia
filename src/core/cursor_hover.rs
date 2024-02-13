@@ -10,7 +10,7 @@ pub(super) struct CursorHoverPlugin;
 impl Plugin for CursorHoverPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CursorHoverSettings>().add_systems(
-            Update,
+            PreUpdate,
             (
                 Self::raycast_system
                     .pipe(Self::hover_update_system)

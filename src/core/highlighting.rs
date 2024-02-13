@@ -8,7 +8,7 @@ pub(super) struct HighlightingPlugin;
 impl Plugin for HighlightingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            PostUpdate,
+            Update,
             (Self::enable_system, Self::disable_system)
                 .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
         );
