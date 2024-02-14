@@ -120,7 +120,7 @@ impl ObjectPlugin {
                 }
             }
 
-            let collider = Collider::trimesh_from_mesh(&merged_mesh)
+            let collider = Collider::convex_hull_from_mesh(&merged_mesh)
                 .expect("object mesh should be in compatible format");
 
             commands.entity(object_entity).insert(collider);
