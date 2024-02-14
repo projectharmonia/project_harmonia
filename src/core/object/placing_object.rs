@@ -42,10 +42,17 @@ impl Plugin for PlacingObjectPlugin {
         .add_systems(OnExit(CityMode::Objects), Self::cancel_system)
         .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
         .add_systems(
+            PreUpdate,
+            Self::init_system.run_if(
+                in_state(GameState::City)
+                    .and_then(in_state(CityMode::Objects))
+                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
+            ),
+        )
+        .add_systems(
             Update,
             (
                 (
-                    Self::init_system,
                     Self::picking_system
                         .run_if(action_just_pressed(Action::Confirm))
                         .run_if(not(any_with_component::<PlacingObject>())),
