@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{Aperture, Apertures, Wall, WallPlugin};
 use crate::core::{
     game_world::WorldName,
     object::placing_object::{ObjectSnappingSet, PlacingObject},
-    wall::wall_mesh::HALF_WIDTH,
+    wall::{wall_mesh::HALF_WIDTH, Aperture, Apertures, Wall, WallPlugin},
     Layer,
 };
 

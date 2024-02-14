@@ -1,4 +1,5 @@
 pub(crate) mod placing_object;
+pub(super) mod wall_mount;
 
 use bevy::{
     asset::AssetPath,
@@ -22,12 +23,13 @@ use super::{
     Layer,
 };
 use placing_object::PlacingObjectPlugin;
+use wall_mount::WallMountPlugin;
 
 pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(PlacingObjectPlugin)
+        app.add_plugins((PlacingObjectPlugin, WallMountPlugin))
             // TODO 0.13: Remove.
             .register_type::<AssetPath>()
             .register_type::<ObjectPath>()

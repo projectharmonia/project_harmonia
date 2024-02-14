@@ -1,6 +1,5 @@
 pub(crate) mod spawning_wall;
-mod wall_mesh;
-pub(super) mod wall_mount;
+pub(super) mod wall_mesh;
 
 use std::mem;
 
@@ -16,13 +15,12 @@ use serde::{Deserialize, Serialize};
 use super::{cursor_hover::CursorHoverable, game_world::WorldName, Layer};
 use spawning_wall::{SpawningWall, SpawningWallPlugin};
 use wall_mesh::WallMesh;
-use wall_mount::WallMountPlugin;
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((SpawningWallPlugin, WallMountPlugin))
+        app.add_plugins(SpawningWallPlugin)
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
@@ -193,7 +191,7 @@ impl WallPlugin {
         }
     }
 
-    fn mesh_update_system(
+    pub(super) fn mesh_update_system(
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
             (
@@ -279,7 +277,7 @@ impl Wall {
 
 /// Dynamically updated component with precalculated connected entities for each wall point.
 #[derive(Component, Default)]
-struct WallConnections {
+pub(super) struct WallConnections {
     start: Vec<WallConnection>,
     end: Vec<WallConnection>,
 }
@@ -333,10 +331,10 @@ enum PointKind {
 }
 
 #[derive(Component, Default, Deref, DerefMut)]
-struct Apertures(Vec<Aperture>);
+pub(super) struct Apertures(Vec<Aperture>);
 
 impl Apertures {
-    fn update_translation(&mut self, entity: Entity, translation: Vec3) {
+    pub(super) fn update_translation(&mut self, entity: Entity, translation: Vec3) {
         let aperture = self
             .iter_mut()
             .find(|aperture| aperture.object_entity == entity)
@@ -345,7 +343,7 @@ impl Apertures {
         aperture.translation = translation;
     }
 
-    fn remove_existing(&mut self, entity: Entity) {
+    pub(super) fn remove_existing(&mut self, entity: Entity) {
         let index = self
             .iter()
             .position(|aperture| aperture.object_entity == entity)
@@ -355,10 +353,10 @@ impl Apertures {
     }
 }
 
-struct Aperture {
-    object_entity: Entity,
-    translation: Vec3,
-    positions: Vec<Vec2>,
+pub(super) struct Aperture {
+    pub(super) object_entity: Entity,
+    pub(super) translation: Vec3,
+    pub(super) positions: Vec<Vec2>,
 }
 
 /// Client event to request a wall creation.

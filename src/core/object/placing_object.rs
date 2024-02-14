@@ -20,9 +20,9 @@ use crate::core::{
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(crate) struct ObjectSnappingSet;
+pub(super) struct ObjectSnappingSet;
 
-pub(crate) struct PlacingObjectPlugin;
+pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
