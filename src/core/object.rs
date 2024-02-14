@@ -7,7 +7,7 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     scene::{self, SceneInstanceReady},
 };
-use bevy_mod_outline::OutlineBundle;
+use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -82,6 +82,7 @@ impl ObjectPlugin {
                 scene_handle,
                 Name::new(metadata.general.name.clone()),
                 CursorHoverable,
+                OutlineBundle::highlighting(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
                 CollisionLayers::from_bits(
@@ -101,22 +102,25 @@ impl ObjectPlugin {
         meshes: Res<Assets<Mesh>>,
         objects: Query<Entity, With<ObjectPath>>,
         chidlren: Query<&Children>,
-        mesh_handles: Query<(Entity, &Transform, &Handle<Mesh>)>,
+        child_meshes: Query<(&Transform, &Handle<Mesh>)>,
     ) {
         for object_entity in objects.iter_many(ready_events.read().map(|event| event.parent)) {
             let mut merged_mesh = Mesh::new(PrimitiveTopology::TriangleList)
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
                 .with_indices(Some(Indices::U32(Vec::new())));
 
-            for (child_entity, &transform, mesh_handle) in
-                mesh_handles.iter_many(chidlren.iter_descendants(object_entity))
-            {
-                if let Some(mut mesh) = meshes.get(mesh_handle).cloned() {
+            for child_entity in chidlren.iter_descendants(object_entity) {
+                commands
+                    .entity(child_entity)
+                    .insert(InheritOutlineBundle::default());
+
+                if let Ok((&transform, mesh_handle)) = child_meshes.get(child_entity) {
+                    let mut mesh = meshes
+                        .get(mesh_handle)
+                        .cloned()
+                        .expect("scene mesh should always be valid");
                     mesh.transform_by(transform);
                     merged_mesh.merge(mesh);
-                    commands
-                        .entity(child_entity)
-                        .insert(OutlineBundle::highlighting());
                 }
             }
 

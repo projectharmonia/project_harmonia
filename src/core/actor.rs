@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
     scene::{self, SceneInstanceReady},
 };
-use bevy_mod_outline::OutlineBundle;
+use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use num_enum::IntoPrimitive;
@@ -76,6 +76,7 @@ impl ActorPlugin {
                     AnimationState::new(actor_animations.handle(ActorAnimation::Idle)),
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
+                    OutlineBundle::highlighting(),
                     CursorHoverable,
                 ))
                 .with_children(|parent| {
@@ -94,13 +95,12 @@ impl ActorPlugin {
         mut ready_events: EventReader<SceneInstanceReady>,
         actors: Query<Entity, With<Actor>>,
         chidlren: Query<&Children>,
-        meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
         for actor_entity in actors.iter_many(ready_events.read().map(|event| event.parent)) {
-            for child_entity in meshes.iter_many(chidlren.iter_descendants(actor_entity)) {
+            for child_entity in chidlren.iter_descendants(actor_entity) {
                 commands
                     .entity(child_entity)
-                    .insert(OutlineBundle::highlighting());
+                    .insert(InheritOutlineBundle::default());
             }
         }
     }

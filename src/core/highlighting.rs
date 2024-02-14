@@ -16,27 +16,18 @@ impl Plugin for HighlightingPlugin {
 }
 
 impl HighlightingPlugin {
-    fn enable_system(
-        mut outlines: Query<&mut OutlineVolume>,
-        children: Query<&Children>,
-        hovered: Query<Entity, Added<CursorHover>>,
-    ) {
-        if let Ok(entity) = hovered.get_single() {
-            let mut iter = outlines.iter_many_mut(children.iter_descendants(entity));
-            while let Some(mut outline) = iter.fetch_next() {
-                outline.visible = true;
-            }
+    fn enable_system(mut hovered: Query<&mut OutlineVolume, Added<CursorHover>>) {
+        if let Ok(mut outline) = hovered.get_single_mut() {
+            outline.visible = true;
         }
     }
 
     fn disable_system(
         mut unhovered: RemovedComponents<CursorHover>,
-        mut outlines: Query<&mut OutlineVolume>,
-        children: Query<&Children>,
+        mut hovered: Query<&mut OutlineVolume>,
     ) {
         for entity in unhovered.read() {
-            let mut iter = outlines.iter_many_mut(children.iter_descendants(entity));
-            while let Some(mut outline) = iter.fetch_next() {
+            if let Ok(mut outline) = hovered.get_mut(entity) {
                 outline.visible = false;
             }
         }
