@@ -22,7 +22,7 @@ bevy_xpbd_3d = "0.3"
 bevy_mod_outline = "0.6"
 bevy_polyline = { git = "https://github.com/ForesightMiningSoftwareCorporation/bevy_polyline" }
 app_dirs2 = "2.5"
-oxidized_navigation = { version = "0.8", features = ["xpbd"] }
+oxidized_navigation = { version = "0.8", features = ["xpbd", "debug_draw"] }
 leafwing-input-manager = "0.11"
 serde = "1.0"
 earcutr = "0.4"

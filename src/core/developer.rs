@@ -2,6 +2,7 @@ mod path_debug;
 
 use bevy::{pbr::wireframe::WireframeConfig, prelude::*};
 use bevy_xpbd_3d::prelude::*;
+use oxidized_navigation::debug_draw::DrawNavMesh;
 
 use super::settings::{Settings, SettingsApply};
 use path_debug::PathDebugPlugin;
@@ -17,6 +18,7 @@ impl Plugin for DeveloperPlugin {
                 (
                     Self::debug_collisions_toggle_system,
                     Self::wireframe_toggle_system,
+                    Self::debug_paths_system,
                 ),
             )
             .add_systems(
@@ -24,6 +26,7 @@ impl Plugin for DeveloperPlugin {
                 (
                     Self::debug_collisions_toggle_system,
                     Self::wireframe_toggle_system,
+                    Self::debug_paths_system,
                 )
                     .run_if(on_event::<SettingsApply>()),
             );
@@ -43,5 +46,9 @@ impl DeveloperPlugin {
         mut wireframe_config: ResMut<WireframeConfig>,
     ) {
         wireframe_config.global = settings.developer.wireframe;
+    }
+
+    fn debug_paths_system(settings: Res<Settings>, mut draw_nav_mesh: ResMut<DrawNavMesh>) {
+        draw_nav_mesh.0 = settings.developer.debug_paths;
     }
 }
