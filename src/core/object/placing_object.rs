@@ -19,76 +19,65 @@ use crate::core::{
     Layer,
 };
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(super) struct ObjectSnappingSet;
-
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            Update,
-            ObjectSnappingSet
-                .after(Self::movement_system)
-                .before(Self::collision_system)
-                .run_if(
+        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
+            .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
+            .add_systems(
+                PreUpdate,
+                Self::init_system.run_if(
                     in_state(GameState::City)
                         .and_then(in_state(CityMode::Objects))
                         .or_else(
                             in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
                         ),
                 ),
-        )
-        .add_systems(OnExit(CityMode::Objects), Self::cancel_system)
-        .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
-        .add_systems(
-            PreUpdate,
-            Self::init_system.run_if(
-                in_state(GameState::City)
-                    .and_then(in_state(CityMode::Objects))
-                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
-            ),
-        )
-        .add_systems(
-            Update,
-            (
-                (
-                    Self::picking_system
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<PlacingObject>())),
-                    Self::confirmation_system
-                        .after(Self::collision_system)
-                        .run_if(action_just_pressed(Action::Confirm)),
-                    Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                    Self::cancel_system.run_if(
-                        action_just_pressed(Action::Cancel)
-                            .or_else(on_event::<ObjectEventConfirmed>()),
-                    ),
-                ),
-                (
-                    Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
-                    Self::movement_system,
-                    Self::collision_system,
-                    Self::material_system,
-                )
-                    .chain(),
             )
-                .run_if(
+            .add_systems(
+                Update,
+                (
+                    (
+                        Self::picking_system
+                            .run_if(action_just_pressed(Action::Confirm))
+                            .run_if(not(any_with_component::<PlacingObject>())),
+                        Self::confirmation_system
+                            .after(Self::collision_system)
+                            .run_if(action_just_pressed(Action::Confirm)),
+                        Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
+                        Self::cancel_system.run_if(
+                            action_just_pressed(Action::Cancel)
+                                .or_else(on_event::<ObjectEventConfirmed>()),
+                        ),
+                    ),
+                    (
+                        Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
+                        Self::movement_system,
+                        Self::collision_system,
+                        Self::material_system,
+                    )
+                        .chain(),
+                )
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::exclusive_system.run_if(
                     in_state(GameState::City)
                         .and_then(in_state(CityMode::Objects))
                         .or_else(
                             in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
                         ),
                 ),
-        )
-        .add_systems(
-            PostUpdate,
-            Self::exclusive_system.run_if(
-                in_state(GameState::City)
-                    .and_then(in_state(CityMode::Objects))
-                    .or_else(in_state(GameState::Family).and_then(in_state(FamilyMode::Building))),
-            ),
-        );
+            );
     }
 }
 
@@ -169,7 +158,7 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn movement_system(
+    pub(super) fn movement_system(
         spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
@@ -203,7 +192,9 @@ impl PlacingObjectPlugin {
         transform.translation = hit_position + cursor_offset.0;
     }
 
-    fn collision_system(mut placing_objects: Query<(&mut PlacingObject, &CollidingEntities)>) {
+    pub(super) fn collision_system(
+        mut placing_objects: Query<(&mut PlacingObject, &CollidingEntities)>,
+    ) {
         if let Ok((mut placing_object, colliding_entities)) = placing_objects.get_single_mut() {
             let mut collides = !colliding_entities.is_empty();
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
@@ -354,4 +345,4 @@ pub(crate) enum PlacingObjectKind {
 
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
-struct CursorOffset(Vec3);
+pub(super) struct CursorOffset(Vec3);

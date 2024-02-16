@@ -2,8 +2,11 @@ use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
 use crate::core::{
+    city::CityMode,
+    family::FamilyMode,
+    game_state::GameState,
     game_world::WorldName,
-    object::placing_object::{ObjectSnappingSet, PlacingObject},
+    object::placing_object::{PlacingObject, PlacingObjectPlugin},
     wall::{wall_mesh::HALF_WIDTH, Aperture, Apertures, Wall, WallPlugin},
     Layer,
 };
@@ -15,7 +18,20 @@ impl Plugin for WallMountPlugin {
         app.register_type::<Vec2>()
             .register_type::<Vec<Vec2>>()
             .register_type::<WallMount>()
-            .add_systems(Update, Self::wall_snapping_system.in_set(ObjectSnappingSet))
+            .add_systems(
+                Update,
+                Self::snapping_system
+                    .before(PlacingObjectPlugin::collision_system)
+                    .after(PlacingObjectPlugin::movement_system)
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
+            )
             .add_systems(
                 SpawnScene,
                 Self::scene_init_system.run_if(resource_exists::<WorldName>()),
@@ -33,6 +49,45 @@ impl Plugin for WallMountPlugin {
 }
 
 impl WallMountPlugin {
+    fn snapping_system(
+        walls: Query<&Wall>,
+        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
+    ) {
+        let Ok((mut transform, mut placing_object, wall_mount)) = placing_objects.get_single_mut()
+        else {
+            return;
+        };
+
+        const SNAP_DELTA: f32 = 1.0;
+        let translation_2d = transform.translation.xz();
+        if let Some((dir, wall_point)) = walls
+            .iter()
+            .map(|wall| {
+                let dir = wall.dir();
+                (dir, closest_point(wall.start, dir, translation_2d))
+            })
+            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
+        {
+            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
+            let sign = dir.perp_dot(translation_2d - wall_point).signum();
+            let offset = match wall_mount {
+                WallMount::Embed(_) => Vec2::ZERO,
+                WallMount::Attach => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
+            };
+            let snap_point = wall_point + offset;
+            let angle = dir.angle_between(Vec2::X * sign);
+            transform.translation.x = snap_point.x;
+            transform.translation.z = snap_point.y;
+            if !placing_object.allowed_place {
+                // Apply rotation only for newly snapped objects.
+                transform.rotation = Quat::from_rotation_y(angle);
+                placing_object.allowed_place = true;
+            }
+        } else if placing_object.allowed_place {
+            placing_object.allowed_place = false;
+        }
+    }
+
     fn scene_init_system(mut commands: Commands, mut objects: Query<Entity, Added<WallMount>>) {
         for entity in &mut objects {
             commands.entity(entity).insert(ObjectWall::default());
@@ -94,45 +149,6 @@ impl WallMountPlugin {
                     .component_mut::<Apertures>(surrounding_entity)
                     .remove_existing(object_entity);
             }
-        }
-    }
-
-    fn wall_snapping_system(
-        walls: Query<&Wall>,
-        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
-    ) {
-        let Ok((mut transform, mut placing_object, wall_mount)) = placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
-        const SNAP_DELTA: f32 = 1.0;
-        let translation_2d = transform.translation.xz();
-        if let Some((dir, wall_point)) = walls
-            .iter()
-            .map(|wall| {
-                let dir = wall.dir();
-                (dir, closest_point(wall.start, dir, translation_2d))
-            })
-            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
-        {
-            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
-            let sign = dir.perp_dot(translation_2d - wall_point).signum();
-            let offset = match wall_mount {
-                WallMount::Embed(_) => Vec2::ZERO,
-                WallMount::Attach => sign * dir.perp().normalize() * (HALF_WIDTH + GAP),
-            };
-            let snap_point = wall_point + offset;
-            let angle = dir.angle_between(Vec2::X * sign);
-            transform.translation.x = snap_point.x;
-            transform.translation.z = snap_point.y;
-            if !placing_object.allowed_place {
-                // Apply rotation only for newly snapped objects.
-                transform.rotation = Quat::from_rotation_y(angle);
-                placing_object.allowed_place = true;
-            }
-        } else if placing_object.allowed_place {
-            placing_object.allowed_place = false;
         }
     }
 
