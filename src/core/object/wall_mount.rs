@@ -21,9 +21,9 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::post_init_system.run_if(resource_exists::<WorldName>()),
+                    Self::init_system.run_if(resource_exists::<WorldName>()),
                     (
-                        Self::placing_post_init_system.before(PlacingObjectPlugin::rotation_system),
+                        Self::placing_init_system.before(PlacingObjectPlugin::rotation_system),
                         Self::snapping_system
                             .before(PlacingObjectPlugin::collision_system)
                             .after(PlacingObjectPlugin::movement_system),
@@ -48,7 +48,8 @@ impl Plugin for WallMountPlugin {
 }
 
 impl WallMountPlugin {
-    fn post_init_system(
+    /// Additional intializaiton for wall mount objects.
+    fn init_system(
         mut commands: Commands,
         mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
     ) {
@@ -58,7 +59,8 @@ impl WallMountPlugin {
         }
     }
 
-    fn placing_post_init_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
+    /// Additional intializaiton for placing wall mount objects.
+    fn placing_init_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
         if let Ok(mut placing_object) = placing_objects.get_single_mut() {
             placing_object.rotation_step = PI;
         }

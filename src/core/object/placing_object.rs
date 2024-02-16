@@ -61,7 +61,7 @@ impl Plugin for PlacingObjectPlugin {
                 PostUpdate,
                 (
                     Self::material_system,
-                    Self::pre_init_system,
+                    Self::init_system,
                     Self::exclusive_system,
                 )
                     .run_if(
@@ -89,7 +89,7 @@ impl PlacingObjectPlugin {
     }
 
     /// Inserts necessary components to trigger object initialization.
-    fn pre_init_system(
+    fn init_system(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
