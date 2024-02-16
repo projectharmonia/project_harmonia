@@ -151,10 +151,9 @@ impl PlacingObjectPlugin {
         hover_settings.enabled = false;
     }
 
-    fn rotation_system(mut placing_objects: Query<&mut Transform, With<PlacingObject>>) {
-        if let Ok(mut transform) = placing_objects.get_single_mut() {
-            const ROTATION_STEP: f32 = -FRAC_PI_4;
-            transform.rotate_y(ROTATION_STEP);
+    pub(super) fn rotation_system(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
+        if let Ok((mut transform, placing_object)) = placing_objects.get_single_mut() {
+            transform.rotate_y(placing_object.rotation_step);
         }
     }
 
@@ -316,6 +315,7 @@ pub(crate) struct PlacingObject {
     kind: PlacingObjectKind,
     collides: bool,
     pub(crate) allowed_place: bool,
+    pub(crate) rotation_step: f32,
 }
 
 impl PlacingObject {
@@ -332,6 +332,7 @@ impl PlacingObject {
             kind,
             collides: false,
             allowed_place: true,
+            rotation_step: FRAC_PI_4,
         }
     }
 }

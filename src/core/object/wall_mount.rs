@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_xpbd_3d::prelude::*;
+use bevy_xpbd_3d::{math::PI, prelude::*};
 
 use crate::core::{
     city::CityMode,
@@ -20,9 +20,12 @@ impl Plugin for WallMountPlugin {
             .register_type::<WallMount>()
             .add_systems(
                 Update,
-                Self::snapping_system
-                    .before(PlacingObjectPlugin::collision_system)
-                    .after(PlacingObjectPlugin::movement_system)
+                (
+                    Self::rotation_step_system.before(PlacingObjectPlugin::rotation_system),
+                    Self::snapping_system
+                        .before(PlacingObjectPlugin::collision_system)
+                        .after(PlacingObjectPlugin::movement_system),
+                )
                     .run_if(
                         in_state(GameState::City)
                             .and_then(in_state(CityMode::Objects))
@@ -49,6 +52,12 @@ impl Plugin for WallMountPlugin {
 }
 
 impl WallMountPlugin {
+    fn rotation_step_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
+        if let Ok(mut placing_object) = placing_objects.get_single_mut() {
+            placing_object.rotation_step = PI;
+        }
+    }
+
     fn snapping_system(
         walls: Query<&Wall>,
         mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
