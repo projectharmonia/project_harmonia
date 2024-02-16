@@ -26,16 +26,6 @@ impl Plugin for PlacingObjectPlugin {
         app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
             .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
             .add_systems(
-                PreUpdate,
-                Self::init_system.run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                        ),
-                ),
-            )
-            .add_systems(
                 Update,
                 (
                     (
@@ -55,7 +45,6 @@ impl Plugin for PlacingObjectPlugin {
                         Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
                         Self::movement_system,
                         Self::collision_system,
-                        Self::material_system,
                     )
                         .chain(),
                 )
@@ -70,13 +59,19 @@ impl Plugin for PlacingObjectPlugin {
             )
             .add_systems(
                 PostUpdate,
-                Self::exclusive_system.run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                        ),
-                ),
+                (
+                    Self::material_system,
+                    Self::pre_init_system,
+                    Self::exclusive_system,
+                )
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
             );
     }
 }
@@ -93,7 +88,8 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn init_system(
+    /// Inserts necessary components to trigger object initialization.
+    fn pre_init_system(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
@@ -106,7 +102,6 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        // Insert necessary components to trigger object initialization.
         // TODO 0.13: Remove kinematic body hack.
         debug!("creating {placing_object:?}");
         match placing_object.kind {

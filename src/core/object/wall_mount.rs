@@ -21,38 +21,44 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::rotation_step_system.before(PlacingObjectPlugin::rotation_system),
-                    Self::snapping_system
-                        .before(PlacingObjectPlugin::collision_system)
-                        .after(PlacingObjectPlugin::movement_system),
-                )
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
-                            ),
-                    ),
-            )
-            .add_systems(
-                SpawnScene,
-                Self::scene_init_system.run_if(resource_exists::<WorldName>()),
+                    Self::post_init_system.run_if(resource_exists::<WorldName>()),
+                    (
+                        Self::placing_post_init_system.before(PlacingObjectPlugin::rotation_system),
+                        Self::snapping_system
+                            .before(PlacingObjectPlugin::collision_system)
+                            .after(PlacingObjectPlugin::movement_system),
+                    )
+                        .run_if(
+                            in_state(GameState::City)
+                                .and_then(in_state(CityMode::Objects))
+                                .or_else(
+                                    in_state(GameState::Family)
+                                        .and_then(in_state(FamilyMode::Building)),
+                                ),
+                        ),
+                ),
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::post_scene_init_system,
-                    (Self::apertures_update_system, Self::cleanup_system)
-                        .before(WallPlugin::mesh_update_system),
-                )
+                (Self::apertures_update_system, Self::cleanup_system)
+                    .before(WallPlugin::mesh_update_system)
                     .run_if(resource_exists::<WorldName>()),
             );
     }
 }
 
 impl WallMountPlugin {
-    fn rotation_step_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
+    fn post_init_system(
+        mut commands: Commands,
+        mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
+    ) {
+        for (entity, mut collision_layers) in &mut objects {
+            *collision_layers = collision_layers.remove_mask(Layer::Wall);
+            commands.entity(entity).insert(ObjectWall::default());
+        }
+    }
+
+    fn placing_post_init_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
         if let Ok(mut placing_object) = placing_objects.get_single_mut() {
             placing_object.rotation_step = PI;
         }
@@ -94,20 +100,6 @@ impl WallMountPlugin {
             }
         } else if placing_object.allowed_place {
             placing_object.allowed_place = false;
-        }
-    }
-
-    fn scene_init_system(mut commands: Commands, mut objects: Query<Entity, Added<WallMount>>) {
-        for entity in &mut objects {
-            commands.entity(entity).insert(ObjectWall::default());
-        }
-    }
-
-    fn post_scene_init_system(
-        mut objects: Query<&mut CollisionLayers, (Added<CollisionLayers>, With<WallMount>)>,
-    ) {
-        for mut collision_layers in &mut objects {
-            *collision_layers = collision_layers.remove_mask(Layer::Wall);
         }
     }
 
