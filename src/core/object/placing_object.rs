@@ -329,16 +329,16 @@ pub(crate) struct PlacingObject {
 
 impl PlacingObject {
     pub(crate) fn moving(object_entity: Entity) -> Self {
-        Self {
-            kind: PlacingObjectKind::Moving(object_entity),
-            collides: false,
-            allowed_place: true,
-        }
+        Self::new(PlacingObjectKind::Moving(object_entity))
     }
 
     pub(crate) fn spawning(metadata_id: AssetId<ObjectMetadata>) -> Self {
+        Self::new(PlacingObjectKind::Spawning(metadata_id))
+    }
+
+    fn new(kind: PlacingObjectKind) -> Self {
         Self {
-            kind: PlacingObjectKind::Spawning(metadata_id),
+            kind,
             collides: false,
             allowed_place: true,
         }
