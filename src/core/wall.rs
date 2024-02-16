@@ -115,7 +115,7 @@ impl WallPlugin {
     fn connections_update_system(
         mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
         children: Query<&Children>,
-        changed_walls: Query<(Entity, &Parent, &Wall), Changed<Wall>>,
+        changed_walls: Query<(Entity, &Parent, &Wall), (Changed<Wall>, With<WallConnections>)>,
     ) {
         for (wall_entity, parent, &wall) in &changed_walls {
             // Take changed connections to avoid mutability issues.
