@@ -814,16 +814,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_polyline"
-version = "0.8.0"
-source = "git+https://github.com/ForesightMiningSoftwareCorporation/bevy_polyline#9608140790466d50635e02ed8f67b46ad5196203"
-dependencies = [
- "bevy",
- "bitflags 2.4.2",
- "naga",
-]
-
-[[package]]
 name = "bevy_ptr"
 version = "0.12.1"
 source = "git+https://github.com/lifescapegame/bevy?branch=v0.12.1-patched#78a38cb03327d5acc339a448629f424672c77e45"
@@ -3202,7 +3192,6 @@ dependencies = [
  "bevy",
  "bevy_atmosphere",
  "bevy_mod_outline",
- "bevy_polyline",
  "bevy_replicon",
  "bevy_xpbd_3d",
  "bincode",

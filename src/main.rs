@@ -16,11 +16,12 @@ use bevy::{
 };
 use bevy_atmosphere::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
-use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
-use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
+use oxidized_navigation::{
+    debug_draw::OxidizedNavigationDebugDrawPlugin, NavMeshSettings, OxidizedNavigationPlugin,
+};
 
 use crate::core::{action::Action, cli::Cli, CorePlugins};
 use ui::UiPlugins;
@@ -66,11 +67,11 @@ fn main() {
                 max_edge_length: 80,
                 max_tile_generation_tasks: None,
             }),
+            OxidizedNavigationDebugDrawPlugin,
             // TODO 0.13: Disable `IntegratorPlugin`, `SolverPlugin` and `SleepingPlugin`.
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
             OutlinePlugin,
-            PolylinePlugin,
             CorePlugins,
             UiPlugins,
         ))

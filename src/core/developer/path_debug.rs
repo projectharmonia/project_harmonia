@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_polyline::prelude::*;
+use oxidized_navigation::debug_draw::DrawPath;
 
 use crate::core::{
     navigation::NavPath,
@@ -10,36 +10,29 @@ pub(super) struct PathDebugPlugin;
 
 impl Plugin for PathDebugPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PathDebugMaterial>()
-            .add_systems(
-                Update,
-                (Self::init_system, Self::despawn_system).run_if(debug_paths_enabled()),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::cleanup_system
-                    .run_if(on_event::<SettingsApply>())
-                    .run_if(not(debug_paths_enabled())),
-            );
+        app.add_systems(
+            Update,
+            (Self::init_system, Self::despawn_system).run_if(debug_paths_enabled()),
+        )
+        .add_systems(
+            PostUpdate,
+            Self::cleanup_system
+                .run_if(on_event::<SettingsApply>())
+                .run_if(not(debug_paths_enabled())),
+        );
     }
 }
 
 impl PathDebugPlugin {
     fn init_system(
         mut commands: Commands,
-        mut polylines: ResMut<Assets<Polyline>>,
-        path_material: Res<PathDebugMaterial>,
         actors: Query<(Entity, &Parent, &Transform, &NavPath), Added<NavPath>>,
     ) {
         for (entity, parent, transform, nav_path) in &actors {
             commands.entity(parent.get()).with_children(|parent| {
-                let mut vertices = nav_path.0.clone();
-                vertices.push(transform.translation);
-                parent.spawn(PathDebugBundle::new(
-                    entity,
-                    path_material.0.clone(),
-                    polylines.add(Polyline { vertices }),
-                ));
+                let mut pulled_path = nav_path.0.clone();
+                pulled_path.push(transform.translation);
+                parent.spawn(PathDebugBundle::new(entity, pulled_path));
             });
         }
     }
@@ -70,42 +63,22 @@ fn debug_paths_enabled() -> impl FnMut(Res<Settings>) -> bool {
     |settings| settings.developer.debug_paths
 }
 
-/// Stores a handle for the navigation debug line material.
-#[derive(Resource)]
-struct PathDebugMaterial(Handle<PolylineMaterial>);
-
-impl FromWorld for PathDebugMaterial {
-    fn from_world(world: &mut World) -> Self {
-        let mut polyline_materials = world.resource_mut::<Assets<PolylineMaterial>>();
-        let material_handle = polyline_materials.add(PolylineMaterial {
-            color: Color::INDIGO,
-            perspective: true,
-            ..Default::default()
-        });
-        Self(material_handle)
-    }
-}
-
 #[derive(Bundle)]
 struct PathDebugBundle {
     name: Name,
     nav_actor: NavActor,
-    polyline_bundle: PolylineBundle,
+    draw_path: DrawPath,
 }
 
 impl PathDebugBundle {
-    fn new(
-        actor_entity: Entity,
-        material_handle: Handle<PolylineMaterial>,
-        polyline_handle: Handle<Polyline>,
-    ) -> Self {
+    fn new(actor_entity: Entity, pulled_path: Vec<Vec3>) -> Self {
         Self {
-            name: "Navigation polyline".into(),
+            name: "Navigation path".into(),
             nav_actor: NavActor(actor_entity),
-            polyline_bundle: PolylineBundle {
-                polyline: polyline_handle,
-                material: material_handle,
-                ..Default::default()
+            draw_path: DrawPath {
+                timer: None,
+                pulled_path,
+                color: Color::LIME_GREEN,
             },
         }
     }

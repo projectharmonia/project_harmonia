@@ -3,10 +3,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
-    action::Action,
-    city::{ActiveCity, CityMode},
-    cursor_hover::CursorHover,
-    game_state::GameState,
+    action::Action, city::CityMode, cursor_hover::CursorHover, game_state::GameState,
 };
 
 pub(super) struct MovingLotPlugin;
@@ -22,10 +19,17 @@ impl Plugin for MovingLotPlugin {
                 Self::movement_system,
                 Self::confirmation_system.run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                Self::cleanup_system.after(Self::movement_system).run_if(
+                Self::cancel_system.run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
                 ),
             )
+                .run_if(in_state(GameState::City))
+                .run_if(in_state(CityMode::Lots))
+                .run_if(in_state(LotTool::Move)),
+        )
+        .add_systems(
+            PostUpdate,
+            Self::cleanup_system
                 .run_if(in_state(GameState::City))
                 .run_if(in_state(CityMode::Lots))
                 .run_if(in_state(LotTool::Move)),
@@ -36,28 +40,23 @@ impl Plugin for MovingLotPlugin {
 impl MovingLotPlugin {
     fn picking_system(
         mut commands: Commands,
-        mut lots: Query<(Entity, &mut Visibility, &LotVertices)>,
-        active_cities: Query<Entity, With<ActiveCity>>,
+        lots: Query<(Entity, &Parent, &LotVertices)>,
         hovered: Query<&CursorHover>,
     ) {
         if let Ok(hover) = hovered.get_single() {
-            let position = hover.0.xz();
-            if let Some((entity, mut visibility, vertices)) = lots
-                .iter_mut()
-                .find(|(.., vertices)| vertices.contains_point(position))
+            if let Some((entity, parent, vertices)) = lots
+                .iter()
+                .find(|(.., vertices)| vertices.contains_point(hover.xz()))
             {
-                *visibility = Visibility::Hidden;
-                commands
-                    .entity(active_cities.single())
-                    .with_children(|parent| {
-                        parent.spawn((
-                            vertices.clone(),
-                            MovingLot {
-                                entity,
-                                offset: hover.0,
-                            },
-                        ));
-                    });
+                commands.entity(**parent).with_children(|parent| {
+                    parent.spawn((
+                        vertices.clone(),
+                        MovingLot {
+                            entity,
+                            offset: hover.0,
+                        },
+                    ));
+                });
             }
         }
     }
@@ -91,16 +90,16 @@ impl MovingLotPlugin {
         }
     }
 
-    fn cleanup_system(
-        mut commands: Commands,
-        mut visibility: Query<&mut Visibility>,
-        mut moving_lots: Query<(Entity, &MovingLot)>,
-    ) {
-        if let Ok((entity, moving_lot)) = moving_lots.get_single_mut() {
+    fn cancel_system(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
+        if let Ok(entity) = moving_lots.get_single_mut() {
             commands.entity(entity).despawn();
-            // Lot could be invalid in case of removal.
-            if let Ok(mut visibility) = visibility.get_mut(moving_lot.entity) {
-                *visibility = Visibility::Visible;
+        }
+    }
+
+    fn cleanup_system(mut commands: Commands, mut moving_lots: Query<(Entity, &MovingLot)>) {
+        if let Ok((entity, moving_lot)) = moving_lots.get_single_mut() {
+            if commands.get_entity(moving_lot.entity).is_none() {
+                commands.entity(entity).despawn();
             }
         }
     }

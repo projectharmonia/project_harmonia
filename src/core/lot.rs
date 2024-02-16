@@ -2,7 +2,6 @@ pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
 use bevy::prelude::*;
-use bevy_polyline::prelude::*;
 use bevy_replicon::prelude::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -27,7 +26,7 @@ impl Plugin for LotPlugin {
             .add_server_event::<LotEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::init_system, Self::vertices_update_system)
+                Self::init_system
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
             )
@@ -39,41 +38,36 @@ impl Plugin for LotPlugin {
                     Self::despawn_system,
                 )
                     .run_if(has_authority()),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::draw_system.run_if(resource_exists::<WorldName>()),
             );
     }
 }
 
 impl LotPlugin {
-    fn init_system(
-        lot_material: Local<LotMaterial>,
-        mut commands: Commands,
-        mut polylines: ResMut<Assets<Polyline>>,
-        spawned_lots: Query<(Entity, &LotVertices), Added<LotVertices>>,
-    ) {
-        for (entity, vertices) in &spawned_lots {
+    fn init_system(mut commands: Commands, spawned_lots: Query<Entity, Added<LotVertices>>) {
+        for entity in &spawned_lots {
             commands
                 .entity(entity)
-                .insert(PolylineBundle {
-                    polyline: polylines.add(Polyline {
-                        vertices: vertices.to_plain(),
-                    }),
-                    material: lot_material.0.clone(),
-                    ..Default::default()
-                })
+                .insert(SpatialBundle::default())
                 .dont_replicate::<Transform>();
         }
     }
 
-    fn vertices_update_system(
-        mut polylines: ResMut<Assets<Polyline>>,
-        changed_lots: Query<(&Handle<Polyline>, Ref<LotVertices>)>,
-    ) {
-        for (polyline_handle, vertices) in &changed_lots {
-            if vertices.is_changed() && !vertices.is_added() {
-                let polyline = polylines
-                    .get_mut(polyline_handle)
-                    .expect("polyline should be spawned on init");
-                polyline.vertices = vertices.to_plain();
+    fn draw_system(mut gismos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
+        for (transform, vertices) in &lots {
+            for (&start, &end) in vertices.0.iter().tuple_windows() {
+                // Transform should be always at the origin,
+                // but we take it into account because moving lots change the origin.
+                let start = Vec3::new(start.x, 0.0, start.y);
+                let end = Vec3::new(end.x, 0.0, end.y);
+                gismos.line(
+                    transform.transform_point(start),
+                    transform.transform_point(end),
+                    Color::WHITE,
+                );
             }
         }
     }
@@ -174,14 +168,6 @@ pub(super) struct LotVertices(Vec<Vec2>);
 pub(crate) struct LotFamily(pub(crate) Entity);
 
 impl LotVertices {
-    /// Converts polygon points to 3D coordinates with y = 0.
-    #[must_use]
-    fn to_plain(&self) -> Vec<Vec3> {
-        self.iter()
-            .map(|point| Vec3::new(point.x, 0.0, point.y))
-            .collect()
-    }
-
     /// A port of W. Randolph Franklin's [PNPOLY](https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html) algorithm.
     #[must_use]
     pub(super) fn contains_point(&self, point: Vec2) -> bool {
@@ -195,23 +181,6 @@ impl LotVertices {
         }
 
         inside
-    }
-}
-
-/// Stores a handle for the lot line material.
-#[derive(Resource)]
-struct LotMaterial(Handle<PolylineMaterial>);
-
-impl FromWorld for LotMaterial {
-    fn from_world(world: &mut World) -> Self {
-        let mut polyline_materials = world.resource_mut::<Assets<PolylineMaterial>>();
-        let material_handle = polyline_materials.add(PolylineMaterial {
-            width: 25.0,
-            color: Color::WHITE,
-            perspective: true,
-            ..Default::default()
-        });
-        Self(material_handle)
     }
 }
 
