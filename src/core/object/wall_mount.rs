@@ -126,8 +126,9 @@ impl WallMountPlugin {
             let angle = dir.angle_between(Vec2::X * sign);
             transform.translation.x = snap_point.x;
             transform.translation.z = snap_point.y;
-            transform.rotation = Quat::from_rotation_y(angle);
             if !placing_object.allowed_place {
+                // Apply rotation only for newly snapped objects.
+                transform.rotation = Quat::from_rotation_y(angle);
                 placing_object.allowed_place = true;
             }
         } else if placing_object.allowed_place {
