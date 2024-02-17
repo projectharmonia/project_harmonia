@@ -35,9 +35,7 @@ impl Plugin for EditorMenuPlugin {
                 Update,
                 (
                     Self::plus_button_system,
-                    Self::actor_buttons_spawn_system,
                     Self::actor_buttons_update_system,
-                    Self::actor_buttons_despawn_system,
                     (
                         Self::actor_buttons_system,
                         (
@@ -51,6 +49,14 @@ impl Plugin for EditorMenuPlugin {
                     Self::save_family_button_system.pipe(error_report::report),
                     Self::place_dialog_button_system,
                     Self::city_place_button_system,
+                )
+                    .run_if(in_state(GameState::FamilyEditor)),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    Self::actor_buttons_spawn_system,
+                    Self::actor_buttons_despawn_system,
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
             );

@@ -29,12 +29,18 @@ impl Plugin for WorldMenuPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::family_node_spawn_system,
-                    Self::city_node_spawn_system,
                     Self::family_button_system,
                     Self::city_button_system,
                     Self::create_button_system,
                     Self::city_dialog_button_system,
+                )
+                    .run_if(in_state(GameState::World)),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    Self::family_node_spawn_system,
+                    Self::city_node_spawn_system,
                     Self::entity_node_despawn_system,
                 )
                     .run_if(in_state(GameState::World)),
