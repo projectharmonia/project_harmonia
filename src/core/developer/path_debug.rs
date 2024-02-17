@@ -12,7 +12,7 @@ impl Plugin for PathDebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (Self::init_system, Self::despawn_system).run_if(debug_paths_enabled()),
+            (Self::spawn_system, Self::despawn_system).run_if(debug_paths_enabled()),
         )
         .add_systems(
             PostUpdate,
@@ -24,7 +24,7 @@ impl Plugin for PathDebugPlugin {
 }
 
 impl PathDebugPlugin {
-    fn init_system(
+    fn spawn_system(
         mut commands: Commands,
         actors: Query<(Entity, &Parent, &Transform, &NavPath), Added<NavPath>>,
     ) {
