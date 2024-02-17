@@ -14,14 +14,14 @@ impl Plugin for AnimationStatePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<AnimationFinished>()
             .add_systems(
-                Update,
-                (Self::playing_system, Self::finish_system).run_if(resource_exists::<WorldName>()),
-            )
-            .add_systems(
                 SpawnScene,
                 Self::scene_init_system
                     .run_if(resource_exists::<WorldName>())
                     .after(scene::scene_spawner_system),
+            )
+            .add_systems(
+                PostUpdate,
+                (Self::play_system, Self::finish_system).run_if(resource_exists::<WorldName>()),
             );
     }
 }
@@ -45,7 +45,7 @@ impl AnimationStatePlugin {
         }
     }
 
-    fn playing_system(
+    fn play_system(
         scenes: Query<(Entity, &AnimationState), Changed<AnimationState>>,
         children: Query<&Children>,
         mut animation_players: Query<&mut AnimationPlayer>,
