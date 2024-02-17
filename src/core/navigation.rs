@@ -20,8 +20,12 @@ impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((EndpointPlugin, FollowingPlugin))
             .add_systems(
+                PreUpdate,
+                Self::poll_system.run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
                 Update,
-                (Self::navigation_system, Self::poll_system).run_if(resource_exists::<WorldName>()),
+                Self::navigation_system.run_if(resource_exists::<WorldName>()),
             )
             .add_systems(
                 PostUpdate,

@@ -6,24 +6,29 @@ use crate::core::{
     animation_state::AnimationState,
     asset::collection::Collection,
     game_world::WorldName,
-    navigation::{NavPath, Navigation},
+    navigation::Navigation,
 };
 
 pub(super) struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Movement>().add_systems(
-            Update,
-            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
-        );
+        app.register_type::<Movement>()
+            .add_systems(
+                Update,
+                Self::init_system.run_if(resource_exists::<WorldName>()),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::cleanup_system.run_if(resource_exists::<WorldName>()),
+            );
     }
 }
 
 impl MovementPlugin {
     fn init_system(
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut actors: Query<(&Sex, &Navigation, &mut AnimationState), Added<NavPath>>,
+        mut actors: Query<(&Sex, &Navigation, &mut AnimationState), Added<Navigation>>,
     ) {
         for (sex, navigation, mut animation_state) in &mut actors {
             let animation = match sex {
@@ -49,7 +54,7 @@ impl MovementPlugin {
 
     fn cleanup_system(
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut removed_navigations: RemovedComponents<NavPath>,
+        mut removed_navigations: RemovedComponents<Navigation>,
         mut actors: Query<&mut AnimationState>,
     ) {
         for entity in removed_navigations.read() {
