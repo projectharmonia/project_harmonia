@@ -41,15 +41,17 @@ impl Plugin for FamilyHudPlugin {
             (
                 Self::mode_button_system,
                 Self::tasks_node_system,
-                Self::task_cleanup_system,
                 Self::need_bars_system,
-                Self::need_cleanup_system,
                 Self::budget_system,
                 Self::building_mode_button_system.run_if(in_state(FamilyMode::Building)),
                 (Self::task_button_system, Self::actor_buttons_system)
                     .run_if(in_state(FamilyMode::Life)),
             )
                 .run_if(in_state(GameState::Family)),
+        )
+        .add_systems(
+            PostUpdate,
+            (Self::task_cleanup_system, Self::need_cleanup_system),
         );
     }
 }

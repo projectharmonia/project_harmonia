@@ -22,10 +22,9 @@ pub(super) struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SettingsMenuOpen>().add_systems(
-            Update,
-            (
-                Self::setup_system.run_if(on_event::<SettingsMenuOpen>()),
+        app.add_event::<SettingsMenuOpen>()
+            .add_systems(
+                Update,
                 (
                     Self::mapping_button_text_system,
                     Self::mapping_button_system,
@@ -34,8 +33,11 @@ impl Plugin for SettingsMenuPlugin {
                     Self::settings_button_system,
                 )
                     .run_if(any_with_component::<SettingsMenu>()),
-            ),
-        );
+            )
+            .add_systems(
+                PostUpdate,
+                Self::setup_system.run_if(on_event::<SettingsMenuOpen>()),
+            );
     }
 }
 

@@ -10,11 +10,10 @@ pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
+        app.add_systems(Update, Self::button_system).add_systems(
+            PostUpdate,
             (
                 Self::setup_system.run_if(resource_added::<RenetClient>()),
-                Self::button_system,
                 Self::cleanup_system.run_if(client_just_disconnected()),
             ),
         );
