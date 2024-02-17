@@ -114,7 +114,7 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
         for FromClient { client_id, event } in despawn_events.read().copied() {
-            commands.entity(event.0).despawn();
+            commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
                 event: LotEventConfirmed,
