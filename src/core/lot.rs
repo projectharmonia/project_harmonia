@@ -26,18 +26,17 @@ impl Plugin for LotPlugin {
             .add_server_event::<LotEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::init_system
+                (
+                    Self::init_system,
+                    (
+                        Self::spawn_system,
+                        Self::movement_system,
+                        Self::despawn_system,
+                    )
+                        .run_if(has_authority()),
+                )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>()),
-            )
-            .add_systems(
-                Update,
-                (
-                    Self::spawn_system,
-                    Self::movement_system,
-                    Self::despawn_system,
-                )
-                    .run_if(has_authority()),
             )
             .add_systems(
                 PostUpdate,

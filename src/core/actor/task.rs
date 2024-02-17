@@ -56,15 +56,15 @@ impl Plugin for TaskPlugin {
                 .run_if(in_state(FamilyMode::Life)),
         )
         .add_systems(
-            Update,
-            (
-                Self::queue_system,
-                Self::cancelation_system,
-                Self::cleanup_system,
-            )
+            PreUpdate,
+            (Self::queue_system, Self::cancelation_system)
+                .after(ClientSet::Receive)
                 .run_if(has_authority()),
         )
-        .add_systems(PostUpdate, Self::activation_system.run_if(has_authority()));
+        .add_systems(
+            PostUpdate,
+            (Self::cleanup_system, Self::activation_system).run_if(has_authority()),
+        );
     }
 }
 
