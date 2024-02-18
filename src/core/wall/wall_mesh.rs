@@ -175,14 +175,13 @@ impl WallMesh {
 
         let start_uv = rotation_mat * (start_side - wall.start);
         let end_uv = rotation_mat * (end_side - wall.start);
-
         self.uvs.push(start_uv.into());
         self.uvs.push(end_uv.into());
         self.uvs.push([end_uv.x, end_uv.y + HEIGHT]);
         self.uvs.push([start_uv.x, start_uv.y + HEIGHT]);
 
-        self.normals
-            .extend_from_slice(&[[width.x, 0.0, width.y]; 4]);
+        let normal = [width.x, 0.0, width.y];
+        self.normals.extend_from_slice(&[normal; 4]);
 
         let mut hole_indices = Vec::new();
         let mut last_index = 4; // 4 initial vertices for sizes.
@@ -197,7 +196,7 @@ impl WallMesh {
                 let bottom_uv = rotation_mat * (translated.xz() - wall.start);
                 self.uvs.push([bottom_uv.x, bottom_uv.y + position.y]);
 
-                self.normals.push([width.x, 0.0, width.y])
+                self.normals.push(normal)
             }
 
             hole_indices.push(last_index);
