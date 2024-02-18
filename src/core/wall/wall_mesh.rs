@@ -1,10 +1,13 @@
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::{
+    f32::consts::{FRAC_PI_2, PI},
+    iter,
+};
 
 use bevy::{
     prelude::*,
     render::mesh::{Indices, VertexAttributeValues},
 };
-use itertools::{Either, Itertools, MinMaxResult};
+use itertools::{Itertools, MinMaxResult};
 
 use super::{Apertures, PointKind, Wall, WallConnection, WallConnections};
 
@@ -202,19 +205,24 @@ impl WallMesh {
         }
 
         let added_positions = &self.positions[begin_index as usize..];
-        let positions_iter = if inverse_winding {
-            let (side_positions, aperture_positions) = added_positions.split_at(4);
-            let side_iter = side_positions.iter().rev();
-            let aperture_iter = aperture_positions.iter().rev();
-            Either::Right(side_iter.chain(aperture_iter))
+        let mut vertices = Vec::with_capacity(added_positions.len() * 2);
+        if inverse_winding {
+            // Inverse each part separately:
+            // 4 base positions and each hole
+            for (start, end) in iter::once(0)
+                .chain(hole_indices.iter().copied())
+                .chain(iter::once(added_positions.len()))
+                .tuple_windows()
+            {
+                let inversed_iter = added_positions[start..end]
+                    .iter()
+                    .rev()
+                    .flat_map(|&[x, y, _]| [x, y]);
+                vertices.extend(inversed_iter);
+            }
         } else {
-            Either::Left(added_positions.iter())
-        };
-
-        let vertices: Vec<_> = positions_iter
-            .into_iter()
-            .flat_map(|&[x, y, _]| [x, y])
-            .collect();
+            vertices.extend(added_positions.iter().flat_map(|&[x, y, _]| [x, y]));
+        }
 
         let indices = earcutr::earcut(&vertices, &hole_indices, 2)
             .expect("vertices should be triangulatable");
