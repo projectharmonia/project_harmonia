@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_xpbd_3d::{math::PI, prelude::*};
 
+use super::{ObjectComponent, ReflectObjectComponent};
 use crate::core::{
     city::CityMode,
     family::FamilyMode,
@@ -198,7 +199,7 @@ fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
 
 /// A component that marks that entity can be placed only on walls or inside them.
 #[derive(Component, Reflect)]
-#[reflect(Component)]
+#[reflect(Component, ObjectComponent)]
 pub(crate) enum WallMount {
     Attach,
     Embed(Vec<Vec2>),
@@ -208,6 +209,16 @@ pub(crate) enum WallMount {
 impl FromWorld for WallMount {
     fn from_world(_world: &mut World) -> Self {
         Self::Attach
+    }
+}
+
+impl ObjectComponent for WallMount {
+    fn insert_on_spawning(&self) -> bool {
+        true
+    }
+
+    fn insert_on_placing(&self) -> bool {
+        true
     }
 }
 

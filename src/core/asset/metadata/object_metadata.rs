@@ -3,7 +3,6 @@ use std::{
     fmt::{self, Formatter},
 };
 
-use anyhow::Result;
 use bevy::{
     prelude::*,
     reflect::{serde::TypedReflectDeserializer, TypeRegistry},
@@ -15,12 +14,13 @@ use serde::{
 use strum::{Display, IntoStaticStr, VariantNames};
 
 use super::{GeneralMetadata, Metadata};
+use crate::core::object::{ObjectComponent, ReflectObjectComponent};
 
 #[derive(TypePath, Asset)]
 pub(crate) struct ObjectMetadata {
     pub(crate) general: GeneralMetadata,
     pub(crate) category: ObjectCategory,
-    pub(crate) components: Vec<Box<dyn Reflect>>,
+    pub(crate) components: Vec<Box<dyn ObjectComponent>>,
 }
 
 impl Metadata for ObjectMetadata {
@@ -155,7 +155,7 @@ impl<'a> ComponentsDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn ObjectComponent>>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_seq(self)
@@ -163,7 +163,7 @@ impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn ObjectComponent>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -182,7 +182,7 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
 }
 
 /// Like [`UntypedReflectDeserializer`], but searches for registration by short name.
-pub struct ShortReflectDeserializer<'a> {
+pub(super) struct ShortReflectDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
@@ -193,7 +193,7 @@ impl<'a> ShortReflectDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn Reflect>;
+    type Value = Box<dyn ObjectComponent>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_map(self)
@@ -201,7 +201,7 @@ impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn Reflect>;
+    type Value = Box<dyn ObjectComponent>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -215,10 +215,24 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .registry
             .get_with_short_type_path(&type_path)
             .ok_or_else(|| de::Error::custom(format!("{type_path} is not registered")))?;
-        let value =
+        let mut reflect =
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
 
-        Ok(value)
+        let rfr = registration.data::<ReflectFromReflect>().ok_or_else(|| {
+            de::Error::custom(format!("{type_path} doesn't implement FromReflect"))
+        })?;
+        reflect = rfr.from_reflect(&*reflect).ok_or_else(|| {
+            de::Error::custom(format!("{type_path} can't be converted into actual type"))
+        })?;
+
+        let reflect_object = registration
+            .data::<ReflectObjectComponent>()
+            .ok_or_else(|| de::Error::custom(format!("{type_path} doesn't have reflect(Task)")))?;
+        let object_component = reflect_object
+            .get_boxed(reflect)
+            .map_err(|_| de::Error::custom(format!("{type_path} is not an ObjectComponent")))?;
+
+        Ok(object_component)
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -230,7 +244,21 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .data::<ReflectDefault>()
             .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Default)")))?;
 
-        Ok(reflect_default.default())
+        let rfr = registration
+            .data::<ReflectFromReflect>()
+            .ok_or_else(|| de::Error::custom(format!("{v} doesn't implement FromReflect")))?;
+        let reflect = rfr
+            .from_reflect(&*reflect_default.default())
+            .ok_or_else(|| de::Error::custom(format!("{v} can't be converted into actual type")))?;
+
+        let reflect_object = registration
+            .data::<ReflectObjectComponent>()
+            .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Task)")))?;
+        let object_component = reflect_object
+            .get_boxed(reflect)
+            .map_err(|_| de::Error::custom(format!("{v} is not an ObjectComponent")))?;
+
+        Ok(object_component)
     }
 }
 
@@ -238,6 +266,7 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
 mod tests {
     use std::fs;
 
+    use anyhow::Result;
     use walkdir::WalkDir;
 
     use super::*;

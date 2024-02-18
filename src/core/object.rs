@@ -22,7 +22,7 @@ use super::{
     lot::LotVertices,
     Layer,
 };
-use placing_object::PlacingObjectPlugin;
+use placing_object::{PlacingObject, PlacingObjectPlugin};
 use wall_mount::WallMountPlugin;
 
 pub(super) struct ObjectPlugin;
@@ -65,9 +65,9 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        spawned_objects: Query<(Entity, &ObjectPath), Added<ObjectPath>>,
+        spawned_objects: Query<(Entity, &ObjectPath, Has<PlacingObject>), Added<ObjectPath>>,
     ) {
-        for (entity, object_path) in &spawned_objects {
+        for (entity, object_path, placing_object) in &spawned_objects {
             let metadata_handle = asset_server.load(&object_path.0);
             let metadata = object_metadata
                 .get(&metadata_handle)
@@ -90,8 +90,13 @@ impl ObjectPlugin {
                     Layer::Object.to_bits() | Layer::Wall.to_bits(),
                 ),
             ));
+
             for component in &metadata.components {
-                entity.insert_reflect(component.clone_value());
+                if placing_object && component.insert_on_placing()
+                    || !placing_object && component.insert_on_spawning()
+                {
+                    entity.insert_reflect(component.clone_value());
+                }
             }
         }
     }
@@ -240,6 +245,17 @@ impl ObjectBundle {
 #[derive(Clone, Component, Debug, Default, Event, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(AssetPath<'static>);
+
+#[reflect_trait]
+pub(crate) trait ObjectComponent: Reflect {
+    /// Returns `true` if component should be inserted on spawning.
+    fn insert_on_spawning(&self) -> bool;
+
+    /// Returns `true` if component should be inserted on placing.
+    ///
+    /// Can be used to avoid triggering systems that rely on this component when placing.
+    fn insert_on_placing(&self) -> bool;
+}
 
 #[derive(Clone, Deserialize, Event, Serialize)]
 struct ObjectSpawn {
