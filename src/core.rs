@@ -14,6 +14,7 @@ pub(super) mod game_state;
 pub(super) mod game_world;
 mod highlighting;
 pub(super) mod input_events;
+mod line;
 pub(super) mod lot;
 mod navigation;
 pub(super) mod network;
