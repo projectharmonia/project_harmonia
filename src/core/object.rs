@@ -85,10 +85,7 @@ impl ObjectPlugin {
                 OutlineBundle::highlighting(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
-                CollisionLayers::from_bits(
-                    Layer::Object.to_bits(),
-                    Layer::Object.to_bits() | Layer::Wall.to_bits(),
-                ),
+                CollisionLayers::new([Layer::Object], [Layer::Object, Layer::Wall]),
             ));
 
             for component in &metadata.components {

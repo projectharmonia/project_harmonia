@@ -214,10 +214,7 @@ impl Default for GroundBundle {
         Self {
             name: Name::new("Ground"),
             collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
-            collision_layers: CollisionLayers::from_bits(
-                Layer::Ground.to_bits(),
-                Layer::all_bits(),
-            ),
+            collision_layers: CollisionLayers::none().add_group(Layer::Ground),
             ground: Ground,
             cursor_hoverable: CursorHoverable,
             nav_mesh_affector: NavMeshAffector,

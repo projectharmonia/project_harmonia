@@ -79,7 +79,7 @@ impl WallPlugin {
                 WallConnections::default(),
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::from_bits(Layer::Wall.to_bits(), Layer::all_bits()),
+                CollisionLayers::new([Layer::Wall], [Layer::Object]),
                 CursorHoverable,
                 NavMeshAffector,
                 NoFrustumCulling,
