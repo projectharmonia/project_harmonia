@@ -105,9 +105,9 @@ impl PlacingObjectPlugin {
         // TODO 0.13: Remove kinematic body hack.
         debug!("creating {placing_object:?}");
         match placing_object.kind {
-            PlacingObjectKind::Spawning(metadata_id) => {
+            PlacingObjectKind::Spawning(id) => {
                 let metadata_path = asset_server
-                    .get_path(metadata_id)
+                    .get_path(id)
                     .expect("metadata should always come from file");
 
                 commands.entity(placing_entity).insert((
@@ -245,9 +245,9 @@ impl PlacingObjectPlugin {
             if !placing_object.collides && placing_object.allowed_place {
                 debug!("confirmed placing object {placing_object:?}");
                 match placing_object.kind {
-                    PlacingObjectKind::Spawning(metadata_id) => {
+                    PlacingObjectKind::Spawning(id) => {
                         let metadata_path = asset_server
-                            .get_path(metadata_id)
+                            .get_path(id)
                             .expect("metadata should always come from file");
                         spawn_events.send(ObjectSpawn {
                             metadata_path: metadata_path.into_owned(),
@@ -318,8 +318,8 @@ impl PlacingObject {
         Self::new(PlacingObjectKind::Moving(object_entity))
     }
 
-    pub(crate) fn spawning(metadata_id: AssetId<ObjectMetadata>) -> Self {
-        Self::new(PlacingObjectKind::Spawning(metadata_id))
+    pub(crate) fn spawning(id: AssetId<ObjectMetadata>) -> Self {
+        Self::new(PlacingObjectKind::Spawning(id))
     }
 
     fn new(kind: PlacingObjectKind) -> Self {

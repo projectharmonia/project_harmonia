@@ -73,7 +73,7 @@ impl ObjectPlugin {
                 .get(&metadata_handle)
                 .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
-            let scene_path = metadata::scene_path(&asset_server, metadata_handle);
+            let scene_path = metadata::gltf_asset(&object_path.0, "Scene0");
             debug!("spawning object {scene_path:?}");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);

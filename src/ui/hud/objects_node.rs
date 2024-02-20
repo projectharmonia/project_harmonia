@@ -46,7 +46,7 @@ impl ObjectsNodePlugin {
         buttons: Query<(&Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
     ) {
         for (toggled, &preview) in &buttons {
-            let Preview::Object(metadata_id) = preview else {
+            let Preview::Object(id) = preview else {
                 continue;
             };
 
@@ -54,7 +54,7 @@ impl ObjectsNodePlugin {
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
-                        parent.spawn(PlacingObject::spawning(metadata_id));
+                        parent.spawn(PlacingObject::spawning(id));
                     });
             }
         }
@@ -73,7 +73,7 @@ impl ObjectsNodePlugin {
         roots: Query<Entity, With<UiRoot>>,
     ) {
         for (&interaction, style, transform, &preview) in &buttons {
-            let Preview::Object(metadata_id) = preview else {
+            let Preview::Object(id) = preview else {
                 continue;
             };
 
@@ -89,7 +89,7 @@ impl ObjectsNodePlugin {
                     let left = button_translation.x - button_width / 2.0;
                     let bottom =
                         window.resolution.height() - button_translation.y + button_height / 2.0;
-                    let metadata = object_metadata.get(metadata_id).unwrap();
+                    let metadata = object_metadata.get(id).unwrap();
 
                     commands.entity(roots.single()).with_children(|parent| {
                         parent
@@ -223,11 +223,11 @@ pub(super) fn setup_objects_node(
                 ..Default::default()
             })
             .with_children(|parent| {
-                for (metadata_id, _) in object_metadata
+                for (id, _) in object_metadata
                     .iter()
                     .filter(|(_, metadata)| metadata.category == category)
                 {
-                    parent.spawn(ObjectButtonBundle::new(metadata_id, theme));
+                    parent.spawn(ObjectButtonBundle::new(id, theme));
                 }
             })
             .id();
@@ -260,10 +260,10 @@ struct ObjectButtonBundle {
 }
 
 impl ObjectButtonBundle {
-    fn new(metadata_id: AssetId<ObjectMetadata>, theme: &Theme) -> Self {
+    fn new(id: AssetId<ObjectMetadata>, theme: &Theme) -> Self {
         Self {
             object_button: ObjectButton,
-            preview: Preview::Object(metadata_id),
+            preview: Preview::Object(id),
             toggled: Toggled(false),
             exclusive_button: ExclusiveButton,
             image_button_bundle: ImageButtonBundle::placeholder(theme),

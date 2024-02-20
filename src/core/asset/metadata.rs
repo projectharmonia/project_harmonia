@@ -143,16 +143,10 @@ trait Metadata {
     fn deserializer(registry: &TypeRegistry, general: GeneralMetadata) -> Self::Deserializer<'_>;
 }
 
-/// Converts metadata ID into the corresponding scene path loadable by [`AssetServer`].
-pub(crate) fn scene_path(
-    asset_server: &AssetServer,
-    metadata_id: impl Into<AssetId<ObjectMetadata>>,
-) -> AssetPath<'static> {
-    let metadata_path = asset_server
-        .get_path(metadata_id.into())
-        .expect("metadata should always come from file");
+/// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
+pub(crate) fn gltf_asset(metadata_path: &AssetPath, label: &'static str) -> AssetPath<'static> {
     let scene_path: AssetPath = metadata_path.path().with_extension("gltf").into();
-    scene_path.with_label("Scene0")
+    scene_path.with_label(label)
 }
 
 #[derive(Serialize, Deserialize)]
