@@ -22,7 +22,7 @@ bevy_xpbd_3d = "0.3"
 bevy_mod_outline = "0.6"
 app_dirs2 = "2.5"
 oxidized_navigation = { version = "0.9", features = ["xpbd", "debug_draw"] }
-leafwing-input-manager = "0.11"
+leafwing-input-manager = "0.13"
 serde = "1.0"
 earcutr = "0.4"
 strum = { version = "0.26", features = ["derive"] }
