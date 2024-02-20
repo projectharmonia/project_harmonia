@@ -64,15 +64,15 @@ impl WallMesh {
             return;
         }
 
-        let dir = wall.dir();
-        let angle = -dir.y.atan2(dir.x);
-        let width = wall_width(dir);
+        let disp = wall.displacement();
+        let angle = -disp.y.atan2(disp.x);
+        let width = wall_width(disp);
         let rotation_mat = Mat2::from_angle(angle); // TODO 0.13: Use `to_angle`.
 
-        let start_walls = minmax_angles(dir, PointKind::Start, &connections.start);
+        let start_walls = minmax_angles(disp, PointKind::Start, &connections.start);
         let (start_left, start_right) = offset_points(wall, start_walls, width);
 
-        let end_walls = minmax_angles(-dir, PointKind::End, &connections.end);
+        let end_walls = minmax_angles(-disp, PointKind::End, &connections.end);
         let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
 
         self.generate_top(
@@ -111,13 +111,13 @@ impl WallMesh {
 
         match start_walls {
             MinMaxResult::OneElement(_) => (),
-            MinMaxResult::NoElements => self.generate_front(start_left, start_right, dir),
+            MinMaxResult::NoElements => self.generate_front(start_left, start_right, disp),
             MinMaxResult::MinMax(_, _) => self.generate_start_connection(wall),
         }
 
         match end_walls {
             MinMaxResult::OneElement(_) => (),
-            MinMaxResult::NoElements => self.generate_back(end_left, end_right, dir),
+            MinMaxResult::NoElements => self.generate_back(end_left, end_right, disp),
             MinMaxResult::MinMax(_, _) => self.generate_end_connection(wall, rotation_mat),
         }
     }
@@ -231,7 +231,7 @@ impl WallMesh {
         }
     }
 
-    fn generate_front(&mut self, start_left: Vec2, start_right: Vec2, dir: Vec2) {
+    fn generate_front(&mut self, start_left: Vec2, start_right: Vec2, disp: Vec2) {
         let begin_index = self.positions_len();
 
         self.positions.push([start_left.x, 0.0, start_left.y]);
@@ -244,7 +244,8 @@ impl WallMesh {
         self.uvs.push([WIDTH, HEIGHT]);
         self.uvs.push([WIDTH, 0.0]);
 
-        self.normals.extend_from_slice(&[[-dir.x, 0.0, -dir.y]; 4]);
+        self.normals
+            .extend_from_slice(&[[-disp.x, 0.0, -disp.y]; 4]);
 
         self.indices.push(begin_index);
         self.indices.push(begin_index + 1);
@@ -254,7 +255,7 @@ impl WallMesh {
         self.indices.push(begin_index + 3);
     }
 
-    fn generate_back(&mut self, end_left: Vec2, end_right: Vec2, dir: Vec2) {
+    fn generate_back(&mut self, end_left: Vec2, end_right: Vec2, disp: Vec2) {
         let begin_index = self.positions_len();
 
         // Back
@@ -268,7 +269,7 @@ impl WallMesh {
         self.uvs.push([WIDTH, HEIGHT]);
         self.uvs.push([WIDTH, 0.0]);
 
-        self.normals.extend_from_slice(&[[dir.x, 0.0, dir.y]; 4]);
+        self.normals.extend_from_slice(&[[disp.x, 0.0, disp.y]; 4]);
 
         self.indices.push(begin_index);
         self.indices.push(begin_index + 3);
@@ -329,8 +330,8 @@ impl WallMesh {
 }
 
 /// Calculates the wall thickness vector that faces to the left relative to the wall vector.
-fn wall_width(dir: Vec2) -> Vec2 {
-    dir.perp().normalize() * HALF_WIDTH
+fn wall_width(disp: Vec2) -> Vec2 {
+    disp.perp().normalize() * HALF_WIDTH
 }
 
 /// Calculates the left and right wall points for the `start` point of the wall,
@@ -339,23 +340,28 @@ fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> 
     match min_max_walls {
         MinMaxResult::NoElements => (wall.start + width, wall.start - width),
         MinMaxResult::OneElement(other_wall) => {
-            let other_width = wall_width(other_wall.dir());
+            let other_width = wall_width(other_wall.displacement());
             (
                 wall_intersection(wall, width, other_wall, -other_width),
                 wall_intersection(wall, -width, other_wall.inverse(), other_width),
             )
         }
         MinMaxResult::MinMax(min_wall, max_wall) => (
-            wall_intersection(wall, width, max_wall, -wall_width(max_wall.dir())),
-            wall_intersection(wall, -width, min_wall.inverse(), wall_width(min_wall.dir())),
+            wall_intersection(wall, width, max_wall, -wall_width(max_wall.displacement())),
+            wall_intersection(
+                wall,
+                -width,
+                min_wall.inverse(),
+                wall_width(min_wall.displacement()),
+            ),
         ),
     }
 }
 
 /// Returns the points with the maximum and minimum angle relative
-/// to the direction vector.
+/// to the displacement vector.
 fn minmax_angles(
-    dir: Vec2,
+    disp: Vec2,
     point_kind: PointKind,
     point_connections: &[WallConnection],
 ) -> MinMaxResult<Wall> {
@@ -371,7 +377,7 @@ fn minmax_angles(
             }
         })
         .minmax_by_key(|wall| {
-            let angle = wall.dir().angle_between(dir);
+            let angle = wall.displacement().angle_between(disp);
             if angle < 0.0 {
                 angle + 2.0 * PI
             } else {

@@ -56,11 +56,11 @@ impl NavigationPlugin {
         for (entity, navigation, mut transform, mut nav_path) in &mut actors {
             if let Some(&waypoint) = nav_path.last() {
                 const ROTATION_SPEED: f32 = 10.0;
-                let direction = waypoint - transform.translation;
+                let disp = waypoint - transform.translation;
                 let delta_secs = time.delta_seconds();
-                let target_rotation = transform.looking_to(direction, Vec3::Y).rotation;
+                let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
 
-                transform.translation += direction.normalize() * navigation.speed * delta_secs;
+                transform.translation += disp.normalize() * navigation.speed * delta_secs;
                 transform.rotation = transform
                     .rotation
                     .slerp(target_rotation, ROTATION_SPEED * delta_secs);
@@ -71,7 +71,7 @@ impl NavigationPlugin {
                 } else {
                     DISTANCE_EPSILON
                 };
-                if direction.length() < min_distance {
+                if disp.length() < min_distance {
                     nav_path.pop();
                 }
             } else {
