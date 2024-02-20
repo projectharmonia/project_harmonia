@@ -78,15 +78,13 @@ impl WallMountPlugin {
 
         const SNAP_DELTA: f32 = 1.0;
         let translation_2d = transform.translation.xz();
-        if let Some((disp, wall_point)) = walls
+        if let Some((wall, wall_point)) = walls
             .iter()
-            .map(|wall| {
-                let disp = wall.displacement();
-                (disp, closest_point(wall.start, disp, translation_2d))
-            })
+            .map(|wall| (wall, wall.closest_point(translation_2d)))
             .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
+            let disp = wall.displacement();
             let sign = disp.perp_dot(translation_2d - wall_point).signum();
             let offset = match wall_mount {
                 WallMount::Embed(_) => Vec2::ZERO,
@@ -171,14 +169,6 @@ impl WallMountPlugin {
             }
         }
     }
-}
-
-/// Returns the minimal distance from point `p` to the segment defined by its `origin` and `displacement` vector.
-fn closest_point(origin: Vec2, displacement: Vec2, p: Vec2) -> Vec2 {
-    // Consider the line extending the segment, parameterized as `origin + t * displacement`.
-    let t = (p - origin).dot(displacement) / displacement.length_squared();
-    // We clamp `t` to handle points outside the segment.
-    origin + t.clamp(0.0, 1.0) * displacement // Projection of point `p` onto the segment.
 }
 
 /// A component that marks that entity can be placed only on walls or inside them.

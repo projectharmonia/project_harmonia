@@ -279,6 +279,21 @@ impl Wall {
         dot <= wall_disp.length_squared()
     }
 
+    pub(super) fn closest_point(&self, point: Vec2) -> Vec2 {
+        let wall_disp = self.displacement();
+        let wall_dir = wall_disp.normalize();
+        let point_dir = point - self.start;
+        let dot = wall_dir.dot(point_dir);
+
+        if dot <= 0.0 {
+            self.start
+        } else if dot >= wall_disp.length() {
+            self.end
+        } else {
+            self.start + wall_dir * dot
+        }
+    }
+
     fn inverse(&self) -> Self {
         Self {
             start: self.end,
