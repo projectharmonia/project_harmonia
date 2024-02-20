@@ -121,7 +121,7 @@ impl WallMountPlugin {
             let translation = transform.translation();
             if let Some((wall_entity, mut apertures, _)) = walls
                 .iter_mut()
-                .find(|(.., &wall)| within_wall(wall, translation.xz()))
+                .find(|(.., wall)| wall.contains(translation.xz()))
             {
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
@@ -171,22 +171,6 @@ impl WallMountPlugin {
             }
         }
     }
-}
-
-/// Returns `true` if a point belongs to a wall.
-fn within_wall(wall: Wall, point: Vec2) -> bool {
-    let wall_dir = wall.end - wall.start;
-    let point_dir = point - wall.start;
-    if wall_dir.perp_dot(point_dir).abs() > 0.1 {
-        return false;
-    }
-
-    let dot = wall_dir.dot(point_dir);
-    if dot < 0.0 {
-        return false;
-    }
-
-    dot <= wall_dir.length_squared()
 }
 
 /// Returns the minimal distance from point `p` to the segment defined by its `origin` and `displacement` vector.

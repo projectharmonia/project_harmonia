@@ -263,6 +263,22 @@ pub(super) struct Wall {
 }
 
 impl Wall {
+    /// Returns `true` if a point belongs to a wall.
+    pub(super) fn contains(&self, point: Vec2) -> bool {
+        let wall_dir = self.dir();
+        let point_dir = point - self.start;
+        if wall_dir.perp_dot(point_dir).abs() > 0.1 {
+            return false;
+        }
+
+        let dot = wall_dir.dot(point_dir);
+        if dot < 0.0 {
+            return false;
+        }
+
+        dot <= wall_dir.length_squared()
+    }
+
     fn inverse(&self) -> Self {
         Self {
             start: self.end,
