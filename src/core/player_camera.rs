@@ -42,7 +42,7 @@ impl PlayerCameraPlugin {
     ) {
         let mut orbit_rotation = cameras.single_mut();
         let motion = motion_events.read().map(|event| &event.delta).sum::<Vec2>();
-        if action_state.pressed(Action::RotateCamera) {
+        if action_state.pressed(&Action::RotateCamera) {
             const SENSETIVITY: f32 = 0.01;
             orbit_rotation.dest -= SENSETIVITY * motion;
             orbit_rotation.dest.y = orbit_rotation.dest.y.clamp(0.0, FRAC_PI_2);
@@ -70,7 +70,7 @@ impl PlayerCameraPlugin {
         mut cameras: Query<&mut SpringArm, With<PlayerCamera>>,
     ) {
         let mut spring_arm = cameras.single_mut();
-        spring_arm.dest = (spring_arm.dest - action_state.value(Action::ZoomCamera)).max(0.0);
+        spring_arm.dest = (spring_arm.dest - action_state.value(&Action::ZoomCamera)).max(0.0);
         spring_arm.smooth(time.delta_seconds());
     }
 
@@ -89,16 +89,16 @@ impl PlayerCameraPlugin {
 
 fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec3 {
     let mut direction = Vec3::ZERO;
-    if action_state.pressed(Action::CameraLeft) {
+    if action_state.pressed(&Action::CameraLeft) {
         direction.x -= 1.0;
     }
-    if action_state.pressed(Action::CameraRight) {
+    if action_state.pressed(&Action::CameraRight) {
         direction.x += 1.0;
     }
-    if action_state.pressed(Action::CameraForward) {
+    if action_state.pressed(&Action::CameraForward) {
         direction.z -= 1.0;
     }
-    if action_state.pressed(Action::CameraBackward) {
+    if action_state.pressed(&Action::CameraBackward) {
         direction.z += 1.0;
     }
 

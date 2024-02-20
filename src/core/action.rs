@@ -9,22 +9,22 @@ pub(super) struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ActionState<Action>>()
-            .add_systems(Startup, Self::load_mappings_system)
+        app.init_resource::<InputMap<Action>>()
+            .init_resource::<ActionState<Action>>()
+            .add_systems(Startup, Self::input_map_system)
             .add_systems(
                 PostUpdate,
-                Self::load_mappings_system.run_if(on_event::<SettingsApply>()),
+                Self::input_map_system.run_if(on_event::<SettingsApply>()),
             );
     }
 }
 
 impl ActionPlugin {
-    fn load_mappings_system(mut commands: Commands, settings: Res<Settings>) {
-        let mut input_map = InputMap::default();
+    fn input_map_system(mut input_map: ResMut<InputMap<Action>>, settings: Res<Settings>) {
+        input_map.clear();
         for (&action, inputs) in &settings.controls.mappings {
-            input_map.insert_many_to_one(inputs.iter().cloned(), action);
+            input_map.insert_one_to_many(action, inputs.iter().cloned());
         }
-        commands.insert_resource(input_map);
     }
 }
 
