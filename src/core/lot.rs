@@ -55,19 +55,13 @@ impl LotPlugin {
         }
     }
 
-    fn draw_system(mut gismos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
+    fn draw_system(mut gizmos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
         for (transform, vertices) in &lots {
-            for (&start, &end) in vertices.0.iter().tuple_windows() {
-                // Transform should be always at the origin,
-                // but we take it into account because moving lots change the origin.
-                let start = Vec3::new(start.x, 0.0, start.y);
-                let end = Vec3::new(end.x, 0.0, end.y);
-                gismos.line(
-                    transform.transform_point(start),
-                    transform.transform_point(end),
-                    Color::WHITE,
-                );
-            }
+            let positions_iter = vertices
+                .iter()
+                .map(|point| Vec3::new(point.x, 0.0, point.y))
+                .map(|point| transform.transform_point(point));
+            gizmos.linestrip(positions_iter, Color::WHITE);
         }
     }
 
