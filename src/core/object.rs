@@ -1,3 +1,4 @@
+pub(super) mod door;
 pub(crate) mod placing_object;
 pub(super) mod wall_mount;
 
@@ -22,6 +23,7 @@ use super::{
     lot::LotVertices,
     Layer,
 };
+use door::DoorPlugin;
 use placing_object::{PlacingObject, PlacingObjectPlugin};
 use wall_mount::WallMountPlugin;
 
@@ -29,7 +31,7 @@ pub(super) struct ObjectPlugin;
 
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((PlacingObjectPlugin, WallMountPlugin))
+        app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             // TODO 0.13: Remove.
             .register_type::<AssetPath>()
             .register_type::<ObjectPath>()
