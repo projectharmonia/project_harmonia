@@ -18,7 +18,10 @@ pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((EndpointPlugin, FollowingPlugin))
+        app.register_type::<Navigation>()
+            .register_type::<NavPath>()
+            .register_type::<WaypointIndex>()
+            .add_plugins((FollowingPlugin, EndpointPlugin))
             .add_systems(
                 PreUpdate,
                 Self::poll_system.run_if(resource_exists::<WorldName>()),
@@ -26,100 +29,104 @@ impl Plugin for NavigationPlugin {
             .add_systems(
                 Update,
                 Self::navigation_system.run_if(resource_exists::<WorldName>()),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::cleanup_system.run_if(resource_exists::<WorldName>()),
             );
     }
 }
 
 impl NavigationPlugin {
-    fn poll_system(mut commands: Commands, mut actors: Query<(Entity, &mut ComputePath)>) {
-        for (entity, mut compute_path) in &mut actors {
-            if let Some(mut path) = future::block_on(future::poll_once(&mut compute_path.0)) {
-                path.reverse();
-                path.pop(); // Drop current position.
-                commands
-                    .entity(entity)
-                    .insert(NavPath(path))
-                    .remove::<ComputePath>();
+    fn poll_system(
+        mut commands: Commands,
+        mut actors: Query<(Entity, &mut ComputePath, &mut NavPath)>,
+    ) {
+        for (entity, mut compute_path, mut nav_path) in &mut actors {
+            if let Some(path) = future::block_on(future::poll_once(&mut compute_path.0)) {
+                nav_path.0 = path;
+                commands.entity(entity).remove::<ComputePath>();
             }
         }
     }
 
     fn navigation_system(
-        mut commands: Commands,
         time: Res<Time>,
-        mut actors: Query<(Entity, &Navigation, &mut Transform, &mut NavPath)>,
+        mut actors: Query<(
+            &Navigation,
+            &mut NavPath,
+            &mut WaypointIndex,
+            &mut Transform,
+        )>,
     ) {
-        for (entity, navigation, mut transform, mut nav_path) in &mut actors {
-            if let Some(&waypoint) = nav_path.last() {
-                const ROTATION_SPEED: f32 = 10.0;
-                let disp = waypoint - transform.translation;
-                let delta_secs = time.delta_seconds();
-                let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
-
-                transform.translation += disp.normalize() * navigation.speed * delta_secs;
-                transform.rotation = transform
-                    .rotation
-                    .slerp(target_rotation, ROTATION_SPEED * delta_secs);
-
-                let min_distance = if nav_path.len() == 1 {
-                    // Last waypoint.
-                    navigation.offset.max(DISTANCE_EPSILON)
-                } else {
-                    DISTANCE_EPSILON
-                };
-                if disp.length() < min_distance {
-                    nav_path.pop();
-                }
-            } else {
-                commands.entity(entity).remove::<Navigation>();
+        for (navigation, mut nav_path, mut waypoint_index, mut transform) in &mut actors {
+            if nav_path.is_empty() {
+                continue;
             }
-        }
-    }
 
-    fn cleanup_system(
-        mut commands: Commands,
-        mut removed_navigations: RemovedComponents<Navigation>,
-    ) {
-        for entity in removed_navigations.read() {
-            if let Some(mut commands) = commands.get_entity(entity) {
-                commands.remove::<(NavPath, ComputePath)>();
+            // Reset current waypoint index when navigation path changes.
+            if nav_path.is_changed() {
+                waypoint_index.0 = 1; // Always skip first waypoint since it's initial position.
+            }
+
+            let waypoint = nav_path.0[waypoint_index.0];
+            let disp = waypoint - transform.translation;
+            let delta_secs = time.delta_seconds();
+            let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
+
+            const ROTATION_SPEED: f32 = 10.0;
+            transform.translation += disp.normalize() * navigation.speed * delta_secs;
+            transform.rotation = transform
+                .rotation
+                .slerp(target_rotation, ROTATION_SPEED * delta_secs);
+
+            const DISTANCE_EPSILON: f32 = 0.1;
+            if waypoint_index.0 == nav_path.len() - 1 {
+                if disp.length() < navigation.offset.unwrap_or(DISTANCE_EPSILON) {
+                    nav_path.clear();
+                }
+            } else if disp.length() < DISTANCE_EPSILON {
+                waypoint_index.0 += 1;
             }
         }
     }
 }
 
-const DISTANCE_EPSILON: f32 = 0.1;
+#[derive(Bundle, Default, Reflect)]
+pub(super) struct NavigationBundle {
+    navigation: Navigation,
+    nav_path: NavPath,
+    nav_point_index: WaypointIndex,
+}
 
-#[derive(Component)]
+/// Navigation parameters.
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub(super) struct Navigation {
-    pub(super) speed: f32,
+    speed: f32,
     /// Offset for the last waypoint.
-    pub(super) offset: f32,
+    offset: Option<f32>,
 }
 
 impl Navigation {
     pub(super) fn new(speed: f32) -> Self {
         Self {
             speed,
-            offset: DISTANCE_EPSILON,
+            offset: None,
         }
     }
 
     pub(super) fn with_offset(mut self, offset: f32) -> Self {
-        self.offset = offset;
+        self.offset = Some(offset);
         self
+    }
+
+    pub(super) fn speed(&self) -> f32 {
+        self.speed
     }
 }
 
 #[derive(Component)]
-struct ComputePath(Task<Vec<Vec3>>);
+pub(super) struct ComputePath(Task<Vec<Vec3>>);
 
 impl ComputePath {
-    fn new(
+    pub(super) fn new(
         tiles: Arc<RwLock<NavMeshTiles>>,
         settings: NavMeshSettings,
         start: Vec3,
@@ -136,5 +143,12 @@ impl ComputePath {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
+/// Stores navigation path.
+#[derive(Component, Default, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
 pub(super) struct NavPath(pub(super) Vec<Vec3>);
+
+/// Index of the current waypoint from [`NavPath`].
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub(super) struct WaypointIndex(usize);

@@ -21,8 +21,12 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::core::{
-    action::Action, actor::Actor, animation_state::AnimationState, family::FamilyMode,
-    game_state::GameState, navigation::Navigation,
+    action::Action,
+    actor::Actor,
+    animation_state::AnimationState,
+    family::FamilyMode,
+    game_state::GameState,
+    navigation::{ComputePath, NavPath},
 };
 use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;
@@ -130,17 +134,19 @@ impl TaskPlugin {
     fn cleanup_system(
         mut commands: Commands,
         tasks: Query<(Entity, &Parent, &TaskGroups, &TaskState), Changed<TaskState>>,
-        mut actors: Query<&mut AnimationState>,
+        mut actors: Query<(&mut NavPath, &mut AnimationState)>,
     ) {
         for (entity, parent, groups, &task_state) in &tasks {
             if task_state == TaskState::Cancelled {
-                if groups.contains(TaskGroups::LEGS) {
-                    commands.entity(**parent).remove::<Navigation>();
-                }
-
-                let mut animation_state = actors
+                let (mut nav_path, mut animation_state) = actors
                     .get_mut(**parent)
                     .expect("actor should have animaition state");
+
+                if groups.contains(TaskGroups::LEGS) {
+                    nav_path.clear();
+                    commands.entity(**parent).remove::<ComputePath>();
+                }
+
                 animation_state.stop();
 
                 commands.entity(entity).despawn();

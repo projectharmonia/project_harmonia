@@ -3,7 +3,7 @@ use oxidized_navigation::{NavMesh, NavMeshSettings};
 
 use crate::core::game_world::WorldName;
 
-use super::{ComputePath, Navigation};
+use super::{ComputePath, NavPath};
 
 pub(super) struct EndpointPlugin;
 
@@ -33,13 +33,12 @@ impl EndpointPlugin {
         }
     }
 
-    fn cleanup_system(
-        mut commands: Commands,
-        mut removed_navigations: RemovedComponents<Navigation>,
-    ) {
-        for entity in removed_navigations.read() {
-            if let Some(mut commands) = commands.get_entity(entity) {
-                commands.remove::<Endpoint>();
+    fn cleanup_system(mut commands: Commands, actors: Query<(Entity, &NavPath), Changed<NavPath>>) {
+        for (entity, nav_path) in &actors {
+            if nav_path.is_empty() {
+                if let Some(mut commands) = commands.get_entity(entity) {
+                    commands.remove::<Endpoint>();
+                }
             }
         }
     }

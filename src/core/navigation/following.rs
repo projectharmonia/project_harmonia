@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use oxidized_navigation::{NavMesh, NavMeshSettings};
 
-use super::{ComputePath, Navigation};
+use super::{ComputePath, NavPath};
 use crate::core::game_world::WorldName;
 
 pub(super) struct FollowingPlugin;
@@ -68,11 +68,13 @@ impl FollowingPlugin {
 
     fn cleanup_system(
         mut commands: Commands,
-        mut removed_navigations: RemovedComponents<Navigation>,
+        followers: Query<(Entity, &NavPath), (Changed<NavPath>, With<Following>)>,
     ) {
-        for entity in removed_navigations.read() {
-            if let Some(mut commands) = commands.get_entity(entity) {
-                commands.remove::<Following>();
+        for (entity, nav_path) in &followers {
+            if nav_path.is_empty() {
+                if let Some(mut commands) = commands.get_entity(entity) {
+                    commands.remove::<Following>();
+                }
             }
         }
     }

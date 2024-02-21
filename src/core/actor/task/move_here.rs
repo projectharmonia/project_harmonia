@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     actor::{
-        movement::Movement,
+        movement_animation::Movement,
         task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
     },
     city::Ground,
     cursor_hover::CursorHover,
     game_world::WorldName,
-    navigation::{endpoint::Endpoint, Navigation},
+    navigation::{endpoint::Endpoint, NavPath, Navigation},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -56,30 +56,35 @@ impl MoveHerePlugin {
 
     fn activation_system(
         mut commands: Commands,
+        mut actors: Query<&mut Navigation>,
         tasks: Query<(&Parent, &MoveHere, &TaskState), Changed<TaskState>>,
     ) {
         for (parent, move_here, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                commands.entity(**parent).insert((
-                    Navigation::new(move_here.movement.speed()),
-                    Endpoint::new(move_here.endpoint),
-                ));
+                let mut navigation = actors
+                    .get_mut(**parent)
+                    .expect("actors should have navigation component");
+                *navigation = Navigation::new(move_here.movement.speed());
+                commands
+                    .entity(**parent)
+                    .insert(Endpoint::new(move_here.endpoint));
             }
         }
     }
 
     fn finish_system(
         mut commands: Commands,
-        mut removed_navigations: RemovedComponents<Navigation>,
-        children: Query<&Children>,
+        actors: Query<(&Children, &NavPath), Changed<NavPath>>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
-        for children in children.iter_many(removed_navigations.read()) {
-            if let Some((entity, _)) = tasks
-                .iter_many(children)
-                .find(|(_, &task_state)| task_state == TaskState::Active)
-            {
-                commands.entity(entity).despawn();
+        for (children, nav_path) in &actors {
+            if nav_path.is_empty() {
+                if let Some((entity, _)) = tasks
+                    .iter_many(children)
+                    .find(|(_, &task_state)| task_state == TaskState::Active)
+                {
+                    commands.entity(entity).despawn();
+                }
             }
         }
     }

@@ -1,5 +1,5 @@
 pub(super) mod human;
-mod movement;
+mod movement_animation;
 pub(crate) mod needs;
 pub(crate) mod task;
 
@@ -20,9 +20,11 @@ use super::{
     game_world::WorldName,
     highlighting::OutlineHighlightingExt,
 };
-use crate::core::{animation_state::AnimationState, cursor_hover::CursorHoverable};
+use crate::core::{
+    animation_state::AnimationState, cursor_hover::CursorHoverable, navigation::NavigationBundle,
+};
 use human::HumanPlugin;
-use movement::MovementPlugin;
+use movement_animation::MovementAnimationPlugin;
 use needs::NeedsPlugin;
 use task::TaskPlugin;
 
@@ -31,7 +33,12 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<ActorAnimation>>()
-            .add_plugins((MovementPlugin, NeedsPlugin, HumanPlugin, TaskPlugin))
+            .add_plugins((
+                MovementAnimationPlugin,
+                NeedsPlugin,
+                HumanPlugin,
+                TaskPlugin,
+            ))
             .register_type::<Actor>()
             .register_type::<FirstName>()
             .register_type::<Sex>()
@@ -77,6 +84,7 @@ impl ActorPlugin {
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     OutlineBundle::highlighting(),
+                    NavigationBundle::default(), // TODO: Serialize it as part of actor bundle.
                     CursorHoverable,
                 ))
                 .with_children(|parent| {

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     actor::{
-        movement::Movement,
+        movement_animation::Movement,
         task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
         Actor, ActorAnimation,
     },
@@ -12,7 +12,7 @@ use crate::core::{
     asset::collection::Collection,
     cursor_hover::CursorHover,
     game_world::WorldName,
-    navigation::{following::Following, Navigation},
+    navigation::{following::Following, NavPath, Navigation},
 };
 
 pub(super) struct TellSecretPlugin;
@@ -49,29 +49,31 @@ impl TellSecretPlugin {
 
     fn tell_activation_system(
         mut commands: Commands,
+        mut actors: Query<&mut Navigation>,
         tasks: Query<(&TellSecret, &Parent, &TaskState), Changed<TaskState>>,
     ) {
         for (tell_secret, parent, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                commands.entity(**parent).insert((
-                    Navigation::new(Movement::Walk.speed()).with_offset(0.5),
-                    Following(tell_secret.0),
-                ));
+                let mut navigation = actors
+                    .get_mut(**parent)
+                    .expect("actors should have navigation component");
+                *navigation = Navigation::new(Movement::Walk.speed()).with_offset(0.5);
+
+                commands.entity(**parent).insert(Following(tell_secret.0));
             }
         }
     }
 
     fn tell_system(
         mut commands: Commands,
-        mut removed_navigations: RemovedComponents<Navigation>,
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut actors: Query<(&Children, &mut AnimationState)>,
+        mut actors: Query<(Entity, &Children, &NavPath, &mut AnimationState), Changed<NavPath>>,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
-        for actor_entity in removed_navigations.read() {
-            let Ok((children, mut animation_state)) = actors.get_mut(actor_entity) else {
+        for (actor_entity, children, nav_path, mut animation_state) in &mut actors {
+            if !nav_path.is_empty() {
                 continue;
-            };
+            }
 
             let Some((tell_entity, tell_secret, _)) = tasks
                 .iter_many(children)
