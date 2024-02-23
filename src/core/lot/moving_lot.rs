@@ -15,7 +15,7 @@ impl Plugin for MovingLotPlugin {
             (
                 Self::picking_system
                     .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<MovingLot>())),
+                    .run_if(not(any_with_component::<MovingLot>)),
                 Self::movement_system,
                 Self::confirmation_system.run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
@@ -80,7 +80,7 @@ impl MovingLotPlugin {
             move_events.send(LotMove {
                 entity: moving_lot.entity,
                 offset: transform.translation.xz(),
-            })
+            });
         }
     }
 

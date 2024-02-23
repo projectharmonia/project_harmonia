@@ -25,21 +25,21 @@ impl Plugin for InGameMenuPlugin {
             (
                 Self::setup_system
                     .run_if(action_just_pressed(Action::Cancel))
-                    .run_if(not(any_with_component::<IngameMenu>()))
-                    .run_if(not(any_with_component::<TaskMenu>()))
-                    .run_if(not(any_with_component::<PlacingObject>()))
-                    .run_if(not(any_with_component::<CreatingLot>()))
-                    .run_if(not(any_with_component::<MovingLot>()))
-                    .run_if(not(any_with_component::<CreatingLot>()))
+                    .run_if(not(any_with_component::<IngameMenu>))
+                    .run_if(not(any_with_component::<TaskMenu>))
+                    .run_if(not(any_with_component::<PlacingObject>))
+                    .run_if(not(any_with_component::<CreatingLot>))
+                    .run_if(not(any_with_component::<MovingLot>))
+                    .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
                 (
                     Self::ingame_button_system,
                     Self::exit_dialog_button_system,
                     Self::cleanup_system
-                        .run_if(not(any_with_component::<ExitDialog>()))
+                        .run_if(not(any_with_component::<ExitDialog>))
                         .run_if(action_just_pressed(Action::Cancel)),
                 )
-                    .run_if(any_with_component::<IngameMenu>()),
+                    .run_if(any_with_component::<IngameMenu>),
             ),
         );
     }
@@ -98,7 +98,9 @@ impl InGameMenuPlugin {
                     save_events.send_default();
                     commands.entity(ingame_menus.single()).despawn_recursive();
                 }
-                IngameMenuButton::Settings => settings_events.send_default(),
+                IngameMenuButton::Settings => {
+                    settings_events.send_default();
+                }
                 IngameMenuButton::World => game_state.set(GameState::World),
                 IngameMenuButton::MainMenu => {
                     setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::MainMenu)
@@ -129,7 +131,9 @@ impl InGameMenuPlugin {
                             commands.remove_resource::<WorldName>();
                             game_state.set(GameState::MainMenu);
                         }
-                        ExitDialog::Game => exit_events.send_default(),
+                        ExitDialog::Game => {
+                            exit_events.send_default();
+                        }
                     }
                 }
                 ExitDialogButton::Exit => match exit_dialog {
@@ -137,7 +141,9 @@ impl InGameMenuPlugin {
                         commands.remove_resource::<WorldName>();
                         game_state.set(GameState::MainMenu);
                     }
-                    ExitDialog::Game => exit_events.send_default(),
+                    ExitDialog::Game => {
+                        exit_events.send_default();
+                    }
                 },
                 ExitDialogButton::Cancel => commands.entity(dialog_entity).despawn_recursive(),
             }

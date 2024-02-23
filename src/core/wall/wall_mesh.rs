@@ -66,9 +66,9 @@ impl WallMesh {
         }
 
         let disp = wall.displacement();
-        let angle = -disp.y.atan2(disp.x);
+        let angle = -disp.to_angle();
         let width = wall_width(disp);
-        let rotation_mat = Mat2::from_angle(angle); // TODO 0.13: Use `to_angle`.
+        let rotation_mat = Mat2::from_angle(angle);
 
         let start_walls = minmax_angles(disp, PointKind::Start, &connections.start);
         let (start_left, start_right) = offset_points(wall, start_walls, width);
@@ -326,7 +326,7 @@ impl WallMesh {
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
-        mesh.set_indices(Some(Indices::U32(self.indices)))
+        mesh.insert_indices(Indices::U32(self.indices))
     }
 }
 

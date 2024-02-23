@@ -7,7 +7,7 @@ use std::{fmt::Debug, io::Cursor};
 
 use anyhow::{anyhow, Context, Result};
 use bevy::{
-    ecs::reflect::ReflectCommandExt,
+    ecs::{entity::MapEntities, reflect::ReflectCommandExt},
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
@@ -63,11 +63,11 @@ impl Plugin for TaskPlugin {
             PreUpdate,
             (Self::queue_system, Self::cancelation_system)
                 .after(ClientSet::Receive)
-                .run_if(has_authority()),
+                .run_if(has_authority),
         )
         .add_systems(
             PostUpdate,
-            (Self::cleanup_system, Self::activation_system).run_if(has_authority()),
+            (Self::cleanup_system, Self::activation_system).run_if(has_authority),
         );
     }
 }
@@ -294,9 +294,9 @@ pub(crate) trait Task: Reflect {
 #[derive(Deserialize, Event, Serialize)]
 pub(crate) struct TaskCancel(pub(crate) Entity);
 
-impl MapNetworkEntities for TaskCancel {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map(self.0);
+impl MapEntities for TaskCancel {
+    fn map_entities<T: EntityMapper>(&mut self, mapper: &mut T) {
+        self.0 = mapper.map_entity(self.0);
     }
 }
 
@@ -306,8 +306,8 @@ pub(crate) struct TaskRequest {
     pub(crate) task: Box<dyn Task>,
 }
 
-impl MapNetworkEntities for TaskRequest {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.entity = mapper.map(self.entity);
+impl MapEntities for TaskRequest {
+    fn map_entities<T: EntityMapper>(&mut self, mapper: &mut T) {
+        self.entity = mapper.map_entity(self.entity);
     }
 }

@@ -211,7 +211,9 @@ impl WorldMenuPlugin {
                     commands.entity(actor_entity).insert(ActiveActor);
                     game_state.set(GameState::Family);
                 }
-                FamilyButton::Delete => despawn_events.send(FamilyDespawn(world_entity.0)),
+                FamilyButton::Delete => {
+                    despawn_events.send(FamilyDespawn(world_entity.0));
+                }
             }
         }
     }

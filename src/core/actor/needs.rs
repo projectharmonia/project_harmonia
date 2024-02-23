@@ -35,13 +35,13 @@ impl Plugin for NeedsPlugin {
                     Self::bladder_init_system,
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
                 Self::tick_system
                     .run_if(on_timer(Duration::from_secs(1)))
-                    .run_if(has_authority()),
+                    .run_if(has_authority),
             );
     }
 }

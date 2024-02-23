@@ -4,7 +4,7 @@ pub(super) mod wall_mount;
 
 use bevy::{
     asset::AssetPath,
-    ecs::reflect::ReflectCommandExt,
+    ecs::{entity::MapEntities, reflect::ReflectCommandExt},
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     scene::{self, SceneInstanceReady},
@@ -32,8 +32,6 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
-            // TODO 0.13: Remove.
-            .register_type::<AssetPath>()
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
             .add_client_event::<ObjectSpawn>(EventType::Unordered)
@@ -43,20 +41,20 @@ impl Plugin for ObjectPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    Self::init_system.run_if(resource_exists::<WorldName>()),
+                    Self::init_system.run_if(resource_exists::<WorldName>),
                     (
                         Self::spawn_system,
                         Self::movement_system,
                         Self::despawn_system,
                     )
-                        .run_if(has_authority()),
+                        .run_if(has_authority),
                 )
                     .after(ClientSet::Receive),
             )
             .add_systems(
                 SpawnScene,
                 Self::scene_init_system
-                    .run_if(resource_exists::<WorldName>())
+                    .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             );
     }
@@ -87,7 +85,7 @@ impl ObjectPlugin {
                 OutlineBundle::highlighting(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
-                CollisionLayers::new([Layer::Object], [Layer::Object, Layer::Wall]),
+                CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
             ));
 
             for component in &metadata.components {
@@ -109,9 +107,9 @@ impl ObjectPlugin {
         child_meshes: Query<(&Transform, &Handle<Mesh>)>,
     ) {
         for object_entity in objects.iter_many(ready_events.read().map(|event| event.parent)) {
-            let mut merged_mesh = Mesh::new(PrimitiveTopology::TriangleList)
+            let mut merged_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_indices(Some(Indices::U32(Vec::new())));
+                .with_inserted_indices(Indices::U32(Vec::new()));
 
             for child_entity in chidlren.iter_descendants(object_entity) {
                 commands
@@ -270,18 +268,18 @@ struct ObjectMove {
     rotation: Quat,
 }
 
-impl MapNetworkEntities for ObjectMove {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.entity = mapper.map(self.entity);
+impl MapEntities for ObjectMove {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.entity = entity_mapper.map_entity(self.entity);
     }
 }
 
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct ObjectDespawn(Entity);
 
-impl MapNetworkEntities for ObjectDespawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map(self.0);
+impl MapEntities for ObjectDespawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 

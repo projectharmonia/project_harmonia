@@ -24,11 +24,11 @@ impl Plugin for NavigationPlugin {
             .add_plugins((FollowingPlugin, EndpointPlugin))
             .add_systems(
                 PreUpdate,
-                Self::poll_system.run_if(resource_exists::<WorldName>()),
+                Self::poll_system.run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
-                Self::navigation_system.run_if(resource_exists::<WorldName>()),
+                Self::navigation_system.run_if(resource_exists::<WorldName>),
             );
     }
 }

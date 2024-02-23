@@ -4,6 +4,7 @@ pub(super) mod wall_mesh;
 use std::mem;
 
 use bevy::{
+    ecs::entity::MapEntities,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
 };
@@ -28,10 +29,10 @@ impl Plugin for WallPlugin {
                 PreUpdate,
                 (
                     Self::init_system,
-                    Self::spawn_system.run_if(resource_exists::<RenetServer>()),
+                    Self::spawn_system.run_if(resource_exists::<RenetServer>),
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
@@ -41,7 +42,7 @@ impl Plugin for WallPlugin {
                     Self::mesh_update_system,
                 )
                     .chain()
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }
@@ -68,18 +69,18 @@ impl WallPlugin {
                 reflectance: 0.0,
                 ..Default::default()
             };
-            let mesh = Mesh::new(PrimitiveTopology::TriangleList)
+            let mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_indices(Some(Indices::U32(Vec::new())));
+                .with_inserted_indices(Indices::U32(Vec::new()));
 
             commands.entity(entity).insert((
                 Name::new("Walls"),
                 WallConnections::default(),
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::new([Layer::Wall], [Layer::Object]),
+                CollisionLayers::new(Layer::Wall, Layer::Object),
                 CursorHoverable,
                 NavMeshAffector,
                 NoFrustumCulling,
@@ -119,12 +120,16 @@ impl WallPlugin {
     ) {
         for (wall_entity, parent, &wall) in &changed_walls {
             // Take changed connections to avoid mutability issues.
-            let mut connections =
-                mem::take(&mut *walls.component_mut::<WallConnections>(wall_entity));
+            let (.., mut connections) = walls
+                .get_mut(wall_entity)
+                .expect("this trait is a subset of the changed query");
+            let mut connections = mem::take(&mut *connections);
 
             // Cleanup old connections.
             for other_entity in connections.drain() {
-                let mut other_connections = walls.component_mut::<WallConnections>(other_entity);
+                let (.., mut other_connections) = walls
+                    .get_mut(other_entity)
+                    .expect("connected wall should also have connections");
                 if let Some((point, index)) = other_connections.position(wall_entity) {
                     other_connections.remove(point, index);
                 }
@@ -187,7 +192,7 @@ impl WallPlugin {
             }
 
             // Reinsert updated connections back.
-            *walls.component_mut::<WallConnections>(wall_entity) = connections;
+            *walls.get_mut(wall_entity).unwrap().2 = connections;
         }
     }
 
@@ -398,8 +403,8 @@ struct WallSpawn {
     wall: Wall,
 }
 
-impl MapNetworkEntities for WallSpawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.lot_entity = mapper.map(self.lot_entity);
+impl MapEntities for WallSpawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.lot_entity = entity_mapper.map_entity(self.lot_entity);
     }
 }

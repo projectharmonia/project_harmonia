@@ -19,7 +19,7 @@ impl Plugin for CreatingLotPlugin {
             (
                 Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<CreatingLot>())),
+                    .run_if(not(any_with_component::<CreatingLot>)),
                 Self::movement_system,
                 Self::vertex_placement_system.run_if(action_just_pressed(Action::Confirm)),
                 Self::despawn_system.run_if(

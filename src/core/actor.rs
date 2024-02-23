@@ -52,16 +52,16 @@ impl Plugin for ActorPlugin {
                 PreUpdate,
                 Self::init_system
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
-                Self::name_update_system.run_if(resource_exists::<WorldName>()),
+                Self::name_update_system.run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 SpawnScene,
                 Self::scene_init_system
-                    .run_if(resource_exists::<WorldName>())
+                    .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(PostUpdate, Self::exclusive_system);

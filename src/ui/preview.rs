@@ -16,8 +16,8 @@ pub(super) struct PreviewPlugin;
 
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<PreviewState>()
-            .add_systems(Startup, Self::spawn_camera_system)
+        app.init_state::<PreviewState>()
+            .add_systems(Startup, Self::setup_system)
             .add_systems(OnEnter(PreviewState::Inactive), Self::deactivation_system)
             .add_systems(
                 Update,
@@ -31,8 +31,19 @@ impl Plugin for PreviewPlugin {
 }
 
 impl PreviewPlugin {
-    fn spawn_camera_system(mut commands: Commands) {
+    fn setup_system(mut commands: Commands) {
         commands.spawn(PreviewCameraBundle::default());
+        commands.spawn((
+            PREVIEW_RENDER_LAYER,
+            DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    shadows_enabled: true,
+                    ..Default::default()
+                },
+                transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+                ..Default::default()
+            },
+        ));
     }
 
     fn scene_spawning_system(
@@ -40,18 +51,11 @@ impl PreviewPlugin {
         mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        previews: Query<(Entity, &Preview), Without<PreviewProcessed>>,
-        parents: Query<&Parent>,
-        styles: Query<&Style>,
+        previews: Query<(Entity, &Preview, Has<CalculatedClip>), Without<PreviewProcessed>>,
         actors: Query<&Handle<Scene>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
     ) {
-        if let Some((preview_entity, &preview)) = previews.iter().find(|&(entity, ..)| {
-            // TODO 0.13: Use `CalculatedClip` which was suggested in https://github.com/bevyengine/bevy/issues/11441.
-            styles
-                .iter_many(parents.iter_ancestors(entity))
-                .all(|style| style.display != Display::None)
-        }) {
+        if let Some((preview_entity, &preview, ..)) = previews.iter().find(|&(.., c)| !c) {
             let (translation, scene_handle) = match preview {
                 Preview::Actor(entity) => {
                     debug!("generating preview for actor {entity:?}");
@@ -194,7 +198,6 @@ struct PreviewCameraBundle {
     name: Name,
     preview_camera: PreviewCamera,
     render_layer: RenderLayers,
-    ui_config: UiCameraConfig,
     camera_bundle: Camera3dBundle,
     visibility_bundle: VisibilityBundle,
 }
@@ -209,11 +212,11 @@ impl Default for PreviewCameraBundle {
                 transform: Transform::from_translation(Vec3::Y * 1000.0), // High above the player to avoid noticing.
                 camera: Camera {
                     is_active: false,
+                    order: -2,
                     ..Default::default()
                 },
                 ..Default::default()
             },
-            ui_config: UiCameraConfig { show_ui: false },
             // Preview scenes will be spawned as children so this component is necessary in order to have scenes visible.
             visibility_bundle: Default::default(),
         }

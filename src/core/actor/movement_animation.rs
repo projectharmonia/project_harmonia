@@ -15,7 +15,7 @@ impl Plugin for MovementAnimationPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Movement>().add_systems(
             Update,
-            Self::animation_system.run_if(resource_exists::<WorldName>()),
+            Self::animation_system.run_if(resource_exists::<WorldName>),
         );
     }
 }

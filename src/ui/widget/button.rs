@@ -112,22 +112,29 @@ impl ButtonPlugin {
     }
 
     fn exclusive_system(
-        buttons: Query<(Entity, &Parent, &mut Toggled), (Changed<Toggled>, With<ExclusiveButton>)>,
+        mut query_cache: Local<Vec<Entity>>,
+        mut buttons: Query<(Entity, &Parent, &mut Toggled), With<ExclusiveButton>>,
         children: Query<&Children>,
     ) {
-        for (toggled_entity, parent, _) in buttons.iter().filter(|(.., toggled)| toggled.0) {
-            let children = children.get(**parent).unwrap();
-            for &other_entity in children.iter().filter(|&&entity| entity != toggled_entity) {
-                // SAFETY: called only on children, one at a time.
-                if let Ok(mut toggled) =
-                    unsafe { buttons.get_component_unchecked_mut::<Toggled>(other_entity) }
-                {
-                    if toggled.0 {
-                        toggled.0 = false;
-                    }
+        for (toggled_entity, parent, _) in buttons
+            .iter_mut()
+            .filter(|(.., toggled)| toggled.is_changed() && toggled.0)
+        {
+            for &other_entity in children.get(**parent).unwrap() {
+                if other_entity != toggled_entity {
+                    query_cache.push(other_entity);
                 }
             }
         }
+
+        let mut iter = buttons.iter_many_mut(&query_cache);
+        while let Some((.., mut toggled)) = iter.fetch_next() {
+            if toggled.0 {
+                toggled.0 = false
+            }
+        }
+
+        query_cache.clear();
     }
 
     fn tab_switching_system(

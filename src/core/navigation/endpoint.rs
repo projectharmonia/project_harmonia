@@ -11,7 +11,7 @@ impl Plugin for EndpointPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>()),
+            (Self::init_system, Self::cleanup_system).run_if(resource_exists::<WorldName>),
         );
     }
 }

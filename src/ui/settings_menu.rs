@@ -28,11 +28,11 @@ impl Plugin for SettingsMenuPlugin {
                 (
                     Self::mapping_button_text_system,
                     Self::mapping_button_system,
-                    Self::binding_system.run_if(any_with_component::<BindingButton>()),
+                    Self::binding_system.run_if(any_with_component::<BindingButton>),
                     Self::binding_dialog_button_system,
                     Self::settings_button_system,
                 )
-                    .run_if(any_with_component::<SettingsMenu>()),
+                    .run_if(any_with_component::<SettingsMenu>),
             )
             .add_systems(
                 PostUpdate,
@@ -143,7 +143,7 @@ impl SettingsMenuPlugin {
                 Some(InputKind::GamepadButton(gamepad_button)) => {
                     format!("{gamepad_button:?}")
                 }
-                Some(InputKind::Keyboard(keycode)) => {
+                Some(InputKind::PhysicalKey(keycode)) => {
                     format!("{keycode:?}")
                 }
                 Some(InputKind::Mouse(mouse_button)) => {
@@ -243,8 +243,8 @@ impl SettingsMenuPlugin {
                     .expect("replace button should be spawned with the dialog");
                 style.display = Display::Flex;
             } else {
-                let mut mapping = mapping_buttons
-                    .get_component_mut::<Mapping>(binding_button.0)
+                let (_, mut mapping) = mapping_buttons
+                    .get_mut(binding_button.0)
                     .expect("binding dialog should point to a button with mapping");
                 mapping.input_kind = Some(input_kind);
                 commands.entity(dialog_entity).despawn_recursive();

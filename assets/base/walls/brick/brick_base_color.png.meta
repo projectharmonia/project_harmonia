@@ -5,6 +5,7 @@
         settings: (
             format: FromExtension,
             is_srgb: true,
+            asset_usage: RenderAssetUsages("MAIN_WORLD | RENDER_WORLD"),
             sampler: Descriptor((
                 label: None,
                 address_mode_u: Repeat,

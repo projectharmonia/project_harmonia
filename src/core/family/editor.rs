@@ -34,7 +34,6 @@ impl EditorPlugin {
             .with_children(|parent| {
                 parent.spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
-                        illuminance: 30000.0,
                         shadows_enabled: true,
                         ..Default::default()
                     },

@@ -10,7 +10,7 @@ pub(super) trait ComponentCommandsExt {
     fn insert_reflect_bundle(&mut self, bundle: Box<dyn Reflect>) -> &mut Self;
 }
 
-impl ComponentCommandsExt for EntityCommands<'_, '_, '_> {
+impl ComponentCommandsExt for EntityCommands<'_> {
     fn insert_reflect_bundle(&mut self, bundle: Box<dyn Reflect>) -> &mut Self {
         self.add(InsertReflectBundle(bundle));
         self

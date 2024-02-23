@@ -32,9 +32,7 @@ impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(GameState::Family),
-            (apply_deferred, Self::setup_system)
-                .chain()
-                .after(FamilyPlugin::activation_system),
+            Self::setup_system.after(FamilyPlugin::activation_system),
         )
         .add_systems(
             Update,

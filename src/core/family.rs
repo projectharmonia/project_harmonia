@@ -33,8 +33,8 @@ pub(crate) struct FamilyPlugin;
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EditorPlugin)
-            .add_state::<FamilyMode>()
-            .add_state::<BuildingMode>()
+            .init_state::<FamilyMode>()
+            .init_state::<BuildingMode>()
             .register_type::<ActorFamily>()
             .register_type::<Family>()
             .register_type::<Budget>()
@@ -57,10 +57,10 @@ impl Plugin for FamilyPlugin {
                 PreUpdate,
                 (
                     Self::members_update_system,
-                    (Self::spawn_system, Self::despawn_system).run_if(has_authority()),
+                    (Self::spawn_system, Self::despawn_system).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
@@ -355,8 +355,8 @@ pub(crate) struct FamilyMembers(Vec<Entity>);
 pub(crate) struct ActorFamily(pub(crate) Entity);
 
 impl MapEntities for ActorFamily {
-    fn map_entities(&mut self, entity_mapper: &mut EntityMapper) {
-        self.0 = entity_mapper.get_or_reserve(self.0);
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 
@@ -375,9 +375,9 @@ pub(crate) struct FamilySpawn {
     pub(crate) select: bool,
 }
 
-impl MapNetworkEntities for FamilySpawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.city_entity = mapper.map(self.city_entity);
+impl MapEntities for FamilySpawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.city_entity = entity_mapper.map_entity(self.city_entity);
     }
 }
 
@@ -400,9 +400,9 @@ impl FamilyScene {
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 pub(crate) struct FamilyDespawn(pub(crate) Entity);
 
-impl MapNetworkEntities for FamilyDespawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map(self.0);
+impl MapEntities for FamilyDespawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 
@@ -410,8 +410,8 @@ impl MapNetworkEntities for FamilyDespawn {
 #[derive(Deserialize, Event, Serialize)]
 pub(super) struct SelectedFamilySpawned(pub(super) Entity);
 
-impl MapNetworkEntities for SelectedFamilySpawned {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map(self.0);
+impl MapEntities for SelectedFamilySpawned {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }

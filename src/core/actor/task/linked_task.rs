@@ -25,17 +25,26 @@ impl LinkedTaskPlugin {
         }
     }
 
-    fn state_sync_system(tasks: Query<(&mut TaskState, &LinkedTask), Changed<TaskState>>) {
-        for (&task_state, &linked_task) in &tasks {
-            // SAFETY: called only on linked entities, one at a time.
-            if let Ok(mut linked_state) =
-                unsafe { tasks.get_component_unchecked_mut::<TaskState>(linked_task.0) }
-            {
-                if *linked_state != task_state {
-                    *linked_state = task_state;
-                }
+    fn state_sync_system(
+        mut query_cache: Local<Vec<(Entity, TaskState)>>,
+        mut tasks: Query<(&mut TaskState, &LinkedTask)>,
+    ) {
+        for (task_state, linked_task) in &mut tasks {
+            if task_state.is_changed() {
+                query_cache.push((linked_task.0, *task_state));
             }
         }
+
+        for &(linked_entity, task_state) in &query_cache {
+            let (mut linked_state, _) = tasks
+                .get_mut(linked_entity)
+                .expect("linked task should have the same components");
+            if *linked_state != task_state {
+                *linked_state = task_state;
+            }
+        }
+
+        query_cache.clear();
     }
 
     fn finish_system(

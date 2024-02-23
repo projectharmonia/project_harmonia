@@ -35,10 +35,10 @@ impl Plugin for DeveloperPlugin {
 
 impl DeveloperPlugin {
     fn debug_collisions_toggle_system(
+        mut config_store: ResMut<GizmoConfigStore>,
         settings: Res<Settings>,
-        mut physics_debug_config: ResMut<PhysicsDebugConfig>,
     ) {
-        physics_debug_config.enabled = settings.developer.debug_collisions;
+        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
     }
 
     fn wireframe_toggle_system(

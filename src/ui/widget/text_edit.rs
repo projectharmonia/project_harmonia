@@ -22,14 +22,14 @@ impl Plugin for TextEditPlugin {
 impl TextEditPlugin {
     fn input_system(
         mut char_events: EventReader<ReceivedCharacter>,
-        keys: Res<Input<KeyCode>>,
+        keys: Res<ButtonInput<KeyCode>>,
         mut text_edits: Query<&mut Text, With<ActiveEdit>>,
     ) {
         if let Ok(mut text) = text_edits.get_single_mut() {
             for event in char_events.read() {
-                text.sections[0].value.push(event.char);
+                text.sections[0].value += event.char.as_str();
             }
-            if keys.pressed(KeyCode::Back) {
+            if keys.pressed(KeyCode::Backspace) {
                 text.sections[0].value.pop();
             }
         }

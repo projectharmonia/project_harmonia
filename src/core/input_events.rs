@@ -22,10 +22,9 @@ impl InputEvents<'_, '_> {
         if let Some(input) = self
             .keys
             .read()
-            .filter(|input| input.state == ButtonState::Released)
-            .find_map(|input| input.key_code)
+            .find(|input| input.state == ButtonState::Released)
         {
-            return Some(input.into());
+            return Some(input.key_code.into());
         }
 
         // Ignore mouse buttons if any UI element is interacting

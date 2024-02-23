@@ -29,23 +29,23 @@ use ui::UiPlugins;
 fn main() {
     App::new()
         .init_resource::<Cli>()
-        .insert_resource(Msaa::Off)
+        .insert_resource(Msaa::Off) // Required by SSAO.
         .insert_resource(AmbientLight {
             color: Color::ANTIQUE_WHITE,
-            brightness: 1.0,
+            brightness: 1000.0,
         })
         .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
-                    filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=warn,project_harmonia=debug"
-                        .into(),
-                    level: bevy::log::Level::DEBUG,
+                    filter: "info,project_harmonia=debug".into(),
+                    ..Default::default()
                 })
                 .set(RenderPlugin {
                     render_creation: RenderCreation::Automatic(WgpuSettings {
                         features: WgpuFeatures::POLYGON_MODE_LINE,
                         ..Default::default()
                     }),
+                    synchronous_pipeline_compilation: true,
                 }),
             ReplicationPlugins,
             WireframePlugin,
@@ -68,8 +68,11 @@ fn main() {
                 max_tile_generation_tasks: None,
             }),
             OxidizedNavigationDebugDrawPlugin,
-            // TODO 0.13: Disable `IntegratorPlugin`, `SolverPlugin` and `SleepingPlugin`.
-            PhysicsPlugins::default(),
+            PhysicsPlugins::default()
+                .build()
+                .disable::<IntegratorPlugin>()
+                .disable::<SolverPlugin>()
+                .disable::<SleepingPlugin>(),
             PhysicsDebugPlugin::default(),
             OutlinePlugin,
             CorePlugins,

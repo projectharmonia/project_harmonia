@@ -32,7 +32,7 @@ impl Plugin for TellSecretPlugin {
                     Self::listen_activation_system,
                     Self::finish_system,
                 )
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }
@@ -98,8 +98,8 @@ impl TellSecretPlugin {
     ) {
         for (listen_secret, parent, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                let tell_transform: Transform = *actors
-                    .get_component(listen_secret.0)
+                let (&tell_transform, _) = actors
+                    .get(listen_secret.0)
                     .expect("teller should have transform");
                 let (mut listen_transform, mut animation_state) = actors
                     .get_mut(**parent)

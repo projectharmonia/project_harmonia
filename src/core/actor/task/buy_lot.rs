@@ -24,7 +24,7 @@ impl Plugin for BuyLotPlugin {
                 Update,
                 (
                     Self::list_system.in_set(TaskListSet),
-                    Self::activation_system.run_if(has_authority()),
+                    Self::activation_system.run_if(has_authority),
                 ),
             );
     }
@@ -86,7 +86,7 @@ impl FromWorld for BuyLot {
 }
 
 impl MapEntities for BuyLot {
-    fn map_entities(&mut self, entity_mapper: &mut EntityMapper) {
-        self.0 = entity_mapper.get_or_reserve(self.0);
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }

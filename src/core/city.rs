@@ -1,4 +1,4 @@
-use bevy::prelude::{shape::Plane, *};
+use bevy::prelude::*;
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
@@ -19,19 +19,14 @@ pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<CityMode>()
+        app.init_state::<CityMode>()
             .register_type::<City>()
             .replicate::<City>()
             .init_resource::<PlacedCities>()
             .add_systems(OnEnter(GameState::City), Self::activation_system)
             .add_systems(
                 OnEnter(GameState::Family),
-                (
-                    Self::actor_activation_system,
-                    apply_deferred,
-                    Self::activation_system,
-                )
-                    .chain(),
+                (Self::actor_activation_system, Self::activation_system).chain(),
             )
             .add_systems(OnExit(GameState::City), Self::deactivation_system)
             .add_systems(OnExit(GameState::Family), Self::deactivation_system)
@@ -39,7 +34,7 @@ impl Plugin for CityPlugin {
                 PreUpdate,
                 Self::init_system
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
@@ -77,7 +72,7 @@ impl CityPlugin {
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {
-                            mesh: meshes.add(Mesh::from(Plane::from_size(CITY_SIZE))),
+                            mesh: meshes.add(Plane3d::default().mesh().size(CITY_SIZE, CITY_SIZE)),
                             material: materials.add(StandardMaterial {
                                 base_color: Color::rgb(0.5, 0.5, 0.5),
                                 perceptual_roughness: 1.0,
@@ -111,7 +106,6 @@ impl CityPlugin {
         commands.entity(entity).with_children(|parent| {
             parent.spawn(DirectionalLightBundle {
                 directional_light: DirectionalLight {
-                    illuminance: 30000.0,
                     shadows_enabled: true,
                     ..Default::default()
                 },
@@ -214,7 +208,7 @@ impl Default for GroundBundle {
         Self {
             name: Name::new("Ground"),
             collider: Collider::cuboid(HALF_CITY_SIZE, 0.0, HALF_CITY_SIZE),
-            collision_layers: CollisionLayers::none().add_group(Layer::Ground),
+            collision_layers: CollisionLayers::new(LayerMask::ALL, Layer::Ground),
             ground: Ground,
             cursor_hoverable: CursorHoverable,
             nav_mesh_affector: NavMeshAffector,

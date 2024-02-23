@@ -16,7 +16,7 @@ impl Plugin for CursorHoverPlugin {
                     .pipe(Self::hover_update_system)
                     .run_if(cursor_hover_enabled),
                 Self::cleanup_system
-                    .run_if(resource_changed::<CursorHoverSettings>())
+                    .run_if(resource_changed::<CursorHoverSettings>)
                     .run_if(not(cursor_hover_enabled)),
             )
                 .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),

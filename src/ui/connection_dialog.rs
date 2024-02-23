@@ -13,8 +13,8 @@ impl Plugin for ConnectionDialogPlugin {
         app.add_systems(Update, Self::button_system).add_systems(
             PostUpdate,
             (
-                Self::setup_system.run_if(resource_added::<RenetClient>()),
-                Self::cleanup_system.run_if(client_just_disconnected()),
+                Self::setup_system.run_if(resource_added::<RenetClient>),
+                Self::cleanup_system.run_if(client_just_disconnected),
             ),
         );
     }

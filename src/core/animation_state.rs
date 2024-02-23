@@ -16,12 +16,12 @@ impl Plugin for AnimationStatePlugin {
             .add_systems(
                 SpawnScene,
                 Self::scene_init_system
-                    .run_if(resource_exists::<WorldName>())
+                    .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
-                (Self::play_system, Self::finish_system).run_if(resource_exists::<WorldName>()),
+                (Self::play_system, Self::finish_system).run_if(resource_exists::<WorldName>),
             );
     }
 }

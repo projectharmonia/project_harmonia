@@ -20,14 +20,11 @@ pub(super) struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Replication>()
-            .register_type::<Transform>()
-            .register_type::<Name>()
-            .replicate::<Transform>()
+        app.replicate::<Transform>()
             .replicate::<Name>()
             .add_systems(
                 Update,
-                Self::client_connection_system.run_if(client_just_connected()),
+                Self::client_connection_system.run_if(client_just_connected),
             );
     }
 }

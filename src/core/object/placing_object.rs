@@ -31,7 +31,7 @@ impl Plugin for PlacingObjectPlugin {
                     (
                         Self::picking_system
                             .run_if(action_just_pressed(Action::Confirm))
-                            .run_if(not(any_with_component::<PlacingObject>())),
+                            .run_if(not(any_with_component::<PlacingObject>)),
                         Self::confirmation_system
                             .after(Self::collision_system)
                             .run_if(action_just_pressed(Action::Confirm)),
@@ -102,7 +102,6 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        // TODO 0.13: Remove kinematic body hack.
         debug!("creating {placing_object:?}");
         match placing_object.kind {
             PlacingObjectKind::Spawning(id) => {
@@ -111,8 +110,6 @@ impl PlacingObjectPlugin {
                     .expect("metadata should always come from file");
 
                 commands.entity(placing_entity).insert((
-                    RigidBody::Kinematic,
-                    Sensor,
                     ObjectPath(metadata_path.into_owned()),
                     CursorOffset::default(),
                     Transform::from_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
@@ -129,13 +126,11 @@ impl PlacingObjectPlugin {
                     .viewport_to_world(&camera_transform, cursor_pos)
                     .expect("camera should always have a viewport");
                 let distance = ray
-                    .intersect_plane(Vec3::ZERO, Vec3::Y)
+                    .intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))
                     .expect("camera should always look at the ground");
                 let offset = object_transform.translation - ray.get_point(distance);
 
                 commands.entity(placing_entity).insert((
-                    RigidBody::Kinematic,
-                    Sensor,
                     object_transform,
                     CursorOffset(offset),
                     object_path.clone(),
@@ -171,7 +166,7 @@ impl PlacingObjectPlugin {
             .viewport_to_world(&camera_transform, cursor_pos)
             .expect("ray should be created from screen coordinates");
 
-        let mut filter = SpatialQueryFilter::new().with_masks([Layer::Ground]);
+        let mut filter = SpatialQueryFilter::from_mask(Layer::Ground);
         if let PlacingObjectKind::Moving(entity) = placing_object.kind {
             filter.excluded_entities.insert(entity);
         }
@@ -255,11 +250,13 @@ impl PlacingObjectPlugin {
                             rotation: transform.rotation,
                         });
                     }
-                    PlacingObjectKind::Moving(entity) => move_events.send(ObjectMove {
-                        entity,
-                        translation: transform.translation,
-                        rotation: transform.rotation,
-                    }),
+                    PlacingObjectKind::Moving(entity) => {
+                        move_events.send(ObjectMove {
+                            entity,
+                            translation: transform.translation,
+                            rotation: transform.rotation,
+                        });
+                    }
                 }
             }
         }

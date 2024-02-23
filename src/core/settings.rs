@@ -89,19 +89,19 @@ impl Default for ControlsSettings {
         let mappings = [
             (
                 Action::CameraForward,
-                vec![KeyCode::W.into(), KeyCode::Up.into()],
+                vec![KeyCode::KeyW.into(), KeyCode::ArrowUp.into()],
             ),
             (
                 Action::CameraBackward,
-                vec![KeyCode::S.into(), KeyCode::Down.into()],
+                vec![KeyCode::KeyS.into(), KeyCode::ArrowDown.into()],
             ),
             (
                 Action::CameraLeft,
-                vec![KeyCode::A.into(), KeyCode::Left.into()],
+                vec![KeyCode::KeyA.into(), KeyCode::ArrowLeft.into()],
             ),
             (
                 Action::CameraRight,
-                vec![KeyCode::D.into(), KeyCode::Right.into()],
+                vec![KeyCode::KeyD.into(), KeyCode::ArrowRight.into()],
             ),
             (Action::RotateCamera, vec![MouseButton::Right.into()]),
             (Action::ZoomCamera, vec![SingleAxis::mouse_wheel_y().into()]),

@@ -1,7 +1,7 @@
 pub(crate) mod creating_lot;
 pub(crate) mod moving_lot;
 
-use bevy::prelude::*;
+use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<LotTool>()
+        app.init_state::<LotTool>()
             .add_plugins((CreatingLotPlugin, MovingLotPlugin))
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
@@ -33,14 +33,14 @@ impl Plugin for LotPlugin {
                         Self::movement_system,
                         Self::despawn_system,
                     )
-                        .run_if(has_authority()),
+                        .run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::draw_system.run_if(resource_exists::<WorldName>()),
+                Self::draw_system.run_if(resource_exists::<WorldName>),
             );
     }
 }
@@ -183,9 +183,9 @@ struct LotSpawn {
     city_entity: Entity,
 }
 
-impl MapNetworkEntities for LotSpawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.city_entity = mapper.map(self.city_entity);
+impl MapEntities for LotSpawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.city_entity = entity_mapper.map_entity(self.city_entity);
     }
 }
 
@@ -195,18 +195,18 @@ struct LotMove {
     offset: Vec2,
 }
 
-impl MapNetworkEntities for LotMove {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.entity = mapper.map(self.entity);
+impl MapEntities for LotMove {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.entity = entity_mapper.map_entity(self.entity);
     }
 }
 
 #[derive(Clone, Copy, Event, Deserialize, Serialize)]
 struct LotDespawn(Entity);
 
-impl MapNetworkEntities for LotDespawn {
-    fn map_entities<T: Mapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map(self.0);
+impl MapEntities for LotDespawn {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 

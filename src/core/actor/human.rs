@@ -29,7 +29,7 @@ impl Plugin for HumanPlugin {
                 PreUpdate,
                 Self::sex_update_system
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,

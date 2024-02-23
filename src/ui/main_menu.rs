@@ -56,8 +56,12 @@ impl MainMenuPlugin {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
                 MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
-                MainMenuButton::Settings => settings_events.send_default(),
-                MainMenuButton::Exit => exit_events.send_default(),
+                MainMenuButton::Settings => {
+                    settings_events.send_default();
+                }
+                MainMenuButton::Exit => {
+                    exit_events.send_default();
+                }
             }
         }
     }

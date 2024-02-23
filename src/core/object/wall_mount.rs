@@ -22,7 +22,7 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system.run_if(resource_exists::<WorldName>()),
+                    Self::init_system.run_if(resource_exists::<WorldName>),
                     (
                         Self::placing_init_system.before(PlacingObjectPlugin::rotation_system),
                         Self::snapping_system
@@ -43,7 +43,7 @@ impl Plugin for WallMountPlugin {
                 PostUpdate,
                 (Self::apertures_update_system, Self::cleanup_system)
                     .before(WallPlugin::mesh_update_system)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }
@@ -55,7 +55,7 @@ impl WallMountPlugin {
         mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
     ) {
         for (entity, mut collision_layers) in &mut objects {
-            *collision_layers = collision_layers.remove_mask(Layer::Wall);
+            collision_layers.filters.remove(Layer::Wall);
             commands.entity(entity).insert(ObjectWall::default());
         }
     }
@@ -131,9 +131,10 @@ impl WallMountPlugin {
                             positions: positions.clone(),
                         });
 
-                        walls
-                            .component_mut::<Apertures>(current_entity)
-                            .remove_existing(object_entity);
+                        let (_, mut current_apertures, _) = walls
+                            .get_mut(current_entity)
+                            .expect("all doors should have apertures");
+                        current_apertures.remove_existing(object_entity);
 
                         object_wall.0 = Some(wall_entity);
                     }
@@ -147,9 +148,10 @@ impl WallMountPlugin {
                     object_wall.0 = Some(wall_entity);
                 }
             } else if let Some(surrounding_entity) = object_wall.0.take() {
-                walls
-                    .component_mut::<Apertures>(surrounding_entity)
-                    .remove_existing(object_entity);
+                let (_, mut current_apertures, _) = walls
+                    .get_mut(surrounding_entity)
+                    .expect("all doors should have apertures");
+                current_apertures.remove_existing(object_entity);
             }
         }
     }

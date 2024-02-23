@@ -26,7 +26,7 @@ impl Plugin for MoveHerePlugin {
                     Self::activation_system,
                     Self::finish_system,
                 )
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }

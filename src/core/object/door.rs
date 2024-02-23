@@ -13,12 +13,12 @@ impl Plugin for DoorPlugin {
         app.register_type::<Door>()
             .add_systems(
                 Update,
-                (Self::animation_system, Self::init_system).run_if(resource_exists::<WorldName>()),
+                (Self::animation_system, Self::init_system).run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
                 (Self::cleanup_system, Self::state_update_system)
-                    .run_if(resource_exists::<WorldName>()),
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }

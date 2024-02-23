@@ -23,13 +23,13 @@ impl Plugin for SpawningWallPlugin {
             (
                 Self::spawn_system
                     .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<SpawningWall>())),
+                    .run_if(not(any_with_component::<SpawningWall>)),
                 Self::movement_system
                     .run_if(action_pressed(Action::Confirm))
-                    .run_if(any_with_component::<SpawningWall>()),
+                    .run_if(any_with_component::<SpawningWall>),
                 Self::confirmation_system
                     .run_if(action_just_released(Action::Confirm))
-                    .run_if(any_with_component::<SpawningWall>()),
+                    .run_if(any_with_component::<SpawningWall>),
             )
                 .run_if(in_state(GameState::Family))
                 .run_if(in_state(FamilyMode::Building))
