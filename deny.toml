@@ -1,18 +1,16 @@
-[advisories]
-unmaintained = "deny"
-yanked = "deny"
-notice = "deny"
-unsound = "deny"
-ignore = []
-
 [licenses]
-copyleft = "allow"
-allow-osi-fsf-free = "either"
-
-[[licenses.clarify]]
-name = "stretch"
-expression = "MIT"
-license-files = []
+allow = [
+  "AGPL-3.0",
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "BSD-2-Clause",
+  "CC0-1.0",
+  "Unicode-DFS-2016",
+]
 
 [bans]
 multiple-versions = "deny"
