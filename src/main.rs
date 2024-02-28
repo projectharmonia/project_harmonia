@@ -17,6 +17,7 @@ use bevy::{
 use bevy_atmosphere::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
+use bevy_simple_text_input::TextInputPlugin;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
 use oxidized_navigation::{
@@ -74,6 +75,7 @@ fn main() {
                 .disable::<SolverPlugin>()
                 .disable::<SleepingPlugin>(),
             PhysicsDebugPlugin::default(),
+            TextInputPlugin,
             OutlinePlugin,
             CorePlugins,
             UiPlugins,

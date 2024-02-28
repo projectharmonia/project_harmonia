@@ -115,18 +115,18 @@ impl FromWorld for Theme {
             text_edit: TextEditTheme {
                 style: Style {
                     min_width: Val::Px(200.0),
-                    min_height: Val::Px(20.0),
+                    border: UiRect::all(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..Default::default()
                 },
                 text: TextStyle {
                     font: text_handle,
-                    font_size: 20.0,
-                    color: Color::rgb(0.1, 0.1, 0.1),
+                    font_size: 25.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
                 },
-                normal_color: Color::rgb(0.5, 0.5, 0.5),
-                hovered_color: Color::rgb(0.55, 0.55, 0.55),
-                active_color: Color::rgb(0.6, 0.6, 0.6),
-                hovered_active_color: Color::rgb(0.65, 0.65, 0.65),
+                background_color: Color::rgb(0.15, 0.15, 0.15),
+                active_border: Color::rgb(0.35, 0.75, 0.35),
+                inactive_border: Color::rgb(0.35, 0.35, 0.35),
             },
             checkbox: CheckboxTheme {
                 node: Style {
@@ -194,10 +194,9 @@ pub(crate) struct LabelTheme {
 pub(crate) struct TextEditTheme {
     pub(crate) style: Style,
     pub(crate) text: TextStyle,
-    pub(crate) normal_color: Color,
-    pub(crate) hovered_color: Color,
-    pub(crate) active_color: Color,
-    pub(crate) hovered_active_color: Color,
+    pub(crate) background_color: Color,
+    pub(crate) inactive_border: Color,
+    pub(crate) active_border: Color,
 }
 
 pub(crate) struct CheckboxTheme {

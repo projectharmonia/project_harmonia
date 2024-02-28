@@ -1,84 +1,36 @@
-use bevy::{ecs::query::Has, prelude::*};
+use bevy::{prelude::*, ui::UiSystem};
+use bevy_simple_text_input::{
+    TextInputBundle, TextInputCursorPos, TextInputInactive, TextInputTextStyle, TextInputValue,
+};
 
 use crate::ui::theme::Theme;
 
-/// A simple stub just to being able to type text.
+/// Adds focus functionality to `bevy_simple_text_input`.
 pub(super) struct TextEditPlugin;
 
 impl Plugin for TextEditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                Self::input_system,
-                Self::interaction_system,
-                Self::activation_system,
-            ),
-        )
-        .add_systems(PostUpdate, Self::exclusive_system);
+        app.add_systems(PreUpdate, Self::focus_color_system.after(UiSystem::Focus));
     }
 }
 
 impl TextEditPlugin {
-    fn input_system(
-        mut char_events: EventReader<ReceivedCharacter>,
-        keys: Res<ButtonInput<KeyCode>>,
-        mut text_edits: Query<&mut Text, With<ActiveEdit>>,
-    ) {
-        if let Ok(mut text) = text_edits.get_single_mut() {
-            for event in char_events.read() {
-                text.sections[0].value += event.char.as_str();
-            }
-            if keys.pressed(KeyCode::Backspace) {
-                text.sections[0].value.pop();
-            }
-        }
-    }
-
-    fn interaction_system(
+    fn focus_color_system(
         theme: Res<Theme>,
-        mut text_edits: Query<
-            (&Interaction, &mut BackgroundColor, Has<ActiveEdit>),
-            (
-                Or<(Changed<Interaction>, Added<ActiveEdit>)>,
-                With<TextEdit>,
-            ),
-        >,
+        interactions: Query<(Entity, &Interaction), Changed<Interaction>>,
+        mut text_inputs: Query<(Entity, &mut TextInputInactive, &mut BorderColor)>,
     ) {
-        for (&interaction, mut background, active_edit) in &mut text_edits {
-            *background = match (interaction, active_edit) {
-                (Interaction::Pressed, _) | (Interaction::None, true) => {
-                    theme.text_edit.active_color.into()
+        for (interaction_entity, interaction) in &interactions {
+            if *interaction == Interaction::Pressed {
+                for (input_entity, mut inactive, mut border_color) in &mut text_inputs {
+                    if input_entity == interaction_entity {
+                        inactive.0 = false;
+                        *border_color = theme.text_edit.active_border.into();
+                    } else {
+                        inactive.0 = true;
+                        *border_color = theme.text_edit.inactive_border.into();
+                    }
                 }
-                (Interaction::Hovered, true) => theme.text_edit.hovered_active_color.into(),
-                (Interaction::Hovered, false) => theme.text_edit.hovered_color.into(),
-                (Interaction::None, false) => theme.text_edit.normal_color.into(),
-            };
-        }
-    }
-
-    fn activation_system(
-        mut commands: Commands,
-        mut text_edits: Query<(Entity, &Interaction), (Changed<Interaction>, With<TextEdit>)>,
-    ) {
-        for (entity, &interaction) in &mut text_edits {
-            if interaction == Interaction::Pressed {
-                commands.entity(entity).insert(ActiveEdit);
-            }
-        }
-    }
-
-    fn exclusive_system(
-        mut commands: Commands,
-        activated_edits: Query<Entity, Added<ActiveEdit>>,
-        text_edits: Query<Entity, With<ActiveEdit>>,
-    ) {
-        if let Some(activated_entity) = activated_edits.iter().last() {
-            for edit_entity in text_edits
-                .iter()
-                .filter(|&entity| entity != activated_entity)
-            {
-                commands.entity(edit_entity).remove::<ActiveEdit>();
             }
         }
     }
@@ -86,19 +38,24 @@ impl TextEditPlugin {
 
 #[derive(Bundle)]
 pub(crate) struct TextEditBundle {
-    text_edit: TextEdit,
-    interaction: Interaction,
-    button_bundle: TextBundle,
+    node_bundle: NodeBundle,
+    text_input_bundle: TextInputBundle,
 }
 
 impl TextEditBundle {
     pub(crate) fn new(theme: &Theme, text: impl Into<String>) -> Self {
+        let text = text.into();
         Self {
-            text_edit: TextEdit,
-            interaction: Default::default(),
-            button_bundle: TextBundle {
+            node_bundle: NodeBundle {
                 style: theme.text_edit.style.clone(),
-                text: Text::from_section(text, theme.text_edit.text.clone()),
+                border_color: theme.text_edit.active_border.into(),
+                background_color: theme.text_edit.background_color.into(),
+                ..Default::default()
+            },
+            text_input_bundle: TextInputBundle {
+                text_style: TextInputTextStyle(theme.text_edit.text.clone()),
+                cursor_pos: TextInputCursorPos(text.len()),
+                value: TextInputValue(text),
                 ..Default::default()
             },
         }
@@ -107,10 +64,10 @@ impl TextEditBundle {
     pub(crate) fn empty(theme: &Theme) -> Self {
         Self::new(theme, String::new())
     }
+
+    pub(crate) fn inactive(mut self, theme: &Theme) -> Self {
+        self.text_input_bundle.inactive.0 = true;
+        self.node_bundle.border_color = theme.text_edit.inactive_border.into();
+        self
+    }
 }
-
-#[derive(Component)]
-struct TextEdit;
-
-#[derive(Component)]
-pub(crate) struct ActiveEdit;

@@ -20,6 +20,7 @@ bevy_atmosphere = "0.9"
 bevy_replicon = { version = "0.23.0", default-features = false }
 bevy_xpbd_3d = "0.4"
 bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline", branch = "bevy-0.13" }
+bevy_simple_text_input = "0.5"
 oxidized_navigation = { git = "https://github.com/TheGrimsey/oxidized_navigation", features = [
   "xpbd",
   "debug_draw",

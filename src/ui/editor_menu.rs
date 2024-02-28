@@ -2,6 +2,7 @@ use std::mem;
 
 use anyhow::Result;
 use bevy::prelude::*;
+use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
@@ -10,7 +11,7 @@ use super::{
     widget::{
         button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
         click::Click,
-        text_edit::{ActiveEdit, TextEditBundle},
+        text_edit::TextEditBundle,
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
     },
@@ -153,8 +154,11 @@ impl EditorMenuPlugin {
         actor_buttons: Query<(&Toggled, &EditActor), Changed<Toggled>>,
         mut actors: Query<(&mut Visibility, &Sex, &FirstName, &LastName), With<EditableActor>>,
         mut sex_buttons: Query<(&mut Toggled, &Sex), Without<EditActor>>,
-        mut first_name_edits: Query<&mut Text, With<FirstNameEdit>>,
-        mut last_name_edits: Query<&mut Text, (With<LastNameEdit>, Without<FirstNameEdit>)>,
+        mut first_name_edits: Query<&mut TextInputValue, With<FirstNameEdit>>,
+        mut last_name_edits: Query<
+            &mut TextInputValue,
+            (With<LastNameEdit>, Without<FirstNameEdit>),
+        >,
     ) {
         for (actor_toggled, edit_actor) in &actor_buttons {
             if actor_toggled.0 {
@@ -171,12 +175,8 @@ impl EditorMenuPlugin {
                     .get_mut(edit_actor.0)
                     .expect("actor button should point to a valid actor");
                 *visibility = Visibility::Visible;
-                first_name_edits.single_mut().sections[0]
-                    .value
-                    .clone_from(first_name);
-                last_name_edits.single_mut().sections[0]
-                    .value
-                    .clone_from(last_name);
+                first_name_edits.single_mut().0.clone_from(first_name);
+                last_name_edits.single_mut().0.clone_from(last_name);
 
                 let (mut sex_toggled, ..) = sex_buttons
                     .iter_mut()
@@ -205,7 +205,7 @@ impl EditorMenuPlugin {
     }
 
     fn first_name_edit_system(
-        text_edits: Query<&Text, (Changed<Text>, With<FirstNameEdit>)>,
+        text_edits: Query<&TextInputValue, (Changed<TextInputValue>, With<FirstNameEdit>)>,
         mut actors: Query<(&mut FirstName, &Visibility), With<EditableActor>>,
     ) {
         for text in &text_edits {
@@ -214,13 +214,13 @@ impl EditorMenuPlugin {
                 .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
                 .find(|(_, &visibility)| visibility == Visibility::Visible)
             {
-                first_name.0.clone_from(&text.sections[0].value);
+                first_name.0.clone_from(&text.0);
             }
         }
     }
 
     fn last_name_edit_system(
-        text_edits: Query<&Text, (Changed<Text>, With<LastNameEdit>)>,
+        text_edits: Query<&TextInputValue, (Changed<TextInputValue>, With<LastNameEdit>)>,
         mut actors: Query<(&mut LastName, &Visibility), With<EditableActor>>,
     ) {
         for text in &text_edits {
@@ -229,7 +229,7 @@ impl EditorMenuPlugin {
                 .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
                 .find(|(_, &visibility)| visibility == Visibility::Visible)
             {
-                last_name.0.clone_from(&text.sections[0].value);
+                last_name.0.clone_from(&text.0);
             }
         }
     }
@@ -256,7 +256,7 @@ impl EditorMenuPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        mut text_edits: Query<&mut Text, With<FamilyNameEdit>>,
+        mut text_edits: Query<&mut TextInputValue, With<FamilyNameEdit>>,
         buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
         cities: Query<(Entity, &Name), With<City>>,
@@ -265,8 +265,7 @@ impl EditorMenuPlugin {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if button == SaveDialogButton::Save {
                 let mut family_name = text_edits.single_mut();
-                let family_scene =
-                    FamilyScene::new(mem::take(&mut family_name.sections[0].value).into());
+                let family_scene = FamilyScene::new(mem::take(&mut family_name.0).into());
 
                 setup_place_family_dialog(
                     &mut commands,
@@ -359,7 +358,7 @@ fn setup_personality_node(parent: &mut ChildBuilder, theme: &Theme) {
                     parent.spawn(LabelBundle::normal(theme, "First name"));
                     parent.spawn((FirstNameEdit, TextEditBundle::empty(theme)));
                     parent.spawn(LabelBundle::normal(theme, "Last name"));
-                    parent.spawn((LastNameEdit, TextEditBundle::empty(theme)));
+                    parent.spawn((LastNameEdit, TextEditBundle::empty(theme).inactive(theme)));
                 });
 
             parent.spawn(NodeBundle::default()).with_children(|parent| {
@@ -444,11 +443,7 @@ fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme:
                     })
                     .with_children(|parent| {
                         parent.spawn(LabelBundle::normal(theme, "Save family"));
-                        parent.spawn((
-                            FamilyNameEdit,
-                            ActiveEdit,
-                            TextEditBundle::new(theme, "New family"),
-                        ));
+                        parent.spawn((FamilyNameEdit, TextEditBundle::new(theme, "New family")));
                         parent
                             .spawn(NodeBundle {
                                 style: Style {

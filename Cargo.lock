@@ -916,6 +916,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_simple_text_input"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71857fa4b45b3b93aea46fe2783d7d07f086f19e954c3bdabfa13f38bd6b2ae0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_sprite"
 version = "0.13.0"
 source = "git+https://github.com/lifescapegame/bevy?branch=v0.13.0-patched#563ed91c9f421462accc344b85851e9c076eebe7"
@@ -3203,6 +3212,7 @@ dependencies = [
  "bevy_atmosphere",
  "bevy_mod_outline",
  "bevy_replicon",
+ "bevy_simple_text_input",
  "bevy_xpbd_3d",
  "bincode",
  "bitflags 2.4.2",

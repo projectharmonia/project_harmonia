@@ -3,6 +3,7 @@ use std::{fs, mem, net::Ipv4Addr};
 use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy_replicon::{prelude::*, renet::ConnectionConfig};
+use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::core::{
@@ -16,11 +17,8 @@ use crate::core::{
 use super::{
     theme::Theme,
     widget::{
-        button::TextButtonBundle,
-        click::Click,
-        text_edit::{ActiveEdit, TextEditBundle},
-        ui_root::UiRoot,
-        Dialog, DialogBundle, LabelBundle,
+        button::TextButtonBundle, click::Click, text_edit::TextEditBundle, ui_root::UiRoot, Dialog,
+        DialogBundle, LabelBundle,
     },
 };
 
@@ -254,8 +252,8 @@ impl WorldBrowserPlugin {
         mut click_events: EventReader<Click>,
         network_channels: Res<NetworkChannels>,
         buttons: Query<&JoinDialogButton>,
-        port_edits: Query<&Text, With<PortEdit>>,
-        ip_edits: Query<&Text, With<IpEdit>>,
+        port_edits: Query<&TextInputValue, With<PortEdit>>,
+        ip_edits: Query<&TextInputValue, With<IpEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
@@ -268,11 +266,8 @@ impl WorldBrowserPlugin {
                     });
                     let ip = ip_edits.single();
                     let port = port_edits.single();
-                    let transport = network::create_client(
-                        ip.sections[0].value.parse()?,
-                        port.sections[0].value.parse()?,
-                    )
-                    .context("unable to create connection")?;
+                    let transport = network::create_client(ip.0.parse()?, port.0.parse()?)
+                        .context("unable to create connection")?;
 
                     commands.insert_resource(client);
                     commands.insert_resource(transport);
@@ -469,11 +464,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
                     })
                     .with_children(|parent| {
                         parent.spawn(LabelBundle::normal(theme, "Create world"));
-                        parent.spawn((
-                            WorldNameEdit,
-                            ActiveEdit,
-                            TextEditBundle::new(theme, "New world"),
-                        ));
+                        parent.spawn((WorldNameEdit, TextEditBundle::new(theme, "New world")));
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
@@ -537,7 +528,8 @@ fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: 
                                 parent.spawn(LabelBundle::normal(theme, "Port:"));
                                 parent.spawn((
                                     PortEdit,
-                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string())
+                                        .inactive(theme),
                                 ));
                             });
 

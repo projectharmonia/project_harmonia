@@ -1,6 +1,7 @@
 use std::{fmt::Display, mem};
 
 use bevy::prelude::*;
+use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::{
@@ -8,7 +9,7 @@ use super::{
     widget::{
         button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
         click::Click,
-        text_edit::{ActiveEdit, TextEditBundle},
+        text_edit::TextEditBundle,
         ui_root::UiRoot,
         Dialog, DialogBundle, LabelBundle,
     },
@@ -270,15 +271,13 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<&CityDialogButton>,
-        mut text_edits: Query<&mut Text, With<CityNameEdit>>,
+        mut text_edits: Query<&mut TextInputValue, With<CityNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
         for &dialog_button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if dialog_button == CityDialogButton::Create {
                 let mut city_name = text_edits.single_mut();
-                commands.spawn(CityBundle::new(
-                    mem::take(&mut city_name.sections[0].value).into(),
-                ));
+                commands.spawn(CityBundle::new(mem::take(&mut city_name.0).into()));
             }
             commands.entity(dialogs.single()).despawn_recursive();
         }
@@ -377,11 +376,7 @@ fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme:
                     })
                     .with_children(|parent| {
                         parent.spawn(LabelBundle::normal(theme, "Create city"));
-                        parent.spawn((
-                            CityNameEdit,
-                            ActiveEdit,
-                            TextEditBundle::new(theme, "New city"),
-                        ));
+                        parent.spawn((CityNameEdit, TextEditBundle::new(theme, "New city")));
                         parent
                             .spawn(NodeBundle {
                                 style: Style {
