@@ -104,14 +104,17 @@ impl CityPlugin {
         let (entity, mut visibility) = activated_cities.single_mut();
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
-            parent.spawn(DirectionalLightBundle {
-                directional_light: DirectionalLight {
-                    shadows_enabled: true,
+            parent.spawn((
+                Sun,
+                DirectionalLightBundle {
+                    directional_light: DirectionalLight {
+                        shadows_enabled: true,
+                        ..Default::default()
+                    },
+                    transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..Default::default()
                 },
-                transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-                ..Default::default()
-            });
+            ));
             parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
         });
     }
@@ -120,7 +123,7 @@ impl CityPlugin {
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<PlayerCamera>>,
-        lights: Query<Entity, With<DirectionalLight>>,
+        lights: Query<Entity, With<Sun>>,
     ) {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             *visibility = Visibility::Hidden;
@@ -219,3 +222,6 @@ impl Default for GroundBundle {
 
 #[derive(Component)]
 pub(super) struct Ground;
+
+#[derive(Component)]
+struct Sun;
