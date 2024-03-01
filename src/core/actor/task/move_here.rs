@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use oxidized_navigation::{NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
@@ -10,7 +11,7 @@ use crate::core::{
     city::Ground,
     cursor_hover::CursorHover,
     game_world::WorldName,
-    navigation::{endpoint::Endpoint, NavPath, Navigation},
+    navigation::{ComputePath, NavPath, Navigation},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -21,13 +22,11 @@ impl Plugin for MoveHerePlugin {
             .replicate::<MoveHere>()
             .add_systems(
                 Update,
-                (
-                    Self::list_system.in_set(TaskListSet),
-                    Self::activation_system,
-                    Self::finish_system,
-                )
+                (Self::list_system.in_set(TaskListSet), Self::finish_system)
                     .run_if(resource_exists::<WorldName>),
-            );
+            )
+            // Should run in `PostUpdate` to let tiles initialize.
+            .add_systems(PostUpdate, Self::activation_system.run_if(has_authority));
     }
 }
 
@@ -56,18 +55,23 @@ impl MoveHerePlugin {
 
     fn activation_system(
         mut commands: Commands,
-        mut actors: Query<&mut Navigation>,
+        mut actors: Query<(&Transform, &mut Navigation)>,
+        nav_settings: Res<NavMeshSettings>,
+        nav_mesh: Res<NavMesh>,
         tasks: Query<(&Parent, &MoveHere, &TaskState), Changed<TaskState>>,
     ) {
         for (parent, move_here, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                let mut navigation = actors
+                let (transform, mut navigation) = actors
                     .get_mut(**parent)
                     .expect("actors should have navigation component");
                 *navigation = Navigation::new(move_here.movement.speed());
-                commands
-                    .entity(**parent)
-                    .insert(Endpoint::new(move_here.endpoint));
+                commands.entity(**parent).insert(ComputePath::new(
+                    nav_mesh.get(),
+                    nav_settings.clone(),
+                    transform.translation,
+                    move_here.endpoint,
+                ));
             }
         }
     }

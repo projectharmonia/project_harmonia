@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    ecs::{entity::MapEntities, reflect::ReflectMapEntities},
+    prelude::*,
+};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +30,7 @@ impl Plugin for TellSecretPlugin {
                 Update,
                 (
                     Self::list_system.in_set(TaskListSet),
-                    Self::tell_activation_system,
+                    Self::tell_activation_system.run_if(has_authority),
                     Self::tell_system,
                     Self::listen_activation_system,
                     Self::finish_system,
@@ -129,7 +132,7 @@ impl TellSecretPlugin {
 }
 
 #[derive(Component, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
+#[reflect(Component, MapEntities)]
 struct TellSecret(Entity);
 
 impl Task for TellSecret {
@@ -148,13 +151,25 @@ impl FromWorld for TellSecret {
     }
 }
 
+impl MapEntities for TellSecret {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
+    }
+}
+
 #[derive(Component, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
+#[reflect(Component, MapEntities)]
 struct ListenSecret(Entity);
 
 impl FromWorld for ListenSecret {
     fn from_world(_world: &mut World) -> Self {
         Self(Entity::PLACEHOLDER)
+    }
+}
+
+impl MapEntities for ListenSecret {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 

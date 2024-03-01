@@ -1,4 +1,3 @@
-pub(super) mod endpoint;
 pub(super) mod following;
 
 use std::sync::{Arc, RwLock};
@@ -7,11 +6,11 @@ use bevy::{
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
 };
+use bevy_replicon::prelude::*;
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
+use serde::{Deserialize, Serialize};
 
-use super::game_world::WorldName;
-use endpoint::EndpointPlugin;
 use following::FollowingPlugin;
 
 pub(super) struct NavigationPlugin;
@@ -21,15 +20,12 @@ impl Plugin for NavigationPlugin {
         app.register_type::<Navigation>()
             .register_type::<NavPath>()
             .register_type::<WaypointIndex>()
-            .add_plugins((FollowingPlugin, EndpointPlugin))
-            .add_systems(
-                PreUpdate,
-                Self::poll_system.run_if(resource_exists::<WorldName>),
-            )
-            .add_systems(
-                Update,
-                Self::navigation_system.run_if(resource_exists::<WorldName>),
-            );
+            .replicate::<Navigation>()
+            .replicate::<NavPath>()
+            .replicate::<WaypointIndex>()
+            .add_plugins(FollowingPlugin)
+            .add_systems(PreUpdate, Self::poll_system.run_if(has_authority))
+            .add_systems(Update, Self::navigation_system.run_if(has_authority));
     }
 }
 
@@ -56,7 +52,7 @@ impl NavigationPlugin {
         )>,
     ) {
         for (navigation, mut nav_path, mut waypoint_index, mut transform) in &mut actors {
-            if nav_path.is_empty() {
+            if nav_path.len() <= 1 {
                 continue;
             }
 
@@ -96,7 +92,7 @@ pub(super) struct NavigationBundle {
 }
 
 /// Navigation parameters.
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(super) struct Navigation {
     speed: f32,
@@ -144,11 +140,11 @@ impl ComputePath {
 }
 
 /// Stores navigation path.
-#[derive(Component, Default, Deref, DerefMut, Reflect)]
+#[derive(Component, Default, Deref, DerefMut, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(super) struct NavPath(pub(super) Vec<Vec3>);
 
 /// Index of the current waypoint from [`NavPath`].
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(super) struct WaypointIndex(usize);

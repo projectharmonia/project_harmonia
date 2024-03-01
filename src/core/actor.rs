@@ -20,9 +20,7 @@ use super::{
     game_world::WorldName,
     highlighting::OutlineHighlightingExt,
 };
-use crate::core::{
-    animation_state::AnimationState, cursor_hover::CursorHoverable, navigation::NavigationBundle,
-};
+use crate::core::{animation_state::AnimationState, cursor_hover::CursorHoverable};
 use human::HumanPlugin;
 use movement_animation::MovementAnimationPlugin;
 use needs::NeedsPlugin;
@@ -84,7 +82,6 @@ impl ActorPlugin {
                     VisibilityBundle::default(),
                     GlobalTransform::default(),
                     OutlineBundle::highlighting(),
-                    NavigationBundle::default(), // TODO: Serialize it as part of actor bundle.
                     CursorHoverable,
                 ))
                 .with_children(|parent| {
