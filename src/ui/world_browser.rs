@@ -234,13 +234,13 @@ impl WorldBrowserPlugin {
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<&CreateDialogButton>,
-        mut text_edits: Query<&mut Text, With<WorldNameEdit>>,
+        mut text_edits: Query<&mut TextInputValue, With<WorldNameEdit>>,
         dialogs: Query<Entity, With<Dialog>>,
     ) {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if button == CreateDialogButton::Create {
                 let mut world_name = text_edits.single_mut();
-                commands.insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
+                commands.insert_resource(WorldName(mem::take(&mut world_name.0)));
                 game_state.set(GameState::World);
             }
             commands.entity(dialogs.single()).despawn_recursive();
