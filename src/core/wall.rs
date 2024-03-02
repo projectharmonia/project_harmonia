@@ -370,6 +370,14 @@ enum PointKind {
 pub(super) struct Apertures(Vec<Aperture>);
 
 impl Apertures {
+    fn iter_holes(&self) -> impl Iterator<Item = &Aperture> {
+        self.iter().filter(|aperture| aperture.hole)
+    }
+
+    fn iter_clippings(&self) -> impl Iterator<Item = &Aperture> {
+        self.iter().filter(|aperture| !aperture.hole)
+    }
+
     pub(super) fn update_translation(&mut self, entity: Entity, translation: Vec3) {
         let aperture = self
             .iter_mut()
@@ -393,6 +401,7 @@ pub(super) struct Aperture {
     pub(super) object_entity: Entity,
     pub(super) translation: Vec3,
     pub(super) positions: Vec<Vec2>,
+    pub(super) hole: bool,
 }
 
 /// Client event to request a wall creation.

@@ -6,7 +6,7 @@ use bevy::{
 };
 use itertools::{Itertools, MinMaxResult};
 
-use super::{Apertures, PointKind, Wall, WallConnection, WallConnections};
+use super::{Aperture, Apertures, PointKind, Wall, WallConnection, WallConnections};
 use crate::core::line::Line;
 
 const WIDTH: f32 = 0.15;
@@ -167,35 +167,30 @@ impl WallMesh {
         let begin_index = self.positions_len();
 
         self.positions.push([start_side.x, 0.0, start_side.y]);
+        let start_uv = rotation_mat * (start_side - wall.start);
+        self.uvs.push(start_uv.into());
+        let normal = [width.x, 0.0, width.y];
+        self.normals.push(normal);
+
+        for aperture in apertures.iter_clippings() {
+            self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
+        }
+
         self.positions.push([end_side.x, 0.0, end_side.y]);
         self.positions.push([end_side.x, HEIGHT, end_side.y]);
         self.positions.push([start_side.x, HEIGHT, start_side.y]);
 
-        let start_uv = rotation_mat * (start_side - wall.start);
         let end_uv = rotation_mat * (end_side - wall.start);
-        self.uvs.push(start_uv.into());
         self.uvs.push(end_uv.into());
         self.uvs.push([end_uv.x, end_uv.y + HEIGHT]);
         self.uvs.push([start_uv.x, start_uv.y + HEIGHT]);
 
-        let normal = [width.x, 0.0, width.y];
-        self.normals.extend_from_slice(&[normal; 4]);
+        self.normals.extend_from_slice(&[normal; 3]);
 
         let mut hole_indices = Vec::new();
-        let mut last_index = 4; // 4 initial vertices for sizes.
-        for aperture in &apertures.0 {
-            for &position in &aperture.positions {
-                let translated = quat * position.extend(0.0)
-                    + aperture.translation
-                    + Vec3::new(width.x, 0.0, width.y);
-
-                self.positions.push(translated.into());
-
-                let bottom_uv = rotation_mat * (translated.xz() - wall.start);
-                self.uvs.push([bottom_uv.x, bottom_uv.y + position.y]);
-
-                self.normals.push(normal)
-            }
+        let mut last_index = self.positions.len() - begin_index as usize;
+        for aperture in apertures.iter_holes() {
+            self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
 
             hole_indices.push(last_index);
             last_index += aperture.positions.len();
@@ -218,6 +213,29 @@ impl WallMesh {
 
         for index in indices {
             self.indices.push(begin_index + index as u32);
+        }
+    }
+
+    fn generate_apertures(
+        &mut self,
+        wall: Wall,
+        aperture: &Aperture,
+        normal: [f32; 3],
+        width: Vec2,
+        rotation_mat: Mat2,
+        quat: Quat,
+    ) {
+        for &position in &aperture.positions {
+            let translated = quat * position.extend(0.0)
+                + aperture.translation
+                + Vec3::new(width.x, 0.0, width.y);
+
+            self.positions.push(translated.into());
+
+            let bottom_uv = rotation_mat * (translated.xz() - wall.start);
+            self.uvs.push([bottom_uv.x, bottom_uv.y + position.y]);
+
+            self.normals.push(normal)
         }
     }
 

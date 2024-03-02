@@ -88,7 +88,7 @@ impl WallMountPlugin {
             let disp = wall.displacement();
             let sign = disp.perp_dot(translation_2d - wall_point).signum();
             let offset = match wall_mount {
-                WallMount::Embed(_) => Vec2::ZERO,
+                WallMount::Embed { .. } => Vec2::ZERO,
                 WallMount::Attach => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
@@ -113,7 +113,7 @@ impl WallMountPlugin {
         >,
     ) {
         for (object_entity, transform, wall_mount, mut object_wall) in &mut wall_mounts {
-            let WallMount::Embed(positions) = wall_mount else {
+            let WallMount::Embed { cutout, hole } = wall_mount else {
                 continue;
             };
 
@@ -129,7 +129,8 @@ impl WallMountPlugin {
                         apertures.push(Aperture {
                             object_entity,
                             translation,
-                            positions: positions.clone(),
+                            positions: cutout.clone(),
+                            hole: *hole,
                         });
 
                         let (_, mut current_apertures, _) = walls
@@ -143,7 +144,8 @@ impl WallMountPlugin {
                     apertures.push(Aperture {
                         object_entity,
                         translation,
-                        positions: positions.clone(),
+                        positions: cutout.clone(),
+                        hole: *hole,
                     });
 
                     object_wall.0 = Some(wall_entity);
@@ -179,7 +181,16 @@ impl WallMountPlugin {
 #[reflect(Component, ObjectComponent)]
 pub(crate) enum WallMount {
     Attach,
-    Embed(Vec<Vec2>),
+    Embed {
+        /// Points for an aperture in the wall.
+        ///
+        /// Should be set clockwise if the object requires a full opening (such as a window),
+        /// or counterclockwise if it creates a half opening (such as a door).
+        cutout: Vec<Vec2>,
+
+        /// Should be set to `true` if the object requires a full opening (such as a window).
+        hole: bool,
+    },
 }
 
 // To implement `Reflect`.
