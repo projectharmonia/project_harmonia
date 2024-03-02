@@ -366,40 +366,65 @@ enum PointKind {
     End,
 }
 
-#[derive(Component, Default, Deref, DerefMut)]
+/// Dynamically updated component with precalculated apertures for wall objects.
+///
+/// Apertures are sorted by distance to the wall starting point.
+#[derive(Component, Default)]
 pub(super) struct Apertures(Vec<Aperture>);
 
 impl Apertures {
+    /// Iterates over all apertures marked as holes.
     fn iter_holes(&self) -> impl Iterator<Item = &Aperture> {
-        self.iter().filter(|aperture| aperture.hole)
+        self.0.iter().filter(|aperture| aperture.hole)
     }
 
+    /// Iterates over all apertures not marked as holes.
     fn iter_clippings(&self) -> impl Iterator<Item = &Aperture> {
-        self.iter().filter(|aperture| !aperture.hole)
+        self.0.iter().filter(|aperture| !aperture.hole)
     }
 
-    pub(super) fn update_translation(&mut self, entity: Entity, translation: Vec3) {
-        let aperture = self
+    /// Updates translation, distance (and position based on it) for specific aperture.
+    pub(super) fn update_translation(&mut self, entity: Entity, translation: Vec3, distance: f32) {
+        let index = self
+            .0
             .iter_mut()
-            .find(|aperture| aperture.object_entity == entity)
+            .position(|aperture| aperture.object_entity == entity)
             .expect("object entity for update should exist");
 
+        let mut aperture = self.0.remove(index);
         aperture.translation = translation;
+        aperture.distance = distance;
+
+        self.insert(aperture);
     }
 
-    pub(super) fn remove_existing(&mut self, entity: Entity) {
+    /// Inserts a new aperture in sorted order.
+    pub(super) fn insert(&mut self, aperture: Aperture) {
         let index = self
+            .0
+            .binary_search_by(|other| other.distance.total_cmp(&aperture.distance))
+            .expect_err("apertures shouldn't have duplicates");
+
+        self.0.insert(index, aperture);
+    }
+
+    /// Returns index of an aperture on the corresponding object entity.
+    pub(super) fn position(&self, entity: Entity) -> Option<usize> {
+        self.0
             .iter()
             .position(|aperture| aperture.object_entity == entity)
-            .expect("object entity for removal should exist");
+    }
 
-        self.remove(index);
+    /// Returns aperture by its index.
+    pub(super) fn remove(&mut self, index: usize) {
+        self.0.remove(index);
     }
 }
 
 pub(super) struct Aperture {
     pub(super) object_entity: Entity,
     pub(super) translation: Vec3,
+    pub(super) distance: f32,
     pub(super) positions: Vec<Vec2>,
     pub(super) hole: bool,
 }

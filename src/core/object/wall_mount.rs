@@ -118,43 +118,52 @@ impl WallMountPlugin {
             };
 
             let translation = transform.translation();
-            if let Some((wall_entity, mut apertures, _)) = walls
+            if let Some((wall_entity, mut apertures, wall)) = walls
                 .iter_mut()
                 .find(|(.., wall)| wall.contains(translation.xz()))
             {
+                let distance = translation.xz().distance(wall.start);
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
-                        apertures.update_translation(object_entity, translation)
+                        apertures.update_translation(object_entity, translation, distance)
                     } else {
-                        apertures.push(Aperture {
+                        apertures.insert(Aperture {
                             object_entity,
                             translation,
+                            distance,
                             positions: cutout.clone(),
                             hole: *hole,
                         });
 
+                        object_wall.0 = Some(wall_entity);
+
                         let (_, mut current_apertures, _) = walls
                             .get_mut(current_entity)
                             .expect("all doors should have apertures");
-                        current_apertures.remove_existing(object_entity);
-
-                        object_wall.0 = Some(wall_entity);
+                        let index = current_apertures
+                            .position(object_entity)
+                            .expect("entity should have been added before");
+                        current_apertures.remove(index);
                     }
                 } else {
-                    apertures.push(Aperture {
+                    apertures.insert(Aperture {
                         object_entity,
                         translation,
+                        distance,
                         positions: cutout.clone(),
                         hole: *hole,
                     });
 
                     object_wall.0 = Some(wall_entity);
                 }
-            } else if let Some(surrounding_entity) = object_wall.0.take() {
+            } else if let Some(wall_entity) = object_wall.0.take() {
                 let (_, mut current_apertures, _) = walls
-                    .get_mut(surrounding_entity)
+                    .get_mut(wall_entity)
                     .expect("all doors should have apertures");
-                current_apertures.remove_existing(object_entity);
+                let index = current_apertures
+                    .position(object_entity)
+                    .expect("entity should have been added before");
+                current_apertures.remove(index);
             }
         }
     }
@@ -165,10 +174,7 @@ impl WallMountPlugin {
     ) {
         for entity in removed_objects.read() {
             for mut apertures in &mut walls {
-                if let Some(index) = apertures
-                    .iter()
-                    .position(|aperture| aperture.object_entity == entity)
-                {
+                if let Some(index) = apertures.position(entity) {
                     apertures.remove(index);
                 }
             }
