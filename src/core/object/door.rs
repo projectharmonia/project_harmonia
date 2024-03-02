@@ -13,12 +13,15 @@ impl Plugin for DoorPlugin {
         app.register_type::<Door>()
             .add_systems(
                 Update,
-                (Self::animation_system, Self::init_system).run_if(resource_exists::<WorldName>),
+                (
+                    Self::init_system,
+                    (Self::passing_system, Self::animation_system).chain(),
+                )
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                (Self::cleanup_system, Self::state_update_system)
-                    .run_if(resource_exists::<WorldName>),
+                Self::cleanup_system.run_if(resource_exists::<WorldName>),
             );
     }
 }
@@ -31,7 +34,7 @@ impl DoorPlugin {
     }
 
     /// Updates which actors going to intersect door via navigation paths.
-    fn state_update_system(
+    fn passing_system(
         mut objects: Query<(&mut DoorState, &GlobalTransform, &Door)>,
         actors: Query<(Entity, &NavPath), Changed<NavPath>>,
     ) {
