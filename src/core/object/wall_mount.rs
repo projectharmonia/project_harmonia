@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, transform::TransformSystem};
 use bevy_xpbd_3d::{math::PI, prelude::*};
 
 use super::{ObjectComponent, ReflectObjectComponent};
@@ -43,6 +43,7 @@ impl Plugin for WallMountPlugin {
                 PostUpdate,
                 (Self::apertures_update_system, Self::cleanup_system)
                     .before(WallPlugin::mesh_update_system)
+                    .after(TransformSystem::TransformPropagate)
                     .run_if(resource_exists::<WorldName>),
             );
     }
