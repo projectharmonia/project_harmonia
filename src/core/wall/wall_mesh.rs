@@ -158,7 +158,7 @@ impl WallMesh {
         quat: Quat,
         inverse_winding: bool,
     ) {
-        let begin_index = self.positions_len();
+        let vertices_start = self.vertices_count();
 
         self.positions.push([start_side.x, 0.0, start_side.y]);
         let start_uv = rotation_mat * (start_side - wall.start);
@@ -182,7 +182,7 @@ impl WallMesh {
         self.normals.extend_from_slice(&[normal; 3]);
 
         let mut hole_indices = Vec::new();
-        let mut last_index = self.positions.len() - begin_index as usize;
+        let mut last_index = self.positions.len() - vertices_start as usize;
         for aperture in apertures.iter_holes() {
             self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
 
@@ -190,7 +190,7 @@ impl WallMesh {
             last_index += aperture.positions.len();
         }
 
-        let vertices: Vec<_> = self.positions[begin_index as usize..]
+        let vertices: Vec<_> = self.positions[vertices_start as usize..]
             .iter()
             .flat_map(|&[x, y, _]| [x, y])
             .collect();
@@ -205,7 +205,7 @@ impl WallMesh {
         }
 
         for index in indices {
-            self.indices.push(begin_index + index as u32);
+            self.indices.push(vertices_start + index as u32);
         }
     }
 
@@ -274,7 +274,7 @@ impl WallMesh {
     }
 
     fn generate_front(&mut self, start_left: Vec2, start_right: Vec2, disp: Vec2) {
-        let begin_index = self.positions_len();
+        let vertices_start = self.vertices_count();
 
         self.positions.push([start_left.x, 0.0, start_left.y]);
         self.positions.push([start_left.x, HEIGHT, start_left.y]);
@@ -289,16 +289,16 @@ impl WallMesh {
         self.normals
             .extend_from_slice(&[[-disp.x, 0.0, -disp.y]; 4]);
 
-        self.indices.push(begin_index);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 2);
-        self.indices.push(begin_index + 3);
+        self.indices.push(vertices_start);
+        self.indices.push(vertices_start + 1);
+        self.indices.push(vertices_start + 3);
+        self.indices.push(vertices_start + 1);
+        self.indices.push(vertices_start + 2);
+        self.indices.push(vertices_start + 3);
     }
 
     fn generate_back(&mut self, end_left: Vec2, end_right: Vec2, disp: Vec2) {
-        let begin_index = self.positions_len();
+        let vertices_start = self.vertices_count();
 
         // Back
         self.positions.push([end_left.x, 0.0, end_left.y]);
@@ -313,17 +313,17 @@ impl WallMesh {
 
         self.normals.extend_from_slice(&[[disp.x, 0.0, disp.y]; 4]);
 
-        self.indices.push(begin_index);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 1);
-        self.indices.push(begin_index + 3);
-        self.indices.push(begin_index + 2);
+        self.indices.push(vertices_start);
+        self.indices.push(vertices_start + 3);
+        self.indices.push(vertices_start + 1);
+        self.indices.push(vertices_start + 1);
+        self.indices.push(vertices_start + 3);
+        self.indices.push(vertices_start + 2);
     }
 
     /// Inside triangle to fill the gap between 3+ walls.
     fn generate_start_connection(&mut self, wall: Wall) {
-        let begin_index = self.positions_len();
+        let vertices_start = self.vertices_count();
 
         // Inside triangle to fill the gap between 3+ walls.
         self.positions.push([wall.start.x, HEIGHT, wall.start.y]);
@@ -331,13 +331,13 @@ impl WallMesh {
         self.normals.push([0.0, 1.0, 0.0]);
 
         self.indices.push(1);
-        self.indices.push(begin_index);
+        self.indices.push(vertices_start);
         self.indices.push(0);
     }
 
     /// Inside triangle to fill the gap between 3+ walls.
     fn generate_end_connection(&mut self, wall: Wall, rotation_mat: Mat2) {
-        let begin_index = self.positions_len();
+        let vertices_start = self.vertices_count();
 
         self.positions.push([wall.end.x, HEIGHT, wall.end.y]);
         self.uvs
@@ -345,15 +345,15 @@ impl WallMesh {
         self.normals.push([0.0, 1.0, 0.0]);
 
         self.indices.push(3);
-        self.indices.push(begin_index);
+        self.indices.push(vertices_start);
         self.indices.push(2);
     }
 
-    fn positions_len(&self) -> u32 {
+    fn vertices_count(&self) -> u32 {
         self.positions
             .len()
             .try_into()
-            .expect("positions should fit u32")
+            .expect("vertices should fit u32")
     }
 
     fn clear(&mut self) {
