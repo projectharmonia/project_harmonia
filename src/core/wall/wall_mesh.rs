@@ -205,9 +205,8 @@ impl WallMesh {
             .expect("vertices should be triangulatable");
 
         if inverse_winding {
-            for start in (0..indices.len()).step_by(3) {
-                let end = (start + 3).min(indices.len());
-                indices[start..end].reverse();
+            for triangle in indices.chunks_exact_mut(3) {
+                triangle.swap(0, 2);
             }
         }
 
