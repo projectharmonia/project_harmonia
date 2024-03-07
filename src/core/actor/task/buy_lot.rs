@@ -23,15 +23,15 @@ impl Plugin for BuyLotPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::list_system.in_set(TaskListSet),
-                    Self::activation_system.run_if(has_authority),
+                    Self::add_to_list.in_set(TaskListSet),
+                    Self::buy.run_if(has_authority),
                 ),
             );
     }
 }
 
 impl BuyLotPlugin {
-    fn list_system(
+    fn add_to_list(
         mut list_events: EventWriter<TaskList>,
         mut grounds: Query<&CursorHover, With<Ground>>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
@@ -47,7 +47,7 @@ impl BuyLotPlugin {
         }
     }
 
-    fn activation_system(
+    fn buy(
         mut commands: Commands,
         lots: Query<(), Without<LotFamily>>,
         actors: Query<&ActorFamily>,

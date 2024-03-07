@@ -23,7 +23,7 @@ impl Plugin for InGameMenuPlugin {
         app.add_systems(
             Update,
             (
-                Self::setup_system
+                Self::open
                     .run_if(action_just_pressed(Action::Cancel))
                     .run_if(not(any_with_component::<IngameMenu>))
                     .run_if(not(any_with_component::<TaskMenu>))
@@ -33,9 +33,9 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
                 (
-                    Self::ingame_button_system,
-                    Self::exit_dialog_button_system,
-                    Self::cleanup_system
+                    Self::handle_menu_clicks,
+                    Self::handle_exit_dialog_clicks,
+                    Self::close
                         .run_if(not(any_with_component::<ExitDialog>))
                         .run_if(action_just_pressed(Action::Cancel)),
                 )
@@ -46,7 +46,7 @@ impl Plugin for InGameMenuPlugin {
 }
 
 impl InGameMenuPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+    fn open(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((IngameMenu, DialogBundle::new(&theme)))
@@ -78,7 +78,7 @@ impl InGameMenuPlugin {
         });
     }
 
-    fn ingame_button_system(
+    fn handle_menu_clicks(
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut settings_events: EventWriter<SettingsMenuOpen>,
@@ -112,7 +112,7 @@ impl InGameMenuPlugin {
         }
     }
 
-    fn exit_dialog_button_system(
+    fn handle_exit_dialog_clicks(
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
         mut exit_events: EventWriter<AppExit>,
@@ -150,7 +150,7 @@ impl InGameMenuPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, ingame_menus: Query<Entity, With<IngameMenu>>) {
+    fn close(mut commands: Commands, ingame_menus: Query<Entity, With<IngameMenu>>) {
         commands.entity(ingame_menus.single()).despawn_recursive();
     }
 }

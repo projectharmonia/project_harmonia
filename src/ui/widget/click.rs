@@ -5,12 +5,12 @@ pub(crate) struct ClickPlugin;
 impl Plugin for ClickPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<Click>()
-            .add_systems(PreUpdate, Self::click_system.after(ui::ui_focus_system));
+            .add_systems(PreUpdate, Self::emit_clicks.after(ui::ui_focus_system));
     }
 }
 
 impl ClickPlugin {
-    fn click_system(
+    fn emit_clicks(
         mut click_events: EventWriter<Click>,
         mut buttons: Query<(Entity, &Interaction, &mut LastInteraction), Changed<Interaction>>,
     ) {

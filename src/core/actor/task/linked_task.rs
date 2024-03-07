@@ -9,23 +9,22 @@ impl Plugin for LinkedTaskPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (
-                Self::link_system,
-                Self::state_sync_system,
-                Self::finish_system,
-            ),
+            (Self::insert_links, Self::sync_states, Self::finish),
         );
     }
 }
 
 impl LinkedTaskPlugin {
-    fn link_system(mut commands: Commands, tasks: Query<(Entity, &LinkedTask), Added<LinkedTask>>) {
+    fn insert_links(
+        mut commands: Commands,
+        tasks: Query<(Entity, &LinkedTask), Added<LinkedTask>>,
+    ) {
         for (entity, linked_task) in &tasks {
             commands.entity(linked_task.0).insert(LinkedTask(entity));
         }
     }
 
-    fn state_sync_system(
+    fn sync_states(
         mut query_cache: Local<Vec<(Entity, TaskState)>>,
         mut tasks: Query<(&mut TaskState, &LinkedTask)>,
     ) {
@@ -47,7 +46,7 @@ impl LinkedTaskPlugin {
         query_cache.clear();
     }
 
-    fn finish_system(
+    fn finish(
         mut commands: Commands,
         mut removed_tasks: RemovedComponents<LinkedTask>,
         tasks: Query<(Entity, &Parent, &TaskState, &LinkedTask)>,

@@ -15,19 +15,19 @@ impl Plugin for AnimationStatePlugin {
         app.add_event::<AnimationFinished>()
             .add_systems(
                 SpawnScene,
-                Self::scene_init_system
+                Self::init_children
                     .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
-                (Self::play_system, Self::finish_system).run_if(resource_exists::<WorldName>),
+                (Self::play, Self::finish).run_if(resource_exists::<WorldName>),
             );
     }
 }
 
 impl AnimationStatePlugin {
-    fn scene_init_system(
+    fn init_children(
         mut ready_events: EventReader<SceneInstanceReady>,
         scenes: Query<(Entity, &AnimationState)>,
         children: Query<&Children>,
@@ -45,7 +45,7 @@ impl AnimationStatePlugin {
         }
     }
 
-    fn play_system(
+    fn play(
         scenes: Query<(Entity, &AnimationState), Changed<AnimationState>>,
         children: Query<&Children>,
         mut animation_players: Query<&mut AnimationPlayer>,
@@ -60,7 +60,7 @@ impl AnimationStatePlugin {
         }
     }
 
-    fn finish_system(
+    fn finish(
         mut finish_events: EventWriter<AnimationFinished>,
         mut scenes: Query<(Entity, &mut AnimationState)>,
         children: Query<&Children>,

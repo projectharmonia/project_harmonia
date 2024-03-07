@@ -6,7 +6,7 @@ use crate::{
         action::Action,
         actor::{
             task::{Task, TaskList, TaskRequest},
-            ActiveActor,
+            SelectedActor,
         },
         cursor_hover::CursorHover,
         family::FamilyMode,
@@ -25,8 +25,8 @@ impl Plugin for TaskMenuPlugin {
         app.add_systems(
             Update,
             (
-                Self::button_system,
-                Self::cancel_system
+                Self::request_task,
+                Self::close
                     .run_if(action_just_pressed(Action::Cancel).or_else(on_event::<TaskList>())),
             )
                 .run_if(in_state(GameState::Family))
@@ -34,7 +34,7 @@ impl Plugin for TaskMenuPlugin {
         )
         .add_systems(
             PostUpdate,
-            Self::setup_system
+            Self::open
                 .run_if(in_state(GameState::Family))
                 .run_if(in_state(FamilyMode::Life)),
         );
@@ -42,7 +42,7 @@ impl Plugin for TaskMenuPlugin {
 }
 
 impl TaskMenuPlugin {
-    fn setup_system(
+    fn open(
         mut commands: Commands,
         mut list_events: ResMut<Events<TaskList>>,
         theme: Res<Theme>,
@@ -90,19 +90,19 @@ impl TaskMenuPlugin {
         });
     }
 
-    fn button_system(
+    fn request_task(
         mut commands: Commands,
-        mut task_events: EventWriter<TaskRequest>,
+        mut send_requests: EventWriter<TaskRequest>,
         mut click_events: EventReader<Click>,
         buttons: Query<&TaskMenuIndex>,
         mut task_menus: Query<(Entity, &mut TaskMenu)>,
-        active_actors: Query<Entity, With<ActiveActor>>,
+        active_actors: Query<Entity, With<SelectedActor>>,
     ) {
         for task_index in buttons.iter_many(click_events.read().map(|event| event.0)) {
             let (menu_entity, mut task_menu) = task_menus.single_mut();
             let task = task_menu.swap_remove(task_index.0);
 
-            task_events.send(TaskRequest {
+            send_requests.send(TaskRequest {
                 entity: active_actors.single(),
                 task,
             });
@@ -111,7 +111,7 @@ impl TaskMenuPlugin {
         }
     }
 
-    fn cancel_system(mut commands: Commands, task_menus: Query<Entity, With<TaskMenu>>) {
+    fn close(mut commands: Commands, task_menus: Query<Entity, With<TaskMenu>>) {
         if let Ok(entity) = task_menus.get_single() {
             commands.entity(entity).despawn_recursive();
         }

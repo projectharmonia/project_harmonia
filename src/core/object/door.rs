@@ -14,27 +14,27 @@ impl Plugin for DoorPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system,
-                    (Self::passing_system, Self::animation_system).chain(),
+                    Self::init,
+                    (Self::update_passing_actors, Self::play_animation).chain(),
                 )
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_system.run_if(resource_exists::<WorldName>),
+                Self::cleanup_passing_actors.run_if(resource_exists::<WorldName>),
             );
     }
 }
 
 impl DoorPlugin {
-    fn init_system(mut commands: Commands, objects: Query<Entity, Added<Door>>) {
+    fn init(mut commands: Commands, objects: Query<Entity, Added<Door>>) {
         for entity in &objects {
             commands.entity(entity).insert(DoorState::default());
         }
     }
 
     /// Updates which actors going to intersect door via navigation paths.
-    fn passing_system(
+    fn update_passing_actors(
         mut objects: Query<(&mut DoorState, &GlobalTransform, &Door)>,
         actors: Query<(Entity, &NavPath), Changed<NavPath>>,
     ) {
@@ -79,7 +79,7 @@ impl DoorPlugin {
     }
 
     /// Plays animation for actors whose close to the door and going to intersect it.
-    fn animation_system(
+    fn play_animation(
         mut animation_players: Query<&mut AnimationPlayer>,
         asset_server: Res<AssetServer>,
         animation_clips: Res<Assets<AnimationClip>>,
@@ -128,7 +128,7 @@ impl DoorPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn cleanup_passing_actors(
         mut removed_actors: RemovedComponents<Actor>,
         mut objects: Query<&mut DoorState>,
     ) {

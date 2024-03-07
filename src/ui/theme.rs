@@ -5,12 +5,12 @@ pub(crate) struct ThemePlugin;
 impl Plugin for ThemePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Theme>()
-            .add_systems(Startup, Self::clear_color_system);
+            .add_systems(Startup, Self::set_clear_color);
     }
 }
 
 impl ThemePlugin {
-    fn clear_color_system(mut commands: Commands, theme: Res<Theme>) {
+    fn set_clear_color(mut commands: Commands, theme: Res<Theme>) {
         commands.insert_resource(ClearColor(theme.background_color));
     }
 }

@@ -10,22 +10,22 @@ impl Plugin for ButtonPlugin {
         app.add_systems(
             Update,
             (
-                Self::text_init_system,
-                Self::image_init_system,
-                Self::interaction_system,
-                Self::text_update_system,
-                Self::toggling_system,
+                Self::init_text,
+                Self::init_images,
+                Self::update_colors,
+                Self::update_text,
+                Self::toggle,
             ),
         )
         .add_systems(
             PostUpdate,
-            (Self::exclusive_system, Self::tab_switching_system).chain(),
+            (Self::ensure_single_toggle, Self::switch_tabs).chain(),
         );
     }
 }
 
 impl ButtonPlugin {
-    fn text_init_system(
+    fn init_text(
         mut commmands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &ButtonText, &TextButtonKind), Added<ButtonText>>,
@@ -42,7 +42,7 @@ impl ButtonPlugin {
         }
     }
 
-    fn image_init_system(
+    fn init_images(
         mut commmands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
@@ -65,7 +65,7 @@ impl ButtonPlugin {
     }
 
     /// Won't be triggered after spawning because text child will be spawned at the next frame.
-    fn text_update_system(
+    fn update_text(
         buttons: Query<(&Children, &ButtonText), Changed<ButtonText>>,
         mut texts: Query<&mut Text>,
     ) {
@@ -76,7 +76,7 @@ impl ButtonPlugin {
         }
     }
 
-    fn interaction_system(
+    fn update_colors(
         theme: Res<Theme>,
         mut buttons: Query<
             (&Interaction, &mut BackgroundColor, Option<&Toggled>),
@@ -96,7 +96,7 @@ impl ButtonPlugin {
         }
     }
 
-    fn toggling_system(
+    fn toggle(
         mut click_events: EventReader<Click>,
         mut buttons: Query<(&mut Toggled, Has<ExclusiveButton>)>,
     ) {
@@ -111,7 +111,7 @@ impl ButtonPlugin {
         }
     }
 
-    fn exclusive_system(
+    fn ensure_single_toggle(
         mut query_cache: Local<Vec<Entity>>,
         mut buttons: Query<(Entity, &Parent, &mut Toggled), With<ExclusiveButton>>,
         children: Query<&Children>,
@@ -137,7 +137,7 @@ impl ButtonPlugin {
         query_cache.clear();
     }
 
-    fn tab_switching_system(
+    fn switch_tabs(
         mut commmands: Commands,
         tabs: Query<(&Toggled, &TabContent), Changed<Toggled>>,
         mut tab_nodes: Query<(&mut Style, Option<&mut PreviousDisplay>)>,

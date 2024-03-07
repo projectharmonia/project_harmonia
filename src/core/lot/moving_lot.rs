@@ -1,7 +1,7 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{LotDespawn, LotEventConfirmed, LotMove, LotTool, LotVertices};
+use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
     action::Action, city::CityMode, cursor_hover::CursorHover, game_state::GameState,
 };
@@ -13,13 +13,13 @@ impl Plugin for MovingLotPlugin {
         app.add_systems(
             Update,
             (
-                Self::picking_system
+                Self::pick
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<MovingLot>)),
-                Self::movement_system,
-                Self::confirmation_system.run_if(action_just_pressed(Action::Confirm)),
-                Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                Self::cancel_system.run_if(
+                Self::apply_movement,
+                Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                Self::delete.run_if(action_just_pressed(Action::Delete)),
+                Self::cancel.run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
                 ),
             )
@@ -29,7 +29,7 @@ impl Plugin for MovingLotPlugin {
         )
         .add_systems(
             PostUpdate,
-            Self::cleanup_system
+            Self::cleanup_despawned
                 .run_if(in_state(GameState::City))
                 .run_if(in_state(CityMode::Lots))
                 .run_if(in_state(LotTool::Move)),
@@ -38,7 +38,7 @@ impl Plugin for MovingLotPlugin {
 }
 
 impl MovingLotPlugin {
-    fn picking_system(
+    fn pick(
         mut commands: Commands,
         lots: Query<(Entity, &Parent, &LotVertices)>,
         hovered: Query<&CursorHover>,
@@ -61,7 +61,7 @@ impl MovingLotPlugin {
         }
     }
 
-    fn movement_system(
+    fn apply_movement(
         mut moving_lots: Query<(&mut Transform, &MovingLot)>,
         hovered: Query<&CursorHover>,
     ) {
@@ -72,7 +72,7 @@ impl MovingLotPlugin {
         }
     }
 
-    fn confirmation_system(
+    fn confirm(
         mut move_events: EventWriter<LotMove>,
         mut moving_lots: Query<(&mut Transform, &MovingLot)>,
     ) {
@@ -84,19 +84,19 @@ impl MovingLotPlugin {
         }
     }
 
-    fn despawn_system(mut despawn_events: EventWriter<LotDespawn>, moving_lots: Query<&MovingLot>) {
+    fn delete(mut delete: EventWriter<LotDelete>, moving_lots: Query<&MovingLot>) {
         if let Ok(moving_lot) = moving_lots.get_single() {
-            despawn_events.send(LotDespawn(moving_lot.entity));
+            delete.send(LotDelete(moving_lot.entity));
         }
     }
 
-    fn cancel_system(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
+    fn cancel(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
         if let Ok(entity) = moving_lots.get_single_mut() {
             commands.entity(entity).despawn();
         }
     }
 
-    fn cleanup_system(mut commands: Commands, mut moving_lots: Query<(Entity, &MovingLot)>) {
+    fn cleanup_despawned(mut commands: Commands, mut moving_lots: Query<(Entity, &MovingLot)>) {
         if let Ok((entity, moving_lot)) = moving_lots.get_single_mut() {
             if commands.get_entity(moving_lot.entity).is_none() {
                 commands.entity(entity).despawn();

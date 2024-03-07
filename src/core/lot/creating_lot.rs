@@ -8,7 +8,7 @@ use crate::core::{
     game_state::GameState,
 };
 
-use super::{LotEventConfirmed, LotSpawn, LotTool, LotVertices};
+use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices};
 
 pub(super) struct CreatingLotPlugin;
 
@@ -17,12 +17,12 @@ impl Plugin for CreatingLotPlugin {
         app.add_systems(
             Update,
             (
-                Self::spawn_system
+                Self::start_creating
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<CreatingLot>)),
-                Self::movement_system,
-                Self::vertex_placement_system.run_if(action_just_pressed(Action::Confirm)),
-                Self::despawn_system.run_if(
+                Self::set_vertex_position,
+                Self::confirm_vertex.run_if(action_just_pressed(Action::Confirm)),
+                Self::cleanup.run_if(
                     action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
                 ),
             )
@@ -34,7 +34,7 @@ impl Plugin for CreatingLotPlugin {
 }
 
 impl CreatingLotPlugin {
-    fn spawn_system(mut commands: Commands, ground: Query<(&Parent, &CursorHover)>) {
+    fn start_creating(mut commands: Commands, ground: Query<(&Parent, &CursorHover)>) {
         if let Ok((parent, hover)) = ground.get_single() {
             // Spawn with two the same vertices because we edit the last one on cursor movement.
             commands.entity(**parent).with_children(|parent| {
@@ -43,7 +43,7 @@ impl CreatingLotPlugin {
         }
     }
 
-    fn movement_system(
+    fn set_vertex_position(
         mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
         ground: Query<&CursorHover>,
     ) {
@@ -65,8 +65,8 @@ impl CreatingLotPlugin {
         }
     }
 
-    fn vertex_placement_system(
-        mut spawn_events: EventWriter<LotSpawn>,
+    fn confirm_vertex(
+        mut create_events: EventWriter<LotCreate>,
         mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
         active_cities: Query<Entity, With<ActiveCity>>,
     ) {
@@ -76,7 +76,7 @@ impl CreatingLotPlugin {
                 .expect("vertices should have at least initial position");
             let last_position = *lot_vertices.last().unwrap();
             if first_position == last_position {
-                spawn_events.send(LotSpawn {
+                create_events.send(LotCreate {
                     vertices: lot_vertices.0.clone(),
                     city_entity: active_cities.single(),
                 });
@@ -86,7 +86,7 @@ impl CreatingLotPlugin {
         }
     }
 
-    fn despawn_system(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
+    fn cleanup(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
         if let Ok(entity) = creating_lots.get_single() {
             commands.entity(entity).despawn();
         }

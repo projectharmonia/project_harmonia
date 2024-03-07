@@ -20,33 +20,28 @@ impl Plugin for LotPlugin {
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
             .replicate::<LotVertices>()
-            .add_mapped_client_event::<LotSpawn>(EventType::Unordered)
+            .add_mapped_client_event::<LotCreate>(EventType::Unordered)
             .add_mapped_client_event::<LotMove>(EventType::Ordered)
-            .add_mapped_client_event::<LotDespawn>(EventType::Unordered)
+            .add_mapped_client_event::<LotDelete>(EventType::Unordered)
             .add_server_event::<LotEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (
-                    Self::init_system,
-                    (
-                        Self::spawn_system,
-                        Self::movement_system,
-                        Self::despawn_system,
-                    )
-                        .run_if(has_authority),
+                    Self::init,
+                    (Self::create, Self::apply_movement, Self::delete).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::draw_system.run_if(resource_exists::<WorldName>),
+                Self::draw_lines.run_if(resource_exists::<WorldName>),
             );
     }
 }
 
 impl LotPlugin {
-    fn init_system(mut commands: Commands, spawned_lots: Query<Entity, Added<LotVertices>>) {
+    fn init(mut commands: Commands, spawned_lots: Query<Entity, Added<LotVertices>>) {
         for entity in &spawned_lots {
             commands
                 .entity(entity)
@@ -55,7 +50,7 @@ impl LotPlugin {
         }
     }
 
-    fn draw_system(mut gizmos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
+    fn draw_lines(mut gizmos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
         for (transform, vertices) in &lots {
             let positions_iter = vertices
                 .iter()
@@ -65,12 +60,12 @@ impl LotPlugin {
         }
     }
 
-    fn spawn_system(
+    fn create(
         mut commands: Commands,
-        mut spawn_events: EventReader<FromClient<LotSpawn>>,
+        mut create_events: EventReader<FromClient<LotCreate>>,
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in spawn_events.read().cloned() {
+        for FromClient { client_id, event } in create_events.read().cloned() {
             commands.entity(event.city_entity).with_children(|parent| {
                 parent.spawn(LotBundle::new(event.vertices));
             });
@@ -81,7 +76,7 @@ impl LotPlugin {
         }
     }
 
-    fn movement_system(
+    fn apply_movement(
         mut move_events: EventReader<FromClient<LotMove>>,
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
         mut lots: Query<&mut LotVertices>,
@@ -102,12 +97,12 @@ impl LotPlugin {
         }
     }
 
-    fn despawn_system(
+    fn delete(
         mut commands: Commands,
-        mut despawn_events: EventReader<FromClient<LotDespawn>>,
+        mut delete_events: EventReader<FromClient<LotDelete>>,
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in despawn_events.read().copied() {
+        for FromClient { client_id, event } in delete_events.read().copied() {
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
@@ -178,12 +173,12 @@ impl LotVertices {
 }
 
 #[derive(Clone, Deserialize, Event, Serialize)]
-struct LotSpawn {
+struct LotCreate {
     vertices: Vec<Vec2>,
     city_entity: Entity,
 }
 
-impl MapEntities for LotSpawn {
+impl MapEntities for LotCreate {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.city_entity = entity_mapper.map_entity(self.city_entity);
     }
@@ -202,9 +197,9 @@ impl MapEntities for LotMove {
 }
 
 #[derive(Clone, Copy, Event, Deserialize, Serialize)]
-struct LotDespawn(Entity);
+struct LotDelete(Entity);
 
-impl MapEntities for LotDespawn {
+impl MapEntities for LotDelete {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.0 = entity_mapper.map_entity(self.0);
     }

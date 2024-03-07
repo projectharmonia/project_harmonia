@@ -22,12 +22,12 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init_system.run_if(resource_exists::<WorldName>),
+                    Self::init.run_if(resource_exists::<WorldName>),
                     (
-                        Self::placing_init_system.before(PlacingObjectPlugin::rotation_system),
-                        Self::snapping_system
-                            .before(PlacingObjectPlugin::collision_system)
-                            .after(PlacingObjectPlugin::movement_system),
+                        Self::init_placing.before(PlacingObjectPlugin::rotate),
+                        Self::snap
+                            .before(PlacingObjectPlugin::check_collision)
+                            .after(PlacingObjectPlugin::apply_transform),
                     )
                         .run_if(
                             in_state(GameState::City)
@@ -41,8 +41,8 @@ impl Plugin for WallMountPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (Self::apertures_update_system, Self::cleanup_system)
-                    .before(WallPlugin::mesh_update_system)
+                (Self::update_apertures, Self::cleanup_apertures)
+                    .before(WallPlugin::update_meshes)
                     .after(TransformSystem::TransformPropagate)
                     .run_if(resource_exists::<WorldName>),
             );
@@ -51,7 +51,7 @@ impl Plugin for WallMountPlugin {
 
 impl WallMountPlugin {
     /// Additional intializaiton for wall mount objects.
-    fn init_system(
+    fn init(
         mut commands: Commands,
         mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
     ) {
@@ -62,13 +62,13 @@ impl WallMountPlugin {
     }
 
     /// Additional intializaiton for placing wall mount objects.
-    fn placing_init_system(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
+    fn init_placing(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
         if let Ok(mut placing_object) = placing_objects.get_single_mut() {
             placing_object.rotation_step = PI;
         }
     }
 
-    fn snapping_system(
+    fn snap(
         walls: Query<&Wall>,
         mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
     ) {
@@ -105,7 +105,7 @@ impl WallMountPlugin {
         }
     }
 
-    fn apertures_update_system(
+    fn update_apertures(
         mut walls: Query<(Entity, &mut Apertures, &Wall)>,
         mut wall_mounts: Query<
             (Entity, &GlobalTransform, &WallMount, &mut ObjectWall),
@@ -168,7 +168,7 @@ impl WallMountPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn cleanup_apertures(
         mut removed_objects: RemovedComponents<ObjectWall>,
         mut walls: Query<&mut Apertures>,
     ) {

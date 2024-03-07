@@ -48,8 +48,8 @@ impl Plugin for TaskPlugin {
         .add_client_event::<TaskCancel>(EventType::Unordered)
         .add_client_event_with::<TaskRequest, _, _>(
             EventType::Unordered,
-            Self::sending_task_system,
-            Self::receiving_task_system,
+            Self::send_requests,
+            Self::receive_requests,
         )
         .add_event::<TaskList>()
         .configure_sets(
@@ -61,24 +61,24 @@ impl Plugin for TaskPlugin {
         )
         .add_systems(
             PreUpdate,
-            (Self::queue_system, Self::cancelation_system)
+            (Self::request, Self::cancel)
                 .after(ClientSet::Receive)
                 .run_if(has_authority),
         )
         .add_systems(
             PostUpdate,
-            (Self::cleanup_system, Self::activation_system).run_if(has_authority),
+            (Self::despawn_cancelled, Self::activate_queued).run_if(has_authority),
         );
     }
 }
 
 impl TaskPlugin {
-    fn queue_system(
+    fn request(
         mut commands: Commands,
-        mut task_events: ResMut<Events<FromClient<TaskRequest>>>,
+        mut request_events: ResMut<Events<FromClient<TaskRequest>>>,
         actors: Query<(), With<Actor>>,
     ) {
-        for event in task_events.drain().map(|event| event.event) {
+        for event in request_events.drain().map(|event| event.event) {
             if actors.get(event.entity).is_ok() {
                 commands.entity(event.entity).with_children(|parent| {
                     parent
@@ -91,7 +91,7 @@ impl TaskPlugin {
         }
     }
 
-    fn activation_system(
+    fn activate_queued(
         mut tasks: Query<(&TaskGroups, &mut TaskState)>,
         actors: Query<&Children, With<Actor>>,
     ) {
@@ -113,7 +113,7 @@ impl TaskPlugin {
         }
     }
 
-    fn cancelation_system(
+    fn cancel(
         mut commands: Commands,
         mut cancel_events: EventReader<FromClient<TaskCancel>>,
         mut tasks: Query<&mut TaskState>,
@@ -131,7 +131,7 @@ impl TaskPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn despawn_cancelled(
         mut commands: Commands,
         tasks: Query<(Entity, &Parent, &TaskGroups, &TaskState), Changed<TaskState>>,
         mut actors: Query<(&mut NavPath, &mut AnimationState)>,
@@ -154,14 +154,14 @@ impl TaskPlugin {
         }
     }
 
-    fn sending_task_system(
-        mut task_events: EventReader<TaskRequest>,
+    fn send_requests(
+        mut request_events: EventReader<TaskRequest>,
         mut client: ResMut<RenetClient>,
         channel: Res<ClientEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
-        for event in task_events.read() {
+        for event in request_events.read() {
             let message = serialize_task_request(event, &registry)
                 .expect("client event should be serializable");
 
@@ -169,8 +169,8 @@ impl TaskPlugin {
         }
     }
 
-    fn receiving_task_system(
-        mut task_events: EventWriter<FromClient<TaskRequest>>,
+    fn receive_requests(
+        mut request_events: EventWriter<FromClient<TaskRequest>>,
         mut server: ResMut<RenetServer>,
         channel: Res<ServerEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
@@ -182,7 +182,7 @@ impl TaskPlugin {
                 match deserialize_task_request(&message, &registry) {
                     Ok(mut event) => {
                         event.map_entities(&mut EventMapper(entity_map.to_server()));
-                        task_events.send(FromClient { client_id, event });
+                        request_events.send(FromClient { client_id, event });
                     }
                     Err(e) => {
                         error!("unable to deserialize event from client {client_id}: {e}")

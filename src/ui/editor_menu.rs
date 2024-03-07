@@ -22,7 +22,7 @@ use crate::core::{
     error_report,
     family::{
         editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
-        FamilyScene, FamilySpawn,
+        FamilyCreate, FamilyScene,
     },
     game_state::GameState,
 };
@@ -31,41 +31,38 @@ pub(super) struct EditorMenuPlugin;
 
 impl Plugin for EditorMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::FamilyEditor), Self::setup_system)
+        app.add_systems(OnEnter(GameState::FamilyEditor), Self::setup)
             .add_systems(
                 Update,
                 (
-                    Self::plus_button_system,
-                    Self::actor_buttons_update_system,
+                    Self::add_member,
+                    Self::update_actor_previews,
                     (
-                        Self::actor_buttons_system,
+                        Self::switch_actor,
                         (
-                            Self::sex_buttons_system,
-                            Self::first_name_edit_system,
-                            Self::last_name_edit_system,
+                            Self::set_sex,
+                            Self::update_first_name,
+                            Self::update_last_name,
                         ),
                     )
                         .chain(),
-                    Self::family_menu_button_system,
-                    Self::save_family_button_system.pipe(error_report::report),
-                    Self::place_dialog_button_system,
-                    Self::city_place_button_system,
+                    Self::handle_family_menu_clicks,
+                    Self::handle_save_family_clicks.pipe(error_report::report),
+                    Self::handle_place_dialog_clicks,
+                    Self::handle_city_place_clicks,
                 )
                     .run_if(in_state(GameState::FamilyEditor)),
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::actor_buttons_spawn_system,
-                    Self::actor_buttons_despawn_system,
-                )
+                (Self::create_actor_buttons, Self::remove_actor_buttons)
                     .run_if(in_state(GameState::FamilyEditor)),
             );
     }
 }
 
 impl EditorMenuPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>) {
+    fn setup(mut commands: Commands, theme: Res<Theme>) {
         commands
             .spawn((
                 UiRoot,
@@ -85,7 +82,7 @@ impl EditorMenuPlugin {
             });
     }
 
-    fn plus_button_system(
+    fn add_member(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<(), With<PlusButton>>,
@@ -98,7 +95,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn actor_buttons_spawn_system(
+    fn create_actor_buttons(
         mut commands: Commands,
         theme: Res<Theme>,
         actors: Query<Entity, Added<EditableActor>>,
@@ -119,7 +116,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn actor_buttons_update_system(
+    fn update_actor_previews(
         mut commands: Commands,
         actors: Query<(Entity, Ref<Sex>), With<EditableActor>>,
         buttons: Query<(Entity, &EditActor)>,
@@ -136,7 +133,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn actor_buttons_despawn_system(
+    fn remove_actor_buttons(
         mut commands: Commands,
         mut removed_actors: RemovedComponents<EditableActor>,
         buttons: Query<(Entity, &EditActor)>,
@@ -150,7 +147,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn actor_buttons_system(
+    fn switch_actor(
         actor_buttons: Query<(&Toggled, &EditActor), Changed<Toggled>>,
         mut actors: Query<(&mut Visibility, &Sex, &FirstName, &LastName), With<EditableActor>>,
         mut sex_buttons: Query<(&mut Toggled, &Sex), Without<EditActor>>,
@@ -187,7 +184,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn sex_buttons_system(
+    fn set_sex(
         buttons: Query<(&Toggled, &Sex), (Changed<Toggled>, Without<EditableActor>)>,
         mut actors: Query<(&mut Sex, &Visibility), With<EditableActor>>,
     ) {
@@ -204,7 +201,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn first_name_edit_system(
+    fn update_first_name(
         text_edits: Query<&TextInputValue, (Changed<TextInputValue>, With<FirstNameEdit>)>,
         mut actors: Query<(&mut FirstName, &Visibility), With<EditableActor>>,
     ) {
@@ -219,7 +216,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn last_name_edit_system(
+    fn update_last_name(
         text_edits: Query<&TextInputValue, (Changed<TextInputValue>, With<LastNameEdit>)>,
         mut actors: Query<(&mut LastName, &Visibility), With<EditableActor>>,
     ) {
@@ -234,7 +231,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn family_menu_button_system(
+    fn handle_family_menu_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
@@ -252,7 +249,7 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn save_family_button_system(
+    fn handle_save_family_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
@@ -282,7 +279,7 @@ impl EditorMenuPlugin {
         Ok(())
     }
 
-    fn place_dialog_button_system(
+    fn handle_place_dialog_clicks(
         mut commands: Commands,
         mut reset_events: EventWriter<FamilyReset>,
         mut click_events: EventReader<Click>,
@@ -297,9 +294,9 @@ impl EditorMenuPlugin {
         }
     }
 
-    fn city_place_button_system(
+    fn handle_city_place_clicks(
         mut commands: Commands,
-        mut spawn_events: EventWriter<FamilySpawn>,
+        mut spawn_events: EventWriter<FamilyCreate>,
         mut reset_events: EventWriter<FamilyReset>,
         mut click_events: EventReader<Click>,
         buttons: Query<(&CityPlaceButton, &PlaceCity)>,
@@ -309,14 +306,14 @@ impl EditorMenuPlugin {
             let (dialog_entity, mut scene) = dialogs.single_mut();
             match button {
                 CityPlaceButton::PlaceAndPlay => {
-                    spawn_events.send(FamilySpawn {
+                    spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
                         scene: mem::take(&mut scene),
                         select: true,
                     });
                 }
                 CityPlaceButton::Place => {
-                    spawn_events.send(FamilySpawn {
+                    spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
                         scene: mem::take(&mut scene),
                         select: false,

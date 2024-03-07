@@ -14,17 +14,17 @@ impl Plugin for FollowingPlugin {
             Update,
             (
                 // Should run in `Update` to let tiles initialize.
-                Self::init_system,
-                Self::following_system.run_if(on_timer(Duration::from_secs(1))),
+                Self::init,
+                Self::update_path.run_if(on_timer(Duration::from_secs(1))),
             )
                 .run_if(has_authority),
         )
-        .add_systems(PostUpdate, Self::cleanup_system.run_if(has_authority));
+        .add_systems(PostUpdate, Self::stop_following.run_if(has_authority));
     }
 }
 
 impl FollowingPlugin {
-    fn init_system(
+    fn init(
         mut commands: Commands,
         nav_settings: Res<NavMeshSettings>,
         nav_mesh: Res<NavMesh>,
@@ -45,7 +45,7 @@ impl FollowingPlugin {
         }
     }
 
-    fn following_system(
+    fn update_path(
         mut commands: Commands,
         nav_settings: Res<NavMeshSettings>,
         nav_mesh: Res<NavMesh>,
@@ -64,7 +64,7 @@ impl FollowingPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn stop_following(
         mut commands: Commands,
         followers: Query<(Entity, &NavPath), (Changed<NavPath>, With<Following>)>,
     ) {

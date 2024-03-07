@@ -34,26 +34,21 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
-            .add_client_event::<ObjectSpawn>(EventType::Unordered)
+            .add_client_event::<ObjectBuy>(EventType::Unordered)
             .add_mapped_client_event::<ObjectMove>(EventType::Ordered)
-            .add_mapped_client_event::<ObjectDespawn>(EventType::Unordered)
+            .add_mapped_client_event::<ObjectSell>(EventType::Unordered)
             .add_server_event::<ObjectEventConfirmed>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (
-                    Self::init_system.run_if(resource_exists::<WorldName>),
-                    (
-                        Self::spawn_system,
-                        Self::movement_system,
-                        Self::despawn_system,
-                    )
-                        .run_if(has_authority),
+                    Self::init.run_if(resource_exists::<WorldName>),
+                    (Self::buy, Self::apply_movement, Self::sell).run_if(has_authority),
                 )
                     .after(ClientSet::Receive),
             )
             .add_systems(
                 SpawnScene,
-                Self::scene_init_system
+                Self::init_children
                     .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             );
@@ -61,7 +56,7 @@ impl Plugin for ObjectPlugin {
 }
 
 impl ObjectPlugin {
-    fn init_system(
+    fn init(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
@@ -98,7 +93,7 @@ impl ObjectPlugin {
         }
     }
 
-    fn scene_init_system(
+    fn init_children(
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
@@ -133,14 +128,14 @@ impl ObjectPlugin {
         }
     }
 
-    fn spawn_system(
+    fn buy(
         mut commands: Commands,
-        mut spawn_events: EventReader<FromClient<ObjectSpawn>>,
+        mut buy_events: EventReader<FromClient<ObjectBuy>>,
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
-        for FromClient { client_id, event } in spawn_events.read().cloned() {
+        for FromClient { client_id, event } in buy_events.read().cloned() {
             if event.position.y.abs() > HALF_CITY_SIZE {
                 error!(
                     "received object spawn position {} with 'y' outside of city size",
@@ -182,7 +177,7 @@ impl ObjectPlugin {
         }
     }
 
-    fn movement_system(
+    fn apply_movement(
         mut move_events: EventReader<FromClient<ObjectMove>>,
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
         mut transforms: Query<&mut Transform>,
@@ -202,12 +197,12 @@ impl ObjectPlugin {
         }
     }
 
-    fn despawn_system(
+    fn sell(
         mut commands: Commands,
-        mut despawn_events: EventReader<FromClient<ObjectDespawn>>,
+        mut sell_events: EventReader<FromClient<ObjectSell>>,
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
     ) {
-        for FromClient { client_id, event } in despawn_events.read().copied() {
+        for FromClient { client_id, event } in sell_events.read().copied() {
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
@@ -255,7 +250,7 @@ pub(crate) trait ObjectComponent: Reflect {
 }
 
 #[derive(Clone, Deserialize, Event, Serialize)]
-struct ObjectSpawn {
+struct ObjectBuy {
     metadata_path: AssetPath<'static>,
     position: Vec2,
     rotation: Quat,
@@ -275,9 +270,9 @@ impl MapEntities for ObjectMove {
 }
 
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct ObjectDespawn(Entity);
+struct ObjectSell(Entity);
 
-impl MapEntities for ObjectDespawn {
+impl MapEntities for ObjectSell {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.0 = entity_mapper.map_entity(self.0);
     }

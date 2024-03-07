@@ -16,17 +16,17 @@ impl Plugin for DeveloperPlugin {
             .add_systems(
                 Startup,
                 (
-                    Self::debug_collisions_toggle_system,
-                    Self::wireframe_toggle_system,
-                    Self::debug_paths_system,
+                    Self::set_debug_collisions,
+                    Self::set_wireframe,
+                    Self::set_debug_paths,
                 ),
             )
             .add_systems(
                 PostUpdate,
                 (
-                    Self::debug_collisions_toggle_system,
-                    Self::wireframe_toggle_system,
-                    Self::debug_paths_system,
+                    Self::set_debug_collisions,
+                    Self::set_wireframe,
+                    Self::set_debug_paths,
                 )
                     .run_if(on_event::<SettingsApply>()),
             );
@@ -34,21 +34,15 @@ impl Plugin for DeveloperPlugin {
 }
 
 impl DeveloperPlugin {
-    fn debug_collisions_toggle_system(
-        mut config_store: ResMut<GizmoConfigStore>,
-        settings: Res<Settings>,
-    ) {
+    fn set_debug_collisions(mut config_store: ResMut<GizmoConfigStore>, settings: Res<Settings>) {
         config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
     }
 
-    fn wireframe_toggle_system(
-        settings: Res<Settings>,
-        mut wireframe_config: ResMut<WireframeConfig>,
-    ) {
+    fn set_wireframe(settings: Res<Settings>, mut wireframe_config: ResMut<WireframeConfig>) {
         wireframe_config.global = settings.developer.wireframe;
     }
 
-    fn debug_paths_system(settings: Res<Settings>, mut draw_nav_mesh: ResMut<DrawNavMesh>) {
+    fn set_debug_paths(settings: Res<Settings>, mut draw_nav_mesh: ResMut<DrawNavMesh>) {
         draw_nav_mesh.0 = settings.developer.debug_paths;
     }
 }

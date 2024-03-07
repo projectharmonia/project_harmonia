@@ -5,7 +5,7 @@ use leafwing_input_manager::common_conditions::{
     action_just_pressed, action_just_released, action_pressed,
 };
 
-use super::{Wall, WallSpawn};
+use super::{Wall, WallCreate};
 use crate::core::{
     action::Action,
     cursor_hover::CursorHover,
@@ -21,13 +21,13 @@ impl Plugin for SpawningWallPlugin {
         app.add_systems(
             Update,
             (
-                Self::spawn_system
+                Self::start_creating
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<SpawningWall>)),
-                Self::movement_system
+                Self::update_end
                     .run_if(action_pressed(Action::Confirm))
                     .run_if(any_with_component::<SpawningWall>),
-                Self::confirmation_system
+                Self::confirm
                     .run_if(action_just_released(Action::Confirm))
                     .run_if(any_with_component::<SpawningWall>),
             )
@@ -41,7 +41,7 @@ impl Plugin for SpawningWallPlugin {
 const SNAP_DELTA: f32 = 0.5;
 
 impl SpawningWallPlugin {
-    fn spawn_system(
+    fn start_creating(
         mut commands: Commands,
         walls: Query<&Wall>,
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
@@ -60,13 +60,13 @@ impl SpawningWallPlugin {
                     .unwrap_or(position);
 
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn(SpawningWallBundle::new(point));
+                    parent.spawn(CreatingWallBundle::new(point));
                 });
             }
         }
     }
 
-    fn movement_system(
+    fn update_end(
         mut spawning_walls: Query<(&mut Wall, &Parent), With<SpawningWall>>,
         walls: Query<&Wall, Without<SpawningWall>>,
         children: Query<&Children>,
@@ -87,10 +87,10 @@ impl SpawningWallPlugin {
         }
     }
 
-    fn confirmation_system(
+    fn confirm(
         mut commands: Commands,
         meshes: Res<Assets<Mesh>>,
-        mut spawn_events: EventWriter<WallSpawn>,
+        mut create_events: EventWriter<WallCreate>,
         mut spawning_walls: Query<
             (Entity, &Parent, &Wall, &Handle<Mesh>, &mut Collider),
             With<SpawningWall>,
@@ -109,7 +109,7 @@ impl SpawningWallPlugin {
             .remove::<SpawningWall>()
             .insert(Replication);
 
-        spawn_events.send(WallSpawn {
+        create_events.send(WallCreate {
             lot_entity: **parent,
             wall_entity,
             wall,
@@ -118,13 +118,13 @@ impl SpawningWallPlugin {
 }
 
 #[derive(Bundle)]
-struct SpawningWallBundle {
+struct CreatingWallBundle {
     wall: Wall,
     parent_sync: ParentSync,
     spawning_wall: SpawningWall,
 }
 
-impl SpawningWallBundle {
+impl CreatingWallBundle {
     fn new(point: Vec2) -> Self {
         Self {
             wall: Wall {

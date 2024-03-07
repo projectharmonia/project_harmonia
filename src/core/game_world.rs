@@ -15,14 +15,14 @@ impl Plugin for GameWorldPlugin {
             .add_event::<GameLoad>()
             .add_systems(
                 SpawnScene,
-                Self::loading_system
+                Self::load
                     .pipe(error_report::report)
                     .run_if(on_event::<GameLoad>())
                     .before(bevy::scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
-                Self::saving_system
+                Self::save
                     .pipe(error_report::report)
                     .run_if(on_event::<GameSave>()),
             );
@@ -31,7 +31,7 @@ impl Plugin for GameWorldPlugin {
 
 impl GameWorldPlugin {
     /// Saves world to disk with the name from [`GameWorld`] resource.
-    fn saving_system(
+    fn save(
         world: &World,
         world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
@@ -53,7 +53,7 @@ impl GameWorldPlugin {
     }
 
     /// Loads world from disk with the name from [`GameWorld`] resource.
-    fn loading_system(
+    fn load(
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
         mut game_state: ResMut<NextState<GameState>>,

@@ -12,10 +12,10 @@ impl Plugin for CursorHoverPlugin {
         app.init_resource::<CursorHoverSettings>().add_systems(
             PreUpdate,
             (
-                Self::raycast_system
-                    .pipe(Self::hover_update_system)
+                Self::raycast
+                    .pipe(Self::update)
                     .run_if(cursor_hover_enabled),
-                Self::cleanup_system
+                Self::remove_all
                     .run_if(resource_changed::<CursorHoverSettings>)
                     .run_if(not(cursor_hover_enabled)),
             )
@@ -25,7 +25,7 @@ impl Plugin for CursorHoverPlugin {
 }
 
 impl CursorHoverPlugin {
-    fn raycast_system(
+    fn raycast(
         spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
@@ -51,7 +51,7 @@ impl CursorHoverPlugin {
         Some((hovered_entity, position))
     }
 
-    fn hover_update_system(
+    fn update(
         In(hit): In<Option<(Entity, Vec3)>>,
         mut commands: Commands,
         cursor_hovers: Query<Entity, With<CursorHover>>,
@@ -73,7 +73,7 @@ impl CursorHoverPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, hovered: Query<Entity, With<CursorHover>>) {
+    fn remove_all(mut commands: Commands, hovered: Query<Entity, With<CursorHover>>) {
         if let Ok(hovered_entity) = hovered.get_single() {
             commands.entity(hovered_entity).remove::<CursorHover>();
         }

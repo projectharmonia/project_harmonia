@@ -17,11 +17,11 @@ impl Plugin for PlayerCameraPlugin {
             Update,
             (
                 (
-                    Self::rotation_system,
-                    Self::position_system.run_if(not(in_state(GameState::FamilyEditor))),
-                    Self::arm_system,
+                    Self::update_rotation,
+                    Self::update_origin.run_if(not(in_state(GameState::FamilyEditor))),
+                    Self::update_spring_arm,
                 ),
-                Self::transform_system,
+                Self::apply_transform,
             )
                 .chain()
                 .run_if(
@@ -34,7 +34,7 @@ impl Plugin for PlayerCameraPlugin {
 }
 
 impl PlayerCameraPlugin {
-    fn rotation_system(
+    fn update_rotation(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
         mut motion_events: EventReader<MouseMotion>,
@@ -50,7 +50,7 @@ impl PlayerCameraPlugin {
         orbit_rotation.smooth(time.delta_seconds());
     }
 
-    fn position_system(
+    fn update_origin(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
         mut cameras: Query<(&mut OrbitOrigin, &Transform), With<PlayerCamera>>,
@@ -64,7 +64,7 @@ impl PlayerCameraPlugin {
         orbit_origin.smooth(time.delta_seconds());
     }
 
-    fn arm_system(
+    fn update_spring_arm(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
         mut cameras: Query<&mut SpringArm, With<PlayerCamera>>,
@@ -74,7 +74,7 @@ impl PlayerCameraPlugin {
         spring_arm.smooth(time.delta_seconds());
     }
 
-    fn transform_system(
+    fn apply_transform(
         mut cameras: Query<
             (&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm),
             With<PlayerCamera>,

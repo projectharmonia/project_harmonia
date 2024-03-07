@@ -24,13 +24,13 @@ impl Plugin for NavigationPlugin {
             .replicate::<NavPath>()
             .replicate::<WaypointIndex>()
             .add_plugins(FollowingPlugin)
-            .add_systems(PreUpdate, Self::poll_system.run_if(has_authority))
-            .add_systems(Update, Self::navigation_system.run_if(has_authority));
+            .add_systems(PreUpdate, Self::poll_paths.run_if(has_authority))
+            .add_systems(Update, Self::navigate.run_if(has_authority));
     }
 }
 
 impl NavigationPlugin {
-    fn poll_system(
+    fn poll_paths(
         mut commands: Commands,
         mut actors: Query<(Entity, &mut ComputePath, &mut NavPath)>,
     ) {
@@ -42,7 +42,7 @@ impl NavigationPlugin {
         }
     }
 
-    fn navigation_system(
+    fn navigate(
         time: Res<Time>,
         mut actors: Query<(
             &Navigation,

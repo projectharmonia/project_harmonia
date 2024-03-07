@@ -7,10 +7,10 @@ use crate::{
         actor::{
             needs::{Need, NeedGlyph},
             task::{TaskCancel, TaskState},
-            ActiveActor,
+            SelectedActor,
         },
         asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
-        family::{ActiveFamily, Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin},
+        family::{Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin, SelectedFamily},
         game_state::GameState,
     },
     ui::{
@@ -32,36 +32,32 @@ impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(GameState::Family),
-            Self::setup_system.after(FamilyPlugin::activation_system),
+            Self::setup.after(FamilyPlugin::select),
         )
         .add_systems(
             Update,
             (
-                Self::mode_button_system,
-                Self::tasks_node_system,
-                Self::need_bars_system,
-                Self::budget_system,
-                Self::building_mode_button_system.run_if(in_state(FamilyMode::Building)),
-                (Self::task_button_system, Self::actor_buttons_system)
-                    .run_if(in_state(FamilyMode::Life)),
+                Self::set_family_mode,
+                Self::update_task_nodes,
+                Self::update_need_bars,
+                Self::update_budget,
+                Self::set_building_mode.run_if(in_state(FamilyMode::Building)),
+                (Self::cancel_task, Self::select_actor).run_if(in_state(FamilyMode::Life)),
             )
                 .run_if(in_state(GameState::Family)),
         )
-        .add_systems(
-            PostUpdate,
-            (Self::task_cleanup_system, Self::need_cleanup_system),
-        );
+        .add_systems(PostUpdate, (Self::cleanup_tasks, Self::cleanup_need_bars));
     }
 }
 
 impl FamilyHudPlugin {
-    fn setup_system(
+    fn setup(
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        families: Query<(&Budget, &FamilyMembers), With<ActiveFamily>>,
-        actors: Query<Entity, With<ActiveActor>>,
+        families: Query<(&Budget, &FamilyMembers), With<SelectedFamily>>,
+        actors: Query<Entity, With<SelectedActor>>,
     ) {
         commands
             .spawn((
@@ -129,7 +125,7 @@ impl FamilyHudPlugin {
             });
     }
 
-    fn mode_button_system(
+    fn set_family_mode(
         mut family_mode: ResMut<NextState<FamilyMode>>,
         buttons: Query<(Ref<Toggled>, &FamilyMode), Changed<Toggled>>,
     ) {
@@ -140,18 +136,18 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn tasks_node_system(
+    fn update_task_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
-        actors: Query<(&Children, Ref<ActiveActor>)>,
+        actors: Query<(&Children, Ref<SelectedActor>)>,
         tasks: Query<(Entity, Ref<TaskState>)>,
         queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
         active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        let (children, active_actor) = actors.single();
+        let (children, selected_actor) = actors.single();
 
-        if active_actor.is_added() {
+        if selected_actor.is_added() {
             commands
                 .entity(queued_task_nodes.single())
                 .despawn_descendants();
@@ -162,7 +158,7 @@ impl FamilyHudPlugin {
 
         for (task_entity, state) in tasks
             .iter_many(children)
-            .filter(|(_, state)| state.is_changed() || active_actor.is_added())
+            .filter(|(_, state)| state.is_changed() || selected_actor.is_added())
         {
             match *state {
                 TaskState::Queued => {
@@ -199,7 +195,7 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn task_button_system(
+    fn cancel_task(
         mut cancel_events: EventWriter<TaskCancel>,
         mut click_events: EventReader<Click>,
         buttons: Query<&ButtonTask>,
@@ -209,7 +205,7 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn task_cleanup_system(
+    fn cleanup_tasks(
         mut commands: Commands,
         mut removed_tasks: RemovedComponents<TaskState>,
         buttons: Query<(Entity, &ButtonTask)>,
@@ -224,8 +220,8 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn budget_system(
-        families: Query<&Budget, (With<ActiveFamily>, Changed<Budget>)>,
+    fn update_budget(
+        families: Query<&Budget, (With<SelectedFamily>, Changed<Budget>)>,
         mut labels: Query<&mut Text, With<BudgetLabel>>,
     ) {
         if let Ok(budget) = families.get_single() {
@@ -233,38 +229,38 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn actor_buttons_system(
+    fn select_actor(
         mut commands: Commands,
         actor_buttons: Query<(Ref<Toggled>, &PlayActor), Changed<Toggled>>,
     ) {
         for (toggled, play_actor) in &actor_buttons {
             if toggled.0 && !toggled.is_added() {
-                commands.entity(play_actor.0).insert(ActiveActor);
+                commands.entity(play_actor.0).insert(SelectedActor);
             }
         }
     }
 
-    fn need_bars_system(
+    fn update_need_bars(
         mut commands: Commands,
         theme: Res<Theme>,
         needs: Query<(Entity, &NeedGlyph, Ref<Need>)>,
-        actors: Query<(&Children, Ref<ActiveActor>)>,
+        actors: Query<(&Children, Ref<SelectedActor>)>,
         tabs: Query<(&TabContent, &InfoTab)>,
         mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
     ) {
-        let (children, active_actor) = actors.single();
+        let (children, selected_actor) = actors.single();
         let (tab_content, _) = tabs
             .iter()
             .find(|(_, &tab)| tab == InfoTab::Needs)
             .expect("tab with cities should be spawned on state enter");
 
-        if active_actor.is_added() {
+        if selected_actor.is_added() {
             commands.entity(tab_content.0).despawn_descendants();
         }
 
         for (entity, glyph, need) in needs
             .iter_many(children)
-            .filter(|(.., need)| need.is_changed() || active_actor.is_added())
+            .filter(|(.., need)| need.is_changed() || selected_actor.is_added())
         {
             if let Some((mut progress_bar, _)) = progress_bars
                 .iter_mut()
@@ -280,7 +276,7 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn need_cleanup_system(
+    fn cleanup_need_bars(
         mut commands: Commands,
         mut removed_needs: RemovedComponents<Need>,
         progress_bars: Query<(Entity, &BarNeed)>,
@@ -295,7 +291,7 @@ impl FamilyHudPlugin {
         }
     }
 
-    fn building_mode_button_system(
+    fn set_building_mode(
         mut building_mode: ResMut<NextState<BuildingMode>>,
         buttons: Query<(Ref<Toggled>, &BuildingMode), Changed<Toggled>>,
     ) {

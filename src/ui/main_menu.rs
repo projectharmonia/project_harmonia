@@ -12,16 +12,16 @@ pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), Self::setup_system)
+        app.add_systems(OnEnter(GameState::MainMenu), Self::setup)
             .add_systems(
                 Update,
-                Self::button_system.run_if(in_state(GameState::MainMenu)),
+                Self::handle_clicks.run_if(in_state(GameState::MainMenu)),
             );
     }
 }
 
 impl MainMenuPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>) {
+    fn setup(mut commands: Commands, theme: Res<Theme>) {
         commands
             .spawn((
                 UiRoot,
@@ -46,7 +46,7 @@ impl MainMenuPlugin {
             });
     }
 
-    fn button_system(
+    fn handle_clicks(
         mut settings_events: EventWriter<SettingsMenuOpen>,
         mut exit_events: EventWriter<AppExit>,
         mut click_events: EventReader<Click>,

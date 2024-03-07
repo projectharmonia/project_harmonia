@@ -7,19 +7,12 @@ pub(crate) struct CheckboxPlugin;
 
 impl Plugin for CheckboxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                Self::init_system,
-                Self::interaction_system,
-                Self::tick_system,
-            ),
-        );
+        app.add_systems(Update, (Self::init, Self::toggle, Self::update_tick));
     }
 }
 
 impl CheckboxPlugin {
-    fn init_system(
+    fn init(
         mut commmands: Commands,
         theme: Res<Theme>,
         checkboxes: Query<(Entity, &Checkbox, &CheckboxText), Added<CheckboxText>>,
@@ -51,7 +44,7 @@ impl CheckboxPlugin {
         }
     }
 
-    fn interaction_system(
+    fn toggle(
         mut click_events: EventReader<Click>,
         mut checkboxes: Query<&mut Checkbox>,
         parents: Query<&Parent>,
@@ -64,7 +57,7 @@ impl CheckboxPlugin {
     }
 
     /// Won't be triggered after spawning because button child will be spawned at the next frame.
-    fn tick_system(
+    fn update_tick(
         mut commmands: Commands,
         theme: Res<Theme>,
         checkboxes: Query<(&Children, &Checkbox), Changed<Checkbox>>,

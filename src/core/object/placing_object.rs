@@ -14,7 +14,7 @@ use crate::core::{
     cursor_hover::{CursorHover, CursorHoverSettings},
     family::FamilyMode,
     game_state::GameState,
-    object::{ObjectDespawn, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSpawn},
+    object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::PlayerCamera,
     Layer,
 };
@@ -23,28 +23,28 @@ pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Objects), Self::cancel_system)
-            .add_systems(OnExit(FamilyMode::Building), Self::cancel_system)
+        app.add_systems(OnExit(CityMode::Objects), Self::cancel)
+            .add_systems(OnExit(FamilyMode::Building), Self::cancel)
             .add_systems(
                 Update,
                 (
                     (
-                        Self::picking_system
+                        Self::pick
                             .run_if(action_just_pressed(Action::Confirm))
                             .run_if(not(any_with_component::<PlacingObject>)),
-                        Self::confirmation_system
-                            .after(Self::collision_system)
+                        Self::confirm
+                            .after(Self::check_collision)
                             .run_if(action_just_pressed(Action::Confirm)),
-                        Self::despawn_system.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel_system.run_if(
+                        Self::sell.run_if(action_just_pressed(Action::Delete)),
+                        Self::cancel.run_if(
                             action_just_pressed(Action::Cancel)
                                 .or_else(on_event::<ObjectEventConfirmed>()),
                         ),
                     ),
                     (
-                        Self::rotation_system.run_if(action_just_pressed(Action::RotateObject)),
-                        Self::movement_system,
-                        Self::collision_system,
+                        Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
+                        Self::apply_transform,
+                        Self::check_collision,
                     )
                         .chain(),
                 )
@@ -59,25 +59,19 @@ impl Plugin for PlacingObjectPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::material_system,
-                    Self::init_system,
-                    Self::exclusive_system,
-                )
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
-                            ),
-                    ),
+                (Self::update_materials, Self::init, Self::ensure_single).run_if(
+                    in_state(GameState::City)
+                        .and_then(in_state(CityMode::Objects))
+                        .or_else(
+                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                        ),
+                ),
             );
     }
 }
 
 impl PlacingObjectPlugin {
-    fn picking_system(
+    fn pick(
         mut commands: Commands,
         hovered_objects: Query<(Entity, &Parent), (With<ObjectPath>, With<CursorHover>)>,
     ) {
@@ -89,7 +83,7 @@ impl PlacingObjectPlugin {
     }
 
     /// Inserts necessary components to trigger object initialization.
-    fn init_system(
+    fn init(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
@@ -141,13 +135,13 @@ impl PlacingObjectPlugin {
         hover_settings.enabled = false;
     }
 
-    pub(super) fn rotation_system(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
+    pub(super) fn rotate(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
         if let Ok((mut transform, placing_object)) = placing_objects.get_single_mut() {
             transform.rotate_y(placing_object.rotation_step);
         }
     }
 
-    pub(super) fn movement_system(
+    pub(super) fn apply_transform(
         spatial_query: SpatialQuery,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
@@ -181,7 +175,7 @@ impl PlacingObjectPlugin {
         transform.translation = hit_position + cursor_offset.0;
     }
 
-    pub(super) fn collision_system(
+    pub(super) fn check_collision(
         mut placing_objects: Query<(&mut PlacingObject, &CollidingEntities)>,
     ) {
         if let Ok((mut placing_object, colliding_entities)) = placing_objects.get_single_mut() {
@@ -200,7 +194,7 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn material_system(
+    fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<
             (Entity, &PlacingObject),
@@ -230,9 +224,9 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn confirmation_system(
+    fn confirm(
         mut move_events: EventWriter<ObjectMove>,
-        mut spawn_events: EventWriter<ObjectSpawn>,
+        mut buy_events: EventWriter<ObjectBuy>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<(&Transform, &PlacingObject)>,
     ) {
@@ -244,7 +238,7 @@ impl PlacingObjectPlugin {
                         let metadata_path = asset_server
                             .get_path(id)
                             .expect("metadata should always come from file");
-                        spawn_events.send(ObjectSpawn {
+                        buy_events.send(ObjectBuy {
                             metadata_path: metadata_path.into_owned(),
                             position: transform.translation.xz(),
                             rotation: transform.rotation,
@@ -262,20 +256,20 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn despawn_system(
+    fn sell(
         mut commands: Commands,
-        mut despawn_events: EventWriter<ObjectDespawn>,
+        mut sell_events: EventWriter<ObjectSell>,
         placing_objects: Query<(Entity, &PlacingObject)>,
     ) {
         if let Ok((entity, placing_object)) = placing_objects.get_single() {
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                despawn_events.send(ObjectDespawn(entity));
+                sell_events.send(ObjectSell(entity));
             }
             commands.entity(entity).despawn_recursive();
         }
     }
 
-    fn cancel_system(
+    fn cancel(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         placing_objects: Query<Entity, With<PlacingObject>>,
@@ -287,7 +281,7 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn exclusive_system(
+    fn ensure_single(
         mut commands: Commands,
         new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<Entity, With<PlacingObject>>,

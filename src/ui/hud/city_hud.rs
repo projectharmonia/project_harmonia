@@ -22,17 +22,16 @@ pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::City), Self::setup_system)
+        app.add_systems(OnEnter(GameState::City), Self::setup)
             .add_systems(
                 Update,
-                (Self::mode_button_system, Self::tool_button_system)
-                    .run_if(in_state(GameState::City)),
+                (Self::set_city_mode, Self::set_lot_tool).run_if(in_state(GameState::City)),
             );
     }
 }
 
 impl CityHudPlugin {
-    fn setup_system(
+    fn setup(
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
@@ -103,7 +102,7 @@ impl CityHudPlugin {
             });
     }
 
-    fn mode_button_system(
+    fn set_city_mode(
         mut city_mode: ResMut<NextState<CityMode>>,
         buttons: Query<(Ref<Toggled>, &CityMode), Changed<Toggled>>,
     ) {
@@ -114,7 +113,7 @@ impl CityHudPlugin {
         }
     }
 
-    fn tool_button_system(
+    fn set_lot_tool(
         mut lot_tool: ResMut<NextState<LotTool>>,
         buttons: Query<(Ref<Toggled>, &LotTool), Changed<Toggled>>,
     ) {

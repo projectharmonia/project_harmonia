@@ -25,10 +25,10 @@ impl Plugin for ObjectsNodePlugin {
         app.add_systems(
             Update,
             (
-                Self::button_system,
-                Self::popup_system,
-                Self::toggle_system,
-                Self::reload_system,
+                Self::start_placing,
+                Self::show_popup,
+                Self::untoggle_spawned,
+                Self::reload_buttons,
             )
                 .run_if(
                     in_state(GameState::City).or_else(
@@ -40,7 +40,7 @@ impl Plugin for ObjectsNodePlugin {
 }
 
 impl ObjectsNodePlugin {
-    fn button_system(
+    fn start_placing(
         mut commands: Commands,
         active_cities: Query<Entity, With<ActiveCity>>,
         buttons: Query<(&Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
@@ -60,7 +60,7 @@ impl ObjectsNodePlugin {
         }
     }
 
-    fn popup_system(
+    fn show_popup(
         mut commands: Commands,
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
@@ -134,7 +134,7 @@ impl ObjectsNodePlugin {
         }
     }
 
-    fn toggle_system(
+    fn untoggle_spawned(
         mut removed_objects: RemovedComponents<PlacingObject>,
         placing_objects: Query<(), With<PlacingObject>>,
         mut buttons: Query<&mut Toggled, With<ObjectButton>>,
@@ -149,7 +149,7 @@ impl ObjectsNodePlugin {
         }
     }
 
-    fn reload_system(
+    fn reload_buttons(
         mut commands: Commands,
         mut change_events: EventReader<AssetEvent<ObjectMetadata>>,
         object_metadata: Res<Assets<ObjectMetadata>>,

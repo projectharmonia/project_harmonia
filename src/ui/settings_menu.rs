@@ -26,23 +26,23 @@ impl Plugin for SettingsMenuPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::mapping_button_text_system,
-                    Self::mapping_button_system,
-                    Self::binding_system.run_if(any_with_component::<BindingButton>),
-                    Self::binding_dialog_button_system,
-                    Self::settings_button_system,
+                    Self::update_mapping_text,
+                    Self::start_mapping,
+                    Self::read_binding.run_if(any_with_component::<BindingButton>),
+                    Self::handle_binding_dialog_clicks,
+                    Self::handle_settings_menu_clicks,
                 )
                     .run_if(any_with_component::<SettingsMenu>),
             )
             .add_systems(
                 PostUpdate,
-                Self::setup_system.run_if(on_event::<SettingsMenuOpen>()),
+                Self::setup.run_if(on_event::<SettingsMenuOpen>()),
             );
     }
 }
 
 impl SettingsMenuPlugin {
-    fn setup_system(
+    fn setup(
         mut commands: Commands,
         mut tab_commands: Commands,
         settings: Res<Settings>,
@@ -135,9 +135,7 @@ impl SettingsMenuPlugin {
         });
     }
 
-    fn mapping_button_text_system(
-        mut buttons: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>,
-    ) {
+    fn update_mapping_text(mut buttons: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>) {
         for (mapping, mut text) in &mut buttons {
             text.0 = match mapping.input_kind {
                 Some(InputKind::GamepadButton(gamepad_button)) => {
@@ -154,7 +152,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn mapping_button_system(
+    fn start_mapping(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
@@ -214,7 +212,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn binding_system(
+    fn read_binding(
         mut commands: Commands,
         mut input_events: InputEvents,
         dialogs: Query<(Entity, &BindingButton)>,
@@ -252,7 +250,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn binding_dialog_button_system(
+    fn handle_binding_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut mapping_buttons: Query<&mut Mapping>,
@@ -288,7 +286,7 @@ impl SettingsMenuPlugin {
         }
     }
 
-    fn settings_button_system(
+    fn handle_settings_menu_clicks(
         mut commands: Commands,
         mut apply_events: EventWriter<SettingsApply>,
         mut click_events: EventReader<Click>,

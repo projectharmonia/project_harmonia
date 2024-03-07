@@ -26,16 +26,16 @@ pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::WorldBrowser), Self::setup_system)
+        app.add_systems(OnEnter(GameState::WorldBrowser), Self::setup)
             .add_systems(
                 Update,
                 (
-                    Self::world_button_system,
-                    Self::host_dialog_button_system.pipe(error_report::report),
-                    Self::remove_dialog_button_system.pipe(error_report::report),
-                    Self::world_browser_button_system,
-                    Self::create_dialog_button_system,
-                    Self::join_dialog_button_system.pipe(error_report::report),
+                    Self::handle_world_clicks,
+                    Self::handle_host_dialog_clicks.pipe(error_report::report),
+                    Self::handle_remove_dialog_clicks.pipe(error_report::report),
+                    Self::handle_world_browser_clicks,
+                    Self::handle_create_dialog_clicks,
+                    Self::handle_join_dialog_clicks.pipe(error_report::report),
                 )
                     .run_if(in_state(GameState::WorldBrowser)),
             );
@@ -43,7 +43,7 @@ impl Plugin for WorldBrowserPlugin {
 }
 
 impl WorldBrowserPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>, game_paths: Res<GamePaths>) {
+    fn setup(mut commands: Commands, theme: Res<Theme>, game_paths: Res<GamePaths>) {
         commands
             .spawn((
                 UiRoot,
@@ -107,7 +107,7 @@ impl WorldBrowserPlugin {
             });
     }
 
-    fn world_button_system(
+    fn handle_world_clicks(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         mut click_events: EventReader<Click>,
@@ -147,7 +147,7 @@ impl WorldBrowserPlugin {
         }
     }
 
-    fn host_dialog_button_system(
+    fn handle_host_dialog_clicks(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         mut click_events: EventReader<Click>,
@@ -185,7 +185,7 @@ impl WorldBrowserPlugin {
         Ok(())
     }
 
-    fn remove_dialog_button_system(
+    fn handle_remove_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         game_paths: Res<GamePaths>,
@@ -210,7 +210,7 @@ impl WorldBrowserPlugin {
         Ok(())
     }
 
-    fn world_browser_button_system(
+    fn handle_world_browser_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
@@ -229,7 +229,7 @@ impl WorldBrowserPlugin {
         }
     }
 
-    fn create_dialog_button_system(
+    fn handle_create_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
@@ -247,7 +247,7 @@ impl WorldBrowserPlugin {
         }
     }
 
-    fn join_dialog_button_system(
+    fn handle_join_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         network_channels: Res<NetworkChannels>,

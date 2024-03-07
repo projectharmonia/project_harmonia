@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
-    actor::ActiveActor,
+    actor::SelectedActor,
     cursor_hover::CursorHoverable,
     game_state::GameState,
     game_world::WorldName,
@@ -23,22 +23,22 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .replicate::<City>()
             .init_resource::<PlacedCities>()
-            .add_systems(OnEnter(GameState::City), Self::activation_system)
+            .add_systems(OnEnter(GameState::City), Self::setup)
             .add_systems(
                 OnEnter(GameState::Family),
-                (Self::actor_activation_system, Self::activation_system).chain(),
+                (Self::activate, Self::setup).chain(),
             )
-            .add_systems(OnExit(GameState::City), Self::deactivation_system)
-            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
+            .add_systems(OnExit(GameState::City), Self::deactivate)
+            .add_systems(OnExit(GameState::Family), Self::deactivate)
             .add_systems(
                 PreUpdate,
-                Self::init_system
+                Self::init
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+                Self::cleanup.run_if(resource_removed::<WorldName>()),
             );
     }
 }
@@ -49,7 +49,7 @@ pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
-    fn init_system(
+    fn init(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<StandardMaterial>>,
@@ -88,16 +88,11 @@ impl CityPlugin {
         }
     }
 
-    fn actor_activation_system(
-        mut commands: Commands,
-        activated_actors: Query<&Parent, With<ActiveActor>>,
-    ) {
-        commands
-            .entity(activated_actors.single().get())
-            .insert(ActiveCity);
+    fn activate(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
+        commands.entity(actors.single().get()).insert(ActiveCity);
     }
 
-    fn activation_system(
+    fn setup(
         mut commands: Commands,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
@@ -119,7 +114,7 @@ impl CityPlugin {
         });
     }
 
-    fn deactivation_system(
+    fn deactivate(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
         cameras: Query<Entity, With<PlayerCamera>>,
@@ -134,7 +129,7 @@ impl CityPlugin {
     }
 
     /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
-    fn cleanup_system(
+    fn cleanup(
         mut commands: Commands,
         mut placed_citites: ResMut<PlacedCities>,
         cities: Query<Entity, With<City>>,

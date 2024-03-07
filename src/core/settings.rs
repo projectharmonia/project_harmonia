@@ -17,7 +17,7 @@ impl Plugin for SettingsPlugin {
             .add_event::<SettingsApply>()
             .add_systems(
                 PostUpdate,
-                Self::write_system
+                Self::write
                     .pipe(error_report::report)
                     .run_if(on_event::<SettingsApply>()),
             );
@@ -25,7 +25,7 @@ impl Plugin for SettingsPlugin {
 }
 
 impl SettingsPlugin {
-    fn write_system(settings: Res<Settings>, game_paths: Res<GamePaths>) -> Result<()> {
+    fn write(settings: Res<Settings>, game_paths: Res<GamePaths>) -> Result<()> {
         settings.write(&game_paths.settings)
     }
 }

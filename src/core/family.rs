@@ -21,7 +21,7 @@ use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
-    actor::{ActiveActor, Actor, ActorBundle, ReflectActorBundle},
+    actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::WorldName,
@@ -41,36 +41,36 @@ impl Plugin for FamilyPlugin {
             .replicate::<ActorFamily>()
             .replicate::<Family>()
             .replicate::<Budget>()
-            .add_client_event_with::<FamilySpawn, _, _>(
+            .add_client_event_with::<FamilyCreate, _, _>(
                 EventType::Unordered,
-                Self::sending_spawn_system,
-                Self::receiving_spawn_system,
+                Self::send_spawns,
+                Self::receive_spawns,
             )
-            .add_mapped_client_event::<FamilyDespawn>(EventType::Unordered)
-            .add_mapped_server_event::<SelectedFamilySpawned>(EventType::Unordered)
+            .add_mapped_client_event::<FamilyDelete>(EventType::Unordered)
+            .add_mapped_server_event::<SelectedFamilyCreated>(EventType::Unordered)
             .add_systems(
                 OnEnter(GameState::Family),
-                (Self::activation_system, Self::reset_mode_system),
+                (Self::select, Self::reset_states),
             )
-            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
+            .add_systems(OnExit(GameState::Family), Self::remove_selection)
             .add_systems(
                 PreUpdate,
                 (
-                    Self::members_update_system,
-                    (Self::spawn_system, Self::despawn_system).run_if(has_authority),
+                    Self::update_members,
+                    (Self::create, Self::delete).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_system.run_if(resource_removed::<WorldName>()),
+                Self::cleanup.run_if(resource_removed::<WorldName>()),
             );
     }
 }
 
 impl FamilyPlugin {
-    fn reset_mode_system(
+    fn reset_states(
         mut family_mode: ResMut<NextState<FamilyMode>>,
         mut building_mode: ResMut<NextState<BuildingMode>>,
     ) {
@@ -78,7 +78,7 @@ impl FamilyPlugin {
         building_mode.set(Default::default());
     }
 
-    fn members_update_system(
+    fn update_members(
         mut commands: Commands,
         actors: Query<(Entity, &ActorFamily), Changed<ActorFamily>>,
         mut families: Query<&mut FamilyMembers>,
@@ -109,12 +109,12 @@ impl FamilyPlugin {
         }
     }
 
-    fn spawn_system(
+    fn create(
         mut commands: Commands,
-        mut spawn_select_events: EventWriter<ToClients<SelectedFamilySpawned>>,
-        mut spawn_events: ResMut<Events<FromClient<FamilySpawn>>>,
+        mut created_events: EventWriter<ToClients<SelectedFamilyCreated>>,
+        mut create_events: ResMut<Events<FromClient<FamilyCreate>>>,
     ) {
-        for FromClient { client_id, event } in spawn_events.drain() {
+        for FromClient { client_id, event } in create_events.drain() {
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
@@ -132,20 +132,20 @@ impl FamilyPlugin {
                 });
             }
             if event.select {
-                spawn_select_events.send(ToClients {
+                created_events.send(ToClients {
                     mode: SendMode::Direct(client_id),
-                    event: SelectedFamilySpawned(family_entity),
+                    event: SelectedFamilyCreated(family_entity),
                 });
             }
         }
     }
 
-    fn despawn_system(
+    fn delete(
         mut commands: Commands,
-        mut despawn_events: EventReader<FromClient<FamilyDespawn>>,
+        mut delete_events: EventReader<FromClient<FamilyDelete>>,
         families: Query<(Entity, &mut FamilyMembers)>,
     ) {
-        for entity in despawn_events.read().map(|event| event.event.0) {
+        for entity in delete_events.read().map(|event| event.event.0) {
             match families.get(entity) {
                 Ok((family_entity, members)) => {
                     commands.entity(family_entity).despawn();
@@ -158,32 +158,29 @@ impl FamilyPlugin {
         }
     }
 
-    pub(crate) fn activation_system(
-        mut commands: Commands,
-        actors: Query<&ActorFamily, With<ActiveActor>>,
-    ) {
-        commands.entity(actors.single().0).insert(ActiveFamily);
+    pub(crate) fn select(mut commands: Commands, actors: Query<&ActorFamily, With<SelectedActor>>) {
+        commands.entity(actors.single().0).insert(SelectedFamily);
     }
 
-    fn deactivation_system(
+    fn remove_selection(
         mut commands: Commands,
-        families: Query<&ActorFamily, With<ActiveActor>>,
+        families: Query<&ActorFamily, With<SelectedActor>>,
     ) {
         if let Ok(family) = families.get_single() {
-            commands.entity(family.0).remove::<ActiveFamily>();
+            commands.entity(family.0).remove::<SelectedFamily>();
         }
     }
 
-    fn cleanup_system(mut commands: Commands, families: Query<Entity, With<Family>>) {
+    fn cleanup(mut commands: Commands, families: Query<Entity, With<Family>>) {
         for entity in &families {
             commands.entity(entity).despawn();
         }
     }
 
-    fn sending_spawn_system(
-        mut spawn_events: EventReader<FamilySpawn>,
+    fn send_spawns(
+        mut spawn_events: EventReader<FamilyCreate>,
         mut client: ResMut<RenetClient>,
-        channel: Res<ClientEventChannel<FamilySpawn>>,
+        channel: Res<ClientEventChannel<FamilyCreate>>,
         registry: Res<AppTypeRegistry>,
     ) {
         let registry = registry.read();
@@ -195,10 +192,10 @@ impl FamilyPlugin {
         }
     }
 
-    fn receiving_spawn_system(
-        mut spawn_events: EventWriter<FromClient<FamilySpawn>>,
+    fn receive_spawns(
+        mut spawn_events: EventWriter<FromClient<FamilyCreate>>,
         mut server: ResMut<RenetServer>,
-        channel: Res<ServerEventChannel<FamilySpawn>>,
+        channel: Res<ServerEventChannel<FamilyCreate>>,
         registry: Res<AppTypeRegistry>,
         entity_map: Res<ServerEntityMap>,
     ) {
@@ -220,7 +217,7 @@ impl FamilyPlugin {
 }
 
 fn serialize_family_spawn(
-    event: &FamilySpawn,
+    event: &FamilyCreate,
     registry: &TypeRegistry,
 ) -> bincode::Result<Vec<u8>> {
     let mut message = Vec::new();
@@ -237,7 +234,7 @@ fn serialize_family_spawn(
     Ok(message)
 }
 
-fn deserialize_family_spawn(message: &[u8], registry: &TypeRegistry) -> Result<FamilySpawn> {
+fn deserialize_family_spawn(message: &[u8], registry: &TypeRegistry) -> Result<FamilyCreate> {
     let mut cursor = Cursor::new(message);
     let city_entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
     let name = DefaultOptions::new().deserialize_from(&mut cursor)?;
@@ -263,7 +260,7 @@ fn deserialize_family_spawn(message: &[u8], registry: &TypeRegistry) -> Result<F
     }
     let select = DefaultOptions::new().deserialize_from(&mut cursor)?;
 
-    Ok(FamilySpawn {
+    Ok(FamilyCreate {
         city_entity,
         scene: FamilyScene {
             name,
@@ -337,7 +334,7 @@ pub(crate) struct Family;
 ///
 /// Inserted automatically on [`ActiveActor`] insertion.
 #[derive(Component)]
-pub(crate) struct ActiveFamily;
+pub(crate) struct SelectedFamily;
 
 #[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
@@ -369,13 +366,13 @@ impl FromWorld for ActorFamily {
 }
 
 #[derive(Event)]
-pub(crate) struct FamilySpawn {
+pub(crate) struct FamilyCreate {
     pub(crate) city_entity: Entity,
     pub(crate) scene: FamilyScene,
     pub(crate) select: bool,
 }
 
-impl MapEntities for FamilySpawn {
+impl MapEntities for FamilyCreate {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.city_entity = entity_mapper.map_entity(self.city_entity);
     }
@@ -398,9 +395,9 @@ impl FamilyScene {
     }
 }
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
-pub(crate) struct FamilyDespawn(pub(crate) Entity);
+pub(crate) struct FamilyDelete(pub(crate) Entity);
 
-impl MapEntities for FamilyDespawn {
+impl MapEntities for FamilyDelete {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.0 = entity_mapper.map_entity(self.0);
     }
@@ -408,9 +405,9 @@ impl MapEntities for FamilyDespawn {
 
 /// An event from server which indicates spawn confirmation for the selected family.
 #[derive(Deserialize, Event, Serialize)]
-pub(super) struct SelectedFamilySpawned(pub(super) Entity);
+pub(super) struct SelectedFamilyCreated(pub(super) Entity);
 
-impl MapEntities for SelectedFamilySpawned {
+impl MapEntities for SelectedFamilyCreated {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.0 = entity_mapper.map_entity(self.0);
     }

@@ -10,12 +10,12 @@ pub(super) struct ErrorDialogPlugin;
 
 impl Plugin for ErrorDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (Self::setup_system, Self::button_system));
+        app.add_systems(Update, (Self::show, Self::close));
     }
 }
 
 impl ErrorDialogPlugin {
-    fn setup_system(
+    fn show(
         mut commands: Commands,
         mut error_events: EventReader<ErrorReport>,
         theme: Res<Theme>,
@@ -51,7 +51,7 @@ impl ErrorDialogPlugin {
         }
     }
 
-    fn button_system(
+    fn close(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<(), With<OkButton>>,

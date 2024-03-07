@@ -27,19 +27,19 @@ impl Plugin for NeedsPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    Self::hunger_init_system,
-                    Self::social_init_system,
-                    Self::hygiene_init_system,
-                    Self::fun_init_system,
-                    Self::energy_init_system,
-                    Self::bladder_init_system,
+                    Self::init_hunger,
+                    Self::init_social,
+                    Self::init_hygiene,
+                    Self::init_fun,
+                    Self::init_energy,
+                    Self::init_bladder,
                 )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
-                Self::tick_system
+                Self::update_values
                     .run_if(on_timer(Duration::from_secs(1)))
                     .run_if(has_authority),
             );
@@ -47,7 +47,7 @@ impl Plugin for NeedsPlugin {
 }
 
 impl NeedsPlugin {
-    fn hunger_init_system(mut commands: Commands, needs: Query<Entity, Added<Hunger>>) {
+    fn init_hunger(mut commands: Commands, needs: Query<Entity, Added<Hunger>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -56,7 +56,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn social_init_system(mut commands: Commands, needs: Query<Entity, Added<Social>>) {
+    fn init_social(mut commands: Commands, needs: Query<Entity, Added<Social>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -65,7 +65,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn hygiene_init_system(mut commands: Commands, needs: Query<Entity, Added<Hygiene>>) {
+    fn init_hygiene(mut commands: Commands, needs: Query<Entity, Added<Hygiene>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -74,7 +74,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn fun_init_system(mut commands: Commands, needs: Query<Entity, Added<Fun>>) {
+    fn init_fun(mut commands: Commands, needs: Query<Entity, Added<Fun>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -83,7 +83,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn energy_init_system(mut commands: Commands, needs: Query<Entity, Added<Energy>>) {
+    fn init_energy(mut commands: Commands, needs: Query<Entity, Added<Energy>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -92,7 +92,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn bladder_init_system(mut commands: Commands, needs: Query<Entity, Added<Bladder>>) {
+    fn init_bladder(mut commands: Commands, needs: Query<Entity, Added<Bladder>>) {
         for entity in &needs {
             commands
                 .entity(entity)
@@ -101,7 +101,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn tick_system(mut needs: Query<(&mut Need, &NeedRate)>) {
+    fn update_values(mut needs: Query<(&mut Need, &NeedRate)>) {
         for (mut need, rate) in &mut needs {
             if need.0 > rate.0 {
                 need.0 += rate.0;

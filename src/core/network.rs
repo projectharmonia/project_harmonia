@@ -22,18 +22,12 @@ impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<Transform>()
             .replicate::<Name>()
-            .add_systems(
-                Update,
-                Self::client_connection_system.run_if(client_just_connected),
-            );
+            .add_systems(Update, Self::start_game.run_if(client_just_connected));
     }
 }
 
 impl NetworkPlugin {
-    fn client_connection_system(
-        mut commands: Commands,
-        mut game_state: ResMut<NextState<GameState>>,
-    ) {
+    fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
         commands.insert_resource(WorldName::default());
         game_state.set(GameState::World);
     }

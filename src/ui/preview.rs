@@ -17,21 +17,21 @@ pub(super) struct PreviewPlugin;
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<PreviewState>()
-            .add_systems(Startup, Self::setup_system)
-            .add_systems(OnEnter(PreviewState::Inactive), Self::deactivation_system)
+            .add_systems(Startup, Self::setup)
+            .add_systems(OnEnter(PreviewState::Inactive), Self::despawn_scene)
             .add_systems(
                 Update,
                 (
-                    Self::scene_spawning_system.run_if(in_state(PreviewState::Inactive)),
-                    Self::loading_system.run_if(in_state(PreviewState::LoadingAsset)),
-                    Self::rendering_system.run_if(in_state(PreviewState::Rendering)),
+                    Self::wait_for_request.run_if(in_state(PreviewState::Inactive)),
+                    Self::wait_for_loading.run_if(in_state(PreviewState::LoadingAsset)),
+                    Self::render_preview.run_if(in_state(PreviewState::Rendering)),
                 ),
             );
     }
 }
 
 impl PreviewPlugin {
-    fn setup_system(mut commands: Commands) {
+    fn setup(mut commands: Commands) {
         commands.spawn(PreviewCameraBundle::default());
         commands.spawn((
             PREVIEW_RENDER_LAYER,
@@ -46,7 +46,7 @@ impl PreviewPlugin {
         ));
     }
 
-    fn scene_spawning_system(
+    fn wait_for_request(
         mut commands: Commands,
         mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
@@ -95,7 +95,7 @@ impl PreviewPlugin {
         }
     }
 
-    fn loading_system(
+    fn wait_for_loading(
         mut asset_events: EventWriter<AssetEvent<Image>>,
         mut preview_state: ResMut<NextState<PreviewState>>,
         mut images: ResMut<Assets<Image>>,
@@ -148,7 +148,7 @@ impl PreviewPlugin {
         }
     }
 
-    fn rendering_system(
+    fn render_preview(
         mut commands: Commands,
         mut preview_state: ResMut<NextState<PreviewState>>,
         preview_scenes: Query<Entity, With<PreviewTarget>>,
@@ -166,7 +166,7 @@ impl PreviewPlugin {
         debug!("rendering preview");
     }
 
-    fn deactivation_system(
+    fn despawn_scene(
         mut commands: Commands,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
         preview_scenes: Query<(Entity, &PreviewTarget)>,

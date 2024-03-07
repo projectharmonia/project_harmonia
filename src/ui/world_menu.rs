@@ -15,9 +15,9 @@ use super::{
     },
 };
 use crate::core::{
-    actor::ActiveActor,
+    actor::SelectedActor,
     city::{ActiveCity, City, CityBundle},
-    family::{Family, FamilyDespawn, FamilyMembers},
+    family::{Family, FamilyDelete, FamilyMembers},
     game_state::GameState,
     game_world::WorldName,
 };
@@ -26,23 +26,23 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::World), Self::setup_system)
+        app.add_systems(OnEnter(GameState::World), Self::setup)
             .add_systems(
                 Update,
                 (
-                    Self::family_button_system,
-                    Self::city_button_system,
-                    Self::create_button_system,
-                    Self::city_dialog_button_system,
+                    Self::handle_family_clicks,
+                    Self::handle_city_clicks,
+                    Self::handle_create_clicks,
+                    Self::handle_city_dialog_clicks,
                 )
                     .run_if(in_state(GameState::World)),
             )
             .add_systems(
                 PostUpdate,
                 (
-                    Self::family_node_spawn_system,
-                    Self::city_node_spawn_system,
-                    Self::entity_node_despawn_system,
+                    Self::create_family_nodes,
+                    Self::create_city_nodes,
+                    Self::remove_entity_nodes,
                 )
                     .run_if(in_state(GameState::World)),
             );
@@ -50,7 +50,7 @@ impl Plugin for WorldMenuPlugin {
 }
 
 impl WorldMenuPlugin {
-    fn setup_system(
+    fn setup(
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
@@ -145,7 +145,7 @@ impl WorldMenuPlugin {
             });
     }
 
-    fn family_node_spawn_system(
+    fn create_family_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
         families: Query<(Entity, &Name), Added<Family>>,
@@ -165,7 +165,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn city_node_spawn_system(
+    fn create_city_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
         cities: Query<(Entity, &Name), Added<City>>,
@@ -185,9 +185,9 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn family_button_system(
+    fn handle_family_clicks(
         mut commands: Commands,
-        mut despawn_events: EventWriter<FamilyDespawn>,
+        mut delete_events: EventWriter<FamilyDelete>,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
         buttons: Query<(&WorldEntityNode, &FamilyButton)>,
@@ -209,17 +209,17 @@ impl WorldMenuPlugin {
                         .first()
                         .expect("family always have at least one member");
 
-                    commands.entity(actor_entity).insert(ActiveActor);
+                    commands.entity(actor_entity).insert(SelectedActor);
                     game_state.set(GameState::Family);
                 }
                 FamilyButton::Delete => {
-                    despawn_events.send(FamilyDespawn(world_entity.0));
+                    delete_events.send(FamilyDelete(world_entity.0));
                 }
             }
         }
     }
 
-    fn city_button_system(
+    fn handle_city_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
@@ -243,7 +243,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn create_button_system(
+    fn handle_create_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
@@ -267,7 +267,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn city_dialog_button_system(
+    fn handle_city_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<&CityDialogButton>,
@@ -283,7 +283,7 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn entity_node_despawn_system(
+    fn remove_entity_nodes(
         mut commands: Commands,
         mut removed_cities: RemovedComponents<City>,
         mut removed_families: RemovedComponents<Family>,

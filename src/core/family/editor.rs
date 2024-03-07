@@ -3,8 +3,8 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 
 use crate::core::{
-    actor::{human::Human, ActiveActor, FirstName, LastName, Sex},
-    family::{FamilyMembers, SelectedFamilySpawned},
+    actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
+    family::{FamilyMembers, SelectedFamilyCreated},
     game_state::GameState,
     player_camera::PlayerCameraBundle,
 };
@@ -14,21 +14,18 @@ pub(crate) struct EditorPlugin;
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
-            .add_systems(OnEnter(GameState::FamilyEditor), Self::setup_system)
-            .add_systems(OnExit(GameState::FamilyEditor), Self::cleanup_system)
-            .add_systems(
-                Update,
-                Self::selection_system.run_if(in_state(GameState::FamilyEditor)),
-            )
+            .add_systems(OnEnter(GameState::FamilyEditor), Self::setup)
+            .add_systems(OnExit(GameState::FamilyEditor), Self::cleanup)
+            .add_systems(Update, Self::play.run_if(in_state(GameState::FamilyEditor)))
             .add_systems(
                 PostUpdate,
-                Self::reset_family_system.run_if(on_event::<FamilyReset>()),
+                Self::reset_family.run_if(on_event::<FamilyReset>()),
             );
     }
 }
 
 impl EditorPlugin {
-    fn setup_system(mut commands: Commands) {
+    fn setup(mut commands: Commands) {
         commands
             .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
@@ -45,9 +42,9 @@ impl EditorPlugin {
             });
     }
 
-    fn selection_system(
+    fn play(
         mut commands: Commands,
-        mut spawn_select_events: EventReader<SelectedFamilySpawned>,
+        mut spawn_select_events: EventReader<SelectedFamilyCreated>,
         mut game_state: ResMut<NextState<GameState>>,
         families: Query<&FamilyMembers>,
     ) {
@@ -55,12 +52,12 @@ impl EditorPlugin {
             let actor_entity = *members
                 .first()
                 .expect("family should always have at least one member");
-            commands.entity(actor_entity).insert(ActiveActor);
+            commands.entity(actor_entity).insert(SelectedActor);
             game_state.set(GameState::Family);
         }
     }
 
-    fn reset_family_system(
+    fn reset_family(
         mut commands: Commands,
         actors: Query<Entity, With<EditableActor>>,
         families: Query<Entity, With<EditableFamily>>,
@@ -75,7 +72,7 @@ impl EditorPlugin {
         });
     }
 
-    fn cleanup_system(mut commands: Commands, family_editors: Query<Entity, With<EditableFamily>>) {
+    fn cleanup(mut commands: Commands, family_editors: Query<Entity, With<EditableFamily>>) {
         commands.entity(family_editors.single()).despawn_recursive();
     }
 }

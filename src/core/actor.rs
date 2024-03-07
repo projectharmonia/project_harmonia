@@ -45,29 +45,29 @@ impl Plugin for ActorPlugin {
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
-            .add_systems(OnExit(GameState::Family), Self::deactivation_system)
+            .add_systems(OnExit(GameState::Family), Self::remove_selection)
             .add_systems(
                 PreUpdate,
-                Self::init_system
+                Self::init
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
-                Self::name_update_system.run_if(resource_exists::<WorldName>),
+                Self::update_names.run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 SpawnScene,
-                Self::scene_init_system
+                Self::init_children
                     .run_if(resource_exists::<WorldName>)
                     .after(scene::scene_spawner_system),
             )
-            .add_systems(PostUpdate, Self::exclusive_system);
+            .add_systems(PostUpdate, Self::ensure_single_selection);
     }
 }
 
 impl ActorPlugin {
-    fn init_system(
+    fn init(
         mut commands: Commands,
         actor_animations: Res<Collection<ActorAnimation>>,
         actors: Query<Entity, Added<Actor>>,
@@ -95,14 +95,14 @@ impl ActorPlugin {
         }
     }
 
-    fn scene_init_system(
+    fn init_children(
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         actors: Query<Entity, With<Actor>>,
-        chidlren: Query<&Children>,
+        children: Query<&Children>,
     ) {
         for actor_entity in actors.iter_many(ready_events.read().map(|event| event.parent)) {
-            for child_entity in chidlren.iter_descendants(actor_entity) {
+            for child_entity in children.iter_descendants(actor_entity) {
                 commands
                     .entity(child_entity)
                     .insert(InheritOutlineBundle::default());
@@ -110,7 +110,7 @@ impl ActorPlugin {
         }
     }
 
-    fn name_update_system(
+    fn update_names(
         mut commands: Commands,
         mut changed_names: Query<
             (Entity, Ref<FirstName>, Ref<LastName>),
@@ -126,20 +126,20 @@ impl ActorPlugin {
         }
     }
 
-    fn deactivation_system(mut commands: Commands, actors: Query<Entity, With<ActiveActor>>) {
+    fn remove_selection(mut commands: Commands, actors: Query<Entity, With<SelectedActor>>) {
         if let Ok(entity) = actors.get_single() {
-            commands.entity(entity).remove::<ActiveActor>();
+            commands.entity(entity).remove::<SelectedActor>();
         }
     }
 
-    fn exclusive_system(
+    fn ensure_single_selection(
         mut commands: Commands,
-        activated_actors: Query<Entity, Added<ActiveActor>>,
-        actors: Query<Entity, With<ActiveActor>>,
+        just_selected_actors: Query<Entity, Added<SelectedActor>>,
+        actors: Query<Entity, With<SelectedActor>>,
     ) {
-        if let Some(activated_entity) = activated_actors.iter().last() {
+        if let Some(activated_entity) = just_selected_actors.iter().last() {
             for actor_entity in actors.iter().filter(|&entity| entity != activated_entity) {
-                commands.entity(actor_entity).remove::<ActiveActor>();
+                commands.entity(actor_entity).remove::<SelectedActor>();
             }
         }
     }
@@ -165,7 +165,7 @@ pub(crate) enum Sex {
 
 /// Indicates locally controlled actor.
 #[derive(Component)]
-pub(crate) struct ActiveActor;
+pub(crate) struct SelectedActor;
 
 /// Marks entity as an actor.
 #[derive(Component, Default, Deserialize, Reflect, Serialize)]

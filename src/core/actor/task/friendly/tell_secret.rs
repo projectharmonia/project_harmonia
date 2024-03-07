@@ -29,11 +29,11 @@ impl Plugin for TellSecretPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::list_system.in_set(TaskListSet),
-                    Self::tell_activation_system.run_if(has_authority),
-                    Self::tell_system,
-                    Self::listen_activation_system,
-                    Self::finish_system,
+                    Self::add_to_list.in_set(TaskListSet),
+                    Self::start_following.run_if(has_authority),
+                    Self::start_telling,
+                    Self::start_listening,
+                    Self::finish,
                 )
                     .run_if(resource_exists::<WorldName>),
             );
@@ -41,7 +41,7 @@ impl Plugin for TellSecretPlugin {
 }
 
 impl TellSecretPlugin {
-    fn list_system(
+    fn add_to_list(
         mut list_events: EventWriter<TaskList>,
         mut actors: Query<Entity, (With<Actor>, With<CursorHover>)>,
     ) {
@@ -50,7 +50,7 @@ impl TellSecretPlugin {
         }
     }
 
-    fn tell_activation_system(
+    fn start_following(
         mut commands: Commands,
         mut actors: Query<&mut Navigation>,
         tasks: Query<(&TellSecret, &Parent, &TaskState), Changed<TaskState>>,
@@ -67,7 +67,7 @@ impl TellSecretPlugin {
         }
     }
 
-    fn tell_system(
+    fn start_telling(
         mut commands: Commands,
         actor_animations: Res<Collection<ActorAnimation>>,
         mut actors: Query<(Entity, &Children, &NavPath, &mut AnimationState), Changed<NavPath>>,
@@ -94,7 +94,7 @@ impl TellSecretPlugin {
         }
     }
 
-    fn listen_activation_system(
+    fn start_listening(
         actor_animations: Res<Collection<ActorAnimation>>,
         tasks: Query<(&ListenSecret, &Parent, &TaskState), Changed<TaskState>>,
         mut actors: Query<(&mut Transform, &mut AnimationState)>,
@@ -114,7 +114,7 @@ impl TellSecretPlugin {
         }
     }
 
-    fn finish_system(
+    fn finish(
         mut commands: Commands,
         mut finish_events: EventReader<AnimationFinished>,
         children: Query<&Children>,

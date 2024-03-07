@@ -28,22 +28,22 @@ impl Plugin for HumanPlugin {
             .init_resource::<Collection<HumanScene>>()
             .add_systems(
                 PreUpdate,
-                Self::sex_update_system
+                Self::update_sex
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 Update,
                 (
-                    Self::needs_init_system, // Should run after `ParentSync` to detect if needs was initialized correctly.
-                    Self::scene_setup_system.run_if(in_state(GameState::FamilyEditor)),
+                    Self::init_needs, // Should run after `ParentSync` to detect if needs was initialized correctly.
+                    Self::init_children.run_if(in_state(GameState::FamilyEditor)),
                 ),
             );
     }
 }
 
 impl HumanPlugin {
-    fn needs_init_system(
+    fn init_needs(
         mut commands: Commands,
         actors: Query<(Entity, &Children), (Added<Human>, With<Actor>)>,
         need: Query<(), With<Need>>,
@@ -62,7 +62,7 @@ impl HumanPlugin {
         }
     }
 
-    fn sex_update_system(
+    fn update_sex(
         mut commands: Commands,
         human_scenes: Res<Collection<HumanScene>>,
         actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
@@ -75,7 +75,7 @@ impl HumanPlugin {
     }
 
     /// Fills [`FamilyScene`] with editing human actors.
-    fn scene_setup_system(
+    fn init_children(
         mut family_scenes: Query<&mut FamilyScene, Added<FamilyScene>>,
         mut actors: Query<(&mut FirstName, &mut LastName, &Sex), With<EditableActor>>,
     ) {

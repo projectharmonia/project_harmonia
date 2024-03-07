@@ -1,4 +1,4 @@
-pub(crate) mod spawning_wall;
+pub(crate) mod creating_wall;
 pub(super) mod wall_mesh;
 
 use std::mem;
@@ -14,7 +14,7 @@ use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
 use super::{cursor_hover::CursorHoverable, game_world::WorldName, Layer};
-use spawning_wall::{SpawningWall, SpawningWallPlugin};
+use creating_wall::{SpawningWall, SpawningWallPlugin};
 use wall_mesh::WallMesh;
 
 pub(super) struct WallPlugin;
@@ -24,12 +24,12 @@ impl Plugin for WallPlugin {
         app.add_plugins(SpawningWallPlugin)
             .register_type::<Wall>()
             .replicate::<Wall>()
-            .add_mapped_client_event::<WallSpawn>(EventType::Unordered)
+            .add_mapped_client_event::<WallCreate>(EventType::Unordered)
             .add_systems(
                 PreUpdate,
                 (
-                    Self::init_system,
-                    Self::spawn_system.run_if(resource_exists::<RenetServer>),
+                    Self::init,
+                    Self::create.run_if(resource_exists::<RenetServer>),
                 )
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
@@ -37,9 +37,9 @@ impl Plugin for WallPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    Self::cleanup_system,
-                    Self::connections_update_system,
-                    Self::mesh_update_system,
+                    Self::cleanup_connections,
+                    Self::update_connections,
+                    Self::update_meshes,
                 )
                     .chain()
                     .run_if(resource_exists::<WorldName>),
@@ -48,7 +48,7 @@ impl Plugin for WallPlugin {
 }
 
 impl WallPlugin {
-    fn init_system(
+    fn init(
         mut commands: Commands,
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
@@ -93,12 +93,12 @@ impl WallPlugin {
         }
     }
 
-    fn spawn_system(
+    fn create(
         mut commands: Commands,
         mut entity_map: ResMut<ClientEntityMap>,
-        mut spawn_events: EventReader<FromClient<WallSpawn>>,
+        mut create_events: EventReader<FromClient<WallCreate>>,
     ) {
-        for FromClient { client_id, event } in spawn_events.read().copied() {
+        for FromClient { client_id, event } in create_events.read().copied() {
             commands.entity(event.lot_entity).with_children(|parent| {
                 // TODO: validate if wall can be spawned.
                 let server_entity = parent.spawn(WallBundle::new(event.wall)).id();
@@ -113,7 +113,7 @@ impl WallPlugin {
         }
     }
 
-    fn connections_update_system(
+    fn update_connections(
         mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
         children: Query<&Children>,
         changed_walls: Query<(Entity, &Parent, &Wall), (Changed<Wall>, With<WallConnections>)>,
@@ -196,7 +196,7 @@ impl WallPlugin {
         }
     }
 
-    pub(super) fn mesh_update_system(
+    pub(super) fn update_meshes(
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
             (
@@ -229,7 +229,7 @@ impl WallPlugin {
         }
     }
 
-    fn cleanup_system(
+    fn cleanup_connections(
         mut removed_walls: RemovedComponents<Wall>,
         mut walls: Query<&mut WallConnections>,
     ) {
@@ -431,13 +431,13 @@ pub(super) struct Aperture {
 
 /// Client event to request a wall creation.
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct WallSpawn {
+struct WallCreate {
     lot_entity: Entity,
     wall_entity: Entity,
     wall: Wall,
 }
 
-impl MapEntities for WallSpawn {
+impl MapEntities for WallCreate {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.lot_entity = entity_mapper.map_entity(self.lot_entity);
     }

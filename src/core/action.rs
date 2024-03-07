@@ -11,16 +11,16 @@ impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputMap<Action>>()
             .init_resource::<ActionState<Action>>()
-            .add_systems(Startup, Self::input_map_system)
+            .add_systems(Startup, Self::set_input_map)
             .add_systems(
                 PostUpdate,
-                Self::input_map_system.run_if(on_event::<SettingsApply>()),
+                Self::set_input_map.run_if(on_event::<SettingsApply>()),
             );
     }
 }
 
 impl ActionPlugin {
-    fn input_map_system(mut input_map: ResMut<InputMap<Action>>, settings: Res<Settings>) {
+    fn set_input_map(mut input_map: ResMut<InputMap<Action>>, settings: Res<Settings>) {
         input_map.clear();
         for (&action, inputs) in &settings.controls.mappings {
             input_map.insert_one_to_many(action, inputs.iter().cloned());

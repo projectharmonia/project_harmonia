@@ -22,16 +22,16 @@ impl Plugin for MoveHerePlugin {
             .replicate::<MoveHere>()
             .add_systems(
                 Update,
-                (Self::list_system.in_set(TaskListSet), Self::finish_system)
+                (Self::add_to_list.in_set(TaskListSet), Self::finish)
                     .run_if(resource_exists::<WorldName>),
             )
             // Should run in `PostUpdate` to let tiles initialize.
-            .add_systems(PostUpdate, Self::activation_system.run_if(has_authority));
+            .add_systems(PostUpdate, Self::start_navigation.run_if(has_authority));
     }
 }
 
 impl MoveHerePlugin {
-    fn list_system(
+    fn add_to_list(
         mut list_events: EventWriter<TaskList>,
         mut grounds: Query<&CursorHover, With<Ground>>,
     ) {
@@ -53,7 +53,7 @@ impl MoveHerePlugin {
         }
     }
 
-    fn activation_system(
+    fn start_navigation(
         mut commands: Commands,
         mut actors: Query<(&Transform, &mut Navigation)>,
         nav_settings: Res<NavMeshSettings>,
@@ -76,7 +76,7 @@ impl MoveHerePlugin {
         }
     }
 
-    fn finish_system(
+    fn finish(
         mut commands: Commands,
         actors: Query<(&Children, &NavPath), Changed<NavPath>>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,

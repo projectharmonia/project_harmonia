@@ -6,7 +6,7 @@ use bevy_replicon::{prelude::*, renet::ConnectionConfig};
 use clap::{Args, Parser, Subcommand};
 
 use super::{
-    actor::ActiveActor,
+    actor::SelectedActor,
     city::{ActiveCity, City},
     error_report::{self, ErrorReport},
     family::FamilyMembers,
@@ -23,10 +23,10 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, Self::subcommand_system.pipe(error_report::report))
+        app.add_systems(Startup, Self::apply_subcommand.pipe(error_report::report))
             .add_systems(
                 Update,
-                Self::quick_loading_system
+                Self::quick_load
                     .pipe(error_report::report)
                     .run_if(second_frame),
             );
@@ -34,7 +34,7 @@ impl Plugin for CliPlugin {
 }
 
 impl CliPlugin {
-    fn subcommand_system(
+    fn apply_subcommand(
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         cli: Res<Cli>,
@@ -79,14 +79,14 @@ impl CliPlugin {
         Ok(())
     }
 
-    fn quick_loading_system(
+    fn quick_load(
         mut commands: Commands,
         mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
         families: Query<(&Name, &FamilyMembers)>,
     ) -> Result<()> {
-        if let Some(quick_load) = cli.get_quick_load() {
+        if let Some(quick_load) = cli.quick_load() {
             match quick_load {
                 QuickLoad::City { name } => {
                     let (entity, _) = cities
@@ -106,7 +106,7 @@ impl CliPlugin {
                     let entity = *members
                         .first()
                         .expect("family should contain at least one actor");
-                    commands.entity(entity).insert(ActiveActor);
+                    commands.entity(entity).insert(SelectedActor);
                     game_state.set(GameState::Family);
                 }
             }
@@ -143,7 +143,7 @@ pub(crate) struct Cli {
 
 impl Cli {
     /// Returns arguments for quick load if was specified from any subcommand.
-    fn get_quick_load(&self) -> Option<&QuickLoad> {
+    fn quick_load(&self) -> Option<&QuickLoad> {
         match &self.subcommand {
             Some(GameCommand::Play(world_load)) => world_load.quick_load.as_ref(),
             Some(GameCommand::Host { world_load, .. }) => world_load.quick_load.as_ref(),

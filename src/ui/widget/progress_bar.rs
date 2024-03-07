@@ -6,12 +6,12 @@ pub(super) struct ProgressBarPlugin;
 
 impl Plugin for ProgressBarPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (Self::init_system, Self::progress_update_system));
+        app.add_systems(Update, (Self::init, Self::update_progress));
     }
 }
 
 impl ProgressBarPlugin {
-    fn init_system(
+    fn init(
         mut commands: Commands,
         theme: Res<Theme>,
         progress_bars: Query<(Entity, &ProgressBar), Added<ProgressBar>>,
@@ -31,7 +31,7 @@ impl ProgressBarPlugin {
     }
 
     /// Won't be triggered after spawning because button child will be spawned at the next frame.
-    fn progress_update_system(
+    fn update_progress(
         progress_bars: Query<(&ProgressBar, &Children), Changed<ProgressBar>>,
         mut fill_nodes: Query<&mut Style>,
     ) {

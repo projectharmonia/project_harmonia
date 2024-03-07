@@ -10,18 +10,18 @@ pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, Self::button_system).add_systems(
+        app.add_systems(Update, Self::read_clicks).add_systems(
             PostUpdate,
             (
-                Self::setup_system.run_if(resource_added::<RenetClient>),
-                Self::cleanup_system.run_if(client_just_disconnected),
+                Self::show.run_if(resource_added::<RenetClient>),
+                Self::close.run_if(client_just_disconnected),
             ),
         );
     }
 }
 
 impl ConnectionDialogPlugin {
-    fn setup_system(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+    fn show(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((ConnectionDialog, DialogBundle::new(&theme)))
@@ -48,7 +48,7 @@ impl ConnectionDialogPlugin {
         });
     }
 
-    fn button_system(
+    fn read_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<(), With<CancelButton>>,
@@ -60,7 +60,7 @@ impl ConnectionDialogPlugin {
         }
     }
 
-    fn cleanup_system(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
+    fn close(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
         commands.entity(dialogs.single()).despawn_recursive();
     }
 }

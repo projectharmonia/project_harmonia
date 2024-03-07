@@ -10,12 +10,12 @@ pub(super) struct TextEditPlugin;
 
 impl Plugin for TextEditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, Self::focus_color_system.after(UiSystem::Focus));
+        app.add_systems(PreUpdate, Self::update_borders_color.after(UiSystem::Focus));
     }
 }
 
 impl TextEditPlugin {
-    fn focus_color_system(
+    fn update_borders_color(
         theme: Res<Theme>,
         interactions: Query<(Entity, &Interaction), Changed<Interaction>>,
         mut text_inputs: Query<(Entity, &mut TextInputInactive, &mut BorderColor)>,

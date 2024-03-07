@@ -15,13 +15,13 @@ impl Plugin for MovementAnimationPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Movement>().add_systems(
             Update,
-            Self::animation_system.run_if(resource_exists::<WorldName>),
+            Self::update_animation.run_if(resource_exists::<WorldName>),
         );
     }
 }
 
 impl MovementAnimationPlugin {
-    fn animation_system(
+    fn update_animation(
         actor_animations: Res<Collection<ActorAnimation>>,
         mut actors: Query<(&Sex, &Navigation, &NavPath, &mut AnimationState), Changed<NavPath>>,
     ) {
