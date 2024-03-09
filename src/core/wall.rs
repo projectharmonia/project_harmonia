@@ -223,8 +223,7 @@ impl WallPlugin {
 
             // Spawning walls shouldn't affect navigation.
             if !spawning_wall {
-                *collider = Collider::trimesh_from_mesh(mesh)
-                    .expect("wall mesh should be in compatible format");
+                *collider = wall_mesh::generate_collider(wall, apertures);
             }
         }
     }

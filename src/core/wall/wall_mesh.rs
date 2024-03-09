@@ -4,6 +4,7 @@ use bevy::{
     prelude::*,
     render::mesh::{Indices, VertexAttributeValues},
 };
+use bevy_xpbd_3d::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 
 use super::{Aperture, Apertures, PointKind, Wall, WallConnection, WallConnections};
@@ -438,4 +439,70 @@ fn wall_intersection(wall: Wall, width: Vec2, other_wall: Wall, other_width: Vec
     Line::with_offset(wall.start, wall.end, width)
         .intersection(other_line)
         .unwrap_or_else(|| wall.start + width)
+}
+
+/// Generates a simplified collider consists of cuboids.
+///
+/// Clippings split the collider into separate cuboids.
+/// We generate a trimesh since navigation system doesn't support compound shapes.
+pub(super) fn generate_collider(wall: Wall, apertures: &Apertures) -> Collider {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    let mut start = wall.start;
+    let wall_dir = wall.displacement().normalize();
+    for aperture in apertures.iter_clippings() {
+        let first = aperture.cutout.first().expect("apertures can't be empty");
+        let mut end = aperture.translation.xz();
+        end += first.x * wall_dir;
+
+        generate_cuboid(&mut vertices, &mut indices, start, end);
+
+        let last = aperture.cutout.last().unwrap();
+        start = aperture.translation.xz();
+        start += last.x * wall_dir;
+    }
+
+    generate_cuboid(&mut vertices, &mut indices, start, wall.end);
+
+    Collider::trimesh(vertices, indices)
+}
+
+fn generate_cuboid(vertices: &mut Vec<Vec3>, indices: &mut Vec<[u32; 3]>, start: Vec2, end: Vec2) {
+    let last_index = vertices.len().try_into().expect("vertices should fit u32");
+
+    let width_disp = wall_width(end - start);
+    let left_start = start + width_disp;
+    let right_start = start - width_disp;
+    let left_end = end + width_disp;
+    let right_end = end - width_disp;
+
+    vertices.push(Vec3::new(left_start.x, 0.0, left_start.y));
+    vertices.push(Vec3::new(right_start.x, 0.0, right_start.y));
+    vertices.push(Vec3::new(left_end.x, 0.0, left_end.y));
+    vertices.push(Vec3::new(right_end.x, 0.0, right_end.y));
+
+    vertices.push(Vec3::new(left_start.x, HEIGHT, left_start.y));
+    vertices.push(Vec3::new(right_start.x, HEIGHT, right_start.y));
+    vertices.push(Vec3::new(left_end.x, HEIGHT, left_end.y));
+    vertices.push(Vec3::new(right_end.x, HEIGHT, right_end.y));
+
+    // Top
+    indices.push([last_index + 5, last_index + 4, last_index + 6]);
+    indices.push([last_index + 4, last_index + 7, last_index + 6]);
+
+    // Left
+    indices.push([last_index + 3, last_index + 4, last_index]);
+    indices.push([last_index + 3, last_index + 7, last_index + 4]);
+
+    // Right
+    indices.push([last_index + 1, last_index + 5, last_index + 2]);
+    indices.push([last_index + 5, last_index + 6, last_index + 2]);
+
+    // Back
+    indices.push([last_index, last_index + 5, last_index + 1]);
+    indices.push([last_index, last_index + 4, last_index + 5]);
+
+    // Front
+    indices.push([last_index + 2, last_index + 6, last_index + 3]);
+    indices.push([last_index + 6, last_index + 7, last_index + 3]);
 }
