@@ -173,7 +173,7 @@ impl WallMesh {
         let normal = [width.x, 0.0, width.y];
         self.normals.push(normal);
 
-        for aperture in apertures.iter_clippings() {
+        for aperture in apertures.iter().filter(|aperture| !aperture.hole) {
             self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
         }
 
@@ -190,7 +190,7 @@ impl WallMesh {
 
         let mut hole_indices = Vec::new();
         let mut last_index = self.positions.len() - vertices_start as usize;
-        for aperture in apertures.iter_holes() {
+        for aperture in apertures.iter().filter(|aperture| aperture.hole) {
             self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
 
             hole_indices.push(last_index);
@@ -415,7 +415,7 @@ pub(super) fn generate_collider(wall: Wall, apertures: &Apertures) -> Collider {
     let mut indices = Vec::new();
     let mut start = wall.start;
     let wall_dir = wall.displacement().normalize();
-    for aperture in apertures.iter_clippings() {
+    for aperture in apertures.iter().filter(|aperture| !aperture.hole) {
         let first = aperture.cutout.first().expect("apertures can't be empty");
         let mut end = aperture.translation.xz();
         end += first.x * wall_dir;

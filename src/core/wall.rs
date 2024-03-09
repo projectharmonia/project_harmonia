@@ -372,14 +372,9 @@ enum PointKind {
 pub(super) struct Apertures(Vec<Aperture>);
 
 impl Apertures {
-    /// Iterates over all apertures marked as holes.
-    fn iter_holes(&self) -> impl Iterator<Item = &Aperture> {
-        self.0.iter().filter(|aperture| aperture.hole)
-    }
-
-    /// Iterates over all apertures not marked as holes.
-    fn iter_clippings(&self) -> impl Iterator<Item = &Aperture> {
-        self.0.iter().filter(|aperture| !aperture.hole)
+    /// Returns iterator over all apertures.
+    fn iter(&self) -> impl Iterator<Item = &Aperture> {
+        self.0.iter()
     }
 
     /// Inserts a new aperture in sorted order.
@@ -394,8 +389,7 @@ impl Apertures {
 
     /// Returns index of an aperture on the corresponding object entity.
     pub(super) fn position(&self, entity: Entity) -> Option<usize> {
-        self.0
-            .iter()
+        self.iter()
             .position(|aperture| aperture.object_entity == entity)
     }
 
