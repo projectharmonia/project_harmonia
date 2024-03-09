@@ -24,13 +24,10 @@ impl Plugin for WallPlugin {
         app.add_plugins(SpawningWallPlugin)
             .register_type::<Wall>()
             .replicate::<Wall>()
-            .add_mapped_client_event::<WallCreate>(EventType::Unordered)
+            .add_mapped_client_event::<WallCreate>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                (
-                    Self::init,
-                    Self::create.run_if(resource_exists::<RenetServer>),
-                )
+                (Self::init, Self::create.run_if(server_running))
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )

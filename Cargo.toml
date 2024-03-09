@@ -17,7 +17,10 @@ bevy = { version = "0.13", default-features = false, features = [
   "x11",
 ] }
 bevy_atmosphere = "0.9"
-bevy_replicon = { version = "0.23.0", default-features = false }
+bevy_replicon = "0.24"
+bevy_replicon_renet = { version = "0.1", default-features = false, features = [
+  "renet_transport",
+] }
 bevy_xpbd_3d = "0.4"
 bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline", branch = "bevy-0.13" }
 bevy_simple_text_input = "0.5"

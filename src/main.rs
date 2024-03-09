@@ -17,6 +17,7 @@ use bevy::{
 use bevy_atmosphere::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
+use bevy_replicon_renet::RepliconRenetPlugins;
 use bevy_simple_text_input::TextInputPlugin;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -48,7 +49,8 @@ fn main() {
                     }),
                     synchronous_pipeline_compilation: true,
                 }),
-            ReplicationPlugins,
+            RepliconPlugins,
+            RepliconRenetPlugins,
             WireframePlugin,
             AtmospherePlugin,
             InputManagerPlugin::<Action>::default(),

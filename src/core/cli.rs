@@ -2,7 +2,11 @@ use std::net::{IpAddr, Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use bevy_replicon::{prelude::*, renet::ConnectionConfig};
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::{
+    renet::{ConnectionConfig, RenetClient, RenetServer},
+    RenetChannelsExt,
+};
 use clap::{Args, Parser, Subcommand};
 
 use super::{
@@ -38,7 +42,7 @@ impl CliPlugin {
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         cli: Res<Cli>,
-        network_channels: Res<NetworkChannels>,
+        network_channels: Res<RepliconChannels>,
     ) -> Result<()> {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {

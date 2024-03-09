@@ -14,7 +14,13 @@ use bevy::{
         TypeRegistry,
     },
 };
-use bevy_replicon::prelude::*;
+use bevy_replicon::{
+    client::client_mapper::ServerEntityMap,
+    network_event::{
+        client_event::ClientEventChannel, server_event::ServerEventChannel, EventMapper,
+    },
+    prelude::*,
+};
 use bincode::{DefaultOptions, Options};
 use bitflags::bitflags;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -45,9 +51,9 @@ impl Plugin for TaskPlugin {
         ))
         .register_type::<TaskState>()
         .replicate::<TaskState>()
-        .add_client_event::<TaskCancel>(EventType::Unordered)
+        .add_client_event::<TaskCancel>(ChannelKind::Unordered)
         .add_client_event_with::<TaskRequest, _, _>(
-            EventType::Unordered,
+            ChannelKind::Unordered,
             Self::send_requests,
             Self::receive_requests,
         )
@@ -156,7 +162,7 @@ impl TaskPlugin {
 
     fn send_requests(
         mut request_events: EventReader<TaskRequest>,
-        mut client: ResMut<RenetClient>,
+        mut client: ResMut<RepliconClient>,
         channel: Res<ClientEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
     ) {
@@ -165,28 +171,26 @@ impl TaskPlugin {
             let message = serialize_task_request(event, &registry)
                 .expect("client event should be serializable");
 
-            client.send_message(*channel, message);
+            client.send(*channel, message);
         }
     }
 
     fn receive_requests(
         mut request_events: EventWriter<FromClient<TaskRequest>>,
-        mut server: ResMut<RenetServer>,
+        mut server: ResMut<RepliconServer>,
         channel: Res<ServerEventChannel<TaskRequest>>,
         registry: Res<AppTypeRegistry>,
         entity_map: Res<ServerEntityMap>,
     ) {
         let registry = registry.read();
-        for client_id in server.clients_id() {
-            while let Some(message) = server.receive_message(client_id, *channel) {
-                match deserialize_task_request(&message, &registry) {
-                    Ok(mut event) => {
-                        event.map_entities(&mut EventMapper(entity_map.to_server()));
-                        request_events.send(FromClient { client_id, event });
-                    }
-                    Err(e) => {
-                        error!("unable to deserialize event from client {client_id}: {e}")
-                    }
+        for (client_id, message) in server.receive(*channel) {
+            match deserialize_task_request(&message, &registry) {
+                Ok(mut event) => {
+                    event.map_entities(&mut EventMapper(entity_map.to_server()));
+                    request_events.send(FromClient { client_id, event });
+                }
+                Err(e) => {
+                    error!("unable to deserialize event from client {client_id:?}: {e}")
                 }
             }
         }

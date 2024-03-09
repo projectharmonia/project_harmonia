@@ -15,7 +15,13 @@ use bevy::{
     },
     utils::HashMap,
 };
-use bevy_replicon::prelude::*;
+use bevy_replicon::{
+    client::client_mapper::ServerEntityMap,
+    network_event::{
+        client_event::ClientEventChannel, server_event::ServerEventChannel, EventMapper,
+    },
+    prelude::*,
+};
 use bincode::{DefaultOptions, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -42,12 +48,12 @@ impl Plugin for FamilyPlugin {
             .replicate::<Family>()
             .replicate::<Budget>()
             .add_client_event_with::<FamilyCreate, _, _>(
-                EventType::Unordered,
+                ChannelKind::Unordered,
                 Self::send_spawns,
                 Self::receive_spawns,
             )
-            .add_mapped_client_event::<FamilyDelete>(EventType::Unordered)
-            .add_mapped_server_event::<SelectedFamilyCreated>(EventType::Unordered)
+            .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
+            .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
             .add_systems(
                 OnEnter(GameState::Family),
                 (Self::select, Self::reset_states),
@@ -179,7 +185,7 @@ impl FamilyPlugin {
 
     fn send_spawns(
         mut spawn_events: EventReader<FamilyCreate>,
-        mut client: ResMut<RenetClient>,
+        mut client: ResMut<RepliconClient>,
         channel: Res<ClientEventChannel<FamilyCreate>>,
         registry: Res<AppTypeRegistry>,
     ) {
@@ -188,28 +194,26 @@ impl FamilyPlugin {
             let message = serialize_family_spawn(event, &registry)
                 .expect("client event should be serializable");
 
-            client.send_message(*channel, message);
+            client.send(*channel, message);
         }
     }
 
     fn receive_spawns(
         mut spawn_events: EventWriter<FromClient<FamilyCreate>>,
-        mut server: ResMut<RenetServer>,
+        mut server: ResMut<RepliconServer>,
         channel: Res<ServerEventChannel<FamilyCreate>>,
         registry: Res<AppTypeRegistry>,
         entity_map: Res<ServerEntityMap>,
     ) {
         let registry = registry.read();
-        for client_id in server.clients_id() {
-            while let Some(message) = server.receive_message(client_id, *channel) {
-                match deserialize_family_spawn(&message, &registry) {
-                    Ok(mut event) => {
-                        event.map_entities(&mut EventMapper(entity_map.to_server()));
-                        spawn_events.send(FromClient { client_id, event });
-                    }
-                    Err(e) => {
-                        error!("unable to deserialize event from client {client_id}: {e}")
-                    }
+        for (client_id, message) in server.receive(*channel) {
+            match deserialize_family_spawn(&message, &registry) {
+                Ok(mut event) => {
+                    event.map_entities(&mut EventMapper(entity_map.to_server()));
+                    spawn_events.send(FromClient { client_id, event });
+                }
+                Err(e) => {
+                    error!("unable to deserialize event from client {client_id:?}: {e}")
                 }
             }
         }

@@ -884,16 +884,27 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon"
-version = "0.23.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0426761941c0912e9ca5ac22e3e64ecd6b16cdec47dfce8e51a098e05918a716"
+checksum = "8d39f08aabc8091d649ee6423f77d9b751ccf869b20591e6f71662e960e0c7a1"
 dependencies = [
  "bevy",
- "bevy_renet",
  "bincode",
+ "bytes",
  "ordered-multimap",
  "serde",
  "varint-rs",
+]
+
+[[package]]
+name = "bevy_replicon_renet"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7653f3b21e323c0729327f31c45f7e9a2142b57c36bb869ded12e53732a7907a"
+dependencies = [
+ "bevy",
+ "bevy_renet",
+ "bevy_replicon",
 ]
 
 [[package]]
@@ -2957,9 +2968,9 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "opaque-debug"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
+checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "orbclient"
@@ -3212,6 +3223,7 @@ dependencies = [
  "bevy_atmosphere",
  "bevy_mod_outline",
  "bevy_replicon",
+ "bevy_replicon_renet",
  "bevy_simple_text_input",
  "bevy_xpbd_3d",
  "bincode",

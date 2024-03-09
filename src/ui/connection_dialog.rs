@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use bevy_replicon::{client_just_disconnected, prelude::*};
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::renet::RenetClient;
 
 use super::{
     theme::Theme,
@@ -13,7 +14,7 @@ impl Plugin for ConnectionDialogPlugin {
         app.add_systems(Update, Self::read_clicks).add_systems(
             PostUpdate,
             (
-                Self::show.run_if(resource_added::<RenetClient>),
+                Self::show.run_if(client_started_connecting),
                 Self::close.run_if(client_just_disconnected),
             ),
         );

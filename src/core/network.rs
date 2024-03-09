@@ -5,13 +5,10 @@ use std::{
 
 use anyhow::Result;
 use bevy::prelude::*;
-use bevy_replicon::{
-    client_just_connected,
-    prelude::*,
-    renet::transport::{
-        ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
-        ServerConfig,
-    },
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::renet::transport::{
+    ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
+    ServerConfig,
 };
 
 use super::{game_state::GameState, game_world::WorldName};

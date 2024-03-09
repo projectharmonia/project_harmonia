@@ -2,7 +2,11 @@ use std::{fs, mem, net::Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
-use bevy_replicon::{prelude::*, renet::ConnectionConfig};
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::{
+    renet::{ConnectionConfig, RenetClient, RenetServer},
+    RenetChannelsExt,
+};
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
@@ -151,7 +155,7 @@ impl WorldBrowserPlugin {
         mut commands: Commands,
         mut load_events: EventWriter<GameLoad>,
         mut click_events: EventReader<Click>,
-        network_channels: Res<NetworkChannels>,
+        network_channels: Res<RepliconChannels>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
         buttons: Query<&HostDialogButton>,
         text_edits: Query<&Text, With<PortEdit>>,
@@ -250,7 +254,7 @@ impl WorldBrowserPlugin {
     fn handle_join_dialog_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
-        network_channels: Res<NetworkChannels>,
+        network_channels: Res<RepliconChannels>,
         buttons: Query<&JoinDialogButton>,
         port_edits: Query<&TextInputValue, With<PortEdit>>,
         ip_edits: Query<&TextInputValue, With<IpEdit>>,

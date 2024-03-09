@@ -34,10 +34,10 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<ObjectPath>()
             .replicate::<ObjectPath>()
-            .add_client_event::<ObjectBuy>(EventType::Unordered)
-            .add_mapped_client_event::<ObjectMove>(EventType::Ordered)
-            .add_mapped_client_event::<ObjectSell>(EventType::Unordered)
-            .add_server_event::<ObjectEventConfirmed>(EventType::Unordered)
+            .add_client_event::<ObjectBuy>(ChannelKind::Unordered)
+            .add_mapped_client_event::<ObjectMove>(ChannelKind::Ordered)
+            .add_mapped_client_event::<ObjectSell>(ChannelKind::Unordered)
+            .add_server_event::<ObjectEventConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
                 (
