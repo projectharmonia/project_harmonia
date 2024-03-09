@@ -446,13 +446,13 @@ fn generate_cuboid(vertices: &mut Vec<Vec3>, indices: &mut Vec<[u32; 3]>, start:
 
     vertices.push(Vec3::new(left_start.x, 0.0, left_start.y));
     vertices.push(Vec3::new(right_start.x, 0.0, right_start.y));
-    vertices.push(Vec3::new(left_end.x, 0.0, left_end.y));
     vertices.push(Vec3::new(right_end.x, 0.0, right_end.y));
+    vertices.push(Vec3::new(left_end.x, 0.0, left_end.y));
 
     vertices.push(Vec3::new(left_start.x, HEIGHT, left_start.y));
     vertices.push(Vec3::new(right_start.x, HEIGHT, right_start.y));
-    vertices.push(Vec3::new(left_end.x, HEIGHT, left_end.y));
     vertices.push(Vec3::new(right_end.x, HEIGHT, right_end.y));
+    vertices.push(Vec3::new(left_end.x, HEIGHT, left_end.y));
 
     // Top
     indices.push([last_index + 5, last_index + 4, last_index + 6]);
