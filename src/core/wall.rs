@@ -382,21 +382,6 @@ impl Apertures {
         self.0.iter().filter(|aperture| !aperture.hole)
     }
 
-    /// Updates translation, distance (and position based on it) for specific aperture.
-    pub(super) fn update_translation(&mut self, entity: Entity, translation: Vec3, distance: f32) {
-        let index = self
-            .0
-            .iter_mut()
-            .position(|aperture| aperture.object_entity == entity)
-            .expect("object entity for update should exist");
-
-        let mut aperture = self.0.remove(index);
-        aperture.translation = translation;
-        aperture.distance = distance;
-
-        self.insert(aperture);
-    }
-
     /// Inserts a new aperture in sorted order.
     pub(super) fn insert(&mut self, aperture: Aperture) {
         let index = self
@@ -415,8 +400,8 @@ impl Apertures {
     }
 
     /// Returns aperture by its index.
-    pub(super) fn remove(&mut self, index: usize) {
-        self.0.remove(index);
+    pub(super) fn remove(&mut self, index: usize) -> Aperture {
+        self.0.remove(index)
     }
 }
 

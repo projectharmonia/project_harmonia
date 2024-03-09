@@ -125,7 +125,16 @@ impl WallMountPlugin {
                 let distance = translation.xz().distance(wall.start);
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
-                        apertures.update_translation(object_entity, translation, distance)
+                        // Remove to update distance.
+                        let index = apertures
+                            .position(object_entity)
+                            .expect("aperture should have been added earlier");
+                        let mut aperture = apertures.remove(index);
+
+                        aperture.distance = distance;
+                        aperture.translation = translation;
+
+                        apertures.insert(aperture);
                     } else {
                         apertures.insert(Aperture {
                             object_entity,
