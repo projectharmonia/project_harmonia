@@ -415,7 +415,10 @@ pub(super) fn generate_collider(wall: Wall, apertures: &Apertures) -> Collider {
     let mut indices = Vec::new();
     let mut start = wall.start;
     let wall_dir = wall.displacement().normalize();
-    for aperture in apertures.iter().filter(|aperture| !aperture.hole) {
+    for aperture in apertures
+        .iter()
+        .filter(|aperture| !aperture.hole && !aperture.placing_object)
+    {
         let first = aperture.cutout.first().expect("apertures can't be empty");
         let mut end = aperture.translation.xz();
         end += first.x * wall_dir;

@@ -107,12 +107,19 @@ impl WallMountPlugin {
 
     fn update_apertures(
         mut walls: Query<(Entity, &mut Apertures, &Wall)>,
-        mut wall_mounts: Query<
-            (Entity, &GlobalTransform, &WallMount, &mut ObjectWall),
+        mut objects: Query<
+            (
+                Entity,
+                &GlobalTransform,
+                &WallMount,
+                &mut ObjectWall,
+                Has<PlacingObject>,
+            ),
             Changed<GlobalTransform>,
         >,
     ) {
-        for (object_entity, transform, wall_mount, mut object_wall) in &mut wall_mounts {
+        for (object_entity, transform, wall_mount, mut object_wall, placing_object) in &mut objects
+        {
             let WallMount::Embed { cutout, hole } = wall_mount else {
                 continue;
             };
@@ -142,6 +149,7 @@ impl WallMountPlugin {
                             distance,
                             cutout: cutout.clone(),
                             hole: *hole,
+                            placing_object,
                         });
 
                         object_wall.0 = Some(wall_entity);
@@ -161,6 +169,7 @@ impl WallMountPlugin {
                         distance,
                         cutout: cutout.clone(),
                         hole: *hole,
+                        placing_object,
                     });
 
                     object_wall.0 = Some(wall_entity);

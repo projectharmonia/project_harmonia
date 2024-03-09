@@ -203,14 +203,14 @@ impl WallPlugin {
                 &Handle<Mesh>,
                 &Wall,
                 &WallConnections,
-                &Apertures,
+                &mut Apertures,
                 &mut Collider,
                 Has<SpawningWall>,
             ),
             Or<(Changed<WallConnections>, Changed<Apertures>)>,
         >,
     ) {
-        for (mesh_handle, &wall, connections, apertures, mut collider, spawning_wall) in
+        for (mesh_handle, &wall, connections, mut apertures, mut collider, spawning_wall) in
             &mut changed_walls
         {
             let mesh = meshes
@@ -218,12 +218,13 @@ impl WallPlugin {
                 .expect("wall handles should be valid");
 
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(wall, connections, apertures);
+            wall_mesh.generate(wall, connections, &apertures);
             wall_mesh.apply(mesh);
 
             // Spawning walls shouldn't affect navigation.
-            if !spawning_wall {
-                *collider = wall_mesh::generate_collider(wall, apertures);
+            if apertures.collision_outdated && !spawning_wall {
+                *collider = wall_mesh::generate_collider(wall, &apertures);
+                apertures.collision_outdated = false;
             }
         }
     }
@@ -368,23 +369,36 @@ enum PointKind {
 /// Dynamically updated component with precalculated apertures for wall objects.
 ///
 /// Apertures are sorted by distance to the wall starting point.
-#[derive(Component, Default)]
-pub(super) struct Apertures(Vec<Aperture>);
+#[derive(Component)]
+pub(super) struct Apertures {
+    apertures: Vec<Aperture>,
+    pub(super) collision_outdated: bool,
+}
+
+impl Default for Apertures {
+    fn default() -> Self {
+        Self {
+            apertures: Vec::new(),
+            collision_outdated: true,
+        }
+    }
+}
 
 impl Apertures {
     /// Returns iterator over all apertures.
     fn iter(&self) -> impl Iterator<Item = &Aperture> {
-        self.0.iter()
+        self.apertures.iter()
     }
 
     /// Inserts a new aperture in sorted order.
     pub(super) fn insert(&mut self, aperture: Aperture) {
         let index = self
-            .0
+            .apertures
             .binary_search_by(|other| other.distance.total_cmp(&aperture.distance))
             .expect_err("apertures shouldn't have duplicates");
 
-        self.0.insert(index, aperture);
+        self.collision_outdated = !aperture.placing_object;
+        self.apertures.insert(index, aperture);
     }
 
     /// Returns index of an aperture on the corresponding object entity.
@@ -395,7 +409,9 @@ impl Apertures {
 
     /// Returns aperture by its index.
     pub(super) fn remove(&mut self, index: usize) -> Aperture {
-        self.0.remove(index)
+        let aperture = self.apertures.remove(index);
+        self.collision_outdated = !aperture.placing_object;
+        aperture
     }
 }
 
@@ -418,6 +434,9 @@ pub(super) struct Aperture {
 
     /// Indicates if the aperture is hole (like a window) or clipping (like a door or arch).
     pub(super) hole: bool,
+
+    /// Indicates if the aperture caused by an object that has not yet been placed.
+    pub(super) placing_object: bool,
 }
 
 /// Client event to request a wall creation.
