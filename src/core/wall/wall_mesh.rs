@@ -187,7 +187,7 @@ impl WallMesh {
             self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
 
             hole_indices.push(last_index);
-            last_index += aperture.positions.len();
+            last_index += aperture.cutout.len();
         }
 
         let vertices: Vec<_> = self.positions[vertices_start as usize..]
@@ -259,7 +259,7 @@ impl WallMesh {
         rotation_mat: Mat2,
         quat: Quat,
     ) {
-        for &position in &aperture.positions {
+        for &position in &aperture.cutout {
             let translated = quat * position.extend(0.0)
                 + aperture.translation
                 + Vec3::new(width.x, 0.0, width.y);

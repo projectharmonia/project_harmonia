@@ -131,7 +131,7 @@ impl WallMountPlugin {
                             object_entity,
                             translation,
                             distance,
-                            positions: cutout.clone(),
+                            cutout: cutout.clone(),
                             hole: *hole,
                         });
 
@@ -150,7 +150,7 @@ impl WallMountPlugin {
                         object_entity,
                         translation,
                         distance,
-                        positions: cutout.clone(),
+                        cutout: cutout.clone(),
                         hole: *hole,
                     });
 

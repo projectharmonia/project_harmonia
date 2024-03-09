@@ -422,10 +422,23 @@ impl Apertures {
 }
 
 pub(super) struct Aperture {
+    /// The entity that cut this aperture.
     pub(super) object_entity: Entity,
+
+    /// Position of the aperture.
     pub(super) translation: Vec3,
+
+    /// Distance to the beginning of the wall.
+    ///
+    /// Used for sorting in [`Apertures`].
     pub(super) distance: f32,
-    pub(super) positions: Vec<Vec2>,
+
+    /// Positions relative to the coordinate origin at which the aperture is cut in 2D space.
+    ///
+    /// Obtained from [`WallMount::Embed`](super::object::wall_mount::WallMount).
+    pub(super) cutout: Vec<Vec2>,
+
+    /// Indicates if the aperture is hole (like a window) or clipping (like a door or arch).
     pub(super) hole: bool,
 }
 
