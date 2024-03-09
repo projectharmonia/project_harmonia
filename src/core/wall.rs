@@ -13,7 +13,7 @@ use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::{cursor_hover::CursorHoverable, game_world::WorldName, Layer};
+use super::{game_world::WorldName, Layer};
 use creating_wall::{SpawningWall, SpawningWallPlugin};
 use wall_mesh::WallMesh;
 
@@ -81,7 +81,6 @@ impl WallPlugin {
                 Apertures::default(),
                 Collider::default(),
                 CollisionLayers::new(Layer::Wall, Layer::Object),
-                CursorHoverable,
                 NavMeshAffector,
                 NoFrustumCulling,
                 PbrBundle {
