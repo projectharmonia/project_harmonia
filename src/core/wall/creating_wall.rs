@@ -1,4 +1,4 @@
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::{
@@ -12,6 +12,7 @@ use crate::core::{
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     lot::LotVertices,
+    player_camera::PlayerCamera,
 };
 
 pub(super) struct SpawningWallPlugin;
@@ -70,21 +71,34 @@ impl SpawningWallPlugin {
         mut spawning_walls: Query<(&mut Wall, &Parent), With<SpawningWall>>,
         walls: Query<&Wall, Without<SpawningWall>>,
         children: Query<&Children>,
-        hovered: Query<&CursorHover>,
+        windows: Query<&Window, With<PrimaryWindow>>,
+        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) {
-        if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
-            let (mut wall, parent) = spawning_walls.single_mut();
-            let children = children.get(**parent).unwrap();
+        let Some(cursor_pos) = windows.single().cursor_position() else {
+            return;
+        };
 
-            // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
-            let vertex = walls
-                .iter_many(children)
-                .flat_map(|wall| [wall.start, wall.end])
-                .find(|vertex| vertex.distance(position) < SNAP_DELTA)
-                .unwrap_or(position);
+        let (&camera_transform, camera) = cameras.single();
+        let ray = camera
+            .viewport_to_world(&camera_transform, cursor_pos)
+            .expect("ray should be created from screen coordinates");
 
-            wall.end = vertex;
-        }
+        let Some(distance) = ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y)) else {
+            return;
+        };
+
+        let (mut wall, parent) = spawning_walls.single_mut();
+        let children = children.get(**parent).unwrap();
+
+        // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
+        let position = ray.get_point(distance).xz();
+        let vertex = walls
+            .iter_many(children)
+            .flat_map(|wall| [wall.start, wall.end])
+            .find(|vertex| vertex.distance(position) < SNAP_DELTA)
+            .unwrap_or(position);
+
+        wall.end = vertex;
     }
 
     fn confirm(
