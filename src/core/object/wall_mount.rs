@@ -199,11 +199,11 @@ pub(crate) enum WallMount {
     Embed {
         /// Points for an aperture in the wall.
         ///
-        /// Should be set clockwise if the object requires a full opening (such as a window),
-        /// or counterclockwise if it creates a half opening (such as a door).
+        /// Should be set clockwise if the object creates a hole (such as a window),
+        /// or counterclockwise if it creates a clipping (such as a door).
         cutout: Vec<Vec2>,
 
-        /// Should be set to `true` if the object requires a full opening (such as a window).
+        /// Should be set to `true` if the object creates a hole (such as a window).
         hole: bool,
     },
 }
