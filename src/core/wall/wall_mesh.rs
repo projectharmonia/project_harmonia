@@ -86,9 +86,6 @@ impl WallMesh {
         let inverse_winding = angle.abs() < FRAC_PI_2;
         let quat = Quat::from_axis_angle(Vec3::Y, angle);
 
-        let vertices_start = self.positions.len();
-        let indices_start = self.indices.len();
-
         self.generate_side(
             wall,
             apertures,
@@ -100,7 +97,16 @@ impl WallMesh {
             inverse_winding,
         );
 
-        self.mirror_side(vertices_start, indices_start, width);
+        self.generate_side(
+            wall,
+            apertures,
+            start_left,
+            end_left,
+            width,
+            rotation_mat,
+            quat,
+            !inverse_winding,
+        );
 
         match start_walls {
             MinMaxResult::OneElement(_) => (),
@@ -207,47 +213,6 @@ impl WallMesh {
 
         for index in indices {
             self.indices.push(vertices_start + index as u32);
-        }
-    }
-
-    fn mirror_side(&mut self, vertices_start: usize, indices_start: usize, width: Vec2) {
-        let pos_end = self.positions.len();
-        let vertices_count = pos_end - vertices_start;
-        let indices_end = self.indices.len();
-        let indices_count = indices_end - indices_start;
-
-        // Copy original side data.
-        self.positions.resize(pos_end + vertices_count, [0.0; 3]);
-        self.positions.copy_within(vertices_start..pos_end, pos_end);
-        self.indices.resize(indices_end + indices_count, 0);
-        self.indices
-            .copy_within(indices_start..indices_end, indices_end);
-        self.uvs.resize(pos_end + vertices_count, [0.0; 2]);
-        self.uvs.copy_within(vertices_start..pos_end, pos_end);
-        self.normals.resize(pos_end + vertices_count, [0.0; 3]);
-        self.normals.copy_within(vertices_start..pos_end, pos_end);
-
-        // Offset the side by the specified width.
-        for position in &mut self.positions[pos_end..] {
-            position[0] += 2.0 * width.x;
-            position[2] += 2.0 * width.y;
-        }
-
-        // Mirror normals.
-        for normal in &mut self.normals[pos_end..] {
-            for value in normal {
-                *value = -*value;
-            }
-        }
-
-        for triangle in self.indices[indices_end..].chunks_exact_mut(3) {
-            // Inverse winding.
-            triangle.swap(0, 2);
-
-            // Shift all indices to the next side.
-            for index in triangle {
-                *index += vertices_count as u32;
-            }
         }
     }
 
