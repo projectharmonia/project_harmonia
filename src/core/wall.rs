@@ -397,7 +397,9 @@ impl Apertures {
             .binary_search_by(|other| other.distance.total_cmp(&aperture.distance))
             .expect_err("apertures shouldn't have duplicates");
 
-        self.collision_outdated = !aperture.placing_object;
+        if !aperture.placing_object && !aperture.hole {
+            self.collision_outdated = true;
+        }
         self.apertures.insert(index, aperture);
     }
 
@@ -410,7 +412,9 @@ impl Apertures {
     /// Returns aperture by its index.
     pub(super) fn remove(&mut self, index: usize) -> Aperture {
         let aperture = self.apertures.remove(index);
-        self.collision_outdated = !aperture.placing_object;
+        if !aperture.placing_object && !aperture.hole {
+            self.collision_outdated = true;
+        }
         aperture
     }
 }
