@@ -4,8 +4,8 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use crate::core::{
     action::Action,
     city::{ActiveCity, CityMode},
-    cursor_hover::CursorHover,
     game_state::GameState,
+    player_camera::CameraCaster,
 };
 
 use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices};
@@ -34,32 +34,36 @@ impl Plugin for CreatingLotPlugin {
 }
 
 impl CreatingLotPlugin {
-    fn start_creating(mut commands: Commands, ground: Query<(&Parent, &CursorHover)>) {
-        if let Ok((parent, hover)) = ground.get_single() {
+    fn start_creating(
+        camera_caster: CameraCaster,
+        mut commands: Commands,
+        cities: Query<Entity, With<ActiveCity>>,
+    ) {
+        if let Some(point) = camera_caster.intersect_ground() {
             // Spawn with two the same vertices because we edit the last one on cursor movement.
-            commands.entity(**parent).with_children(|parent| {
-                parent.spawn((LotVertices(vec![hover.xz(); 2]), CreatingLot));
+            commands.entity(cities.single()).with_children(|parent| {
+                parent.spawn((LotVertices(vec![point.xz(); 2]), CreatingLot));
             });
         }
     }
 
     fn set_vertex_position(
+        camera_caster: CameraCaster,
         mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
-        ground: Query<&CursorHover>,
     ) {
         if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
-            if let Ok(new_position) = ground.get_single().map(|hover| hover.xz()) {
-                let first_position = *lot_vertices
+            if let Some(point) = camera_caster.intersect_ground().map(|hover| hover.xz()) {
+                let first_vertex = *lot_vertices
                     .first()
                     .expect("vertices should have at least initial position");
-                let last_position = lot_vertices.last_mut().unwrap();
+                let last_vertex = lot_vertices.last_mut().unwrap();
 
                 const SNAP_DELTA: f32 = 0.1;
-                let delta = first_position - new_position;
+                let delta = first_vertex - point;
                 if delta.x.abs() <= SNAP_DELTA && delta.y.abs() <= SNAP_DELTA {
-                    *last_position = first_position;
+                    *last_vertex = first_vertex;
                 } else {
-                    *last_position = new_position;
+                    *last_vertex = point;
                 }
             }
         }
@@ -68,7 +72,7 @@ impl CreatingLotPlugin {
     fn confirm_vertex(
         mut create_events: EventWriter<LotCreate>,
         mut creating_lots: Query<&mut LotVertices, With<CreatingLot>>,
-        active_cities: Query<Entity, With<ActiveCity>>,
+        cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
             let first_position = *lot_vertices
@@ -78,7 +82,7 @@ impl CreatingLotPlugin {
             if first_position == last_position {
                 create_events.send(LotCreate {
                     vertices: lot_vertices.0.clone(),
-                    city_entity: active_cities.single(),
+                    city_entity: cities.single(),
                 });
             } else {
                 lot_vertices.push(last_position);

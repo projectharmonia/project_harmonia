@@ -3,7 +3,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices};
 use crate::core::{
-    action::Action, city::CityMode, cursor_hover::CursorHover, game_state::GameState,
+    action::Action, city::CityMode, game_state::GameState, player_camera::CameraCaster,
 };
 
 pub(super) struct MovingLotPlugin;
@@ -39,21 +39,21 @@ impl Plugin for MovingLotPlugin {
 
 impl MovingLotPlugin {
     fn pick(
+        camera_caster: CameraCaster,
         mut commands: Commands,
         lots: Query<(Entity, &Parent, &LotVertices)>,
-        hovered: Query<&CursorHover>,
     ) {
-        if let Ok(hover) = hovered.get_single() {
+        if let Some(point) = camera_caster.intersect_ground() {
             if let Some((entity, parent, vertices)) = lots
                 .iter()
-                .find(|(.., vertices)| vertices.contains_point(hover.xz()))
+                .find(|(.., vertices)| vertices.contains_point(point.xz()))
             {
                 commands.entity(**parent).with_children(|parent| {
                     parent.spawn((
                         vertices.clone(),
                         MovingLot {
                             entity,
-                            offset: hover.0,
+                            offset: point,
                         },
                     ));
                 });
@@ -62,12 +62,12 @@ impl MovingLotPlugin {
     }
 
     fn apply_movement(
+        camera_caster: CameraCaster,
         mut moving_lots: Query<(&mut Transform, &MovingLot)>,
-        hovered: Query<&CursorHover>,
     ) {
         if let Ok((mut transform, moving_lot)) = moving_lots.get_single_mut() {
-            if let Ok(hover) = hovered.get_single() {
-                transform.translation = hover.0 - moving_lot.offset;
+            if let Some(point) = camera_caster.intersect_ground() {
+                transform.translation = point - moving_lot.offset;
             }
         }
     }
