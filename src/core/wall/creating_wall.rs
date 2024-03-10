@@ -117,7 +117,7 @@ impl SpawningWallPlugin {
         walls: Query<&Wall, Without<SpawningWall>>,
         children: Query<&Children>,
     ) {
-        let Some(position) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
+        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
             return;
         };
 
@@ -128,8 +128,8 @@ impl SpawningWallPlugin {
         let vertex = walls
             .iter_many(children)
             .flat_map(|wall| [wall.start, wall.end])
-            .find(|vertex| vertex.distance(position) < SNAP_DELTA)
-            .unwrap_or(position);
+            .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+            .unwrap_or(point);
 
         wall.end = vertex;
     }

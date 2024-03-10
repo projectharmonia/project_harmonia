@@ -52,11 +52,11 @@ impl LotPlugin {
 
     fn draw_lines(mut gizmos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
         for (transform, vertices) in &lots {
-            let positions_iter = vertices
+            let points_iter = vertices
                 .iter()
-                .map(|point| Vec3::new(point.x, 0.0, point.y))
+                .map(|vertex| Vec3::new(vertex.x, 0.0, vertex.y))
                 .map(|point| transform.transform_point(point));
-            gizmos.linestrip(positions_iter, Color::WHITE);
+            gizmos.linestrip(points_iter, Color::WHITE);
         }
     }
 

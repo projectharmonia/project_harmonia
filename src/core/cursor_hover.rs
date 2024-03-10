@@ -43,9 +43,9 @@ impl CursorHoverPlugin {
         let hovered_entity = cursor_hoverable
             .iter_many(iter::once(hit.entity).chain(parents.iter_ancestors(hit.entity)))
             .next()?;
-        let position = ray.origin + ray.direction * hit.time_of_impact;
+        let point = ray.origin + ray.direction * hit.time_of_impact;
 
-        Some((hovered_entity, position))
+        Some((hovered_entity, point))
     }
 
     fn update(
@@ -54,14 +54,14 @@ impl CursorHoverPlugin {
         cursor_hovers: Query<Entity, With<CursorHover>>,
     ) {
         match (hit, cursor_hovers.get_single().ok()) {
-            (Some((hit_entity, position)), None) => {
-                commands.entity(hit_entity).insert(CursorHover(position));
+            (Some((hit_entity, point)), None) => {
+                commands.entity(hit_entity).insert(CursorHover(point));
             }
             (None, Some(previous_entity)) => {
                 commands.entity(previous_entity).remove::<CursorHover>();
             }
-            (Some((hit_entity, position)), Some(previous_entity)) => {
-                commands.entity(hit_entity).insert(CursorHover(position));
+            (Some((hit_entity, point)), Some(previous_entity)) => {
+                commands.entity(hit_entity).insert(CursorHover(point));
                 if hit_entity != previous_entity {
                     commands.entity(previous_entity).remove::<CursorHover>();
                 }

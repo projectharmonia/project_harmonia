@@ -84,11 +84,10 @@ impl ObjectsNodePlugin {
                     else {
                         panic!("button size should be set in pixels");
                     };
-                    let button_translation = transform.translation();
+                    let button_pos = transform.translation();
                     let window = windows.single();
-                    let left = button_translation.x - button_width / 2.0;
-                    let bottom =
-                        window.resolution.height() - button_translation.y + button_height / 2.0;
+                    let left = button_pos.x - button_width / 2.0;
+                    let bottom = window.resolution.height() - button_pos.y + button_height / 2.0;
                     let metadata = object_metadata.get(id).unwrap();
 
                     commands.entity(roots.single()).with_children(|parent| {

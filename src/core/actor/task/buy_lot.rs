@@ -36,11 +36,10 @@ impl BuyLotPlugin {
         mut grounds: Query<&CursorHover, With<Ground>>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok(hover) = grounds.get_single_mut() {
-            let position = hover.xz();
+        if let Ok(point) = grounds.get_single_mut().map(|point| point.xz()) {
             if let Some((lot_entity, _)) = lots
                 .iter()
-                .find(|(_, vertices)| vertices.contains_point(position))
+                .find(|(_, vertices)| vertices.contains_point(point))
             {
                 list_events.send(BuyLot(lot_entity).into());
             }

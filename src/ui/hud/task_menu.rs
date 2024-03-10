@@ -55,7 +55,7 @@ impl TaskMenuPlugin {
             return;
         }
 
-        let cursor_position = windows.single().cursor_position().unwrap_or_default();
+        let cursor_pos = windows.single().cursor_position().unwrap_or_default();
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn_empty()
@@ -74,8 +74,8 @@ impl TaskMenuPlugin {
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
-                            left: Val::Px(cursor_position.x),
-                            top: Val::Px(cursor_position.y),
+                            left: Val::Px(cursor_pos.x),
+                            top: Val::Px(cursor_pos.y),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,

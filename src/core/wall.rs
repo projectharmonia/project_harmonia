@@ -114,8 +114,8 @@ impl WallPlugin {
                 let (.., mut other_connections) = walls
                     .get_mut(other_entity)
                     .expect("connected wall should also have connections");
-                if let Some((point, index)) = other_connections.position(wall_entity) {
-                    other_connections.remove(point, index);
+                if let Some((point_kind, index)) = other_connections.position(wall_entity) {
+                    other_connections.remove(point_kind, index);
                 }
             }
 
@@ -216,8 +216,8 @@ impl WallPlugin {
     ) {
         for entity in removed_walls.read() {
             for mut connections in &mut walls {
-                if let Some((point, index)) = connections.position(entity) {
-                    connections.remove(point, index);
+                if let Some((point_kind, index)) = connections.position(entity) {
+                    connections.remove(point_kind, index);
                 }
             }
         }
@@ -324,7 +324,7 @@ impl WallConnections {
             .map(|WallConnection { wall_entity, .. }| wall_entity)
     }
 
-    /// Returns position and point kind to which it connected for an entity.
+    /// Returns point kind and index to which it connected for an entity.
     ///
     /// Used for [`Self::remove`] later.
     /// It's two different functions to avoid triggering change detection if there is no such entity.
@@ -344,8 +344,8 @@ impl WallConnections {
     }
 
     /// Removes connection by its index from specific point.
-    fn remove(&mut self, kind: PointKind, index: usize) {
-        match kind {
+    fn remove(&mut self, point_kind: PointKind, index: usize) {
+        match point_kind {
             PointKind::Start => self.start.remove(index),
             PointKind::End => self.end.remove(index),
         };

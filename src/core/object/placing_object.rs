@@ -114,7 +114,7 @@ impl PlacingObjectPlugin {
 
                 let offset = camera_caster
                     .intersect_ground()
-                    .map(|position| object_transform.translation - position)
+                    .map(|point| object_transform.translation - point)
                     .unwrap_or(object_transform.translation);
 
                 commands.entity(placing_entity).insert((

@@ -113,7 +113,7 @@ fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec
 
 #[derive(Bundle)]
 pub(crate) struct PlayerCameraBundle {
-    target_translation: OrbitOrigin,
+    orbit_origin: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
     player_camera: PlayerCamera,
@@ -124,7 +124,7 @@ pub(crate) struct PlayerCameraBundle {
 impl Default for PlayerCameraBundle {
     fn default() -> Self {
         Self {
-            target_translation: Default::default(),
+            orbit_origin: Default::default(),
             orbit_rotation: Default::default(),
             spring_arm: Default::default(),
             player_camera: PlayerCamera,

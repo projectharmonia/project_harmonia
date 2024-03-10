@@ -93,8 +93,8 @@ impl FamilyPlugin {
         for (actor_entity, family) in &actors {
             // Remove previous.
             for mut members in &mut families {
-                if let Some(position) = members.iter().position(|&entity| entity == actor_entity) {
-                    members.0.swap_remove(position);
+                if let Some(index) = members.iter().position(|&entity| entity == actor_entity) {
+                    members.0.swap_remove(index);
                     break;
                 }
             }

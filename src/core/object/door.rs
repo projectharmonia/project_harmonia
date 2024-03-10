@@ -44,11 +44,7 @@ impl DoorPlugin {
                 door_state.remove_passing(actor_entity);
             }
 
-            for (nav_start, nav_end) in nav_path
-                .iter()
-                .map(|position| position.xz())
-                .tuple_windows()
-            {
+            for (nav_start, nav_end) in nav_path.iter().map(|point| point.xz()).tuple_windows() {
                 let nav_length = nav_start.distance(nav_end);
                 let nav_line = Line::new(nav_start, nav_end);
 

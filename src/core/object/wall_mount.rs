@@ -78,15 +78,15 @@ impl WallMountPlugin {
         };
 
         const SNAP_DELTA: f32 = 1.0;
-        let translation_2d = transform.translation.xz();
+        let translation = transform.translation.xz();
         if let Some((wall, wall_point)) = walls
             .iter()
-            .map(|wall| (wall, wall.closest_point(translation_2d)))
-            .find(|(_, point)| point.distance(translation_2d) <= SNAP_DELTA)
+            .map(|wall| (wall, wall.closest_point(translation)))
+            .find(|(_, point)| point.distance(translation) <= SNAP_DELTA)
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let disp = wall.displacement();
-            let sign = disp.perp_dot(translation_2d - wall_point).signum();
+            let sign = disp.perp_dot(translation - wall_point).signum();
             let offset = match wall_mount {
                 WallMount::Embed { .. } => Vec2::ZERO,
                 WallMount::Attach => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),

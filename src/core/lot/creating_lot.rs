@@ -55,7 +55,7 @@ impl CreatingLotPlugin {
             if let Some(point) = camera_caster.intersect_ground().map(|hover| hover.xz()) {
                 let first_vertex = *lot_vertices
                     .first()
-                    .expect("vertices should have at least initial position");
+                    .expect("vertices should have at least 2 vertices");
                 let last_vertex = lot_vertices.last_mut().unwrap();
 
                 const SNAP_DELTA: f32 = 0.1;
@@ -75,17 +75,17 @@ impl CreatingLotPlugin {
         cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Ok(mut lot_vertices) = creating_lots.get_single_mut() {
-            let first_position = *lot_vertices
+            let first_vertex = *lot_vertices
                 .first()
-                .expect("vertices should have at least initial position");
-            let last_position = *lot_vertices.last().unwrap();
-            if first_position == last_position {
+                .expect("vertices should have at least 2 vertices");
+            let last_vertex = *lot_vertices.last().unwrap();
+            if first_vertex == last_vertex {
                 create_events.send(LotCreate {
                     vertices: lot_vertices.0.clone(),
                     city_entity: cities.single(),
                 });
             } else {
-                lot_vertices.push(last_position);
+                lot_vertices.push(last_vertex);
             }
         }
     }
