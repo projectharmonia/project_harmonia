@@ -16,7 +16,6 @@ use crate::core::{
     game_state::GameState,
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
-    Layer,
 };
 
 pub(super) struct PlacingObjectPlugin;
@@ -136,31 +135,14 @@ impl PlacingObjectPlugin {
     }
 
     pub(super) fn apply_transform(
-        spatial_query: SpatialQuery,
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Transform, &PlacingObject, &CursorOffset)>,
+        mut placing_objects: Query<(&mut Transform, &CursorOffset)>,
     ) {
-        let Ok((mut transform, placing_object, cursor_offset)) = placing_objects.get_single_mut()
-        else {
-            return;
-        };
-        let Some(ray) = camera_caster.ray() else {
-            return;
-        };
-
-        let mut filter = SpatialQueryFilter::from_mask(Layer::Ground);
-        if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-            filter.excluded_entities.insert(entity);
+        if let Ok((mut transform, cursor_offset)) = placing_objects.get_single_mut() {
+            if let Some(point) = camera_caster.intersect_ground() {
+                transform.translation = point + cursor_offset.0;
+            }
         }
-
-        let Some(hit) = spatial_query.cast_ray(ray.origin, ray.direction, f32::MAX, false, filter)
-        else {
-            return;
-        };
-
-        let mut hit_position = ray.origin + ray.direction * hit.time_of_impact;
-        hit_position.y = 0.0;
-        transform.translation = hit_position + cursor_offset.0;
     }
 
     pub(super) fn check_collision(
