@@ -66,6 +66,9 @@ impl Plugin for ActorPlugin {
     }
 }
 
+pub(crate) const ACTOR_HEIGHT: f32 = 1.2;
+pub(crate) const ACTOR_RADIUS: f32 = 0.3;
+
 impl ActorPlugin {
     fn init(
         mut commands: Commands,
@@ -73,8 +76,6 @@ impl ActorPlugin {
         actors: Query<Entity, Added<Actor>>,
     ) {
         for entity in &actors {
-            const HEIGHT: f32 = 1.2;
-            const RADIUS: f32 = 0.3;
             commands
                 .entity(entity)
                 .insert((
@@ -87,9 +88,9 @@ impl ActorPlugin {
                 .with_children(|parent| {
                     parent.spawn((
                         SpatialBundle::from_transform(Transform::from_translation(
-                            Vec3::Y * (HEIGHT / 2.0 + RADIUS),
+                            Vec3::Y * (ACTOR_HEIGHT / 2.0 + ACTOR_RADIUS),
                         )),
-                        Collider::capsule(HEIGHT, RADIUS),
+                        Collider::capsule(ACTOR_HEIGHT, ACTOR_RADIUS),
                     ));
                 });
         }

@@ -45,7 +45,7 @@ impl Plugin for CityPlugin {
 
 /// City square side size.
 const CITY_SIZE: f32 = 100.0;
-pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
+pub(crate) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.

@@ -25,7 +25,13 @@ use oxidized_navigation::{
     debug_draw::OxidizedNavigationDebugDrawPlugin, NavMeshSettings, OxidizedNavigationPlugin,
 };
 
-use crate::core::{action::Action, cli::Cli, CorePlugins};
+use core::{
+    action::Action,
+    actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
+    city::HALF_CITY_SIZE,
+    cli::Cli,
+    CorePlugins,
+};
 use ui::UiPlugins;
 
 fn main() {
@@ -55,14 +61,14 @@ fn main() {
             AtmospherePlugin,
             InputManagerPlugin::<Action>::default(),
             OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings {
-                cell_width: 0.25,
-                cell_height: 0.1,
+                cell_width: ACTOR_RADIUS / 2.0,
+                cell_height: ACTOR_RADIUS / 4.0,
                 tile_width: 100,
-                world_half_extents: 250.0,
-                world_bottom_bound: -100.0,
-                max_traversable_slope_radians: (40.0_f32 - 0.1).to_radians(),
-                walkable_height: 20,
-                walkable_radius: 1,
+                world_half_extents: HALF_CITY_SIZE,
+                world_bottom_bound: 0.0,
+                max_traversable_slope_radians: 80.0_f32.to_radians(),
+                walkable_height: (ACTOR_HEIGHT * ACTOR_RADIUS / 4.0).ceil() as u16,
+                walkable_radius: 2,
                 step_height: 3,
                 min_region_area: 100,
                 merge_region_area: 500,
