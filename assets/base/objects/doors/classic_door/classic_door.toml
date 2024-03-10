@@ -7,7 +7,7 @@ preview_translation = [0.0, -1.0, -2.9]
 [object]
 category = "Doors"
 components = [
-  { Door = { half_width = 2.0, trigger_distance = 2.5 } },
+  { Door = { half_width = 0.4, trigger_distance = 2.5 } },
   { WallMount = { Embed = { cutout = [
     [
       -0.4358678,
