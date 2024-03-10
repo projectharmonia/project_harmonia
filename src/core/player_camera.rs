@@ -184,7 +184,7 @@ pub(super) struct CameraCaster<'w, 's> {
 impl CameraCaster<'_, '_> {
     pub(super) fn ray(&self) -> Option<Ray3d> {
         let cursor_pos = self.windows.single().cursor_position()?;
-        let (&transform, camera) = self.cameras.single();
+        let (&transform, camera) = self.cameras.get_single().ok()?;
         camera.viewport_to_world(&transform, cursor_pos)
     }
 
