@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{math::Vec3Swizzles, prelude::*, scene};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -53,13 +53,23 @@ impl Plugin for PlacingObjectPlugin {
                         Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
                         Self::apply_transform,
                         Self::check_collision,
-                        (
-                            Self::update_materials,
-                            Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                        ),
+                        Self::confirm.run_if(action_just_pressed(Action::Confirm)),
                     )
                         .chain(),
                 )
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
+            )
+            .add_systems(
+                SpawnScene,
+                Self::update_materials
+                    .after(scene::scene_spawner_system)
                     .run_if(
                         in_state(GameState::City)
                             .and_then(in_state(CityMode::Objects))
