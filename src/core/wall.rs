@@ -14,14 +14,14 @@ use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
 use super::{game_world::WorldName, Layer};
-use creating_wall::{SpawningWall, SpawningWallPlugin};
+use creating_wall::{CreatingWall, CreatingWallPlugin};
 use wall_mesh::WallMesh;
 
 pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SpawningWallPlugin)
+        app.add_plugins(CreatingWallPlugin)
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallCreate>(ChannelKind::Unordered)
@@ -54,9 +54,9 @@ impl WallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
-        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<Wall>>,
+        walls: Query<(Entity, Has<CreatingWall>), Added<Wall>>,
     ) {
-        for (entity, spawning_wall) in &spawned_walls {
+        for (entity, creating_wall) in &walls {
             let material = StandardMaterial {
                 base_color_texture: Some(
                     asset_server.load("base/walls/brick/brick_base_color.png"),
@@ -91,7 +91,7 @@ impl WallPlugin {
                 },
             ));
 
-            if !spawning_wall {
+            if !creating_wall {
                 entity.insert(NavMeshAffector);
             }
         }
@@ -202,7 +202,7 @@ impl WallPlugin {
             wall_mesh.generate(*wall, connections, &apertures);
             wall_mesh.apply(mesh);
 
-            // Spawning walls shouldn't affect navigation.
+            // Creating walls shouldn't affect navigation.
             if apertures.collision_outdated || wall.is_changed() || collider.is_added() {
                 *collider = wall_mesh::generate_collider(*wall, &apertures);
                 apertures.collision_outdated = false;

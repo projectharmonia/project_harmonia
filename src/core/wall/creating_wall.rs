@@ -12,9 +12,9 @@ use crate::core::{
     player_camera::CameraCaster,
 };
 
-pub(super) struct SpawningWallPlugin;
+pub(super) struct CreatingWallPlugin;
 
-impl Plugin for SpawningWallPlugin {
+impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnExit(FamilyMode::Building), Self::end_creating)
             .add_systems(OnExit(BuildingMode::Walls), Self::end_creating)
@@ -25,7 +25,7 @@ impl Plugin for SpawningWallPlugin {
                     .run_if(in_state(GameState::Family))
                     .run_if(in_state(FamilyMode::Building))
                     .run_if(in_state(BuildingMode::Walls))
-                    .run_if(any_with_component::<SpawningWall>)
+                    .run_if(any_with_component::<CreatingWall>)
                     .run_if(on_event::<WallCreateConfirmed>()),
             )
             .add_systems(
@@ -33,7 +33,7 @@ impl Plugin for SpawningWallPlugin {
                 (
                     Self::start_creating
                         .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<SpawningWall>)),
+                        .run_if(not(any_with_component::<CreatingWall>)),
                     (
                         (
                             Self::update_end,
@@ -43,7 +43,7 @@ impl Plugin for SpawningWallPlugin {
                             .run_if(not(any_with_component::<UnconfirmedWall>)),
                         Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
                     )
-                        .run_if(any_with_component::<SpawningWall>),
+                        .run_if(any_with_component::<CreatingWall>),
                 )
                     .run_if(in_state(GameState::Family))
                     .run_if(in_state(FamilyMode::Building))
@@ -54,7 +54,7 @@ impl Plugin for SpawningWallPlugin {
 
 const SNAP_DELTA: f32 = 0.5;
 
-impl SpawningWallPlugin {
+impl CreatingWallPlugin {
     fn start_creating(
         camera_caster: CameraCaster,
         mut commands: Commands,
@@ -75,7 +75,7 @@ impl SpawningWallPlugin {
 
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((
-                        SpawningWall,
+                        CreatingWall,
                         Wall {
                             start: point,
                             end: point,
@@ -90,7 +90,7 @@ impl SpawningWallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut walls: Query<
             (&mut Handle<StandardMaterial>, &CollidingEntities),
-            (Changed<CollidingEntities>, With<SpawningWall>),
+            (Changed<CollidingEntities>, With<CreatingWall>),
         >,
     ) {
         for (mut material_handle, colliding_entities) in &mut walls {
@@ -113,15 +113,15 @@ impl SpawningWallPlugin {
 
     fn update_end(
         camera_caster: CameraCaster,
-        mut spawning_walls: Query<(&mut Wall, &Parent), With<SpawningWall>>,
-        walls: Query<&Wall, Without<SpawningWall>>,
+        mut creating_walls: Query<(&mut Wall, &Parent), With<CreatingWall>>,
+        walls: Query<&Wall, Without<CreatingWall>>,
         children: Query<&Children>,
     ) {
         let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
             return;
         };
 
-        let (mut wall, parent) = spawning_walls.single_mut();
+        let (mut wall, parent) = creating_walls.single_mut();
         let children = children.get(**parent).unwrap();
 
         // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
@@ -137,7 +137,7 @@ impl SpawningWallPlugin {
     fn confirm(
         mut commands: Commands,
         mut create_events: EventWriter<WallCreate>,
-        mut walls: Query<(Entity, &Parent, &Wall), With<SpawningWall>>,
+        mut walls: Query<(Entity, &Parent, &Wall), With<CreatingWall>>,
     ) {
         let (wall_entity, parent, &wall) = walls.single_mut();
 
@@ -149,13 +149,13 @@ impl SpawningWallPlugin {
         });
     }
 
-    fn end_creating(mut commands: Commands, walls: Query<Entity, With<SpawningWall>>) {
+    fn end_creating(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
         commands.entity(walls.single()).despawn();
     }
 }
 
 #[derive(Component, Default)]
-pub(crate) struct SpawningWall;
+pub(crate) struct CreatingWall;
 
 #[derive(Component, Default)]
 pub(crate) struct UnconfirmedWall;
