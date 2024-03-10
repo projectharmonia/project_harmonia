@@ -25,9 +25,10 @@ impl Plugin for WallPlugin {
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallCreate>(ChannelKind::Unordered)
+            .add_server_event::<WallCreateConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::init, Self::create.run_if(server_running))
+                Self::init
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
@@ -37,6 +38,9 @@ impl Plugin for WallPlugin {
                     Self::cleanup_connections,
                     Self::update_connections,
                     Self::update_meshes,
+                    Self::create
+                        .run_if(has_authority)
+                        .before(ServerSet::StoreHierarchy),
                 )
                     .chain()
                     .run_if(resource_exists::<WorldName>),
@@ -50,9 +54,9 @@ impl WallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
-        spawned_walls: Query<Entity, Added<Wall>>,
+        spawned_walls: Query<(Entity, Has<SpawningWall>), Added<Wall>>,
     ) {
-        for entity in &spawned_walls {
+        for (entity, spawning_wall) in &spawned_walls {
             let material = StandardMaterial {
                 base_color_texture: Some(
                     asset_server.load("base/walls/brick/brick_base_color.png"),
@@ -72,13 +76,13 @@ impl WallPlugin {
                 .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
                 .with_inserted_indices(Indices::U32(Vec::new()));
 
-            commands.entity(entity).insert((
+            let mut entity = commands.entity(entity);
+            entity.insert((
                 Name::new("Walls"),
                 WallConnections::default(),
                 Apertures::default(),
                 Collider::default(),
                 CollisionLayers::new(Layer::Wall, Layer::Object),
-                NavMeshAffector,
                 NoFrustumCulling,
                 PbrBundle {
                     material: materials.add(material),
@@ -86,26 +90,10 @@ impl WallPlugin {
                     ..Default::default()
                 },
             ));
-        }
-    }
 
-    fn create(
-        mut commands: Commands,
-        mut entity_map: ResMut<ClientEntityMap>,
-        mut create_events: EventReader<FromClient<WallCreate>>,
-    ) {
-        for FromClient { client_id, event } in create_events.read().copied() {
-            commands.entity(event.lot_entity).with_children(|parent| {
-                // TODO: validate if wall can be spawned.
-                let server_entity = parent.spawn(WallBundle::new(event.wall)).id();
-                entity_map.insert(
-                    client_id,
-                    ClientMapping {
-                        client_entity: event.wall_entity,
-                        server_entity,
-                    },
-                );
-            });
+            if !spawning_wall {
+                entity.insert(NavMeshAffector);
+            }
         }
     }
 
@@ -118,7 +106,7 @@ impl WallPlugin {
             // Take changed connections to avoid mutability issues.
             let (.., mut connections) = walls
                 .get_mut(wall_entity)
-                .expect("this trait is a subset of the changed query");
+                .expect("query is a subset of the changed query");
             let mut connections = mem::take(&mut *connections);
 
             // Cleanup old connections.
@@ -197,29 +185,26 @@ impl WallPlugin {
         mut changed_walls: Query<
             (
                 &Handle<Mesh>,
-                &Wall,
+                Ref<Wall>,
                 &WallConnections,
                 &mut Apertures,
                 &mut Collider,
-                Has<SpawningWall>,
             ),
             Or<(Changed<WallConnections>, Changed<Apertures>)>,
         >,
     ) {
-        for (mesh_handle, &wall, connections, mut apertures, mut collider, spawning_wall) in
-            &mut changed_walls
-        {
+        for (mesh_handle, wall, connections, mut apertures, mut collider) in &mut changed_walls {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
 
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(wall, connections, &apertures);
+            wall_mesh.generate(*wall, connections, &apertures);
             wall_mesh.apply(mesh);
 
             // Spawning walls shouldn't affect navigation.
-            if apertures.collision_outdated && !spawning_wall {
-                *collider = wall_mesh::generate_collider(wall, &apertures);
+            if apertures.collision_outdated || wall.is_changed() || collider.is_added() {
+                *collider = wall_mesh::generate_collider(*wall, &apertures);
                 apertures.collision_outdated = false;
             }
         }
@@ -235,6 +220,23 @@ impl WallPlugin {
                     connections.remove(point, index);
                 }
             }
+        }
+    }
+
+    fn create(
+        mut commands: Commands,
+        mut create_events: EventReader<FromClient<WallCreate>>,
+        mut confirm_events: EventWriter<ToClients<WallCreateConfirmed>>,
+    ) {
+        for FromClient { client_id, event } in create_events.read().copied() {
+            // TODO: validate if wall can be spawned.
+            confirm_events.send(ToClients {
+                mode: SendMode::Direct(client_id),
+                event: WallCreateConfirmed,
+            });
+            commands.entity(event.lot_entity).with_children(|parent| {
+                parent.spawn(WallBundle::new(event.wall));
+            });
         }
     }
 }
@@ -365,19 +367,10 @@ enum PointKind {
 /// Dynamically updated component with precalculated apertures for wall objects.
 ///
 /// Apertures are sorted by distance to the wall starting point.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub(super) struct Apertures {
     apertures: Vec<Aperture>,
     pub(super) collision_outdated: bool,
-}
-
-impl Default for Apertures {
-    fn default() -> Self {
-        Self {
-            apertures: Vec::new(),
-            collision_outdated: true,
-        }
-    }
 }
 
 impl Apertures {
@@ -443,7 +436,6 @@ pub(super) struct Aperture {
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct WallCreate {
     lot_entity: Entity,
-    wall_entity: Entity,
     wall: Wall,
 }
 
@@ -452,3 +444,6 @@ impl MapEntities for WallCreate {
         self.lot_entity = entity_mapper.map_entity(self.lot_entity);
     }
 }
+
+#[derive(Deserialize, Event, Serialize)]
+struct WallCreateConfirmed;

@@ -72,3 +72,4 @@ bevy_window = { git = "https://github.com/lifescapegame/bevy", branch = "v0.13.0
 bevy_macro_utils = { git = "https://github.com/lifescapegame/bevy", branch = "v0.13.0-patched" }
 bevy_internal = { git = "https://github.com/lifescapegame/bevy", branch = "v0.13.0-patched" }
 bevy = { git = "https://github.com/lifescapegame/bevy", branch = "v0.13.0-patched" }
+bevy_replicon = { git = "https://github.com/lifescapegame/bevy_replicon" }

@@ -1,11 +1,9 @@
 use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
-use leafwing_input_manager::common_conditions::{
-    action_just_pressed, action_just_released, action_pressed,
-};
+use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{Wall, WallCreate};
+use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::core::{
     action::Action,
     cursor_hover::CursorHover,
@@ -19,23 +17,39 @@ pub(super) struct SpawningWallPlugin;
 
 impl Plugin for SpawningWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                Self::start_creating
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<SpawningWall>)),
-                Self::update_end
-                    .run_if(action_pressed(Action::Confirm))
-                    .run_if(any_with_component::<SpawningWall>),
-                Self::confirm
-                    .run_if(action_just_released(Action::Confirm))
-                    .run_if(any_with_component::<SpawningWall>),
+        app.add_systems(OnExit(FamilyMode::Building), Self::end_creating)
+            .add_systems(OnExit(BuildingMode::Walls), Self::end_creating)
+            .add_systems(
+                PreUpdate,
+                Self::end_creating
+                    .after(ClientSet::Receive)
+                    .run_if(in_state(GameState::Family))
+                    .run_if(in_state(FamilyMode::Building))
+                    .run_if(in_state(BuildingMode::Walls))
+                    .run_if(any_with_component::<SpawningWall>)
+                    .run_if(on_event::<WallCreateConfirmed>()),
             )
-                .run_if(in_state(GameState::Family))
-                .run_if(in_state(FamilyMode::Building))
-                .run_if(in_state(BuildingMode::Walls)),
-        );
+            .add_systems(
+                Update,
+                (
+                    Self::start_creating
+                        .run_if(action_just_pressed(Action::Confirm))
+                        .run_if(not(any_with_component::<SpawningWall>)),
+                    (
+                        (
+                            Self::update_end,
+                            Self::update_material,
+                            Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                        )
+                            .run_if(not(any_with_component::<UnconfirmedWall>)),
+                        Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
+                    )
+                        .run_if(any_with_component::<SpawningWall>),
+                )
+                    .run_if(in_state(GameState::Family))
+                    .run_if(in_state(FamilyMode::Building))
+                    .run_if(in_state(BuildingMode::Walls)),
+            );
     }
 }
 
@@ -61,9 +75,40 @@ impl SpawningWallPlugin {
                     .unwrap_or(position);
 
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn(CreatingWallBundle::new(point));
+                    parent.spawn((
+                        SpawningWall,
+                        Wall {
+                            start: point,
+                            end: point,
+                        },
+                    ));
                 });
             }
+        }
+    }
+
+    fn update_material(
+        mut materials: ResMut<Assets<StandardMaterial>>,
+        mut walls: Query<
+            (&mut Handle<StandardMaterial>, &CollidingEntities),
+            (Changed<CollidingEntities>, With<SpawningWall>),
+        >,
+    ) {
+        for (mut material_handle, colliding_entities) in &mut walls {
+            let mut material = materials
+                .get(&*material_handle)
+                .cloned()
+                .expect("material handle should be valid");
+
+            material.alpha_mode = AlphaMode::Add;
+            material.base_color = if colliding_entities.is_empty() {
+                Color::WHITE
+            } else {
+                Color::RED
+            };
+            *material_handle = materials.add(material);
+
+            debug!("assigned material color for placing wall");
         }
     }
 
@@ -103,53 +148,26 @@ impl SpawningWallPlugin {
 
     fn confirm(
         mut commands: Commands,
-        meshes: Res<Assets<Mesh>>,
         mut create_events: EventWriter<WallCreate>,
-        mut spawning_walls: Query<
-            (Entity, &Parent, &Wall, &Handle<Mesh>, &mut Collider),
-            With<SpawningWall>,
-        >,
+        mut walls: Query<(Entity, &Parent, &Wall), With<SpawningWall>>,
     ) {
-        let (wall_entity, parent, &wall, mesh_handle, mut collider) = spawning_walls.single_mut();
+        let (wall_entity, parent, &wall) = walls.single_mut();
 
-        let mesh = meshes
-            .get(mesh_handle)
-            .expect("spawning wall mesh handle should be walid");
-        *collider = Collider::trimesh_from_mesh(mesh)
-            .expect("spawnign wall mesh should be in compatible format");
-
-        commands
-            .entity(wall_entity)
-            .remove::<SpawningWall>()
-            .insert(Replication);
+        commands.entity(wall_entity).insert(UnconfirmedWall);
 
         create_events.send(WallCreate {
             lot_entity: **parent,
-            wall_entity,
             wall,
         });
     }
-}
 
-#[derive(Bundle)]
-struct CreatingWallBundle {
-    wall: Wall,
-    parent_sync: ParentSync,
-    spawning_wall: SpawningWall,
-}
-
-impl CreatingWallBundle {
-    fn new(point: Vec2) -> Self {
-        Self {
-            wall: Wall {
-                start: point,
-                end: point,
-            },
-            parent_sync: Default::default(),
-            spawning_wall: SpawningWall,
-        }
+    fn end_creating(mut commands: Commands, walls: Query<Entity, With<SpawningWall>>) {
+        commands.entity(walls.single()).despawn();
     }
 }
 
 #[derive(Component, Default)]
 pub(crate) struct SpawningWall;
+
+#[derive(Component, Default)]
+pub(crate) struct UnconfirmedWall;
