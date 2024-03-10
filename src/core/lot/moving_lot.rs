@@ -1,7 +1,8 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy_replicon::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices};
+use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices, UnconfirmedLot};
 use crate::core::{
     action::Action, city::CityMode, game_state::GameState, player_camera::CameraCaster,
 };
@@ -10,30 +11,39 @@ pub(super) struct MovingLotPlugin;
 
 impl Plugin for MovingLotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                Self::pick
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<MovingLot>)),
-                Self::apply_movement,
-                Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                Self::delete.run_if(action_just_pressed(Action::Delete)),
-                Self::cancel.run_if(
-                    action_just_pressed(Action::Cancel).or_else(on_event::<LotEventConfirmed>()),
-                ),
+        app.add_systems(OnExit(CityMode::Lots), Self::end_creating)
+            .add_systems(OnExit(LotTool::Move), Self::end_creating)
+            .add_systems(
+                PreUpdate,
+                Self::end_creating
+                    .after(ClientSet::Receive)
+                    .run_if(in_state(GameState::City))
+                    .run_if(in_state(CityMode::Lots))
+                    .run_if(in_state(LotTool::Move))
+                    .run_if(on_event::<LotEventConfirmed>()),
             )
-                .run_if(in_state(GameState::City))
-                .run_if(in_state(CityMode::Lots))
-                .run_if(in_state(LotTool::Move)),
-        )
-        .add_systems(
-            PostUpdate,
-            Self::cleanup_despawned
-                .run_if(in_state(GameState::City))
-                .run_if(in_state(CityMode::Lots))
-                .run_if(in_state(LotTool::Move)),
-        );
+            .add_systems(
+                Update,
+                (
+                    Self::pick
+                        .run_if(action_just_pressed(Action::Confirm))
+                        .run_if(not(any_with_component::<MovingLot>)),
+                    Self::apply_movement,
+                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                    Self::delete.run_if(action_just_pressed(Action::Delete)),
+                    Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
+                )
+                    .run_if(in_state(GameState::City))
+                    .run_if(in_state(CityMode::Lots))
+                    .run_if(in_state(LotTool::Move)),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::cleanup_despawned
+                    .run_if(in_state(GameState::City))
+                    .run_if(in_state(CityMode::Lots))
+                    .run_if(in_state(LotTool::Move)),
+            );
     }
 }
 
@@ -63,7 +73,7 @@ impl MovingLotPlugin {
 
     fn apply_movement(
         camera_caster: CameraCaster,
-        mut moving_lots: Query<(&mut Transform, &MovingLot)>,
+        mut moving_lots: Query<(&mut Transform, &MovingLot), Without<UnconfirmedLot>>,
     ) {
         if let Ok((mut transform, moving_lot)) = moving_lots.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
@@ -74,7 +84,7 @@ impl MovingLotPlugin {
 
     fn confirm(
         mut move_events: EventWriter<LotMove>,
-        mut moving_lots: Query<(&mut Transform, &MovingLot)>,
+        mut moving_lots: Query<(&mut Transform, &MovingLot), Without<UnconfirmedLot>>,
     ) {
         if let Ok((transform, moving_lot)) = moving_lots.get_single_mut() {
             move_events.send(LotMove {
@@ -84,13 +94,16 @@ impl MovingLotPlugin {
         }
     }
 
-    fn delete(mut delete: EventWriter<LotDelete>, moving_lots: Query<&MovingLot>) {
+    fn delete(
+        mut delete: EventWriter<LotDelete>,
+        moving_lots: Query<&MovingLot, Without<UnconfirmedLot>>,
+    ) {
         if let Ok(moving_lot) = moving_lots.get_single() {
             delete.send(LotDelete(moving_lot.entity));
         }
     }
 
-    fn cancel(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
+    fn end_creating(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
         if let Ok(entity) = moving_lots.get_single_mut() {
             commands.entity(entity).despawn();
         }
