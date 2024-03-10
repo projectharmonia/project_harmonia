@@ -1,5 +1,5 @@
 use std::{
-    f32::consts::{FRAC_PI_4, PI},
+    f32::consts::{FRAC_PI_2, FRAC_PI_4, PI},
     fmt::Debug,
 };
 
@@ -124,10 +124,16 @@ impl PlacingObjectPlugin {
                     .get_path(id)
                     .expect("metadata should always come from file");
 
+                // Rotate towards camera and round to the nearest cardinal direction.
+                let (transform, _) = camera_caster.cameras.single();
+                let (_, rotation, _) = transform.to_scale_rotation_translation();
+                let (y, ..) = rotation.to_euler(EulerRot::YXZ);
+                let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
+
                 commands.entity(placing_entity).insert((
                     ObjectPath(metadata_path.into_owned()),
                     CursorOffset::default(),
-                    Transform::from_rotation(Quat::from_rotation_y(PI)), // Rotate towards camera.
+                    Transform::from_rotation(Quat::from_rotation_y(rounded_angle)),
                 ));
             }
             PlacingObjectKind::Moving(object_entity) => {

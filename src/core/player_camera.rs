@@ -177,7 +177,8 @@ pub(super) struct PlayerCamera;
 #[derive(SystemParam)]
 pub(super) struct CameraCaster<'w, 's> {
     windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
-    cameras: Query<'w, 's, (&'static GlobalTransform, &'static Camera), With<PlayerCamera>>,
+    pub(super) cameras:
+        Query<'w, 's, (&'static GlobalTransform, &'static Camera), With<PlayerCamera>>,
 }
 
 impl CameraCaster<'_, '_> {
