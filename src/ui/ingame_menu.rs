@@ -14,6 +14,7 @@ use crate::core::{
     game_world::{GameSave, WorldName},
     lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
     object::placing_object::PlacingObject,
+    wall::creating_wall::CreatingWall,
 };
 
 pub(super) struct InGameMenuPlugin;
@@ -31,6 +32,7 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<MovingLot>))
                     .run_if(not(any_with_component::<CreatingLot>))
+                    .run_if(not(any_with_component::<CreatingWall>))
                     .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
                 (
                     Self::handle_menu_clicks,
