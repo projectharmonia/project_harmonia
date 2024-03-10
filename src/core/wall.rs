@@ -99,6 +99,19 @@ impl WallPlugin {
         }
     }
 
+    fn cleanup_connections(
+        mut removed_walls: RemovedComponents<Wall>,
+        mut walls: Query<&mut WallConnections>,
+    ) {
+        for entity in removed_walls.read() {
+            for mut connections in &mut walls {
+                if let Some((point_kind, index)) = connections.position(entity) {
+                    connections.remove(point_kind, index);
+                }
+            }
+        }
+    }
+
     fn update_connections(
         mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
         children: Query<&Children>,
@@ -208,19 +221,6 @@ impl WallPlugin {
             if apertures.collision_outdated || wall.is_changed() || collider.is_added() {
                 *collider = wall_mesh::generate_collider(*wall, &apertures);
                 apertures.collision_outdated = false;
-            }
-        }
-    }
-
-    fn cleanup_connections(
-        mut removed_walls: RemovedComponents<Wall>,
-        mut walls: Query<&mut WallConnections>,
-    ) {
-        for entity in removed_walls.read() {
-            for mut connections in &mut walls {
-                if let Some((point_kind, index)) = connections.position(entity) {
-                    connections.remove(point_kind, index);
-                }
             }
         }
     }
