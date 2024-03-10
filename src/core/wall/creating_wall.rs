@@ -1,4 +1,4 @@
-use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
+use bevy::{math::Vec3Swizzles, prelude::*};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -10,7 +10,7 @@ use crate::core::{
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     lot::LotVertices,
-    player_camera::PlayerCamera,
+    player_camera::CameraCaster,
 };
 
 pub(super) struct SpawningWallPlugin;
@@ -113,22 +113,12 @@ impl SpawningWallPlugin {
     }
 
     fn update_end(
+        camera_caster: CameraCaster,
         mut spawning_walls: Query<(&mut Wall, &Parent), With<SpawningWall>>,
         walls: Query<&Wall, Without<SpawningWall>>,
         children: Query<&Children>,
-        windows: Query<&Window, With<PrimaryWindow>>,
-        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) {
-        let Some(cursor_pos) = windows.single().cursor_position() else {
-            return;
-        };
-
-        let (&camera_transform, camera) = cameras.single();
-        let ray = camera
-            .viewport_to_world(&camera_transform, cursor_pos)
-            .expect("ray should be created from screen coordinates");
-
-        let Some(distance) = ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y)) else {
+        let Some(position) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
             return;
         };
 
@@ -136,7 +126,6 @@ impl SpawningWallPlugin {
         let children = children.get(**parent).unwrap();
 
         // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
-        let position = ray.get_point(distance).xz();
         let vertex = walls
             .iter_many(children)
             .flat_map(|wall| [wall.start, wall.end])

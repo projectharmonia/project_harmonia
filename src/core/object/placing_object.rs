@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
+use bevy::{math::Vec3Swizzles, prelude::*};
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
@@ -15,7 +15,7 @@ use crate::core::{
     family::FamilyMode,
     game_state::GameState,
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
-    player_camera::PlayerCamera,
+    player_camera::CameraCaster,
     Layer,
 };
 
@@ -85,12 +85,11 @@ impl PlacingObjectPlugin {
     /// Inserts necessary components to trigger object initialization.
     fn init(
         mut commands: Commands,
+        camera_caster: CameraCaster,
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
         objects: Query<(&Transform, &ObjectPath)>,
-        windows: Query<&Window, With<PrimaryWindow>>,
-        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
     ) {
         let Some((placing_entity, placing_object)) = placing_objects.iter().last() else {
             return;
@@ -114,15 +113,10 @@ impl PlacingObjectPlugin {
                     .get(object_entity)
                     .expect("moving object should have scene and path");
 
-                let (&camera_transform, camera) = cameras.single();
-                let cursor_pos = windows.single().cursor_position().unwrap_or_default();
-                let ray = camera
-                    .viewport_to_world(&camera_transform, cursor_pos)
-                    .expect("camera should always have a viewport");
-                let distance = ray
-                    .intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))
-                    .expect("camera should always look at the ground");
-                let offset = object_transform.translation - ray.get_point(distance);
+                let offset = camera_caster
+                    .intersect_ground()
+                    .map(|position| object_transform.translation - position)
+                    .unwrap_or(object_transform.translation);
 
                 commands.entity(placing_entity).insert((
                     object_transform,
@@ -143,22 +137,16 @@ impl PlacingObjectPlugin {
 
     pub(super) fn apply_transform(
         spatial_query: SpatialQuery,
-        windows: Query<&Window, With<PrimaryWindow>>,
-        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
+        camera_caster: CameraCaster,
         mut placing_objects: Query<(&mut Transform, &PlacingObject, &CursorOffset)>,
     ) {
         let Ok((mut transform, placing_object, cursor_offset)) = placing_objects.get_single_mut()
         else {
             return;
         };
-        let Some(cursor_pos) = windows.single().cursor_position() else {
+        let Some(ray) = camera_caster.ray() else {
             return;
         };
-
-        let (&camera_transform, camera) = cameras.single();
-        let ray = camera
-            .viewport_to_world(&camera_transform, cursor_pos)
-            .expect("ray should be created from screen coordinates");
 
         let mut filter = SpatialQueryFilter::from_mask(Layer::Ground);
         if let PlacingObjectKind::Moving(entity) = placing_object.kind {

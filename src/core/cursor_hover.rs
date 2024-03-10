@@ -1,9 +1,9 @@
 use std::iter;
 
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{game_state::GameState, player_camera::PlayerCamera};
+use super::{game_state::GameState, player_camera::CameraCaster};
 
 pub(super) struct CursorHoverPlugin;
 
@@ -27,14 +27,11 @@ impl Plugin for CursorHoverPlugin {
 impl CursorHoverPlugin {
     fn raycast(
         spatial_query: SpatialQuery,
-        windows: Query<&Window, With<PrimaryWindow>>,
-        cameras: Query<(&GlobalTransform, &Camera), With<PlayerCamera>>,
+        camera_caster: CameraCaster,
         parents: Query<&Parent>,
         cursor_hoverable: Query<Entity, With<CursorHoverable>>,
     ) -> Option<(Entity, Vec3)> {
-        let cursor_position = windows.get_single().ok()?.cursor_position()?;
-        let (transform, camera) = cameras.single();
-        let ray = camera.viewport_to_world(transform, cursor_position)?;
+        let ray = camera_caster.ray()?;
         let hit = spatial_query.cast_ray(
             ray.origin,
             ray.direction,

@@ -2,7 +2,10 @@ mod exp_smoothed;
 
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{input::mouse::MouseMotion, pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*};
+use bevy::{
+    ecs::system::SystemParam, input::mouse::MouseMotion, pbr::ScreenSpaceAmbientOcclusionBundle,
+    prelude::*, window::PrimaryWindow,
+};
 use leafwing_input_manager::prelude::ActionState;
 
 use self::exp_smoothed::ExpSmoothed;
@@ -169,3 +172,24 @@ impl Default for SpringArm {
 
 #[derive(Component, Default)]
 pub(super) struct PlayerCamera;
+
+/// A helper to cast rays from [`PlayerCamera`].
+#[derive(SystemParam)]
+pub(super) struct CameraCaster<'w, 's> {
+    windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    cameras: Query<'w, 's, (&'static GlobalTransform, &'static Camera), With<PlayerCamera>>,
+}
+
+impl CameraCaster<'_, '_> {
+    pub(super) fn ray(&self) -> Option<Ray3d> {
+        let cursor_pos = self.windows.single().cursor_position()?;
+        let (&transform, camera) = self.cameras.single();
+        camera.viewport_to_world(&transform, cursor_pos)
+    }
+
+    pub(super) fn intersect_ground(&self) -> Option<Vec3> {
+        let ray = self.ray()?;
+        let distance = ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))?;
+        Some(ray.get_point(distance))
+    }
+}
