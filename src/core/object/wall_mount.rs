@@ -66,6 +66,7 @@ impl WallMountPlugin {
     fn init_placing(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
         if let Ok(mut placing_object) = placing_objects.get_single_mut() {
             placing_object.rotation_step = PI;
+            placing_object.allowed_place = false;
         }
     }
 
