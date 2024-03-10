@@ -35,14 +35,16 @@ impl Plugin for WallPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    Self::cleanup_connections,
-                    Self::update_connections,
-                    Self::update_meshes,
                     Self::create
                         .run_if(has_authority)
                         .before(ServerSet::StoreHierarchy),
+                    (
+                        Self::cleanup_connections,
+                        Self::update_connections,
+                        Self::update_meshes,
+                    )
+                        .chain(),
                 )
-                    .chain()
                     .run_if(resource_exists::<WorldName>),
             );
     }
