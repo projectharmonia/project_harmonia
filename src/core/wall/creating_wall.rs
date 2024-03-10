@@ -6,7 +6,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::core::{
     action::Action,
-    cursor_hover::CursorHover,
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     lot::LotVertices,
@@ -57,22 +56,22 @@ const SNAP_DELTA: f32 = 0.5;
 
 impl SpawningWallPlugin {
     fn start_creating(
+        camera_caster: CameraCaster,
         mut commands: Commands,
         walls: Query<&Wall>,
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
-        hovered: Query<&CursorHover>,
     ) {
-        if let Ok(position) = hovered.get_single().map(|hover| hover.xz()) {
+        if let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) {
             if let Some((entity, children, _)) = lots
                 .iter()
-                .find(|(.., vertices)| vertices.contains_point(position))
+                .find(|(.., vertices)| vertices.contains_point(point))
             {
                 // Use an existing point if it is within the `SNAP_DELTA` distance.
                 let point = walls
                     .iter_many(children.into_iter().flatten())
                     .flat_map(|wall| [wall.start, wall.end])
-                    .find(|vertex| vertex.distance(position) < SNAP_DELTA)
-                    .unwrap_or(position);
+                    .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+                    .unwrap_or(point);
 
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((
