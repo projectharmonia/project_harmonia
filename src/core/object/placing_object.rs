@@ -4,6 +4,7 @@ use std::{
 };
 
 use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
@@ -22,8 +23,22 @@ pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Objects), Self::cancel)
-            .add_systems(OnExit(FamilyMode::Building), Self::cancel)
+        app.add_systems(OnExit(CityMode::Objects), Self::end_placing)
+            .add_systems(OnExit(FamilyMode::Building), Self::end_placing)
+            .add_systems(
+                PreUpdate,
+                Self::end_placing
+                    .after(ClientSet::Receive)
+                    .run_if(on_event::<ObjectEventConfirmed>())
+                    .run_if(
+                        in_state(GameState::City)
+                            .and_then(in_state(CityMode::Objects))
+                            .or_else(
+                                in_state(GameState::Family)
+                                    .and_then(in_state(FamilyMode::Building)),
+                            ),
+                    ),
+            )
             .add_systems(
                 Update,
                 (
@@ -31,19 +46,17 @@ impl Plugin for PlacingObjectPlugin {
                         Self::pick
                             .run_if(action_just_pressed(Action::Confirm))
                             .run_if(not(any_with_component::<PlacingObject>)),
-                        Self::confirm
-                            .after(Self::check_collision)
-                            .run_if(action_just_pressed(Action::Confirm)),
                         Self::sell.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel.run_if(
-                            action_just_pressed(Action::Cancel)
-                                .or_else(on_event::<ObjectEventConfirmed>()),
-                        ),
+                        Self::end_placing.run_if(action_just_pressed(Action::Cancel)),
                     ),
                     (
                         Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
                         Self::apply_transform,
                         Self::check_collision,
+                        (
+                            Self::update_materials,
+                            Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                        ),
                     )
                         .chain(),
                 )
@@ -58,7 +71,7 @@ impl Plugin for PlacingObjectPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (Self::update_materials, Self::init, Self::ensure_single).run_if(
+                (Self::init, Self::ensure_single).run_if(
                     in_state(GameState::City)
                         .and_then(in_state(CityMode::Objects))
                         .or_else(
@@ -128,7 +141,9 @@ impl PlacingObjectPlugin {
         hover_settings.enabled = false;
     }
 
-    pub(super) fn rotate(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
+    pub(super) fn rotate(
+        mut placing_objects: Query<(&mut Transform, &PlacingObject), Without<UnconfirmedObject>>,
+    ) {
         if let Ok((mut transform, placing_object)) = placing_objects.get_single_mut() {
             transform.rotate_y(placing_object.rotation_step);
         }
@@ -136,7 +151,7 @@ impl PlacingObjectPlugin {
 
     pub(super) fn apply_transform(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Transform, &CursorOffset)>,
+        mut placing_objects: Query<(&mut Transform, &CursorOffset), Without<UnconfirmedObject>>,
     ) {
         if let Ok((mut transform, cursor_offset)) = placing_objects.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
@@ -146,7 +161,10 @@ impl PlacingObjectPlugin {
     }
 
     pub(super) fn check_collision(
-        mut placing_objects: Query<(&mut PlacingObject, &CollidingEntities)>,
+        mut placing_objects: Query<
+            (&mut PlacingObject, &CollidingEntities),
+            Without<UnconfirmedObject>,
+        >,
     ) {
         if let Ok((mut placing_object, colliding_entities)) = placing_objects.get_single_mut() {
             let mut collides = !colliding_entities.is_empty();
@@ -168,7 +186,10 @@ impl PlacingObjectPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<
             (Entity, &PlacingObject),
-            Or<(Added<Children>, Changed<PlacingObject>)>,
+            (
+                Or<(Added<Children>, Changed<PlacingObject>)>,
+                Without<UnconfirmedObject>,
+            ),
         >,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
@@ -195,14 +216,16 @@ impl PlacingObjectPlugin {
     }
 
     fn confirm(
+        mut commands: Commands,
         mut move_events: EventWriter<ObjectMove>,
         mut buy_events: EventWriter<ObjectBuy>,
         asset_server: Res<AssetServer>,
-        placing_objects: Query<(&Transform, &PlacingObject)>,
+        placing_objects: Query<(Entity, &Transform, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
-        if let Ok((transform, placing_object)) = placing_objects.get_single() {
+        if let Ok((entity, transform, placing_object)) = placing_objects.get_single() {
             if !placing_object.collides && placing_object.allowed_place {
-                debug!("confirmed placing object {placing_object:?}");
+                commands.entity(entity).insert(UnconfirmedObject);
+
                 match placing_object.kind {
                     PlacingObjectKind::Spawning(id) => {
                         let metadata_path = asset_server
@@ -222,6 +245,8 @@ impl PlacingObjectPlugin {
                         });
                     }
                 }
+
+                debug!("requested confirmation for {placing_object:?}");
             }
         }
     }
@@ -229,7 +254,7 @@ impl PlacingObjectPlugin {
     fn sell(
         mut commands: Commands,
         mut sell_events: EventWriter<ObjectSell>,
-        placing_objects: Query<(Entity, &PlacingObject)>,
+        placing_objects: Query<(Entity, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
         if let Ok((entity, placing_object)) = placing_objects.get_single() {
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
@@ -239,14 +264,13 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn cancel(
+    fn end_placing(
         mut commands: Commands,
         mut hover_settings: ResMut<CursorHoverSettings>,
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
-        hover_settings.enabled = true;
-
-        for placing_entity in &placing_objects {
+        if let Ok(placing_entity) = placing_objects.get_single() {
+            hover_settings.enabled = true;
             commands.entity(placing_entity).despawn_recursive();
         }
     }
@@ -303,3 +327,6 @@ pub(crate) enum PlacingObjectKind {
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
 pub(super) struct CursorOffset(Vec3);
+
+#[derive(Component)]
+pub(crate) struct UnconfirmedObject;
