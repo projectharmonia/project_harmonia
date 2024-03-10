@@ -45,11 +45,15 @@ impl Plugin for HumanPlugin {
 impl HumanPlugin {
     fn init_needs(
         mut commands: Commands,
-        actors: Query<(Entity, &Children), (Added<Human>, With<Actor>)>,
+        actors: Query<(Entity, Option<&Children>), (Added<Human>, With<Actor>)>,
         need: Query<(), With<Need>>,
     ) {
         for (entity, children) in &actors {
-            if need.iter_many(children).next().is_none() {
+            if need
+                .iter_many(children.into_iter().flatten())
+                .next()
+                .is_none()
+            {
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn(NeedBundle::<Bladder>::default());
                     parent.spawn(NeedBundle::<Energy>::default());
