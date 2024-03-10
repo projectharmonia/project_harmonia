@@ -150,7 +150,9 @@ impl CreatingWallPlugin {
     }
 
     fn end_creating(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
-        commands.entity(walls.single()).despawn();
+        if let Ok(entity) = walls.get_single() {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
