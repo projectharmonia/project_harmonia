@@ -25,7 +25,6 @@ impl Plugin for CreatingWallPlugin {
                     .run_if(in_state(GameState::Family))
                     .run_if(in_state(FamilyMode::Building))
                     .run_if(in_state(BuildingMode::Walls))
-                    .run_if(any_with_component::<CreatingWall>)
                     .run_if(on_event::<WallCreateConfirmed>()),
             )
             .add_systems(
@@ -34,16 +33,10 @@ impl Plugin for CreatingWallPlugin {
                     Self::start_creating
                         .run_if(action_just_pressed(Action::Confirm))
                         .run_if(not(any_with_component::<CreatingWall>)),
-                    (
-                        (
-                            Self::update_end,
-                            Self::update_material,
-                            Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                        )
-                            .run_if(not(any_with_component::<UnconfirmedWall>)),
-                        Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
-                    )
-                        .run_if(any_with_component::<CreatingWall>),
+                    Self::update_end,
+                    Self::update_material,
+                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                    Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
                 )
                     .run_if(in_state(GameState::Family))
                     .run_if(in_state(FamilyMode::Building))
@@ -90,10 +83,14 @@ impl CreatingWallPlugin {
         mut materials: ResMut<Assets<StandardMaterial>>,
         mut walls: Query<
             (&mut Handle<StandardMaterial>, &CollidingEntities),
-            (Changed<CollidingEntities>, With<CreatingWall>),
+            (
+                Changed<CollidingEntities>,
+                With<CreatingWall>,
+                Without<UnconfirmedWall>,
+            ),
         >,
     ) {
-        for (mut material_handle, colliding_entities) in &mut walls {
+        if let Ok((mut material_handle, colliding_entities)) = walls.get_single_mut() {
             let mut material = materials
                 .get(&*material_handle)
                 .cloned()
@@ -113,40 +110,42 @@ impl CreatingWallPlugin {
 
     fn update_end(
         camera_caster: CameraCaster,
-        mut creating_walls: Query<(&mut Wall, &Parent), With<CreatingWall>>,
+        mut creating_walls: Query<
+            (&mut Wall, &Parent),
+            (With<CreatingWall>, Without<UnconfirmedWall>),
+        >,
         walls: Query<&Wall, Without<CreatingWall>>,
         children: Query<&Children>,
     ) {
-        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
-            return;
-        };
+        if let Ok((mut wall, parent)) = creating_walls.get_single_mut() {
+            if let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) {
+                let children = children.get(**parent).unwrap();
 
-        let (mut wall, parent) = creating_walls.single_mut();
-        let children = children.get(**parent).unwrap();
+                // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
+                let vertex = walls
+                    .iter_many(children)
+                    .flat_map(|wall| [wall.start, wall.end])
+                    .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+                    .unwrap_or(point);
 
-        // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
-        let vertex = walls
-            .iter_many(children)
-            .flat_map(|wall| [wall.start, wall.end])
-            .find(|vertex| vertex.distance(point) < SNAP_DELTA)
-            .unwrap_or(point);
-
-        wall.end = vertex;
+                wall.end = vertex;
+            }
+        }
     }
 
     fn confirm(
         mut commands: Commands,
         mut create_events: EventWriter<WallCreate>,
-        mut walls: Query<(Entity, &Parent, &Wall), With<CreatingWall>>,
+        mut walls: Query<(Entity, &Parent, &Wall), (With<CreatingWall>, Without<UnconfirmedWall>)>,
     ) {
-        let (wall_entity, parent, &wall) = walls.single_mut();
+        if let Ok((wall_entity, parent, &wall)) = walls.get_single_mut() {
+            commands.entity(wall_entity).insert(UnconfirmedWall);
 
-        commands.entity(wall_entity).insert(UnconfirmedWall);
-
-        create_events.send(WallCreate {
-            lot_entity: **parent,
-            wall,
-        });
+            create_events.send(WallCreate {
+                lot_entity: **parent,
+                wall,
+            });
+        }
     }
 
     fn end_creating(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
@@ -159,5 +158,5 @@ impl CreatingWallPlugin {
 #[derive(Component, Default)]
 pub(crate) struct CreatingWall;
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub(crate) struct UnconfirmedWall;
