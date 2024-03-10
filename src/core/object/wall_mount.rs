@@ -41,7 +41,8 @@ impl Plugin for WallMountPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (Self::update_apertures, Self::cleanup_apertures)
+                (Self::cleanup_apertures, Self::update_apertures)
+                    .chain()
                     .before(WallPlugin::update_meshes)
                     .after(TransformSystem::TransformPropagate)
                     .run_if(resource_exists::<WorldName>),
@@ -102,6 +103,19 @@ impl WallMountPlugin {
             }
         } else if placing_object.allowed_place {
             placing_object.allowed_place = false;
+        }
+    }
+
+    fn cleanup_apertures(
+        mut removed_objects: RemovedComponents<ObjectWall>,
+        mut walls: Query<&mut Apertures>,
+    ) {
+        for entity in removed_objects.read() {
+            for mut apertures in &mut walls {
+                if let Some(index) = apertures.position(entity) {
+                    apertures.remove(index);
+                }
+            }
         }
     }
 
@@ -182,19 +196,6 @@ impl WallMountPlugin {
                     .position(object_entity)
                     .expect("entity should have been added before");
                 current_apertures.remove(index);
-            }
-        }
-    }
-
-    fn cleanup_apertures(
-        mut removed_objects: RemovedComponents<ObjectWall>,
-        mut walls: Query<&mut Apertures>,
-    ) {
-        for entity in removed_objects.read() {
-            for mut apertures in &mut walls {
-                if let Some(index) = apertures.position(entity) {
-                    apertures.remove(index);
-                }
             }
         }
     }
