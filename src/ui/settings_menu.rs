@@ -28,7 +28,7 @@ impl Plugin for SettingsMenuPlugin {
                 (
                     Self::update_mapping_text,
                     Self::start_mapping,
-                    Self::read_binding.run_if(any_with_component::<BindingButton>),
+                    Self::read_binding,
                     Self::handle_binding_dialog_clicks,
                     Self::handle_settings_menu_clicks,
                 )
@@ -220,33 +220,38 @@ impl SettingsMenuPlugin {
         mut labels: Query<&mut Text, With<BindingLabel>>,
         mut dialog_buttons: Query<(&mut Style, &BindingDialogButton)>,
     ) {
-        if let Some(input_kind) = input_events.input_kind() {
-            let (dialog_entity, binding_button) = dialogs.single();
-            if let Some((conflict_entity, mapping)) = mapping_buttons
-                .iter()
-                .find(|(_, mapping)| mapping.input_kind == Some(input_kind))
-            {
-                labels.single_mut().sections[0].value = format!(
-                    "\"{input_kind}\" is already used by \"{:?}\"",
-                    mapping.action
-                );
+        let Ok((dialog_entity, binding_button)) = dialogs.get_single() else {
+            return;
+        };
 
-                commands
-                    .entity(dialog_entity)
-                    .insert(ConflictButton(conflict_entity));
+        let Some(input_kind) = input_events.input_kind() else {
+            return;
+        };
 
-                let (mut style, _) = dialog_buttons
-                    .iter_mut()
-                    .find(|(_, &button)| button == BindingDialogButton::Replace)
-                    .expect("replace button should be spawned with the dialog");
-                style.display = Display::Flex;
-            } else {
-                let (_, mut mapping) = mapping_buttons
-                    .get_mut(binding_button.0)
-                    .expect("binding dialog should point to a button with mapping");
-                mapping.input_kind = Some(input_kind);
-                commands.entity(dialog_entity).despawn_recursive();
-            }
+        if let Some((conflict_entity, mapping)) = mapping_buttons
+            .iter()
+            .find(|(_, mapping)| mapping.input_kind == Some(input_kind))
+        {
+            labels.single_mut().sections[0].value = format!(
+                "\"{input_kind}\" is already used by \"{:?}\"",
+                mapping.action
+            );
+
+            commands
+                .entity(dialog_entity)
+                .insert(ConflictButton(conflict_entity));
+
+            let (mut style, _) = dialog_buttons
+                .iter_mut()
+                .find(|(_, &button)| button == BindingDialogButton::Replace)
+                .expect("replace button should be spawned with the dialog");
+            style.display = Display::Flex;
+        } else {
+            let (_, mut mapping) = mapping_buttons
+                .get_mut(binding_button.0)
+                .expect("binding dialog should point to a button with mapping");
+            mapping.input_kind = Some(input_kind);
+            commands.entity(dialog_entity).despawn_recursive();
         }
     }
 
