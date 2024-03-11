@@ -103,7 +103,7 @@ impl Default for ControlsSettings {
                 Action::CameraRight,
                 vec![KeyCode::KeyD.into(), KeyCode::ArrowRight.into()],
             ),
-            (Action::RotateCamera, vec![MouseButton::Right.into()]),
+            (Action::RotateCamera, vec![MouseButton::Middle.into()]),
             (Action::ZoomCamera, vec![SingleAxis::mouse_wheel_y().into()]),
             (Action::RotateObject, vec![MouseButton::Right.into()]),
             (Action::Confirm, vec![MouseButton::Left.into()]),
