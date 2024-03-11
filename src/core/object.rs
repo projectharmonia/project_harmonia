@@ -40,24 +40,19 @@ impl Plugin for ObjectPlugin {
             .add_server_event::<ObjectEventConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::init
-                    .run_if(resource_exists::<WorldName>)
-                    .after(ClientSet::Receive),
+                (
+                    (Self::buy, Self::apply_movement, Self::sell).run_if(has_authority),
+                    Self::init,
+                )
+                    .chain()
+                    .after(ClientSet::Receive)
+                    .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<WorldName>)
-                    .after(scene::scene_spawner_system),
-            )
-            .add_systems(
-                PostUpdate,
-                (
-                    Self::buy.before(ServerSet::StoreHierarchy),
-                    Self::apply_movement,
-                    Self::sell,
-                )
-                    .run_if(has_authority),
+                    .after(scene::scene_spawner_system)
+                    .run_if(resource_exists::<WorldName>),
             );
     }
 }
