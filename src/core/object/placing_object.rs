@@ -13,7 +13,7 @@ use crate::core::{
     asset::metadata::object_metadata::ObjectMetadata,
     city::CityMode,
     cursor_hover::{CursorHover, CursorHoverSettings},
-    family::FamilyMode,
+    family::{BuildingMode, FamilyMode},
     game_state::GameState,
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
@@ -34,8 +34,10 @@ impl Plugin for PlacingObjectPlugin {
                         in_state(GameState::City)
                             .and_then(in_state(CityMode::Objects))
                             .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
+                                in_state(GameState::Family).and_then(
+                                    in_state(FamilyMode::Building)
+                                        .and_then(in_state(BuildingMode::Objects)),
+                                ),
                             ),
                     ),
             )
@@ -61,8 +63,10 @@ impl Plugin for PlacingObjectPlugin {
                         in_state(GameState::City)
                             .and_then(in_state(CityMode::Objects))
                             .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
+                                in_state(GameState::Family).and_then(
+                                    in_state(FamilyMode::Building)
+                                        .and_then(in_state(BuildingMode::Objects)),
+                                ),
                             ),
                     ),
             )
@@ -74,8 +78,10 @@ impl Plugin for PlacingObjectPlugin {
                         in_state(GameState::City)
                             .and_then(in_state(CityMode::Objects))
                             .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
+                                in_state(GameState::Family).and_then(
+                                    in_state(FamilyMode::Building)
+                                        .and_then(in_state(BuildingMode::Objects)),
+                                ),
                             ),
                     ),
             )
@@ -85,7 +91,10 @@ impl Plugin for PlacingObjectPlugin {
                     in_state(GameState::City)
                         .and_then(in_state(CityMode::Objects))
                         .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
+                            in_state(GameState::Family).and_then(
+                                in_state(FamilyMode::Building)
+                                    .and_then(in_state(BuildingMode::Objects)),
+                            ),
                         ),
                 ),
             );
