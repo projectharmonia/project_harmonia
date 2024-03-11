@@ -12,7 +12,7 @@ pub(super) struct ConnectionDialogPlugin;
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, Self::read_clicks).add_systems(
-            PostUpdate,
+            Update,
             (
                 Self::show.run_if(client_started_connecting),
                 Self::close.run_if(client_just_disconnected),
