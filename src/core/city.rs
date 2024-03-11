@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
@@ -50,9 +50,8 @@ pub(crate) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn init(
+        ground_scene: Local<GroundScene>,
         mut commands: Commands,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut materials: ResMut<Assets<StandardMaterial>>,
         mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, Added<City>>,
     ) {
@@ -72,13 +71,8 @@ impl CityPlugin {
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {
-                            mesh: meshes.add(Plane3d::default().mesh().size(CITY_SIZE, CITY_SIZE)),
-                            material: materials.add(StandardMaterial {
-                                base_color: Color::rgb(0.5, 0.5, 0.5),
-                                perceptual_roughness: 1.0,
-                                reflectance: 0.0,
-                                ..default()
-                            }),
+                            mesh: ground_scene.mesh_handle.clone(),
+                            material: ground_scene.material_handle.clone(),
                             ..Default::default()
                         },
                         ..Default::default()
@@ -137,6 +131,49 @@ impl CityPlugin {
         placed_citites.0 = 0;
         for entity in &cities {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+struct GroundScene {
+    mesh_handle: Handle<Mesh>,
+    material_handle: Handle<StandardMaterial>,
+}
+
+impl FromWorld for GroundScene {
+    fn from_world(world: &mut World) -> Self {
+        let mut mesh = Plane3d::default().mesh().size(CITY_SIZE, CITY_SIZE).build();
+        let Some(VertexAttributeValues::Float32x2(uvs)) = mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0)
+        else {
+            panic!("generated plane should have UVs");
+        };
+
+        // Adjust UVs to tile the texture properly.
+        for point in uvs {
+            for value in point {
+                *value *= CITY_SIZE;
+            }
+        }
+
+        let mut meshes = world.resource_mut::<Assets<Mesh>>();
+        let mesh_handle = meshes.add(mesh);
+
+        let asset_server = world.resource::<AssetServer>();
+        let material = StandardMaterial {
+            base_color_texture: Some(
+                asset_server.load("base/ground/spring_grass/spring_grass_base_color.png"),
+            ),
+            perceptual_roughness: 0.0,
+            reflectance: 0.0,
+            ..Default::default()
+        };
+
+        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
+        let material_handle = materials.add(material);
+
+        Self {
+            mesh_handle,
+            material_handle,
         }
     }
 }
