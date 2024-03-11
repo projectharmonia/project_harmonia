@@ -120,6 +120,9 @@ impl WallMountPlugin {
         }
     }
 
+    /// Updates [`Apertures`] based on spawned objects.
+    ///
+    /// Should run in [`PostUpdate`] to avoid 1 frame delay after [`GlobalTransform`] changes.
     fn update_apertures(
         mut walls: Query<(Entity, &mut Apertures, &Wall)>,
         mut objects: Query<

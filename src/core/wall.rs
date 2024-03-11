@@ -98,10 +98,16 @@ impl WallPlugin {
         }
     }
 
+    /// Updates [`WallConnections`] between walls.
+    ///
+    /// Contains `Added<Aperture>` because it should run after world loading too.
     fn update_connections(
         mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
         children: Query<&Children>,
-        changed_walls: Query<(Entity, &Parent, &Wall), (Changed<Wall>, With<WallConnections>)>,
+        changed_walls: Query<
+            (Entity, &Parent, &Wall),
+            (Or<(Changed<Wall>, Added<Apertures>)>, With<WallConnections>),
+        >,
     ) {
         for (wall_entity, parent, &wall) in &changed_walls {
             // Take changed connections to avoid mutability issues.
