@@ -52,26 +52,12 @@ impl Plugin for WallPlugin {
 
 impl WallPlugin {
     fn init(
+        wall_material: Local<WallMaterial>,
         mut commands: Commands,
-        mut materials: ResMut<Assets<StandardMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
-        asset_server: Res<AssetServer>,
         walls: Query<(Entity, Has<CreatingWall>), Added<Wall>>,
     ) {
         for (entity, creating_wall) in &walls {
-            let material = StandardMaterial {
-                base_color_texture: Some(
-                    asset_server.load("base/walls/brick/brick_base_color.png"),
-                ),
-                metallic_roughness_texture: Some(
-                    asset_server.load("base/walls/brick/brick_roughnes_metalic.png"),
-                ),
-                normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
-                occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
-                perceptual_roughness: 0.0,
-                reflectance: 0.0,
-                ..Default::default()
-            };
             let mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
@@ -87,7 +73,7 @@ impl WallPlugin {
                 CollisionLayers::new(Layer::Wall, Layer::Object),
                 NoFrustumCulling,
                 PbrBundle {
-                    material: materials.add(material),
+                    material: wall_material.0.clone(),
                     mesh: meshes.add(mesh),
                     ..Default::default()
                 },
@@ -240,6 +226,30 @@ impl WallPlugin {
                 parent.spawn(WallBundle::new(event.wall));
             });
         }
+    }
+}
+
+struct WallMaterial(Handle<StandardMaterial>);
+
+impl FromWorld for WallMaterial {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+
+        let material = StandardMaterial {
+            base_color_texture: Some(asset_server.load("base/walls/brick/brick_base_color.png")),
+            metallic_roughness_texture: Some(
+                asset_server.load("base/walls/brick/brick_roughnes_metalic.png"),
+            ),
+            normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
+            occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
+            perceptual_roughness: 0.0,
+            reflectance: 0.0,
+            ..Default::default()
+        };
+
+        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
+
+        Self(materials.add(material))
     }
 }
 
