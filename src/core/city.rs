@@ -103,6 +103,7 @@ impl CityPlugin {
                 Sun,
                 DirectionalLightBundle {
                     directional_light: DirectionalLight {
+                        illuminance: 3_500.0,
                         shadows_enabled: true,
                         ..Default::default()
                     },
