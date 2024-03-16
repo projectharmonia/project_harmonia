@@ -13,7 +13,7 @@ use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::{game_world::WorldName, Layer};
+use super::{game_world::WorldName, math::segment::Segment, Layer};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
 use wall_mesh::WallMesh;
 
@@ -132,47 +132,47 @@ impl WallPlugin {
                 {
                     if wall.start == other_wall.start {
                         connections.start.push(WallConnection {
-                            wall_entity: other_entity,
+                            entity: other_entity,
+                            segment: *other_wall,
                             point_kind: PointKind::Start,
-                            wall: other_wall,
                         });
                         other_connections.start.push(WallConnection {
-                            wall_entity,
+                            entity: wall_entity,
+                            segment: *wall,
                             point_kind: PointKind::Start,
-                            wall,
                         });
                     } else if wall.start == other_wall.end {
                         connections.start.push(WallConnection {
-                            wall_entity: other_entity,
+                            entity: other_entity,
+                            segment: *other_wall,
                             point_kind: PointKind::End,
-                            wall: other_wall,
                         });
                         other_connections.end.push(WallConnection {
-                            wall_entity,
+                            entity: wall_entity,
+                            segment: *wall,
                             point_kind: PointKind::Start,
-                            wall,
                         });
                     } else if wall.end == other_wall.end {
                         connections.end.push(WallConnection {
-                            wall_entity: other_entity,
+                            entity: other_entity,
+                            segment: *other_wall,
                             point_kind: PointKind::End,
-                            wall: other_wall,
                         });
                         other_connections.end.push(WallConnection {
-                            wall_entity,
+                            entity: wall_entity,
+                            segment: *wall,
                             point_kind: PointKind::End,
-                            wall,
                         });
                     } else if wall.end == other_wall.start {
                         connections.end.push(WallConnection {
-                            wall_entity: other_entity,
+                            entity: other_entity,
+                            segment: *other_wall,
                             point_kind: PointKind::Start,
-                            wall: other_wall,
                         });
                         other_connections.start.push(WallConnection {
-                            wall_entity,
+                            entity: wall_entity,
+                            segment: *wall,
                             point_kind: PointKind::End,
-                            wall,
                         });
                     }
                 }
@@ -272,56 +272,9 @@ impl WallBundle {
     }
 }
 
-#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Component, Deref, DerefMut, Copy, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
-pub(super) struct Wall {
-    pub(super) start: Vec2,
-    pub(super) end: Vec2,
-}
-
-impl Wall {
-    /// Returns `true` if a point belongs to a wall.
-    pub(super) fn contains(&self, point: Vec2) -> bool {
-        let wall_disp = self.displacement();
-        let point_disp = point - self.start;
-        if wall_disp.perp_dot(point_disp).abs() > 0.1 {
-            return false;
-        }
-
-        let dot = wall_disp.dot(point_disp);
-        if dot < 0.0 {
-            return false;
-        }
-
-        dot <= wall_disp.length_squared()
-    }
-
-    pub(super) fn closest_point(&self, point: Vec2) -> Vec2 {
-        let wall_disp = self.displacement();
-        let wall_dir = wall_disp.normalize();
-        let point_dir = point - self.start;
-        let dot = wall_dir.dot(point_dir);
-
-        if dot <= 0.0 {
-            self.start
-        } else if dot >= wall_disp.length() {
-            self.end
-        } else {
-            self.start + wall_dir * dot
-        }
-    }
-
-    fn inverse(&self) -> Self {
-        Self {
-            start: self.end,
-            end: self.start,
-        }
-    }
-
-    pub(super) fn displacement(&self) -> Vec2 {
-        self.end - self.start
-    }
-}
+pub(super) struct Wall(Segment);
 
 /// Dynamically updated component with precalculated connected entities for each wall point.
 #[derive(Component, Default)]
@@ -335,24 +288,24 @@ impl WallConnections {
         self.start
             .drain(..)
             .chain(self.end.drain(..))
-            .map(|WallConnection { wall_entity, .. }| wall_entity)
+            .map(|WallConnection { entity, .. }| entity)
     }
 
     /// Returns point kind and index to which it connected for an entity.
     ///
     /// Used for [`Self::remove`] later.
     /// It's two different functions to avoid triggering change detection if there is no such entity.
-    fn position(&self, entity: Entity) -> Option<(PointKind, usize)> {
+    fn position(&self, wall_entity: Entity) -> Option<(PointKind, usize)> {
         if let Some(index) = self
             .start
             .iter()
-            .position(|&WallConnection { wall_entity, .. }| wall_entity == entity)
+            .position(|&WallConnection { entity, .. }| entity == wall_entity)
         {
             Some((PointKind::Start, index))
         } else {
             self.end
                 .iter()
-                .position(|&WallConnection { wall_entity, .. }| wall_entity == entity)
+                .position(|&WallConnection { entity, .. }| entity == wall_entity)
                 .map(|index| (PointKind::End, index))
         }
     }
@@ -367,9 +320,9 @@ impl WallConnections {
 }
 
 struct WallConnection {
-    wall_entity: Entity,
+    entity: Entity,
+    segment: Segment,
     point_kind: PointKind,
-    wall: Wall,
 }
 
 #[derive(Clone, Copy, Debug)]

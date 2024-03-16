@@ -9,6 +9,7 @@ use crate::core::{
     family::{BuildingMode, FamilyMode},
     game_state::GameState,
     lot::LotVertices,
+    math::segment::Segment,
     player_camera::CameraCaster,
 };
 
@@ -67,13 +68,7 @@ impl CreatingWallPlugin {
                     .unwrap_or(point);
 
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        CreatingWall,
-                        Wall {
-                            start: point,
-                            end: point,
-                        },
-                    ));
+                    parent.spawn((CreatingWall, Wall(Segment::splat(point))));
                 });
             }
         }

@@ -8,7 +8,7 @@ use bevy_xpbd_3d::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 
 use super::{Aperture, Apertures, PointKind, Wall, WallConnection, WallConnections};
-use crate::core::line::Line;
+use crate::core::math::segment::Segment;
 
 const WIDTH: f32 = 0.15;
 const HEIGHT: f32 = 2.8;
@@ -68,14 +68,14 @@ impl WallMesh {
         let width = wall_width(disp);
         let rotation_mat = Mat2::from_angle(angle);
 
-        let start_walls = minmax_angles(disp, PointKind::Start, &connections.start);
-        let (start_left, start_right) = offset_points(wall, start_walls, width);
+        let start_connections = minmax_angles(disp, PointKind::Start, &connections.start);
+        let (start_left, start_right) = offset_points(*wall, start_connections, width);
 
-        let end_walls = minmax_angles(-disp, PointKind::End, &connections.end);
-        let (end_right, end_left) = offset_points(wall.inverse(), end_walls, -width);
+        let end_connections = minmax_angles(-disp, PointKind::End, &connections.end);
+        let (end_right, end_left) = offset_points(wall.inverse(), end_connections, -width);
 
         self.generate_top(
-            wall,
+            *wall,
             start_left,
             start_right,
             end_left,
@@ -87,7 +87,7 @@ impl WallMesh {
         let quat = Quat::from_axis_angle(Vec3::Y, angle);
 
         self.generate_side(
-            wall,
+            *wall,
             apertures,
             start_right,
             end_right,
@@ -98,7 +98,7 @@ impl WallMesh {
         );
 
         self.generate_side(
-            wall,
+            *wall,
             apertures,
             start_left,
             end_left,
@@ -108,22 +108,22 @@ impl WallMesh {
             !inverse_winding,
         );
 
-        match start_walls {
+        match start_connections {
             MinMaxResult::OneElement(_) => (),
             MinMaxResult::NoElements => self.generate_front(start_left, start_right, disp),
-            MinMaxResult::MinMax(_, _) => self.generate_start_connection(wall),
+            MinMaxResult::MinMax(_, _) => self.generate_start_connection(*wall),
         }
 
-        match end_walls {
+        match end_connections {
             MinMaxResult::OneElement(_) => (),
             MinMaxResult::NoElements => self.generate_back(end_left, end_right, disp),
-            MinMaxResult::MinMax(_, _) => self.generate_end_connection(wall, rotation_mat),
+            MinMaxResult::MinMax(_, _) => self.generate_end_connection(*wall, rotation_mat),
         }
     }
 
     fn generate_top(
         &mut self,
-        wall: Wall,
+        segment: Segment,
         start_left: Vec2,
         start_right: Vec2,
         end_left: Vec2,
@@ -136,13 +136,13 @@ impl WallMesh {
         self.positions.push([end_left.x, HEIGHT, end_left.y]);
 
         self.uvs
-            .push((rotation_mat * (start_left - wall.start)).into());
+            .push((rotation_mat * (start_left - segment.start)).into());
         self.uvs
-            .push((rotation_mat * (start_right - wall.start)).into());
+            .push((rotation_mat * (start_right - segment.start)).into());
         self.uvs
-            .push((rotation_mat * (end_right - wall.start)).into());
+            .push((rotation_mat * (end_right - segment.start)).into());
         self.uvs
-            .push((rotation_mat * (end_left - wall.start)).into());
+            .push((rotation_mat * (end_left - segment.start)).into());
 
         self.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
 
@@ -156,7 +156,7 @@ impl WallMesh {
 
     fn generate_side(
         &mut self,
-        wall: Wall,
+        segment: Segment,
         apertures: &Apertures,
         start_side: Vec2,
         end_side: Vec2,
@@ -168,20 +168,20 @@ impl WallMesh {
         let vertices_start = self.vertices_count();
 
         self.positions.push([start_side.x, 0.0, start_side.y]);
-        let start_uv = rotation_mat * (start_side - wall.start);
+        let start_uv = rotation_mat * (start_side - segment.start);
         self.uvs.push(start_uv.into());
         let normal = [width.x, 0.0, width.y];
         self.normals.push(normal);
 
         for aperture in apertures.iter().filter(|aperture| !aperture.hole) {
-            self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
+            self.generate_apertures(segment, aperture, normal, width, rotation_mat, quat);
         }
 
         self.positions.push([end_side.x, 0.0, end_side.y]);
         self.positions.push([end_side.x, HEIGHT, end_side.y]);
         self.positions.push([start_side.x, HEIGHT, start_side.y]);
 
-        let end_uv = rotation_mat * (end_side - wall.start);
+        let end_uv = rotation_mat * (end_side - segment.start);
         self.uvs.push(end_uv.into());
         self.uvs.push([end_uv.x, end_uv.y + HEIGHT]);
         self.uvs.push([start_uv.x, start_uv.y + HEIGHT]);
@@ -191,7 +191,7 @@ impl WallMesh {
         let mut hole_indices = Vec::new();
         let mut last_index = self.positions.len() - vertices_start as usize;
         for aperture in apertures.iter().filter(|aperture| aperture.hole) {
-            self.generate_apertures(wall, aperture, normal, width, rotation_mat, quat);
+            self.generate_apertures(segment, aperture, normal, width, rotation_mat, quat);
 
             hole_indices.push(last_index);
             last_index += aperture.cutout.len();
@@ -218,7 +218,7 @@ impl WallMesh {
 
     fn generate_apertures(
         &mut self,
-        wall: Wall,
+        segment: Segment,
         aperture: &Aperture,
         normal: [f32; 3],
         width: Vec2,
@@ -232,7 +232,7 @@ impl WallMesh {
 
             self.positions.push(translated.into());
 
-            let bottom_uv = rotation_mat * (translated.xz() - wall.start);
+            let bottom_uv = rotation_mat * (translated.xz() - segment.start);
             self.uvs.push([bottom_uv.x, bottom_uv.y + position.y]);
 
             self.normals.push(normal)
@@ -288,11 +288,12 @@ impl WallMesh {
     }
 
     /// Inside triangle to fill the gap between 3+ walls.
-    fn generate_start_connection(&mut self, wall: Wall) {
+    fn generate_start_connection(&mut self, segment: Segment) {
         let vertices_start = self.vertices_count();
 
         // Inside triangle to fill the gap between 3+ walls.
-        self.positions.push([wall.start.x, HEIGHT, wall.start.y]);
+        self.positions
+            .push([segment.start.x, HEIGHT, segment.start.y]);
         self.uvs.push([0.0, 0.0]);
         self.normals.push([0.0, 1.0, 0.0]);
 
@@ -302,12 +303,12 @@ impl WallMesh {
     }
 
     /// Inside triangle to fill the gap between 3+ walls.
-    fn generate_end_connection(&mut self, wall: Wall, rotation_mat: Mat2) {
+    fn generate_end_connection(&mut self, segment: Segment, rotation_mat: Mat2) {
         let vertices_start = self.vertices_count();
 
-        self.positions.push([wall.end.x, HEIGHT, wall.end.y]);
+        self.positions.push([segment.end.x, HEIGHT, segment.end.y]);
         self.uvs
-            .push((rotation_mat * (wall.end - wall.start)).into());
+            .push((rotation_mat * (segment.end - segment.start)).into());
         self.normals.push([0.0, 1.0, 0.0]);
 
         self.indices.push(3);
@@ -342,50 +343,61 @@ fn wall_width(disp: Vec2) -> Vec2 {
     disp.perp().normalize() * HALF_WIDTH
 }
 
-/// Calculates the left and right wall points for the `start` point of the wall,
-/// considering intersections with other walls.
-fn offset_points(wall: Wall, min_max_walls: MinMaxResult<Wall>, width: Vec2) -> (Vec2, Vec2) {
-    match min_max_walls {
-        MinMaxResult::NoElements => (wall.start + width, wall.start - width),
-        MinMaxResult::OneElement(other_wall) => {
-            let other_width = wall_width(other_wall.displacement());
-            (
-                wall_intersection(wall, width, other_wall, -other_width),
-                wall_intersection(wall, -width, other_wall.inverse(), other_width),
-            )
+/// Calculates the left and right wall points for the `start` point of the wall segment,
+/// considering intersections with other wall segments.
+fn offset_points(
+    segment: Segment,
+    connections: MinMaxResult<Segment>,
+    width: Vec2,
+) -> (Vec2, Vec2) {
+    match connections {
+        MinMaxResult::NoElements => (segment.start + width, segment.start - width),
+        MinMaxResult::OneElement(other_segment) => {
+            let other_width = wall_width(other_segment.displacement());
+            let left = (segment + width)
+                .line_intersection(other_segment - other_width)
+                .unwrap_or_else(|| segment.start + width);
+            let right = (segment - width)
+                .line_intersection(other_segment.inverse() + other_width)
+                .unwrap_or_else(|| segment.start + width);
+
+            (left, right)
         }
-        MinMaxResult::MinMax(min_wall, max_wall) => (
-            wall_intersection(wall, width, max_wall, -wall_width(max_wall.displacement())),
-            wall_intersection(
-                wall,
-                -width,
-                min_wall.inverse(),
-                wall_width(min_wall.displacement()),
-            ),
-        ),
+        MinMaxResult::MinMax(min_segment, max_segment) => {
+            let max_width = wall_width(max_segment.displacement());
+            let left = (segment + width)
+                .line_intersection(max_segment - max_width)
+                .unwrap_or_else(|| segment.start + width);
+            let min_width = wall_width(min_segment.displacement());
+            let right = (segment - width)
+                .line_intersection(min_segment.inverse() + min_width)
+                .unwrap_or_else(|| segment.start + width);
+
+            (left, right)
+        }
     }
 }
 
-/// Returns the points with the maximum and minimum angle relative
+/// Returns the segments with the maximum and minimum angle relative
 /// to the displacement vector.
 fn minmax_angles(
     disp: Vec2,
     point_kind: PointKind,
     point_connections: &[WallConnection],
-) -> MinMaxResult<Wall> {
+) -> MinMaxResult<Segment> {
     point_connections
         .iter()
         .map(|connection| {
             // Rotate points based on connection type.
             match (point_kind, connection.point_kind) {
-                (PointKind::Start, PointKind::End) => connection.wall.inverse(),
-                (PointKind::End, PointKind::Start) => connection.wall,
-                (PointKind::Start, PointKind::Start) => connection.wall,
-                (PointKind::End, PointKind::End) => connection.wall.inverse(),
+                (PointKind::Start, PointKind::End) => connection.segment.inverse(),
+                (PointKind::End, PointKind::Start) => connection.segment,
+                (PointKind::Start, PointKind::Start) => connection.segment,
+                (PointKind::End, PointKind::End) => connection.segment.inverse(),
             }
         })
-        .minmax_by_key(|wall| {
-            let angle = wall.displacement().angle_between(disp);
+        .minmax_by_key(|segment| {
+            let angle = segment.displacement().angle_between(disp);
             if angle < 0.0 {
                 angle + 2.0 * PI
             } else {
@@ -394,22 +406,10 @@ fn minmax_angles(
         })
 }
 
-/// Returns the intersection of the part of the wall that is `width` away
-/// at the line constructed from `start` and `end` points with another part of the wall.
-///
-/// If the walls do not intersect, then returns a point that is a `width` away from the `start` point.
-fn wall_intersection(wall: Wall, width: Vec2, other_wall: Wall, other_width: Vec2) -> Vec2 {
-    let other_line = Line::with_offset(other_wall.start, other_wall.end, other_width);
-
-    Line::with_offset(wall.start, wall.end, width)
-        .intersection(other_line)
-        .unwrap_or_else(|| wall.start + width)
-}
-
 /// Generates a simplified collider consists of cuboids.
 ///
 /// Clippings split the collider into separate cuboids.
-/// We generate a trimesh since navigation system doesn't support compound shapes.
+/// We generate a trimesh since navigation doesn't support compound shapes.
 pub(super) fn generate_collider(wall: Wall, apertures: &Apertures) -> Collider {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();

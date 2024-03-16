@@ -3,7 +3,8 @@ use itertools::Itertools;
 
 use super::{ObjectComponent, ObjectPath, ReflectObjectComponent};
 use crate::core::{
-    actor::Actor, asset::metadata, game_world::WorldName, line::Line, navigation::NavPath,
+    actor::Actor, asset::metadata, game_world::WorldName, math::segment::Segment,
+    navigation::NavPath,
 };
 
 pub(super) struct DoorPlugin;
@@ -45,28 +46,14 @@ impl DoorPlugin {
             }
 
             for (nav_start, nav_end) in nav_path.iter().map(|point| point.xz()).tuple_windows() {
-                let nav_length = nav_start.distance(nav_end);
-                let nav_line = Line::new(nav_start, nav_end);
+                let nav_segment = Segment::new(nav_start, nav_end);
 
                 for (mut door_state, door_transform, door) in &mut objects {
                     let door_point = Vec3::X * door.half_width;
                     let door_start = door_transform.transform_point(door_point).xz();
                     let door_end = door_transform.transform_point(-door_point).xz();
-                    let door_line = Line::new(door_start, door_end);
-                    let Some(intersection) = nav_line.intersection(door_line) else {
-                        continue;
-                    };
-
-                    let nav_distance =
-                        nav_start.distance(intersection) + intersection.distance(nav_end);
-                    let door_distance =
-                        door_start.distance(intersection) + intersection.distance(door_end);
-
-                    const TOLERANCE: f32 = 0.01;
-                    let door_length = door_start.distance(door_end);
-                    if nav_distance - nav_length < TOLERANCE
-                        && door_distance - door_length < TOLERANCE
-                    {
+                    let door_segment = Segment::new(door_start, door_end);
+                    if nav_segment.intersects(door_segment) {
                         door_state.passing_actors.push(actor_entity);
                     }
                 }

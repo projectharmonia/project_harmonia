@@ -14,8 +14,8 @@ pub(super) mod game_state;
 pub(super) mod game_world;
 mod highlighting;
 pub(super) mod input_events;
-mod line;
 pub(super) mod lot;
+mod math;
 mod navigation;
 pub(super) mod network;
 pub(super) mod object;
@@ -41,6 +41,7 @@ use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use highlighting::HighlightingPlugin;
 use lot::LotPlugin;
+use math::MathPlugin;
 use navigation::NavigationPlugin;
 use network::NetworkPlugin;
 use object::ObjectPlugin;
@@ -53,6 +54,7 @@ pub(super) struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
+            .add(MathPlugin)
             .add(NetworkPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
