@@ -25,17 +25,21 @@ impl Plugin for LotPlugin {
             .add_server_event::<LotEventConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                (
-                    (Self::create, Self::apply_movement, Self::delete).run_if(has_authority),
-                    Self::init,
-                )
-                    .chain()
+                Self::init
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
-                Self::draw_lines.run_if(resource_exists::<WorldName>),
+                (
+                    Self::draw_lines.run_if(resource_exists::<WorldName>),
+                    (
+                        Self::create.before(ServerSet::StoreHierarchy),
+                        Self::apply_movement,
+                        Self::delete,
+                    )
+                        .run_if(has_authority),
+                ),
             );
     }
 }

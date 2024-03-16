@@ -113,7 +113,7 @@ impl PlacingObjectPlugin {
         }
     }
 
-    /// Inserts necessary components and triggers object initialization.
+    /// Inserts necessary components to trigger object initialization.
     fn init(
         mut commands: Commands,
         camera_caster: CameraCaster,

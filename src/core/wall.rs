@@ -28,19 +28,23 @@ impl Plugin for WallPlugin {
             .add_server_event::<WallCreateConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                (Self::create.run_if(has_authority), Self::init)
-                    .chain()
+                Self::init
                     .after(ClientSet::Receive)
                     .run_if(resource_exists::<WorldName>),
             )
             .add_systems(
                 PostUpdate,
                 (
-                    Self::cleanup_connections,
-                    Self::update_connections,
-                    Self::update_meshes,
+                    Self::create
+                        .run_if(has_authority)
+                        .before(ServerSet::StoreHierarchy),
+                    (
+                        Self::cleanup_connections,
+                        Self::update_connections,
+                        Self::update_meshes,
+                    )
+                        .chain(),
                 )
-                    .chain()
                     .run_if(resource_exists::<WorldName>),
             );
     }
