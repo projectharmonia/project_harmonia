@@ -3,7 +3,7 @@ use std::ops::{Add, Sub};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
 pub(crate) struct Segment {
     pub(crate) start: Vec2,
     pub(crate) end: Vec2,
