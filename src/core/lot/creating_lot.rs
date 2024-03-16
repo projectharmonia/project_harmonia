@@ -51,7 +51,7 @@ impl CreatingLotPlugin {
         if let Some(point) = camera_caster.intersect_ground() {
             // Spawn with two the same vertices because we edit the last one on cursor movement.
             commands.entity(cities.single()).with_children(|parent| {
-                parent.spawn((LotVertices(vec![point.xz(); 2]), CreatingLot));
+                parent.spawn((LotVertices(vec![point.xz(); 2].into()), CreatingLot));
             });
         }
     }
@@ -90,7 +90,7 @@ impl CreatingLotPlugin {
             let last_vertex = *lot_vertices.last().unwrap();
             if first_vertex == last_vertex {
                 create_events.send(LotCreate {
-                    vertices: lot_vertices.0.clone(),
+                    polygon: lot_vertices.0.clone(),
                     city_entity: cities.single(),
                 });
             } else {

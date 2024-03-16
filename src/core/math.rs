@@ -1,3 +1,4 @@
+pub(super) mod polygon;
 pub(super) mod segment;
 
 use bevy::prelude::*;

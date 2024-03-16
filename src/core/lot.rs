@@ -3,11 +3,10 @@ pub(crate) mod moving_lot;
 
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::game_world::WorldName;
+use super::{game_world::WorldName, math::polygon::Polygon};
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -68,7 +67,7 @@ impl LotPlugin {
     ) {
         for FromClient { client_id, event } in create_events.read().cloned() {
             commands.entity(event.city_entity).with_children(|parent| {
-                parent.spawn(LotBundle::new(event.vertices));
+                parent.spawn(LotBundle::new(event.polygon));
             });
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
@@ -85,7 +84,7 @@ impl LotPlugin {
         for FromClient { client_id, event } in move_events.read().copied() {
             match lots.get_mut(event.entity) {
                 Ok(mut vertices) => {
-                    for vertex in &mut vertices.0 {
+                    for vertex in vertices.iter_mut() {
                         *vertex += event.offset;
                     }
                     confirm_events.send(ToClients {
@@ -139,9 +138,9 @@ struct LotBundle {
 }
 
 impl LotBundle {
-    fn new(vertices: Vec<Vec2>) -> Self {
+    fn new(polygon: Polygon) -> Self {
         Self {
-            vertices: LotVertices(vertices),
+            vertices: LotVertices(polygon),
             parent_sync: Default::default(),
             replication: Replication,
         }
@@ -150,32 +149,15 @@ impl LotBundle {
 
 #[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
-pub(super) struct LotVertices(Vec<Vec2>);
+pub(super) struct LotVertices(Polygon);
 
 /// Contains a family entity that owns the lot.
 #[derive(Component)]
 pub(crate) struct LotFamily(pub(crate) Entity);
 
-impl LotVertices {
-    /// A port of W. Randolph Franklin's [PNPOLY](https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html) algorithm.
-    #[must_use]
-    pub(super) fn contains_point(&self, point: Vec2) -> bool {
-        let mut inside = false;
-        for (a, b) in self.iter().tuple_windows() {
-            if ((a.y > point.y) != (b.y > point.y))
-                && (point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
-            {
-                inside = !inside;
-            }
-        }
-
-        inside
-    }
-}
-
 #[derive(Clone, Deserialize, Event, Serialize)]
 struct LotCreate {
-    vertices: Vec<Vec2>,
+    polygon: Polygon,
     city_entity: Entity,
 }
 
@@ -211,30 +193,3 @@ struct LotEventConfirmed;
 
 #[derive(Component)]
 struct UnconfirmedLot;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn contains_point() {
-        let vertices = LotVertices(vec![
-            Vec2::new(1.0, 1.0),
-            Vec2::new(1.0, 2.0),
-            Vec2::new(2.0, 2.0),
-            Vec2::new(2.0, 1.0),
-        ]);
-        assert!(vertices.contains_point(Vec2::new(1.2, 1.9)));
-    }
-
-    #[test]
-    fn not_contains_point() {
-        let vertices = LotVertices(vec![
-            Vec2::new(1.0, 1.0),
-            Vec2::new(1.0, 2.0),
-            Vec2::new(2.0, 2.0),
-            Vec2::new(2.0, 1.0),
-        ]);
-        assert!(!vertices.contains_point(Vec2::new(3.2, 4.9)));
-    }
-}
