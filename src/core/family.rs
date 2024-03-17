@@ -31,6 +31,7 @@ use super::{
     component_commands::ComponentCommandsExt,
     game_state::GameState,
     game_world::GameWorld,
+    navigation::NavigationBundle,
 };
 use editor::EditorPlugin;
 
@@ -131,6 +132,7 @@ impl FamilyPlugin {
                             ActorFamily(family_entity),
                             ParentSync::default(),
                             Transform::default(),
+                            NavigationBundle::default(),
                             Actor,
                             Replication,
                         ))

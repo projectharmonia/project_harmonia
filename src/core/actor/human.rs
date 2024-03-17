@@ -15,7 +15,6 @@ use crate::core::{
     family::{editor::EditableActor, FamilyScene},
     game_state::GameState,
     game_world::GameWorld,
-    navigation::NavigationBundle,
 };
 
 pub(super) struct HumanPlugin;
@@ -106,7 +105,6 @@ struct HumanBundle {
     last_name: LastName,
     sex: Sex,
     human: Human,
-    navigation_bundle: NavigationBundle,
 }
 
 impl HumanBundle {
@@ -116,7 +114,6 @@ impl HumanBundle {
             last_name,
             sex,
             human: Human,
-            navigation_bundle: Default::default(),
         }
     }
 }
