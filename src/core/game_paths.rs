@@ -27,8 +27,8 @@ pub(crate) struct GamePaths {
 }
 
 impl GamePaths {
-    pub(crate) fn world_path(&self, world_name: &str) -> PathBuf {
-        let mut path = self.worlds.join(world_name);
+    pub(crate) fn world_path(&self, name: &str) -> PathBuf {
+        let mut path = self.worlds.join(name);
         path.set_extension(SCENE_EXTENSION);
         path
     }

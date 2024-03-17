@@ -6,7 +6,7 @@ use crate::core::{
     city::CityMode,
     family::FamilyMode,
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
     object::placing_object::{PlacingObject, PlacingObjectPlugin},
     wall::{wall_mesh::HALF_WIDTH, Aperture, Apertures, Wall, WallPlugin},
     Layer,
@@ -22,7 +22,7 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::init.run_if(resource_exists::<WorldName>),
+                    Self::init.run_if(resource_exists::<GameWorld>),
                     (
                         Self::init_placing.before(PlacingObjectPlugin::rotate),
                         Self::snap
@@ -45,7 +45,7 @@ impl Plugin for WallMountPlugin {
                     .chain()
                     .before(WallPlugin::update_meshes)
                     .after(TransformSystem::TransformPropagate)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             );
     }
 }

@@ -6,7 +6,7 @@ use bevy::{
     scene::{self, SceneInstanceReady},
 };
 
-use super::game_world::WorldName;
+use super::game_world::GameWorld;
 
 pub(super) struct AnimationStatePlugin;
 
@@ -16,12 +16,12 @@ impl Plugin for AnimationStatePlugin {
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<WorldName>)
+                    .run_if(resource_exists::<GameWorld>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
-                (Self::play, Self::finish).run_if(resource_exists::<WorldName>),
+                (Self::play, Self::finish).run_if(resource_exists::<GameWorld>),
             );
     }
 }

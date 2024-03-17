@@ -18,7 +18,7 @@ use super::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     cursor_hover::CursorHoverable,
-    game_world::WorldName,
+    game_world::GameWorld,
     highlighting::OutlineHighlightingExt,
     lot::LotVertices,
     Layer,
@@ -41,13 +41,13 @@ impl Plugin for ObjectPlugin {
             .add_systems(
                 PreUpdate,
                 Self::init
-                    .run_if(resource_exists::<WorldName>)
+                    .run_if(resource_exists::<GameWorld>)
                     .after(ClientSet::Receive),
             )
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<WorldName>)
+                    .run_if(resource_exists::<GameWorld>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(

@@ -14,7 +14,7 @@ use crate::core::{
     error_report,
     game_paths::GamePaths,
     game_state::GameState,
-    game_world::{GameLoad, WorldName},
+    game_world::{GameLoad, GameWorld},
     network::{self, DEFAULT_PORT},
 };
 
@@ -85,8 +85,8 @@ impl WorldBrowserPlugin {
                             .get_world_names()
                             .map_err(|e| error!("unable to get world names: {e}"))
                             .unwrap_or_default();
-                        for world_name in world_names {
-                            setup_world_node(parent, &theme, world_name);
+                        for name in world_names {
+                            setup_world_node(parent, &theme, name);
                         }
                     });
 
@@ -128,7 +128,9 @@ impl WorldBrowserPlugin {
                 .expect("world label should contain text");
             match world_button {
                 WorldButton::Play => {
-                    commands.insert_resource(WorldName(world_name.sections[0].value.clone()));
+                    commands.insert_resource(GameWorld {
+                        name: world_name.sections[0].value.clone(),
+                    });
                     load_events.send_default();
                 }
                 WorldButton::Host => setup_host_world_dialog(
@@ -179,7 +181,9 @@ impl WorldBrowserPlugin {
                 let mut world_name = labels
                     .get_mut(world_node.label_entity)
                     .expect("world label should contain text");
-                commands.insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
+                commands.insert_resource(GameWorld {
+                    name: mem::take(&mut world_name.sections[0].value),
+                });
 
                 load_events.send_default();
             }
@@ -244,7 +248,9 @@ impl WorldBrowserPlugin {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if button == CreateDialogButton::Create {
                 let mut world_name = text_edits.single_mut();
-                commands.insert_resource(WorldName(mem::take(&mut world_name.0)));
+                commands.insert_resource(GameWorld {
+                    name: mem::take(&mut world_name.0),
+                });
                 game_state.set(GameState::World);
             }
             commands.entity(dialogs.single()).despawn_recursive();

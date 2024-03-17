@@ -10,7 +10,7 @@ use super::{
     actor::SelectedActor,
     cursor_hover::CursorHoverable,
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
     player_camera::{PlayerCamera, PlayerCameraBundle},
     Layer,
 };
@@ -34,11 +34,11 @@ impl Plugin for CityPlugin {
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup.run_if(resource_removed::<WorldName>()),
+                Self::cleanup.run_if(resource_removed::<GameWorld>()),
             );
     }
 }

@@ -4,7 +4,7 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::core::game_world::WorldName;
+use crate::core::game_world::GameWorld;
 
 pub(super) struct NeedsPlugin;
 
@@ -35,7 +35,7 @@ impl Plugin for NeedsPlugin {
                     Self::init_bladder,
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 Update,

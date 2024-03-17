@@ -17,7 +17,7 @@ use strum::{Display, EnumIter};
 use super::{
     asset::collection::{AssetCollection, Collection},
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
     highlighting::OutlineHighlightingExt,
 };
 use crate::core::{animation_state::AnimationState, cursor_hover::CursorHoverable};
@@ -50,16 +50,16 @@ impl Plugin for ActorPlugin {
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 Update,
-                Self::update_names.run_if(resource_exists::<WorldName>),
+                Self::update_names.run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<WorldName>)
+                    .run_if(resource_exists::<GameWorld>)
                     .after(scene::scene_spawner_system),
             )
             .add_systems(PostUpdate, Self::ensure_single_selection);

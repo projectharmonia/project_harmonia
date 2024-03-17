@@ -11,7 +11,7 @@ use bevy_replicon_renet::renet::transport::{
     ServerConfig,
 };
 
-use super::{game_state::GameState, game_world::WorldName};
+use super::{game_state::GameState, game_world::GameWorld};
 
 pub(super) struct NetworkPlugin;
 
@@ -25,7 +25,7 @@ impl Plugin for NetworkPlugin {
 
 impl NetworkPlugin {
     fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
-        commands.insert_resource(WorldName::default());
+        commands.insert_resource(GameWorld::default());
         game_state.set(GameState::World);
     }
 }

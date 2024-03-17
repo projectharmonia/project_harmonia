@@ -14,7 +14,7 @@ use crate::core::{
     asset::collection::{AssetCollection, Collection},
     family::{editor::EditableActor, FamilyScene},
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
     navigation::NavigationBundle,
 };
 
@@ -30,7 +30,7 @@ impl Plugin for HumanPlugin {
                 PreUpdate,
                 Self::update_sex
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 Update,

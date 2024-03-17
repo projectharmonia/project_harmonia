@@ -11,7 +11,7 @@ use super::{
 use crate::core::{
     action::Action,
     game_state::GameState,
-    game_world::{GameSave, WorldName},
+    game_world::{GameSave, GameWorld},
     lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
     object::placing_object::PlacingObject,
     wall::creating_wall::CreatingWall,
@@ -130,7 +130,7 @@ impl InGameMenuPlugin {
                     save_events.send_default();
                     match exit_dialog {
                         ExitDialog::MainMenu => {
-                            commands.remove_resource::<WorldName>();
+                            commands.remove_resource::<GameWorld>();
                             game_state.set(GameState::MainMenu);
                         }
                         ExitDialog::Game => {
@@ -140,7 +140,7 @@ impl InGameMenuPlugin {
                 }
                 ExitDialogButton::Exit => match exit_dialog {
                     ExitDialog::MainMenu => {
-                        commands.remove_resource::<WorldName>();
+                        commands.remove_resource::<GameWorld>();
                         game_state.set(GameState::MainMenu);
                     }
                     ExitDialog::Game => {

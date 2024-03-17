@@ -6,7 +6,7 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::{game_world::WorldName, math::polygon::Polygon};
+use super::{game_world::GameWorld, math::polygon::Polygon};
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -27,12 +27,12 @@ impl Plugin for LotPlugin {
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 PostUpdate,
                 (
-                    Self::draw_lines.run_if(resource_exists::<WorldName>),
+                    Self::draw_lines.run_if(resource_exists::<GameWorld>),
                     (
                         Self::create.before(ServerSet::StoreHierarchy),
                         Self::apply_movement,

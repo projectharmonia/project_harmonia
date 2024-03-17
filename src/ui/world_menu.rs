@@ -19,7 +19,7 @@ use crate::core::{
     city::{ActiveCity, City, CityBundle},
     family::{Family, FamilyDelete, FamilyMembers},
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
 };
 
 pub(super) struct WorldMenuPlugin;
@@ -54,7 +54,7 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        world_name: Res<WorldName>,
+        game_world: Res<GameWorld>,
         families: Query<(Entity, &Name), With<Family>>,
         cities: Query<(Entity, &Name), With<City>>,
     ) {
@@ -75,7 +75,7 @@ impl WorldMenuPlugin {
                 },
             ))
             .with_children(|parent| {
-                parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));
+                parent.spawn(LabelBundle::large(&theme, game_world.name.clone()));
 
                 let tabs_entity = parent
                     .spawn(NodeBundle {

@@ -14,7 +14,7 @@ use crate::core::{
     animation_state::{AnimationFinished, AnimationState},
     asset::collection::Collection,
     cursor_hover::CursorHover,
-    game_world::WorldName,
+    game_world::GameWorld,
     navigation::{following::Following, NavPath, Navigation},
 };
 
@@ -35,7 +35,7 @@ impl Plugin for TellSecretPlugin {
                     Self::start_listening,
                     Self::finish,
                 )
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             );
     }
 }

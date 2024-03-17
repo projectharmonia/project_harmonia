@@ -5,7 +5,7 @@ use crate::core::{
     actor::{ActorAnimation, Sex},
     animation_state::AnimationState,
     asset::collection::Collection,
-    game_world::WorldName,
+    game_world::GameWorld,
     navigation::{NavPath, Navigation},
 };
 
@@ -15,7 +15,7 @@ impl Plugin for MovementAnimationPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Movement>().add_systems(
             Update,
-            Self::update_animation.run_if(resource_exists::<WorldName>),
+            Self::update_animation.run_if(resource_exists::<GameWorld>),
         );
     }
 }

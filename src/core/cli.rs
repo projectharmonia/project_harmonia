@@ -15,7 +15,7 @@ use super::{
     error_report::{self, ErrorReport},
     family::FamilyMembers,
     game_state::GameState,
-    game_world::{GameLoad, WorldName},
+    game_world::{GameLoad, GameWorld},
     network::{self, DEFAULT_PORT},
 };
 
@@ -48,7 +48,9 @@ impl CliPlugin {
             match subcommand {
                 GameCommand::Play(world_load) => {
                     load_events.send_default();
-                    commands.insert_resource(WorldName(world_load.world_name.clone()));
+                    commands.insert_resource(GameWorld {
+                        name: world_load.world_name.clone(),
+                    });
                 }
                 GameCommand::Host { world_load, port } => {
                     let server = RenetServer::new(ConnectionConfig {
@@ -61,7 +63,9 @@ impl CliPlugin {
 
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
-                    commands.insert_resource(WorldName(world_load.world_name.clone()));
+                    commands.insert_resource(GameWorld {
+                        name: world_load.world_name.clone(),
+                    });
 
                     load_events.send_default();
                 }

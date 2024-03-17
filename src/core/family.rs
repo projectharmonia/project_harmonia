@@ -30,7 +30,7 @@ use super::{
     actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
     component_commands::ComponentCommandsExt,
     game_state::GameState,
-    game_world::WorldName,
+    game_world::GameWorld,
 };
 use editor::EditorPlugin;
 
@@ -66,11 +66,11 @@ impl Plugin for FamilyPlugin {
                     (Self::create, Self::delete).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup.run_if(resource_removed::<WorldName>()),
+                Self::cleanup.run_if(resource_removed::<GameWorld>()),
             );
     }
 }

@@ -33,11 +33,11 @@ impl GameWorldPlugin {
     /// Saves world to disk with the name from [`GameWorld`] resource.
     fn save(
         world: &World,
-        world_name: Res<WorldName>,
+        game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&world_name.0);
+        let world_path = game_paths.world_path(&game_world.name);
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
@@ -57,11 +57,11 @@ impl GameWorldPlugin {
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
         mut game_state: ResMut<NextState<GameState>>,
-        world_name: Res<WorldName>,
+        game_world: Res<GameWorld>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&world_name.0);
+        let world_path = game_paths.world_path(&game_world.name);
         let bytes =
             fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
         let mut deserializer = ron::Deserializer::from_bytes(&bytes)
@@ -95,6 +95,8 @@ pub(crate) struct GameSave;
 #[derive(Default, Event)]
 pub(crate) struct GameLoad;
 
-/// Contains name of the currently loaded world.
+/// Contains metadata of the currently loaded world.
 #[derive(Default, Resource)]
-pub(crate) struct WorldName(pub(crate) String);
+pub(crate) struct GameWorld {
+    pub(crate) name: String,
+}

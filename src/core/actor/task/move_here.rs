@@ -10,7 +10,7 @@ use crate::core::{
     },
     city::Ground,
     cursor_hover::CursorHover,
-    game_world::WorldName,
+    game_world::GameWorld,
     navigation::{ComputePath, NavPath, Navigation},
 };
 
@@ -23,7 +23,7 @@ impl Plugin for MoveHerePlugin {
             .add_systems(
                 Update,
                 (Self::add_to_list.in_set(TaskListSet), Self::finish)
-                    .run_if(resource_exists::<WorldName>),
+                    .run_if(resource_exists::<GameWorld>),
             )
             // Should run in `PostUpdate` to let tiles initialize.
             .add_systems(PostUpdate, Self::start_navigation.run_if(has_authority));
