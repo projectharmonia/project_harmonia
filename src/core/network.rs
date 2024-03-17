@@ -10,6 +10,7 @@ use bevy_replicon_renet::renet::transport::{
     ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
     ServerConfig,
 };
+use bevy_xpbd_3d::prelude::*;
 
 use super::{game_state::GameState, game_world::GameWorld};
 
@@ -17,7 +18,8 @@ pub(super) struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Transform>()
+        app.replicate::<Position>()
+            .replicate::<Rotation>()
             .add_systems(Update, Self::start_game.run_if(client_just_connected));
     }
 }

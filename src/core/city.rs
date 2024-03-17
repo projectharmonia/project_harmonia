@@ -67,7 +67,6 @@ impl CityPlugin {
                         ..Default::default()
                     },
                 ))
-                .dont_replicate::<Transform>()
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {

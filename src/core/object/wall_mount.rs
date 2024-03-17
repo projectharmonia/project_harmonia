@@ -27,7 +27,7 @@ impl Plugin for WallMountPlugin {
                         Self::init_placing.before(PlacingObjectPlugin::rotate),
                         Self::snap
                             .before(PlacingObjectPlugin::check_collision)
-                            .after(PlacingObjectPlugin::apply_transform),
+                            .after(PlacingObjectPlugin::apply_position),
                     )
                         .run_if(
                             in_state(GameState::City)
@@ -72,34 +72,35 @@ impl WallMountPlugin {
 
     fn snap(
         walls: Query<&Wall>,
-        mut placing_objects: Query<(&mut Transform, &mut PlacingObject, &WallMount)>,
+        mut placing_objects: Query<(&mut Position, &mut Rotation, &mut PlacingObject, &WallMount)>,
     ) {
-        let Ok((mut transform, mut placing_object, wall_mount)) = placing_objects.get_single_mut()
+        let Ok((mut position, mut rotation, mut placing_object, wall_mount)) =
+            placing_objects.get_single_mut()
         else {
             return;
         };
 
         const SNAP_DELTA: f32 = 1.0;
-        let translation = transform.translation.xz();
+        let object_point = position.xz();
         if let Some((wall, wall_point)) = walls
             .iter()
-            .map(|wall| (wall, wall.closest_point(translation)))
-            .find(|(_, point)| point.distance(translation) <= SNAP_DELTA)
+            .map(|wall| (wall, wall.closest_point(object_point)))
+            .find(|(_, point)| point.distance(object_point) <= SNAP_DELTA)
         {
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let disp = wall.displacement();
-            let sign = disp.perp_dot(translation - wall_point).signum();
+            let sign = disp.perp_dot(object_point - wall_point).signum();
             let offset = match wall_mount {
                 WallMount::Embed { .. } => Vec2::ZERO,
                 WallMount::Attach => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
             let angle = disp.angle_between(Vec2::X * sign);
-            transform.translation.x = snap_point.x;
-            transform.translation.z = snap_point.y;
+            position.x = snap_point.x;
+            position.z = snap_point.y;
             if !placing_object.allowed_place {
                 // Apply rotation only for newly snapped objects.
-                transform.rotation = Quat::from_rotation_y(angle);
+                **rotation = Quat::from_rotation_y(angle);
                 placing_object.allowed_place = true;
             }
         } else if placing_object.allowed_place {

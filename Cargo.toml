@@ -21,7 +21,7 @@ bevy_replicon = "0.24"
 bevy_replicon_renet = { version = "0.1", default-features = false, features = [
   "renet_transport",
 ] }
-bevy_xpbd_3d = "0.4"
+bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
 bevy_mod_outline = { git = "https://github.com/komadori/bevy_mod_outline", branch = "bevy-0.13" }
 bevy_simple_text_input = "0.5"
 oxidized_navigation = { git = "https://github.com/TheGrimsey/oxidized_navigation", features = [

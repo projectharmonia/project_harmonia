@@ -22,6 +22,7 @@ use bevy_replicon::{
     },
     prelude::*,
 };
+use bevy_xpbd_3d::prelude::*;
 use bincode::{DefaultOptions, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -131,7 +132,8 @@ impl FamilyPlugin {
                         .spawn((
                             ActorFamily(family_entity),
                             ParentSync::default(),
-                            Transform::default(),
+                            Position::default(),
+                            Rotation::default(),
                             NavigationBundle::default(),
                             Actor,
                             Replication,

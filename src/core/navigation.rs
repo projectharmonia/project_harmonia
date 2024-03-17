@@ -7,11 +7,14 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, Task},
 };
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
 use following::FollowingPlugin;
+
+use crate::core::math;
 
 pub(super) struct NavigationPlugin;
 
@@ -48,10 +51,13 @@ impl NavigationPlugin {
             &Navigation,
             &mut NavPath,
             &mut WaypointIndex,
-            &mut Transform,
+            &mut Position,
+            &mut Rotation,
         )>,
     ) {
-        for (navigation, mut nav_path, mut waypoint_index, mut transform) in &mut actors {
+        for (navigation, mut nav_path, mut waypoint_index, mut position, mut rotation) in
+            &mut actors
+        {
             if nav_path.len() <= 1 {
                 continue;
             }
@@ -62,15 +68,13 @@ impl NavigationPlugin {
             }
 
             let waypoint = nav_path.0[waypoint_index.0];
-            let disp = waypoint - transform.translation;
+            let disp = waypoint - **position;
             let delta_secs = time.delta_seconds();
-            let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
+            let target_rotation = math::looking_to(disp);
 
             const ROTATION_SPEED: f32 = 10.0;
-            transform.translation += disp.normalize() * navigation.speed * delta_secs;
-            transform.rotation = transform
-                .rotation
-                .slerp(target_rotation, ROTATION_SPEED * delta_secs);
+            **position += disp.normalize() * navigation.speed * delta_secs;
+            **rotation = rotation.slerp(target_rotation, ROTATION_SPEED * delta_secs);
 
             const DISTANCE_EPSILON: f32 = 0.1;
             if waypoint_index.0 == nav_path.len() - 1 {

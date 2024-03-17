@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{math::Vec3Swizzles, prelude::*, scene};
+use bevy::{prelude::*, scene};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -53,7 +53,7 @@ impl Plugin for PlacingObjectPlugin {
                     ),
                     (
                         Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
-                        Self::apply_transform,
+                        Self::apply_position,
                         Self::check_collision,
                         Self::confirm.run_if(action_just_pressed(Action::Confirm)),
                     )
@@ -120,7 +120,7 @@ impl PlacingObjectPlugin {
         mut hover_settings: ResMut<CursorHoverSettings>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
-        objects: Query<(&Transform, &ObjectPath)>,
+        objects: Query<(&Position, &Rotation, &ObjectPath)>,
     ) {
         let Some((placing_entity, placing_object)) = placing_objects.iter().last() else {
             return;
@@ -142,23 +142,25 @@ impl PlacingObjectPlugin {
                 commands.entity(placing_entity).insert((
                     ObjectPath(metadata_path.into_owned()),
                     CursorOffset::default(),
-                    Transform::from_rotation(Quat::from_rotation_y(rounded_angle)),
+                    Position::default(),
+                    Rotation(Quat::from_rotation_y(rounded_angle)),
                 ));
             }
             PlacingObjectKind::Moving(object_entity) => {
-                let (&object_transform, object_path) = objects
+                let (&position, &rotation, object_path) = objects
                     .get(object_entity)
                     .expect("moving object should have scene and path");
 
                 let offset = camera_caster
                     .intersect_ground()
-                    .map(|point| object_transform.translation - point)
-                    .unwrap_or(object_transform.translation);
+                    .map(|point| *position - point)
+                    .unwrap_or(*position);
 
                 commands.entity(placing_entity).insert((
-                    object_transform,
-                    CursorOffset(offset),
                     object_path.clone(),
+                    CursorOffset(offset),
+                    position,
+                    rotation,
                 ));
             }
         }
@@ -167,20 +169,20 @@ impl PlacingObjectPlugin {
     }
 
     pub(super) fn rotate(
-        mut placing_objects: Query<(&mut Transform, &PlacingObject), Without<UnconfirmedObject>>,
+        mut placing_objects: Query<(&mut Rotation, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
-        if let Ok((mut transform, placing_object)) = placing_objects.get_single_mut() {
-            transform.rotate_y(placing_object.rotation_step);
+        if let Ok((mut rotation, placing_object)) = placing_objects.get_single_mut() {
+            **rotation *= Quat::from_axis_angle(Vec3::Y, placing_object.rotation_step);
         }
     }
 
-    pub(super) fn apply_transform(
+    pub(super) fn apply_position(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Transform, &CursorOffset), Without<UnconfirmedObject>>,
+        mut placing_objects: Query<(&mut Position, &CursorOffset), Without<UnconfirmedObject>>,
     ) {
-        if let Ok((mut transform, cursor_offset)) = placing_objects.get_single_mut() {
+        if let Ok((mut position, cursor_offset)) = placing_objects.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
-                transform.translation = point + cursor_offset.0;
+                **position = point + cursor_offset.0;
             }
         }
     }
@@ -245,9 +247,12 @@ impl PlacingObjectPlugin {
         mut move_events: EventWriter<ObjectMove>,
         mut buy_events: EventWriter<ObjectBuy>,
         asset_server: Res<AssetServer>,
-        placing_objects: Query<(Entity, &Transform, &PlacingObject), Without<UnconfirmedObject>>,
+        placing_objects: Query<
+            (Entity, &Position, &Rotation, &PlacingObject),
+            Without<UnconfirmedObject>,
+        >,
     ) {
-        if let Ok((entity, transform, placing_object)) = placing_objects.get_single() {
+        if let Ok((entity, position, rotation, placing_object)) = placing_objects.get_single() {
             if !placing_object.collides && placing_object.allowed_place {
                 commands.entity(entity).insert(UnconfirmedObject);
 
@@ -258,15 +263,15 @@ impl PlacingObjectPlugin {
                             .expect("metadata should always come from file");
                         buy_events.send(ObjectBuy {
                             metadata_path: metadata_path.into_owned(),
-                            position: transform.translation.xz(),
-                            rotation: transform.rotation,
+                            position: **position,
+                            rotation: **rotation,
                         });
                     }
                     PlacingObjectKind::Moving(entity) => {
                         move_events.send(ObjectMove {
                             entity,
-                            translation: transform.translation,
-                            rotation: transform.rotation,
+                            position: **position,
+                            rotation: **rotation,
                         });
                     }
                 }

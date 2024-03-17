@@ -84,9 +84,9 @@ impl ObjectPlugin {
                 scene_handle,
                 Name::new(metadata.general.name.clone()),
                 CursorHoverable,
+                RigidBody::Static,
                 OutlineBundle::highlighting(),
-                GlobalTransform::default(),
-                VisibilityBundle::default(),
+                SpatialBundle::default(),
                 CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
             ));
 
@@ -166,14 +166,14 @@ impl ObjectPlugin {
             // TODO: Add a check if user can spawn an object on the lot.
             let parent_entity = lots
                 .iter()
-                .find(|(_, vertices)| vertices.contains_point(event.position))
+                .find(|(_, vertices)| vertices.contains_point(event.position.xz()))
                 .map(|(lot_entity, _)| lot_entity)
                 .unwrap_or(city_entity);
 
             commands.entity(parent_entity).with_children(|parent| {
                 parent.spawn(ObjectBundle::new(
                     event.metadata_path,
-                    Vec3::new(event.position.x, 0.0, event.position.y),
+                    event.position,
                     event.rotation,
                 ));
             });
@@ -187,13 +187,13 @@ impl ObjectPlugin {
     fn apply_movement(
         mut move_events: EventReader<FromClient<ObjectMove>>,
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
-        mut transforms: Query<&mut Transform>,
+        mut objects: Query<(&mut Position, &mut Rotation)>,
     ) {
         for FromClient { client_id, event } in move_events.read().copied() {
-            match transforms.get_mut(event.entity) {
-                Ok(mut transform) => {
-                    transform.translation = event.translation;
-                    transform.rotation = event.rotation;
+            match objects.get_mut(event.entity) {
+                Ok((mut position, mut rotation)) => {
+                    **position = event.position;
+                    **rotation = event.rotation;
                     confirm_events.send(ToClients {
                         mode: SendMode::Direct(client_id),
                         event: ObjectEventConfirmed,
@@ -222,7 +222,8 @@ impl ObjectPlugin {
 #[derive(Bundle)]
 struct ObjectBundle {
     object_path: ObjectPath,
-    transform: Transform,
+    position: Position,
+    rotation: Rotation,
     parent_sync: ParentSync,
     replication: Replication,
 }
@@ -231,9 +232,8 @@ impl ObjectBundle {
     fn new(metadata_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
         Self {
             object_path: ObjectPath(metadata_path),
-            transform: Transform::default()
-                .with_translation(translation)
-                .with_rotation(rotation),
+            position: Position(translation),
+            rotation: Rotation(rotation),
             parent_sync: Default::default(),
             replication: Replication,
         }
@@ -259,14 +259,14 @@ pub(crate) trait ObjectComponent: Reflect {
 #[derive(Clone, Deserialize, Event, Serialize)]
 struct ObjectBuy {
     metadata_path: AssetPath<'static>,
-    position: Vec2,
+    position: Vec3,
     rotation: Quat,
 }
 
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct ObjectMove {
     entity: Entity,
-    translation: Vec3,
+    position: Vec3,
     rotation: Quat,
 }
 

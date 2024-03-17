@@ -80,9 +80,9 @@ impl ActorPlugin {
                 .entity(entity)
                 .insert((
                     AnimationState::new(actor_animations.handle(ActorAnimation::Idle)),
-                    VisibilityBundle::default(),
-                    GlobalTransform::default(),
+                    SpatialBundle::default(),
                     OutlineBundle::highlighting(),
+                    RigidBody::Kinematic,
                     CursorHoverable,
                 ))
                 .with_children(|parent| {
