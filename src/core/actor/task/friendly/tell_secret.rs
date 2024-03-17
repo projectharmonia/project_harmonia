@@ -175,7 +175,6 @@ impl MapEntities for ListenSecret {
 
 #[derive(Bundle)]
 struct ListenSecretBundle {
-    name: Name,
     task_groups: TaskGroups,
     task_state: TaskState,
     listen_secret: ListenSecret,
@@ -185,7 +184,6 @@ struct ListenSecretBundle {
 impl ListenSecretBundle {
     fn new(actor_entity: Entity, task_entity: Entity) -> Self {
         Self {
-            name: Name::new("Listen secret"),
             task_groups: TaskGroups::LEGS,
             task_state: Default::default(),
             listen_secret: ListenSecret(actor_entity),

@@ -18,7 +18,6 @@ pub(super) struct NetworkPlugin;
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.replicate::<Transform>()
-            .replicate::<Name>()
             .add_systems(Update, Self::start_game.run_if(client_just_connected));
     }
 }

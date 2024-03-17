@@ -66,7 +66,6 @@ impl WallPlugin {
 
             let mut entity = commands.entity(entity);
             entity.insert((
-                Name::new("Walls"),
                 WallConnections::default(),
                 Apertures::default(),
                 Collider::default(),

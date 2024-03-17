@@ -256,13 +256,13 @@ impl EditorMenuPlugin {
         mut text_edits: Query<&mut TextInputValue, With<FamilyNameEdit>>,
         buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
-        cities: Query<(Entity, &Name), With<City>>,
+        cities: Query<(Entity, &City)>,
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if button == SaveDialogButton::Save {
                 let mut family_name = text_edits.single_mut();
-                let family_scene = FamilyScene::new(mem::take(&mut family_name.0).into());
+                let family_scene = FamilyScene::new(mem::take(&mut family_name.0));
 
                 setup_place_family_dialog(
                     &mut commands,
@@ -467,7 +467,7 @@ fn setup_place_family_dialog(
     root_entity: Entity,
     family_scene: FamilyScene,
     theme: &Theme,
-    cities: &Query<(Entity, &Name), With<City>>,
+    cities: &Query<(Entity, &City)>,
 ) {
     commands.entity(root_entity).with_children(|parent| {
         parent
@@ -499,7 +499,7 @@ fn setup_place_family_dialog(
                             })
                             .with_children(|parent| {
                                 // TODO: Use combobox.
-                                for (entity, name) in cities {
+                                for (entity, city) in cities {
                                     parent
                                         .spawn(NodeBundle {
                                             style: Style {
@@ -509,7 +509,7 @@ fn setup_place_family_dialog(
                                             ..Default::default()
                                         })
                                         .with_children(|parent| {
-                                            parent.spawn(LabelBundle::normal(theme, name));
+                                            parent.spawn(LabelBundle::normal(theme, &city.name));
                                             for button in CityPlaceButton::iter() {
                                                 parent.spawn((
                                                     button,

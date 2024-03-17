@@ -13,7 +13,7 @@ use super::{
     actor::SelectedActor,
     city::{ActiveCity, City},
     error_report::{self, ErrorReport},
-    family::FamilyMembers,
+    family::{Family, FamilyMembers},
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
     network::{self, DEFAULT_PORT},
@@ -91,15 +91,15 @@ impl CliPlugin {
         mut commands: Commands,
         mut game_state: ResMut<NextState<GameState>>,
         cli: Res<Cli>,
-        cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(&Name, &FamilyMembers)>,
+        cities: Query<(Entity, &City)>,
+        families: Query<(&Family, &FamilyMembers)>,
     ) -> Result<()> {
         if let Some(quick_load) = cli.quick_load() {
             match quick_load {
                 QuickLoad::City { name } => {
                     let (entity, _) = cities
                         .iter()
-                        .find(|(_, city_name)| city_name.as_str() == name)
+                        .find(|(_, city)| &city.name == name)
                         .with_context(|| format!("unable to find city named {name}"))?;
 
                     commands.entity(entity).insert(ActiveCity);
@@ -108,7 +108,7 @@ impl CliPlugin {
                 QuickLoad::Family { name } => {
                     let (_, members) = families
                         .iter()
-                        .find(|(family_name, _)| family_name.as_str() == name)
+                        .find(|(family, _)| &family.name == name)
                         .with_context(|| format!("unable to find family named {name}"))?;
 
                     let entity = *members

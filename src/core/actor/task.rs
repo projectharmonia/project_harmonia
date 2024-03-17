@@ -246,7 +246,6 @@ impl<T: Task> From<T> for TaskList {
 
 #[derive(Bundle)]
 struct TaskBundle {
-    name: Name,
     groups: TaskGroups,
     state: TaskState,
     parent_sync: ParentSync,
@@ -256,7 +255,6 @@ struct TaskBundle {
 impl TaskBundle {
     fn new(task: &dyn Task) -> Self {
         Self {
-            name: Name::new(task.name().to_string()),
             groups: task.groups(),
             state: Default::default(),
             parent_sync: Default::default(),

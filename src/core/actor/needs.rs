@@ -51,8 +51,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Hunger"), NeedGlyph("🍴"), NeedRate(-0.4)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("🍴"), NeedRate(-0.4)));
         }
     }
 
@@ -60,8 +59,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Social"), NeedGlyph("💬"), NeedRate(-0.1)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("💬"), NeedRate(-0.1)));
         }
     }
 
@@ -69,8 +67,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Hygiene"), NeedGlyph("🚿"), NeedRate(-0.3)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("🚿"), NeedRate(-0.3)));
         }
     }
 
@@ -78,8 +75,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Fun"), NeedGlyph("🎉"), NeedRate(-0.1)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("🎉"), NeedRate(-0.1)));
         }
     }
 
@@ -87,8 +83,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Energy"), NeedGlyph("🔋"), NeedRate(-0.2)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("🔋"), NeedRate(-0.2)));
         }
     }
 
@@ -96,8 +91,7 @@ impl NeedsPlugin {
         for entity in &needs {
             commands
                 .entity(entity)
-                .insert((Name::new("Bladder"), NeedGlyph("🚽"), NeedRate(-0.5)))
-                .dont_replicate::<Name>();
+                .insert((NeedGlyph("🚽"), NeedRate(-0.5)));
         }
     }
 

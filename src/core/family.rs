@@ -313,17 +313,15 @@ impl BuildingMode {
 
 #[derive(Bundle)]
 struct FamilyBundle {
-    name: Name,
     family: Family,
     budget: Budget,
     replication: Replication,
 }
 
 impl FamilyBundle {
-    fn new(name: Name, budget: Budget) -> Self {
+    fn new(name: String, budget: Budget) -> Self {
         Self {
-            name,
-            family: Family,
+            family: Family { name },
             budget,
             replication: Replication,
         }
@@ -332,7 +330,9 @@ impl FamilyBundle {
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(crate) struct Family;
+pub(crate) struct Family {
+    pub(crate) name: String,
+}
 
 /// Indicates locally controlled family.
 ///
@@ -384,13 +384,13 @@ impl MapEntities for FamilyCreate {
 
 #[derive(Component, Default)]
 pub(crate) struct FamilyScene {
-    pub(crate) name: Name,
+    pub(crate) name: String,
     pub(crate) budget: Budget,
     pub(crate) actors: Vec<Box<dyn ActorBundle>>,
 }
 
 impl FamilyScene {
-    pub(crate) fn new(name: Name) -> Self {
+    pub(crate) fn new(name: String) -> Self {
         Self {
             name,
             budget: Default::default(),

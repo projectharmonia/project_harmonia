@@ -79,7 +79,6 @@ impl EditorPlugin {
 
 #[derive(Bundle)]
 struct EditableFamilyBundle {
-    name: Name,
     editable_family: EditableFamily,
     spatial_bundle: SpatialBundle,
 }
@@ -87,7 +86,6 @@ struct EditableFamilyBundle {
 impl Default for EditableFamilyBundle {
     fn default() -> Self {
         Self {
-            name: Name::new("New family"),
             editable_family: EditableFamily,
             spatial_bundle: Default::default(),
         }

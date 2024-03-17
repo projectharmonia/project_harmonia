@@ -55,8 +55,8 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         game_world: Res<GameWorld>,
-        families: Query<(Entity, &Name), With<Family>>,
-        cities: Query<(Entity, &Name), With<City>>,
+        families: Query<(Entity, &Family)>,
+        cities: Query<(Entity, &City)>,
     ) {
         commands
             .spawn((
@@ -104,13 +104,20 @@ impl WorldMenuPlugin {
                         })
                         .with_children(|parent| match tab {
                             WorldTab::Families => {
-                                for (entity, name) in &families {
-                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+                                for (entity, family) in &families {
+                                    setup_entity_node::<FamilyButton>(
+                                        parent,
+                                        &theme,
+                                        entity,
+                                        &family.name,
+                                    );
                                 }
                             }
                             WorldTab::Cities => {
-                                for (entity, name) in &cities {
-                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+                                for (entity, city) in &cities {
+                                    setup_entity_node::<CityButton>(
+                                        parent, &theme, entity, &city.name,
+                                    );
                                 }
                             }
                         })
@@ -148,18 +155,18 @@ impl WorldMenuPlugin {
     fn create_family_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
-        families: Query<(Entity, &Name), Added<Family>>,
+        families: Query<(Entity, &Family), Added<Family>>,
         tabs: Query<(&TabContent, &WorldTab)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for (entity, name) in &families {
+        for (entity, family) in &families {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
             if nodes.iter().all(|world_entity| world_entity.0 != entity) {
                 commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
+                    setup_entity_node::<FamilyButton>(parent, &theme, entity, &family.name);
                 });
             }
         }
@@ -168,18 +175,18 @@ impl WorldMenuPlugin {
     fn create_city_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
-        cities: Query<(Entity, &Name), Added<City>>,
+        cities: Query<(Entity, &City), Added<City>>,
         tabs: Query<(&TabContent, &WorldTab)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for (entity, name) in &cities {
+        for (entity, city) in &cities {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Cities)
                 .expect("tab with cities should be spawned on state enter");
             if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
                 commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+                    setup_entity_node::<CityButton>(parent, &theme, entity, &city.name);
                 });
             }
         }
@@ -277,7 +284,7 @@ impl WorldMenuPlugin {
         for &dialog_button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if dialog_button == CityDialogButton::Create {
                 let mut city_name = text_edits.single_mut();
-                commands.spawn(CityBundle::new(mem::take(&mut city_name.0).into()));
+                commands.spawn(CityBundle::new(mem::take(&mut city_name.0)));
             }
             commands.entity(dialogs.single()).despawn_recursive();
         }

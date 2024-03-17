@@ -114,16 +114,13 @@ impl ActorPlugin {
     fn update_names(
         mut commands: Commands,
         mut changed_names: Query<
-            (Entity, Ref<FirstName>, Ref<LastName>),
+            (Entity, &FirstName, &LastName),
             Or<(Changed<FirstName>, Changed<LastName>)>,
         >,
     ) {
         for (entity, first_name, last_name) in &mut changed_names {
             let mut entity = commands.entity(entity);
             entity.insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
-            if first_name.is_added() && last_name.is_added() {
-                entity.dont_replicate::<Name>();
-            }
         }
     }
 
