@@ -45,7 +45,7 @@ ron = "0.8"
 walkdir = "2.5"
 itertools = "0.12"
 bitflags = "2.4"
-futures-lite = "2.2"
+futures-lite = "2.3"
 
 [patch.crates-io]
 bevy_a11y = { git = "https://github.com/lifescapegame/bevy", branch = "v0.13.0-patched" }
