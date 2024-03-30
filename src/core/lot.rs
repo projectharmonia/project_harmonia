@@ -154,6 +154,7 @@ pub(super) struct LotVertices(Polygon);
 
 /// Contains a family entity that owns the lot.
 #[derive(Component)]
+#[allow(dead_code)]
 pub(crate) struct LotFamily(pub(crate) Entity);
 
 #[derive(Clone, Deserialize, Event, Serialize)]

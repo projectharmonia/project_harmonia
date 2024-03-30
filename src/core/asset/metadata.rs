@@ -94,6 +94,7 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
 
 /// Preloads and stores metadata handles.
 #[derive(Resource)]
+#[allow(dead_code)]
 struct MetadataHandles<T: Asset>(Vec<Handle<T>>);
 
 impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
