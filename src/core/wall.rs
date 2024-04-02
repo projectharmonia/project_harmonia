@@ -1,4 +1,5 @@
 pub(crate) mod creating_wall;
+mod triangulator;
 pub(super) mod wall_mesh;
 
 use std::mem;
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{game_world::GameWorld, math::segment::Segment, Layer};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
+use triangulator::Triangulator;
 use wall_mesh::WallMesh;
 
 pub(super) struct WallPlugin;
@@ -187,6 +189,7 @@ impl WallPlugin {
     }
 
     pub(super) fn update_meshes(
+        mut triangulator: Local<Triangulator>,
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
             (
@@ -205,7 +208,7 @@ impl WallPlugin {
                 .expect("wall handles should be valid");
 
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(*wall, connections, &apertures);
+            wall_mesh.generate(*wall, connections, &apertures, &mut triangulator);
             wall_mesh.apply(mesh);
 
             // Creating walls shouldn't affect navigation.

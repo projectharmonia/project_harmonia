@@ -7,7 +7,10 @@ use bevy::{
 use bevy_xpbd_3d::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 
-use super::{Aperture, Apertures, PointKind, Wall, WallConnection, WallConnections};
+use super::{
+    triangulator::Triangulator, Aperture, Apertures, PointKind, Wall, WallConnection,
+    WallConnections,
+};
 use crate::core::math::segment::Segment;
 
 const WIDTH: f32 = 0.15;
@@ -56,6 +59,7 @@ impl WallMesh {
         wall: Wall,
         connections: &WallConnections,
         apertures: &Apertures,
+        triangulator: &mut Triangulator,
     ) {
         self.clear();
 
@@ -86,26 +90,28 @@ impl WallMesh {
         let inverse_winding = angle.abs() < FRAC_PI_2;
         let quat = Quat::from_axis_angle(Vec3::Y, angle);
 
+        triangulator.set_inverse_winding(inverse_winding);
         self.generate_side(
             *wall,
             apertures,
+            triangulator,
             start_right,
             end_right,
             -width,
             rotation_mat,
             quat,
-            inverse_winding,
         );
 
+        triangulator.set_inverse_winding(!inverse_winding);
         self.generate_side(
             *wall,
             apertures,
+            triangulator,
             start_left,
             end_left,
             width,
             rotation_mat,
             quat,
-            !inverse_winding,
         );
 
         match start_connections {
@@ -158,12 +164,12 @@ impl WallMesh {
         &mut self,
         segment: Segment,
         apertures: &Apertures,
+        triangulator: &mut Triangulator,
         start_side: Vec2,
         end_side: Vec2,
         width: Vec2,
         rotation_mat: Mat2,
         quat: Quat,
-        inverse_winding: bool,
     ) {
         let vertices_start = self.vertices_count();
 
@@ -188,31 +194,16 @@ impl WallMesh {
 
         self.normals.extend_from_slice(&[normal; 3]);
 
-        let mut hole_indices = Vec::new();
-        let mut last_index = self.positions.len() - vertices_start as usize;
+        let mut last_index = self.vertices_count() - vertices_start;
         for aperture in apertures.iter().filter(|aperture| aperture.hole) {
             self.generate_apertures(segment, aperture, normal, width, rotation_mat, quat);
 
-            hole_indices.push(last_index);
-            last_index += aperture.cutout.len();
+            triangulator.add_hole(last_index);
+            last_index += aperture.cutout.len() as u32;
         }
 
-        let vertices: Vec<_> = self.positions[vertices_start as usize..]
-            .iter()
-            .flat_map(|&[x, y, _]| [x, y])
-            .collect();
-
-        let mut indices = earcutr::earcut(&vertices, &hole_indices, 2)
-            .expect("vertices should be triangulatable");
-
-        if inverse_winding {
-            for triangle in indices.chunks_exact_mut(3) {
-                triangle.swap(0, 2);
-            }
-        }
-
-        for index in indices {
-            self.indices.push(vertices_start + index as u32);
+        for &index in triangulator.triangulate(&self.positions[vertices_start as usize..]) {
+            self.indices.push(vertices_start + index);
         }
     }
 

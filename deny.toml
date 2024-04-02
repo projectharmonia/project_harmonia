@@ -22,7 +22,6 @@ skip = [
   { name = "foreign-types-shared", version = "0.3" },
   { name = "futures-lite", version = "2.0" },
   { name = "inotify", version = "0.9" },
-  { name = "itertools", version = "0.11" },
   { name = "objc-sys", version = "0.2.0-beta.2" },
   { name = "objc2", version = "0.3.0-beta.3.patch-leaks.3" },
   { name = "objc2-encode", version = "2.0.0-pre.2" },

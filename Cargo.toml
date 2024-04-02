@@ -35,7 +35,7 @@ leafwing-input-manager = { version = "0.13", default-features = false, features 
 ] }
 app_dirs2 = "2.5"
 serde = "1.0"
-earcutr = "0.4"
+earcut-rs = { git = "https://github.com/MIERUNE/earcut-rs" }
 strum = { version = "0.26", features = ["derive"] }
 num_enum = "0.7"
 clap = { version = "4.5", features = ["derive"] }
