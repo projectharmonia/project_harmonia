@@ -1,4 +1,4 @@
-use earcut_rs::Earcut;
+use earcut::Earcut;
 
 /// A small wrapper around [`Earcut`] to reuse allocated memory.
 #[derive(Default)]

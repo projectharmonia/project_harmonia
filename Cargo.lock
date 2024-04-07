@@ -1778,9 +1778,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
-name = "earcut-rs"
-version = "0.3.0"
-source = "git+https://github.com/MIERUNE/earcut-rs#3a889bb6d79e6060f5bef48704ebeac45fc6b385"
+name = "earcut"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea3bee8546d28d1b35f1d6804023b0db7d6ac42e55ee4dfffedcfb902649b469"
 dependencies = [
  "num-traits",
 ]
@@ -3264,7 +3265,7 @@ dependencies = [
  "bincode",
  "bitflags 2.5.0",
  "clap",
- "earcut-rs",
+ "earcut",
  "futures-lite",
  "itertools",
  "leafwing-input-manager",
