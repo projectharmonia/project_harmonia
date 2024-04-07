@@ -50,6 +50,7 @@ pub(crate) enum ObjectCategory {
     #[serde(rename = "Outdoor furniture")]
     OutdoorFurniture,
     Electronics,
+    Furniture,
     Windows,
     Doors,
 }
@@ -66,6 +67,7 @@ impl ObjectCategory {
         ObjectCategory::Foliage,
         ObjectCategory::OutdoorFurniture,
         ObjectCategory::Electronics,
+        ObjectCategory::Furniture,
         ObjectCategory::Windows,
         ObjectCategory::Doors,
     ];
@@ -76,6 +78,7 @@ impl ObjectCategory {
             ObjectCategory::Foliage => "🍀",
             ObjectCategory::OutdoorFurniture => "🏡",
             ObjectCategory::Electronics => "📺",
+            ObjectCategory::Furniture => "💺",
             ObjectCategory::Windows => "🔲",
             ObjectCategory::Doors => "🚪",
         }
