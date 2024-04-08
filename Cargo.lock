@@ -446,9 +446,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_atmosphere"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4cc7c8b7c8502d6e735944c177938a67a7fb0c8e069ab5f04a01bd1beb499b5"
+checksum = "c48ce3e0b86b7034809827d7e6e723f09478f58c1c96024cd91bafbd9ebe247c"
 dependencies = [
  "bevy",
  "bevy_atmosphere_macros",
