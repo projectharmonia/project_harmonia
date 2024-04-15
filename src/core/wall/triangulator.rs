@@ -16,7 +16,7 @@ impl Triangulator {
 
     pub(super) fn triangulate(&mut self, positions: &[[f32; 3]]) -> &[u32] {
         self.earcut.earcut(
-            positions.iter().flat_map(|&[x, y, _]| [x, y]),
+            positions.iter().map(|&[x, y, _]| [x, y]),
             &self.hole_indices,
             &mut self.indices,
         );
