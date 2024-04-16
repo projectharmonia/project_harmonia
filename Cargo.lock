@@ -3043,7 +3043,7 @@ dependencies = [
 [[package]]
 name = "oxidized_navigation"
 version = "0.11.0"
-source = "git+https://github.com/TheGrimsey/oxidized_navigation#a038ebc562f3183d5a466b242b695d9ffb85248a"
+source = "git+https://github.com/TheGrimsey/oxidized_navigation#29f0d110842de6c96f6ad9c6d744f06c51abf620"
 dependencies = [
  "bevy",
  "bevy_xpbd_3d",
