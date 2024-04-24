@@ -3736,7 +3736,6 @@
 	],
 	"materials":[
 		{
-			"doubleSided":true,
 			"extensions":{
 				"KHR_materials_specular":{
 					"specularColorFactor":[
@@ -3762,7 +3761,6 @@
 			}
 		},
 		{
-			"doubleSided":true,
 			"extensions":{
 				"KHR_materials_specular":{
 					"specularColorFactor":[

@@ -161,7 +161,6 @@
     ],
     "materials" : [
         {
-            "doubleSided" : true,
             "name" : "bench",
             "normalTexture" : {
                 "index" : 0

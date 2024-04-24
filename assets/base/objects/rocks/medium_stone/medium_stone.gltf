@@ -26,7 +26,6 @@
     ],
     "materials" : [
         {
-            "doubleSided" : true,
             "name" : "Stone",
             "normalTexture" : {
                 "index" : 0
