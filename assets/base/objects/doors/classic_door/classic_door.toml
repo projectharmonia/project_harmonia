@@ -8,7 +8,8 @@ preview_translation = [0.0, -1.0, -2.9]
 category = "Doors"
 components = [
   { Door = { half_width = 0.4, trigger_distance = 2.5 } },
-  { WallMount = { Embed = { cutout = [
+  { WallSnap = "Inside" },
+  { WallMount = { cutout = [
     [
       -0.4358678,
       0.0,
@@ -25,5 +26,5 @@ components = [
       0.4358678,
       0.0,
     ],
-  ], hole = false } } },
+  ], hole = false } },
 ]

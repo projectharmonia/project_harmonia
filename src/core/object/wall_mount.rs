@@ -1,14 +1,11 @@
 use bevy::{prelude::*, transform::TransformSystem};
-use bevy_xpbd_3d::{math::PI, prelude::*};
+use bevy_xpbd_3d::prelude::*;
 
 use super::{ObjectComponent, ReflectObjectComponent};
 use crate::core::{
-    city::CityMode,
-    family::FamilyMode,
-    game_state::GameState,
     game_world::GameWorld,
-    object::placing_object::{PlacingObject, PlacingObjectPlugin},
-    wall::{wall_mesh::HALF_WIDTH, Aperture, Apertures, Wall, WallPlugin},
+    object::placing_object::PlacingObject,
+    wall::{Aperture, Apertures, Wall, WallPlugin},
     Layer,
 };
 
@@ -19,26 +16,7 @@ impl Plugin for WallMountPlugin {
         app.register_type::<Vec2>()
             .register_type::<Vec<Vec2>>()
             .register_type::<WallMount>()
-            .add_systems(
-                Update,
-                (
-                    Self::init.run_if(resource_exists::<GameWorld>),
-                    (
-                        Self::init_placing.before(PlacingObjectPlugin::rotate),
-                        Self::snap
-                            .before(PlacingObjectPlugin::check_collision)
-                            .after(PlacingObjectPlugin::apply_position),
-                    )
-                        .run_if(
-                            in_state(GameState::City)
-                                .and_then(in_state(CityMode::Objects))
-                                .or_else(
-                                    in_state(GameState::Family)
-                                        .and_then(in_state(FamilyMode::Building)),
-                                ),
-                        ),
-                ),
-            )
+            .add_systems(Update, Self::init.run_if(resource_exists::<GameWorld>))
             .add_systems(
                 PostUpdate,
                 (Self::cleanup_apertures, Self::update_apertures)
@@ -59,52 +37,6 @@ impl WallMountPlugin {
         for (entity, mut collision_layers) in &mut objects {
             collision_layers.filters.remove(Layer::Wall);
             commands.entity(entity).insert(ObjectWall::default());
-        }
-    }
-
-    /// Additional intializaiton for placing wall mount objects.
-    fn init_placing(mut placing_objects: Query<&mut PlacingObject, Added<WallMount>>) {
-        if let Ok(mut placing_object) = placing_objects.get_single_mut() {
-            placing_object.rotation_step = PI;
-            placing_object.allowed_place = false;
-        }
-    }
-
-    fn snap(
-        walls: Query<&Wall>,
-        mut placing_objects: Query<(&mut Position, &mut Rotation, &mut PlacingObject, &WallMount)>,
-    ) {
-        let Ok((mut position, mut rotation, mut placing_object, wall_mount)) =
-            placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
-        const SNAP_DELTA: f32 = 1.0;
-        let object_point = position.xz();
-        if let Some((wall, wall_point)) = walls
-            .iter()
-            .map(|wall| (wall, wall.closest_point(object_point)))
-            .find(|(_, point)| point.distance(object_point) <= SNAP_DELTA)
-        {
-            const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
-            let disp = wall.displacement();
-            let sign = disp.perp_dot(object_point - wall_point).signum();
-            let offset = match wall_mount {
-                WallMount::Embed { .. } => Vec2::ZERO,
-                WallMount::Attach => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),
-            };
-            let snap_point = wall_point + offset;
-            let angle = disp.angle_between(Vec2::X * sign);
-            position.x = snap_point.x;
-            position.z = snap_point.y;
-            if !placing_object.allowed_place {
-                // Apply rotation only for newly snapped objects.
-                **rotation = Quat::from_rotation_y(angle);
-                placing_object.allowed_place = true;
-            }
-        } else if placing_object.allowed_place {
-            placing_object.allowed_place = false;
         }
     }
 
@@ -139,10 +71,6 @@ impl WallMountPlugin {
     ) {
         for (object_entity, transform, wall_mount, mut object_wall, placing_object) in &mut objects
         {
-            let WallMount::Embed { cutout, hole } = wall_mount else {
-                continue;
-            };
-
             let translation = transform.translation();
             if let Some((wall_entity, mut apertures, wall)) = walls
                 .iter_mut()
@@ -166,8 +94,8 @@ impl WallMountPlugin {
                             object_entity,
                             translation,
                             distance,
-                            cutout: cutout.clone(),
-                            hole: *hole,
+                            cutout: wall_mount.cutout.clone(),
+                            hole: wall_mount.hole,
                             placing_object,
                         });
 
@@ -186,8 +114,8 @@ impl WallMountPlugin {
                         object_entity,
                         translation,
                         distance,
-                        cutout: cutout.clone(),
-                        hole: *hole,
+                        cutout: wall_mount.cutout.clone(),
+                        hole: wall_mount.hole,
                         placing_object,
                     });
 
@@ -209,25 +137,15 @@ impl WallMountPlugin {
 /// A component that marks that entity can be placed only on walls or inside them.
 #[derive(Component, Reflect)]
 #[reflect(Component, ObjectComponent)]
-pub(crate) enum WallMount {
-    Attach,
-    Embed {
-        /// Points for an aperture in the wall.
-        ///
-        /// Should be set clockwise if the object creates a hole (such as a window),
-        /// or counterclockwise if it creates a clipping (such as a door).
-        cutout: Vec<Vec2>,
+pub(crate) struct WallMount {
+    /// Points for an aperture in the wall.
+    ///
+    /// Should be set clockwise if the object creates a hole (such as a window),
+    /// or counterclockwise if it creates a clipping (such as a door).
+    cutout: Vec<Vec2>,
 
-        /// Should be set to `true` if the object creates a hole (such as a window).
-        hole: bool,
-    },
-}
-
-// To implement `Reflect`.
-impl FromWorld for WallMount {
-    fn from_world(_world: &mut World) -> Self {
-        Self::Attach
-    }
+    /// Should be set to `true` if the object creates a hole (such as a window).
+    hole: bool,
 }
 
 impl ObjectComponent for WallMount {

@@ -275,7 +275,7 @@ mod tests {
     use super::*;
     use crate::core::{
         asset::metadata::{MetadataDeserializer, METADATA_EXTENSION},
-        object::{door::Door, wall_mount::WallMount},
+        object::{door::Door, placing_object::wall_snap::WallSnap, wall_mount::WallMount},
     };
 
     #[test]
@@ -285,6 +285,7 @@ mod tests {
         type_registry.register::<Vec2>();
         type_registry.register::<Vec<Vec2>>();
         type_registry.register::<WallMount>();
+        type_registry.register::<WallSnap>();
         type_registry.register::<Door>();
 
         for entry in WalkDir::new(ASSETS_DIR)

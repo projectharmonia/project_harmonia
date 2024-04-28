@@ -394,8 +394,6 @@ pub(super) struct Aperture {
     pub(super) distance: f32,
 
     /// Positions relative to the coordinate origin at which the aperture is cut in 2D space.
-    ///
-    /// Obtained from [`WallMount::Embed`](super::object::wall_mount::WallMount).
     pub(super) cutout: Vec<Vec2>,
 
     /// Indicates if the aperture is hole (like a window) or clipping (like a door or arch).

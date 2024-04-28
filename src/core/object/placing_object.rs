@@ -1,3 +1,5 @@
+pub(crate) mod wall_snap;
+
 use std::{
     f32::consts::{FRAC_PI_2, FRAC_PI_4, PI},
     fmt::Debug,
@@ -18,12 +20,14 @@ use crate::core::{
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
 };
+use wall_snap::WallSnapPlugin;
 
 pub(super) struct PlacingObjectPlugin;
 
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Objects), Self::end_placing)
+        app.add_plugins(WallSnapPlugin)
+            .add_systems(OnExit(CityMode::Objects), Self::end_placing)
             .add_systems(OnExit(FamilyMode::Building), Self::end_placing)
             .add_systems(
                 PreUpdate,
@@ -108,7 +112,7 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((placing_entity, parent)) = hovered_objects.get_single() {
             commands.entity(**parent).with_children(|parent| {
-                parent.spawn(PlacingObject::moving(placing_entity));
+                parent.spawn(PlacingObject::Moving(placing_entity));
             });
         }
     }
@@ -122,13 +126,13 @@ impl PlacingObjectPlugin {
         placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
         objects: Query<(&Position, &Rotation, &ObjectPath)>,
     ) {
-        let Some((placing_entity, placing_object)) = placing_objects.iter().last() else {
+        let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
             return;
         };
 
         debug!("creating {placing_object:?}");
-        match placing_object.kind {
-            PlacingObjectKind::Spawning(id) => {
+        match placing_object {
+            PlacingObject::Spawning(id) => {
                 let metadata_path = asset_server
                     .get_path(id)
                     .expect("metadata should always come from file");
@@ -144,9 +148,10 @@ impl PlacingObjectPlugin {
                     CursorOffset::default(),
                     Position::default(),
                     Rotation(Quat::from_rotation_y(rounded_angle)),
+                    PlacingObjectState::default(),
                 ));
             }
-            PlacingObjectKind::Moving(object_entity) => {
+            PlacingObject::Moving(object_entity) => {
                 let (&position, &rotation, object_path) = objects
                     .get(object_entity)
                     .expect("moving object should have scene and path");
@@ -161,6 +166,7 @@ impl PlacingObjectPlugin {
                     CursorOffset(offset),
                     position,
                     rotation,
+                    PlacingObjectState::default(),
                 ));
             }
         }
@@ -168,15 +174,19 @@ impl PlacingObjectPlugin {
         hover_settings.enabled = false;
     }
 
-    pub(super) fn rotate(
-        mut placing_objects: Query<(&mut Rotation, &PlacingObject), Without<UnconfirmedObject>>,
+    fn rotate(
+        mut placing_objects: Query<
+            (&mut Rotation, &PlacingObjectState),
+            Without<UnconfirmedObject>,
+        >,
     ) {
-        if let Ok((mut rotation, placing_object)) = placing_objects.get_single_mut() {
-            **rotation *= Quat::from_axis_angle(Vec3::Y, placing_object.rotation_step);
+        if let Ok((mut rotation, state)) = placing_objects.get_single_mut() {
+            let angle = if state.snapped { PI } else { FRAC_PI_4 };
+            **rotation *= Quat::from_axis_angle(Vec3::Y, angle);
         }
     }
 
-    pub(super) fn apply_position(
+    fn apply_position(
         camera_caster: CameraCaster,
         mut placing_objects: Query<(&mut Position, &CursorOffset), Without<UnconfirmedObject>>,
     ) {
@@ -187,24 +197,25 @@ impl PlacingObjectPlugin {
         }
     }
 
-    pub(super) fn check_collision(
+    fn check_collision(
         mut placing_objects: Query<
-            (&mut PlacingObject, &CollidingEntities),
+            (&mut PlacingObjectState, &PlacingObject, &CollidingEntities),
             Without<UnconfirmedObject>,
         >,
     ) {
-        if let Ok((mut placing_object, colliding_entities)) = placing_objects.get_single_mut() {
+        if let Ok((mut state, &placing_object, colliding_entities)) =
+            placing_objects.get_single_mut()
+        {
             let mut collides = !colliding_entities.is_empty();
-            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                if collides && colliding_entities.len() == 1 && colliding_entities.contains(&entity)
-                {
+            if let PlacingObject::Moving(entity) = placing_object {
+                if colliding_entities.len() == 1 && colliding_entities.contains(&entity) {
                     // Ignore collision with the moving object.
                     collides = false;
                 }
             }
 
-            if placing_object.collides != collides {
-                placing_object.collides = collides;
+            if state.collides != collides {
+                state.collides = collides;
             }
         }
     }
@@ -212,33 +223,39 @@ impl PlacingObjectPlugin {
     fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<
-            (Entity, &PlacingObject),
+            (Entity, &PlacingObjectState),
             (
-                Or<(Added<Children>, Changed<PlacingObject>)>,
+                Or<(Added<Children>, Changed<PlacingObjectState>)>,
                 Without<UnconfirmedObject>,
             ),
         >,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
-        if let Ok((placing_entity, placing_object)) = placing_objects.get_single() {
+        if let Ok((placing_entity, state)) = placing_objects.get_single() {
+            let color = if state.collides || !state.allowed_place {
+                Color::RED
+            } else {
+                Color::WHITE
+            };
+
             let mut iter =
                 material_handles.iter_many_mut(children.iter_descendants(placing_entity));
             while let Some(mut material_handle) = iter.fetch_next() {
-                let mut material = materials
+                let material = materials
                     .get(&*material_handle)
-                    .cloned()
                     .expect("material handle should be valid");
 
+                // If color matches, assume that we don't need any update.
+                if material.base_color == color {
+                    return;
+                }
+
+                let mut material = material.clone();
+                material.base_color = color;
                 material.alpha_mode = AlphaMode::Add;
-                material.base_color = if placing_object.collides || !placing_object.allowed_place {
-                    Color::RED
-                } else {
-                    Color::WHITE
-                };
                 *material_handle = materials.add(material);
             }
-            debug!("assigned material color for {placing_object:?}");
         }
     }
 
@@ -248,16 +265,24 @@ impl PlacingObjectPlugin {
         mut buy_events: EventWriter<ObjectBuy>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<
-            (Entity, &Position, &Rotation, &PlacingObject),
+            (
+                Entity,
+                &Position,
+                &Rotation,
+                &PlacingObject,
+                &PlacingObjectState,
+            ),
             Without<UnconfirmedObject>,
         >,
     ) {
-        if let Ok((entity, position, rotation, placing_object)) = placing_objects.get_single() {
-            if !placing_object.collides && placing_object.allowed_place {
+        if let Ok((entity, position, rotation, &placing_object, state)) =
+            placing_objects.get_single()
+        {
+            if !state.collides && state.allowed_place {
                 commands.entity(entity).insert(UnconfirmedObject);
 
-                match placing_object.kind {
-                    PlacingObjectKind::Spawning(id) => {
+                match placing_object {
+                    PlacingObject::Spawning(id) => {
                         let metadata_path = asset_server
                             .get_path(id)
                             .expect("metadata should always come from file");
@@ -267,7 +292,7 @@ impl PlacingObjectPlugin {
                             rotation: **rotation,
                         });
                     }
-                    PlacingObjectKind::Moving(entity) => {
+                    PlacingObject::Moving(entity) => {
                         move_events.send(ObjectMove {
                             entity,
                             position: **position,
@@ -286,8 +311,8 @@ impl PlacingObjectPlugin {
         mut sell_events: EventWriter<ObjectSell>,
         placing_objects: Query<(Entity, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
-        if let Ok((entity, placing_object)) = placing_objects.get_single() {
-            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+        if let Ok((entity, &placing_object)) = placing_objects.get_single() {
+            if let PlacingObject::Moving(entity) = placing_object {
                 sell_events.send(ObjectSell(entity));
             }
             commands.entity(entity).despawn_recursive();
@@ -320,43 +345,33 @@ impl PlacingObjectPlugin {
     }
 }
 
-#[derive(Component, Debug, Clone)]
-pub(crate) struct PlacingObject {
-    kind: PlacingObjectKind,
-    collides: bool,
-    pub(crate) allowed_place: bool,
-    pub(crate) rotation_step: f32,
-}
-
-impl PlacingObject {
-    pub(crate) fn moving(object_entity: Entity) -> Self {
-        Self::new(PlacingObjectKind::Moving(object_entity))
-    }
-
-    pub(crate) fn spawning(id: AssetId<ObjectMetadata>) -> Self {
-        Self::new(PlacingObjectKind::Spawning(id))
-    }
-
-    fn new(kind: PlacingObjectKind) -> Self {
-        Self {
-            kind,
-            collides: false,
-            allowed_place: true,
-            rotation_step: FRAC_PI_4,
-        }
-    }
-}
-
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum PlacingObjectKind {
+#[derive(Component, Debug, Clone, Copy)]
+pub(crate) enum PlacingObject {
     Spawning(AssetId<ObjectMetadata>),
     Moving(Entity),
 }
 
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
-pub(super) struct CursorOffset(Vec3);
+struct CursorOffset(Vec3);
 
 #[derive(Component)]
-pub(crate) struct UnconfirmedObject;
+struct PlacingObjectState {
+    allowed_place: bool,
+    collides: bool,
+    snapped: bool,
+}
+
+impl Default for PlacingObjectState {
+    fn default() -> Self {
+        Self {
+            allowed_place: true,
+            collides: false,
+            snapped: false,
+        }
+    }
+}
+
+#[derive(Component)]
+struct UnconfirmedObject;
