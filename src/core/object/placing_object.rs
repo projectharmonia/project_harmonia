@@ -175,14 +175,10 @@ impl PlacingObjectPlugin {
     }
 
     fn rotate(
-        mut placing_objects: Query<
-            (&mut Rotation, &PlacingObjectState),
-            Without<UnconfirmedObject>,
-        >,
+        mut placing_objects: Query<(&mut Rotation, &RotationLimit), Without<UnconfirmedObject>>,
     ) {
-        if let Ok((mut rotation, state)) = placing_objects.get_single_mut() {
-            let angle = if state.snapped { PI } else { FRAC_PI_4 };
-            **rotation *= Quat::from_axis_angle(Vec3::Y, angle);
+        if let Ok((mut rotation, limit)) = placing_objects.get_single_mut() {
+            **rotation *= Quat::from_axis_angle(Vec3::Y, limit.unwrap_or(FRAC_PI_4));
         }
     }
 
@@ -199,7 +195,7 @@ impl PlacingObjectPlugin {
 
     fn check_collision(
         mut placing_objects: Query<
-            (&mut PlacingObjectState, &PlacingObject, &CollidingEntities),
+            (&mut PlaceState, &PlacingObject, &CollidingEntities),
             Without<UnconfirmedObject>,
         >,
     ) {
@@ -223,9 +219,9 @@ impl PlacingObjectPlugin {
     fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<
-            (Entity, &PlacingObjectState),
+            (Entity, &PlaceState),
             (
-                Or<(Added<Children>, Changed<PlacingObjectState>)>,
+                Or<(Added<Children>, Changed<PlaceState>)>,
                 Without<UnconfirmedObject>,
             ),
         >,
@@ -233,10 +229,10 @@ impl PlacingObjectPlugin {
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
         if let Ok((placing_entity, state)) = placing_objects.get_single() {
-            let color = if state.collides || !state.allowed_place {
-                Color::RED
-            } else {
+            let color = if state.placeable() {
                 Color::WHITE
+            } else {
+                Color::RED
             };
 
             let mut iter =
@@ -265,20 +261,14 @@ impl PlacingObjectPlugin {
         mut buy_events: EventWriter<ObjectBuy>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<
-            (
-                Entity,
-                &Position,
-                &Rotation,
-                &PlacingObject,
-                &PlacingObjectState,
-            ),
+            (Entity, &Position, &Rotation, &PlacingObject, &PlaceState),
             Without<UnconfirmedObject>,
         >,
     ) {
         if let Ok((entity, position, rotation, &placing_object, state)) =
             placing_objects.get_single()
         {
-            if !state.collides && state.allowed_place {
+            if state.placeable() {
                 commands.entity(entity).insert(UnconfirmedObject);
 
                 match placing_object {
@@ -345,13 +335,22 @@ impl PlacingObjectPlugin {
     }
 }
 
+/// Marks an entity as an object that should be moved with cursor to preview spawn position.
+#[derive(Component, Debug, Clone, Copy)]
+pub(crate) enum PlacingObject {
+    Spawning(AssetId<ObjectMetadata>),
+    Moving(Entity),
+}
+
+/// Additional components that needed for [`PlacingObject`].
 #[derive(Bundle)]
 struct PlacingInitBundle {
     object_path: ObjectPath,
     cursor_offset: CursorOffset,
     position: Position,
     rotation: Rotation,
-    state: PlacingObjectState,
+    state: PlaceState,
+    snapped: RotationLimit,
 }
 
 impl PlacingInitBundle {
@@ -362,6 +361,7 @@ impl PlacingInitBundle {
             position: Default::default(),
             rotation: Rotation(Quat::from_rotation_y(angle)),
             state: Default::default(),
+            snapped: Default::default(),
         }
     }
 
@@ -376,38 +376,48 @@ impl PlacingInitBundle {
             cursor_offset,
             position,
             rotation,
-            state: PlacingObjectState::default(),
+            state: PlaceState::default(),
+            snapped: Default::default(),
         }
     }
-}
-
-/// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Component, Debug, Clone, Copy)]
-pub(crate) enum PlacingObject {
-    Spawning(AssetId<ObjectMetadata>),
-    Moving(Entity),
 }
 
 /// Contains an offset between cursor position on first creation and object origin.
 #[derive(Clone, Component, Copy, Default, Deref)]
 struct CursorOffset(Vec3);
 
+/// Controls if an object can be placed.
+///
+/// Stored as a separate component to avoid triggering change detection to update the object material.
 #[derive(Component)]
-struct PlacingObjectState {
-    allowed_place: bool,
+struct PlaceState {
+    /// Can be placed without colliding with any other entities.
     collides: bool,
-    snapped: bool,
+
+    /// Additional object condition for placing.
+    ///
+    /// For example, a door can be placed only on a wall. Controlled by other plugins.
+    allowed_place: bool,
 }
 
-impl Default for PlacingObjectState {
+impl PlaceState {
+    fn placeable(&self) -> bool {
+        !self.collides && self.allowed_place
+    }
+}
+
+impl Default for PlaceState {
     fn default() -> Self {
         Self {
             allowed_place: true,
             collides: false,
-            snapped: false,
         }
     }
 }
+
+/// Limits object rotation to the specified angle if set.
+#[derive(Component, Default, Deref)]
+struct RotationLimit(Option<f32>);
 
 #[derive(Component)]
 struct UnconfirmedObject;

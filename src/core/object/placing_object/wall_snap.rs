@@ -1,7 +1,9 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{PlacingObjectPlugin, PlacingObjectState};
+use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
 use crate::core::{
     city::CityMode,
     family::FamilyMode,
@@ -35,9 +37,7 @@ impl Plugin for WallSnapPlugin {
 }
 
 impl WallSnapPlugin {
-    fn init_placing(
-        mut placing_objects: Query<(&mut PlacingObjectState, &WallSnap), Added<WallSnap>>,
-    ) {
+    fn init_placing(mut placing_objects: Query<(&mut PlaceState, &WallSnap), Added<WallSnap>>) {
         if let Ok((mut placing_object, snap)) = placing_objects.get_single_mut() {
             if snap.required() {
                 placing_object.allowed_place = false;
@@ -50,11 +50,13 @@ impl WallSnapPlugin {
         mut placing_objects: Query<(
             &mut Position,
             &mut Rotation,
-            &mut PlacingObjectState,
+            &mut PlaceState,
+            &mut RotationLimit,
             &WallSnap,
         )>,
     ) {
-        let Ok((mut position, mut rotation, mut state, snap)) = placing_objects.get_single_mut()
+        let Ok((mut position, mut rotation, mut state, mut limit, snap)) =
+            placing_objects.get_single_mut()
         else {
             return;
         };
@@ -77,16 +79,16 @@ impl WallSnapPlugin {
             let angle = disp.angle_between(Vec2::X * sign);
             position.x = snap_point.x;
             position.z = snap_point.y;
-            if !state.snapped {
+            if limit.is_none() {
                 // Apply rotation only for newly snapped objects.
                 **rotation = Quat::from_rotation_y(angle);
-                state.snapped = true;
+                limit.0 = Some(PI);
                 if snap.required() {
                     state.allowed_place = true;
                 }
             }
-        } else if state.snapped {
-            state.snapped = false;
+        } else if limit.is_some() {
+            limit.0 = None;
             if snap.required() {
                 state.allowed_place = false;
             }
@@ -94,11 +96,20 @@ impl WallSnapPlugin {
     }
 }
 
+/// Enables attaching objects to walls.
 #[derive(Component, Reflect, Clone, Copy)]
 #[reflect(Component, ObjectComponent)]
 pub(crate) enum WallSnap {
+    /// Place inside a wall, like a door or a window.
+    ///
+    /// Object will be required to placed inside.
     Inside,
-    Outside { required: bool },
+
+    /// Attach to a wall, like painting.
+    Outside {
+        /// Requires an object to be placed on a wall.
+        required: bool,
+    },
 }
 
 impl WallSnap {
