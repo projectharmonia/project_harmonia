@@ -5,7 +5,7 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{prelude::*, scene};
+use bevy::{asset::AssetPath, prelude::*, scene};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -143,13 +143,12 @@ impl PlacingObjectPlugin {
                 let (y, ..) = rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
 
-                commands.entity(placing_entity).insert((
-                    ObjectPath(metadata_path.into_owned()),
-                    CursorOffset::default(),
-                    Position::default(),
-                    Rotation(Quat::from_rotation_y(rounded_angle)),
-                    PlacingObjectState::default(),
-                ));
+                commands
+                    .entity(placing_entity)
+                    .insert(PlacingInitBundle::spawning(
+                        metadata_path.into_owned(),
+                        rounded_angle,
+                    ));
             }
             PlacingObject::Moving(object_entity) => {
                 let (&position, &rotation, object_path) = objects
@@ -161,13 +160,14 @@ impl PlacingObjectPlugin {
                     .map(|point| *position - point)
                     .unwrap_or(*position);
 
-                commands.entity(placing_entity).insert((
-                    object_path.clone(),
-                    CursorOffset(offset),
-                    position,
-                    rotation,
-                    PlacingObjectState::default(),
-                ));
+                commands
+                    .entity(placing_entity)
+                    .insert(PlacingInitBundle::moving(
+                        object_path.clone(),
+                        CursorOffset(offset),
+                        position,
+                        rotation,
+                    ));
             }
         }
 
@@ -341,6 +341,42 @@ impl PlacingObjectPlugin {
                     commands.entity(placing_entity).despawn_recursive();
                 }
             }
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct PlacingInitBundle {
+    object_path: ObjectPath,
+    cursor_offset: CursorOffset,
+    position: Position,
+    rotation: Rotation,
+    state: PlacingObjectState,
+}
+
+impl PlacingInitBundle {
+    fn spawning(metadata_path: AssetPath<'static>, angle: f32) -> Self {
+        Self {
+            object_path: ObjectPath(metadata_path.into_owned()),
+            cursor_offset: Default::default(),
+            position: Default::default(),
+            rotation: Rotation(Quat::from_rotation_y(angle)),
+            state: Default::default(),
+        }
+    }
+
+    fn moving(
+        object_path: ObjectPath,
+        cursor_offset: CursorOffset,
+        position: Position,
+        rotation: Rotation,
+    ) -> Self {
+        Self {
+            object_path,
+            cursor_offset,
+            position,
+            rotation,
+            state: PlacingObjectState::default(),
         }
     }
 }
