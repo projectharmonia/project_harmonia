@@ -26,9 +26,5 @@ components = [
     ],
   ], hole = false } },
 ]
-place_components = [
-  { WallSnap = "Inside" },
-]
-spawn_components = [
-  { Door = { half_width = 0.4, trigger_distance = 2.5 } },
-]
+place_components = [{ WallSnap = "Inside" }]
+spawn_components = [{ Door = { half_width = 0.4, trigger_distance = 2.5 } }]
