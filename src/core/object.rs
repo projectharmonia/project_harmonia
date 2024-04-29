@@ -84,7 +84,7 @@ impl ObjectPlugin {
                 scene_handle,
                 Name::new(metadata.general.name.clone()),
                 CursorHoverable,
-                RigidBody::Static,
+                RigidBody::Kinematic,
                 OutlineBundle::highlighting(),
                 SpatialBundle::default(),
                 CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
