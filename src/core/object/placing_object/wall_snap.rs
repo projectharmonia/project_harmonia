@@ -8,7 +8,6 @@ use crate::core::{
     city::CityMode,
     family::FamilyMode,
     game_state::GameState,
-    object::{ObjectComponent, ReflectObjectComponent},
     wall::{wall_mesh::HALF_WIDTH, Wall},
 };
 
@@ -98,7 +97,7 @@ impl WallSnapPlugin {
 
 /// Enables attaching objects to walls.
 #[derive(Component, Reflect, Clone, Copy)]
-#[reflect(Component, ObjectComponent)]
+#[reflect(Component)]
 pub(crate) enum WallSnap {
     /// Place inside a wall, like a door or a window.
     ///
@@ -118,15 +117,5 @@ impl WallSnap {
             WallSnap::Inside => true,
             WallSnap::Outside { required } => required,
         }
-    }
-}
-
-impl ObjectComponent for WallSnap {
-    fn insert_on_spawning(&self) -> bool {
-        false
-    }
-
-    fn insert_on_placing(&self) -> bool {
-        true
     }
 }

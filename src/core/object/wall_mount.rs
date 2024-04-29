@@ -1,7 +1,6 @@
 use bevy::{prelude::*, transform::TransformSystem};
 use bevy_xpbd_3d::prelude::*;
 
-use super::{ObjectComponent, ReflectObjectComponent};
 use crate::core::{
     game_world::GameWorld,
     object::placing_object::PlacingObject,
@@ -136,7 +135,7 @@ impl WallMountPlugin {
 
 /// A component that marks that entity can be placed only on walls or inside them.
 #[derive(Component, Reflect)]
-#[reflect(Component, ObjectComponent)]
+#[reflect(Component)]
 pub(crate) struct WallMount {
     /// Points for an aperture in the wall.
     ///
@@ -146,16 +145,6 @@ pub(crate) struct WallMount {
 
     /// Should be set to `true` if the object creates a hole (such as a window).
     hole: bool,
-}
-
-impl ObjectComponent for WallMount {
-    fn insert_on_spawning(&self) -> bool {
-        true
-    }
-
-    fn insert_on_placing(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Component, Default)]

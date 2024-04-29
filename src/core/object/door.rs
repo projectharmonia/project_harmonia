@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 
-use super::{ObjectComponent, ObjectPath, ReflectObjectComponent};
+use super::ObjectPath;
 use crate::core::{
     actor::Actor, asset::metadata, game_world::GameWorld, math::segment::Segment,
     navigation::NavPath,
@@ -127,7 +127,7 @@ impl DoorPlugin {
 ///
 /// Will trigger open animation when an actor passes through.
 #[derive(Component, Reflect, Default)]
-#[reflect(Component, ObjectComponent)]
+#[reflect(Component)]
 pub(crate) struct Door {
     half_width: f32,
     /// Distance on which animation will be triggered.
@@ -135,16 +135,6 @@ pub(crate) struct Door {
     /// Triggered only be actors that going to pass through.
     /// See also [`DoorState`]
     trigger_distance: f32,
-}
-
-impl ObjectComponent for Door {
-    fn insert_on_spawning(&self) -> bool {
-        true
-    }
-
-    fn insert_on_placing(&self) -> bool {
-        false
-    }
 }
 
 /// Stores calculated information about the door.

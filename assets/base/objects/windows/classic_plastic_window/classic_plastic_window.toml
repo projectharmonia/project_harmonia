@@ -7,7 +7,6 @@ preview_translation = [0.0, -1.50, -2.9]
 [object]
 category = "Windows"
 components = [
-  { WallSnap = "Inside" },
   { WallMount = { cutout = [
     [
       -0.7,
@@ -26,4 +25,7 @@ components = [
       2.33,
     ],
   ], hole = true } },
+]
+place_components = [
+  { WallSnap = "Inside" },
 ]

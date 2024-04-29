@@ -14,13 +14,14 @@ use serde::{
 use strum::{Display, IntoStaticStr, VariantNames};
 
 use super::{GeneralMetadata, Metadata};
-use crate::core::object::{ObjectComponent, ReflectObjectComponent};
 
 #[derive(TypePath, Asset)]
 pub(crate) struct ObjectMetadata {
     pub(crate) general: GeneralMetadata,
     pub(crate) category: ObjectCategory,
-    pub(crate) components: Vec<Box<dyn ObjectComponent>>,
+    pub(crate) components: Vec<Box<dyn Reflect>>,
+    pub(crate) place_components: Vec<Box<dyn Reflect>>,
+    pub(crate) spawn_components: Vec<Box<dyn Reflect>>,
 }
 
 impl Metadata for ObjectMetadata {
@@ -41,6 +42,8 @@ impl Metadata for ObjectMetadata {
 enum ObjectMetadataField {
     Category,
     Components,
+    PlaceComponents,
+    SpawnComponents,
 }
 
 #[derive(Clone, Component, Copy, Deserialize, Display, PartialEq)]
@@ -112,6 +115,8 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
     fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
         let mut category = None;
         let mut components = None;
+        let mut place_components = None;
+        let mut spawn_components = None;
         while let Some(key) = map.next_key()? {
             match key {
                 ObjectMetadataField::Category => {
@@ -131,18 +136,39 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
                     components =
                         Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
                 }
+                ObjectMetadataField::PlaceComponents => {
+                    if place_components.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::PlaceComponents.into(),
+                        ));
+                    }
+                    place_components =
+                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
+                }
+                ObjectMetadataField::SpawnComponents => {
+                    if spawn_components.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::SpawnComponents.into(),
+                        ));
+                    }
+                    spawn_components =
+                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
+                }
             }
         }
 
         let category = category
             .ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Category.into()))?;
-        let components = components
-            .ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Components.into()))?;
+        let components = components.unwrap_or_default();
+        let place_components = place_components.unwrap_or_default();
+        let spawn_components = spawn_components.unwrap_or_default();
 
         Ok(ObjectMetadata {
             general: self.general,
             category,
             components,
+            place_components,
+            spawn_components,
         })
     }
 }
@@ -158,7 +184,7 @@ impl<'a> ComponentsDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn ObjectComponent>>;
+    type Value = Vec<Box<dyn Reflect>>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_seq(self)
@@ -166,7 +192,7 @@ impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn ObjectComponent>>;
+    type Value = Vec<Box<dyn Reflect>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -196,7 +222,7 @@ impl<'a> ShortReflectDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn ObjectComponent>;
+    type Value = Box<dyn Reflect>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_map(self)
@@ -204,7 +230,7 @@ impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn ObjectComponent>;
+    type Value = Box<dyn Reflect>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -218,24 +244,10 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .registry
             .get_with_short_type_path(&type_path)
             .ok_or_else(|| de::Error::custom(format!("{type_path} is not registered")))?;
-        let mut reflect =
+        let reflect =
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
 
-        let rfr = registration.data::<ReflectFromReflect>().ok_or_else(|| {
-            de::Error::custom(format!("{type_path} doesn't implement FromReflect"))
-        })?;
-        reflect = rfr.from_reflect(&*reflect).ok_or_else(|| {
-            de::Error::custom(format!("{type_path} can't be converted into actual type"))
-        })?;
-
-        let reflect_object = registration
-            .data::<ReflectObjectComponent>()
-            .ok_or_else(|| de::Error::custom(format!("{type_path} doesn't have reflect(Task)")))?;
-        let object_component = reflect_object
-            .get_boxed(reflect)
-            .map_err(|_| de::Error::custom(format!("{type_path} is not an ObjectComponent")))?;
-
-        Ok(object_component)
+        Ok(reflect)
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -247,21 +259,7 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .data::<ReflectDefault>()
             .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Default)")))?;
 
-        let rfr = registration
-            .data::<ReflectFromReflect>()
-            .ok_or_else(|| de::Error::custom(format!("{v} doesn't implement FromReflect")))?;
-        let reflect = rfr
-            .from_reflect(&*reflect_default.default())
-            .ok_or_else(|| de::Error::custom(format!("{v} can't be converted into actual type")))?;
-
-        let reflect_object = registration
-            .data::<ReflectObjectComponent>()
-            .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Task)")))?;
-        let object_component = reflect_object
-            .get_boxed(reflect)
-            .map_err(|_| de::Error::custom(format!("{v} is not an ObjectComponent")))?;
-
-        Ok(object_component)
+        Ok(reflect_default.default())
     }
 }
 

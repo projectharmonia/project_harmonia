@@ -91,9 +91,14 @@ impl ObjectPlugin {
             ));
 
             for component in &metadata.components {
-                if placing_object && component.insert_on_placing()
-                    || !placing_object && component.insert_on_spawning()
-                {
+                entity.insert_reflect(component.clone_value());
+            }
+            if placing_object {
+                for component in &metadata.place_components {
+                    entity.insert_reflect(component.clone_value());
+                }
+            } else {
+                for component in &metadata.spawn_components {
                     entity.insert_reflect(component.clone_value());
                 }
             }
@@ -244,17 +249,6 @@ impl ObjectBundle {
 #[derive(Clone, Component, Debug, Default, Event, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(AssetPath<'static>);
-
-#[reflect_trait]
-pub(crate) trait ObjectComponent: Reflect {
-    /// Returns `true` if component should be inserted on spawning.
-    fn insert_on_spawning(&self) -> bool;
-
-    /// Returns `true` if component should be inserted on placing.
-    ///
-    /// Can be used to avoid triggering systems that rely on this component when placing.
-    fn insert_on_placing(&self) -> bool;
-}
 
 #[derive(Clone, Deserialize, Event, Serialize)]
 struct ObjectBuy {
