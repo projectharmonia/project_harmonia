@@ -23,7 +23,7 @@ bevy_replicon_renet = { version = "0.2", default-features = false, features = [
 ] }
 bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
 bevy_mod_outline = "0.7"
-bevy_simple_text_input = "0.6"
+bevy_simple_text_input = "0.7"
 oxidized_navigation = { git = "https://github.com/TheGrimsey/oxidized_navigation", features = [
   "xpbd",
   "debug_draw",
