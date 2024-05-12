@@ -172,6 +172,7 @@ pub(crate) struct Actor;
 
 #[reflect_trait]
 pub(crate) trait ActorBundle: Reflect {
+    #[allow(dead_code)]
     fn glyph(&self) -> &'static str;
 }
 
