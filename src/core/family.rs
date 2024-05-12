@@ -16,7 +16,7 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_replicon::{
-    client::client_mapper::ServerEntityMap,
+    client::server_entity_map::ServerEntityMap,
     network_event::{
         client_event::ClientEventChannel, server_event::ServerEventChannel, EventMapper,
     },
@@ -136,7 +136,7 @@ impl FamilyPlugin {
                             Rotation::default(),
                             NavigationBundle::default(),
                             Actor,
-                            Replication,
+                            Replicated,
                         ))
                         .insert_reflect_bundle(actor.into_reflect());
                 });
@@ -319,7 +319,7 @@ impl BuildingMode {
 struct FamilyBundle {
     family: Family,
     budget: Budget,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl FamilyBundle {
@@ -327,7 +327,7 @@ impl FamilyBundle {
         Self {
             family: Family { name },
             budget,
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

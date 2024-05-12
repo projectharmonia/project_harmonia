@@ -73,9 +73,9 @@ impl GameWorldPlugin {
             .deserialize(&mut deserializer)
             .with_context(|| format!("unable to deserialize {world_path:?}"))?;
 
-        // All saved entities should have `Replication` component.
+        // All saved entities should have `Replicated` component.
         for entity in &mut scene.entities {
-            entity.components.push(Replication.clone_value());
+            entity.components.push(Replicated.clone_value());
         }
 
         scene_spawner.spawn_dynamic(scenes.add(scene));

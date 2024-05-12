@@ -135,7 +135,7 @@ impl LotTool {
 struct LotBundle {
     vertices: LotVertices,
     parent_sync: ParentSync,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl LotBundle {
@@ -143,7 +143,7 @@ impl LotBundle {
         Self {
             vertices: LotVertices(polygon),
             parent_sync: Default::default(),
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

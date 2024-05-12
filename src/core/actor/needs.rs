@@ -111,7 +111,7 @@ pub(crate) struct NeedBundle<T: Component> {
     need: Need,
     marker: T,
     parent_sync: ParentSync,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl<T: Component + Default> Default for NeedBundle<T> {
@@ -120,7 +120,7 @@ impl<T: Component + Default> Default for NeedBundle<T> {
             need: Default::default(),
             marker: T::default(),
             parent_sync: Default::default(),
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

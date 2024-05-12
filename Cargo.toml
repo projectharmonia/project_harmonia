@@ -17,8 +17,8 @@ bevy = { version = "0.13.2", default-features = false, features = [
   "x11",
 ] }
 bevy_atmosphere = "0.9"
-bevy_replicon = "0.24"
-bevy_replicon_renet = { version = "0.1", default-features = false, features = [
+bevy_replicon = "0.25"
+bevy_replicon_renet = { version = "0.2", default-features = false, features = [
   "renet_transport",
 ] }
 bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
@@ -46,6 +46,3 @@ walkdir = "2.5"
 itertools = "0.12"
 bitflags = "2.5"
 futures-lite = "2.3"
-
-[patch.crates-io]
-bevy_replicon = { git = "https://github.com/lifescapegame/bevy_replicon" }

@@ -15,7 +15,7 @@ use bevy::{
     },
 };
 use bevy_replicon::{
-    client::client_mapper::ServerEntityMap,
+    client::server_entity_map::ServerEntityMap,
     network_event::{
         client_event::ClientEventChannel, server_event::ServerEventChannel, EventMapper,
     },
@@ -249,7 +249,7 @@ struct TaskBundle {
     groups: TaskGroups,
     state: TaskState,
     parent_sync: ParentSync,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl TaskBundle {
@@ -258,7 +258,7 @@ impl TaskBundle {
             groups: task.groups(),
             state: Default::default(),
             parent_sync: Default::default(),
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

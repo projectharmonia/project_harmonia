@@ -265,7 +265,7 @@ impl FromWorld for WallMaterial {
 struct WallBundle {
     wall: Wall,
     parent_sync: ParentSync,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl WallBundle {
@@ -273,7 +273,7 @@ impl WallBundle {
         Self {
             wall,
             parent_sync: Default::default(),
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

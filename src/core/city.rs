@@ -198,14 +198,14 @@ impl CityMode {
 #[derive(Bundle, Default)]
 pub(crate) struct CityBundle {
     city: City,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl CityBundle {
     pub(crate) fn new(name: String) -> Self {
         Self {
             city: City { name },
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }

@@ -230,7 +230,7 @@ struct ObjectBundle {
     position: Position,
     rotation: Rotation,
     parent_sync: ParentSync,
-    replication: Replication,
+    replication: Replicated,
 }
 
 impl ObjectBundle {
@@ -240,7 +240,7 @@ impl ObjectBundle {
             position: Position(translation),
             rotation: Rotation(rotation),
             parent_sync: Default::default(),
-            replication: Replication,
+            replication: Replicated,
         }
     }
 }
