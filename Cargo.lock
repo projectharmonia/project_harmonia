@@ -1173,7 +1173,7 @@ dependencies = [
  "derive_more",
  "fxhash",
  "indexmap",
- "itertools",
+ "itertools 0.12.1",
  "nalgebra",
  "parry3d",
  "parry3d-f64",
@@ -2413,6 +2413,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2509,7 +2518,7 @@ checksum = "9db0144055fecb12ae4449613236bed4fc566accfd7248ed38c3107c7a3c4f29"
 dependencies = [
  "bevy",
  "derive_more",
- "itertools",
+ "itertools 0.12.1",
  "leafwing_input_manager_macros",
  "serde",
 ]
@@ -3268,7 +3277,7 @@ dependencies = [
  "clap",
  "earcut",
  "futures-lite",
- "itertools",
+ "itertools 0.13.0",
  "leafwing-input-manager",
  "num_enum",
  "oxidized_navigation",
