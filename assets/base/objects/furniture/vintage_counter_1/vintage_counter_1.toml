@@ -6,4 +6,4 @@ preview_translation = [0.0, -0.40, -1.5]
 
 [object]
 category = "Furniture"
-components = []
+components = [{ SideSnap = { half_width = 0.4 } }]

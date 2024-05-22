@@ -1,3 +1,4 @@
+pub(crate) mod side_snap;
 pub(crate) mod wall_snap;
 
 use std::{
@@ -20,6 +21,7 @@ use crate::core::{
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
 };
+use side_snap::SideSnapPlugin;
 use wall_snap::WallSnapPlugin;
 
 pub(super) struct PlacingObjectPlugin;
@@ -27,6 +29,7 @@ pub(super) struct PlacingObjectPlugin;
 impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
+            .add_plugins(SideSnapPlugin)
             .add_systems(OnExit(CityMode::Objects), Self::end_placing)
             .add_systems(OnExit(FamilyMode::Building), Self::end_placing)
             .add_systems(

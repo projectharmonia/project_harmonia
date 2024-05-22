@@ -42,6 +42,10 @@ fn main() {
             color: Color::ANTIQUE_WHITE,
             brightness: 1000.0,
         })
+        // TODO: workaround to place objects close together, remove after the next release.
+        .insert_resource(NarrowPhaseConfig {
+            prediction_distance: 0.0,
+        })
         .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
