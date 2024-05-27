@@ -2,28 +2,21 @@ pub(crate) mod editor;
 
 use std::io::Cursor;
 
-use anyhow::{anyhow, Context, Result};
 use bevy::{
     ecs::{
         entity::{EntityMapper, MapEntities},
         reflect::ReflectMapEntities,
     },
     prelude::*,
-    reflect::{
-        serde::{ReflectSerializer, UntypedReflectDeserializer},
-        TypeRegistry,
-    },
+    reflect::serde::{ReflectSerializer, UntypedReflectDeserializer},
     utils::HashMap,
 };
 use bevy_replicon::{
-    client::server_entity_map::ServerEntityMap,
-    network_event::{
-        client_event::ClientEventChannel, server_event::ServerEventChannel, EventMapper,
-    },
+    core::ctx::{ClientSendCtx, ServerReceiveCtx},
     prelude::*,
 };
 use bevy_xpbd_3d::prelude::*;
-use bincode::{DefaultOptions, Options};
+use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -49,10 +42,10 @@ impl Plugin for FamilyPlugin {
             .replicate::<ActorFamily>()
             .replicate::<Family>()
             .replicate::<Budget>()
-            .add_client_event_with::<FamilyCreate, _, _>(
+            .add_client_event_with(
                 ChannelKind::Unordered,
-                Self::send_spawns,
-                Self::receive_spawns,
+                serialize_family_spawn,
+                deserialize_family_spawn,
             )
             .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
             .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
@@ -186,87 +179,55 @@ impl FamilyPlugin {
             commands.entity(entity).despawn();
         }
     }
-
-    fn send_spawns(
-        mut spawn_events: EventReader<FamilyCreate>,
-        mut client: ResMut<RepliconClient>,
-        channel: Res<ClientEventChannel<FamilyCreate>>,
-        registry: Res<AppTypeRegistry>,
-    ) {
-        let registry = registry.read();
-        for event in spawn_events.read() {
-            let message = serialize_family_spawn(event, &registry)
-                .expect("client event should be serializable");
-
-            client.send(*channel, message);
-        }
-    }
-
-    fn receive_spawns(
-        mut spawn_events: EventWriter<FromClient<FamilyCreate>>,
-        mut server: ResMut<RepliconServer>,
-        channel: Res<ServerEventChannel<FamilyCreate>>,
-        registry: Res<AppTypeRegistry>,
-        entity_map: Res<ServerEntityMap>,
-    ) {
-        let registry = registry.read();
-        for (client_id, message) in server.receive(*channel) {
-            match deserialize_family_spawn(&message, &registry) {
-                Ok(mut event) => {
-                    event.map_entities(&mut EventMapper(entity_map.to_server()));
-                    spawn_events.send(FromClient { client_id, event });
-                }
-                Err(e) => {
-                    error!("unable to deserialize event from client {client_id:?}: {e}")
-                }
-            }
-        }
-    }
 }
 
 fn serialize_family_spawn(
+    ctx: &mut ClientSendCtx,
     event: &FamilyCreate,
-    registry: &TypeRegistry,
-) -> bincode::Result<Vec<u8>> {
-    let mut message = Vec::new();
-    DefaultOptions::new().serialize_into(&mut message, &event.city_entity)?;
-    DefaultOptions::new().serialize_into(&mut message, &event.scene.name)?;
-    DefaultOptions::new().serialize_into(&mut message, &event.scene.budget)?;
-    DefaultOptions::new().serialize_into(&mut message, &event.scene.actors.len())?;
+    cursor: &mut Cursor<Vec<u8>>,
+) -> bincode::Result<()> {
+    DefaultOptions::new().serialize_into(&mut *cursor, &event.city_entity)?;
+    DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.name)?;
+    DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.budget)?;
+    DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.actors.len())?;
     for actor in &event.scene.actors {
-        let serializer = ReflectSerializer::new(actor.as_reflect(), registry);
-        DefaultOptions::new().serialize_into(&mut message, &serializer)?;
+        let serializer = ReflectSerializer::new(actor.as_reflect(), ctx.registry);
+        DefaultOptions::new().serialize_into(&mut *cursor, &serializer)?;
     }
-    DefaultOptions::new().serialize_into(&mut message, &event.select)?;
+    DefaultOptions::new().serialize_into(cursor, &event.select)?;
 
-    Ok(message)
+    Ok(())
 }
 
-fn deserialize_family_spawn(message: &[u8], registry: &TypeRegistry) -> Result<FamilyCreate> {
-    let mut cursor = Cursor::new(message);
-    let city_entity = DefaultOptions::new().deserialize_from(&mut cursor)?;
-    let name = DefaultOptions::new().deserialize_from(&mut cursor)?;
-    let budget = DefaultOptions::new().deserialize_from(&mut cursor)?;
-    let actors_count = DefaultOptions::new().deserialize_from(&mut cursor)?;
+fn deserialize_family_spawn(
+    ctx: &mut ServerReceiveCtx,
+    cursor: &mut Cursor<&[u8]>,
+) -> bincode::Result<FamilyCreate> {
+    let city_entity = DefaultOptions::new().deserialize_from(&mut *cursor)?;
+    let name = DefaultOptions::new().deserialize_from(&mut *cursor)?;
+    let budget = DefaultOptions::new().deserialize_from(&mut *cursor)?;
+    let actors_count = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let mut actors = Vec::with_capacity(actors_count);
     for _ in 0..actors_count {
         let mut deserializer =
-            bincode::Deserializer::with_reader(&mut cursor, DefaultOptions::new());
-        let reflect = UntypedReflectDeserializer::new(registry).deserialize(&mut deserializer)?;
+            bincode::Deserializer::with_reader(&mut *cursor, DefaultOptions::new());
+        let reflect =
+            UntypedReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
         let type_info = reflect.get_represented_type_info().unwrap();
         let type_path = type_info.type_path();
-        let registration = registry
+        let registration = ctx
+            .registry
             .get(type_info.type_id())
-            .with_context(|| format!("{type_path} is not registered"))?;
-        let reflect_actor = registration
-            .data::<ReflectActorBundle>()
-            .with_context(|| format!("{type_path} doesn't have reflect(ActorBundle)"))?;
+            .ok_or_else(|| ErrorKind::Custom(format!("{type_path} is not registered")))?;
+        let reflect_actor = registration.data::<ReflectActorBundle>().ok_or_else(|| {
+            ErrorKind::Custom(format!("{type_path} doesn't have reflect(ActorBundle)"))
+        })?;
         let actor = reflect_actor
             .get_boxed(reflect)
-            .map_err(|_| anyhow!("{type_path} is not an ActorBundle"))?;
+            .map_err(|_| ErrorKind::Custom(format!("{type_path} is not an ActorBundle")))?;
         actors.push(actor);
     }
-    let select = DefaultOptions::new().deserialize_from(&mut cursor)?;
+    let select = DefaultOptions::new().deserialize_from(cursor)?;
 
     Ok(FamilyCreate {
         city_entity,
