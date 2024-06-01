@@ -1,0 +1,9 @@
+(
+    general: (
+        name: "Vintage table",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -0.40, -1.5),
+    ),
+    category: Furniture,
+)

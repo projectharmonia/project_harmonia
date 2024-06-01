@@ -1,0 +1,23 @@
+(
+    general: (
+        name: "Classic door",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -1.50, -2.9),
+    ),
+    category: Windows,
+    components: [
+        { 
+          "WallMount": (
+            cutout: [
+                (x: -0.7, y: 0.830196),
+                (x: 0.7, y: 0.830196),
+                (x: 0.7, y: 2.33),
+                (x: -0.7, y: 2.33)
+            ],
+            hole: true,
+          ),
+        },
+    ],
+    place_components: [{ "WallSnap": Inside }],
+)

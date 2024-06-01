@@ -30,8 +30,8 @@ impl Metadata for ObjectMetadata {
     const SECTION: &'static str = "object";
     const DIR: &'static str = "objects";
 
-    fn deserializer(registry: &TypeRegistry, general: GeneralMetadata) -> Self::Deserializer<'_> {
-        ObjectMetadataDeserializer { registry, general }
+    fn deserializer(registry: &TypeRegistry) -> Self::Deserializer<'_> {
+        ObjectMetadataDeserializer { registry }
     }
 }
 
@@ -40,6 +40,7 @@ impl Metadata for ObjectMetadata {
 #[strum(serialize_all = "snake_case")]
 #[serde(field_identifier, rename_all = "snake_case")]
 enum ObjectMetadataField {
+    General,
     Category,
     Components,
     PlaceComponents,
@@ -50,7 +51,6 @@ enum ObjectMetadataField {
 pub(crate) enum ObjectCategory {
     Rocks,
     Foliage,
-    #[serde(rename = "Outdoor furniture")]
     OutdoorFurniture,
     Electronics,
     Furniture,
@@ -90,7 +90,6 @@ impl ObjectCategory {
 
 pub(super) struct ObjectMetadataDeserializer<'a> {
     registry: &'a TypeRegistry,
-    general: GeneralMetadata,
 }
 
 impl<'de> DeserializeSeed<'de> for ObjectMetadataDeserializer<'_> {
@@ -113,12 +112,21 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
     }
 
     fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
+        let mut general = None;
         let mut category = None;
         let mut components = None;
         let mut place_components = None;
         let mut spawn_components = None;
         while let Some(key) = map.next_key()? {
             match key {
+                ObjectMetadataField::General => {
+                    if general.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::General.into(),
+                        ));
+                    }
+                    general = Some(map.next_value()?);
+                }
                 ObjectMetadataField::Category => {
                     if category.is_some() {
                         return Err(de::Error::duplicate_field(
@@ -157,6 +165,8 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
             }
         }
 
+        let general =
+            general.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::General.into()))?;
         let category = category
             .ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Category.into()))?;
         let components = components.unwrap_or_default();
@@ -164,7 +174,7 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         let spawn_components = spawn_components.unwrap_or_default();
 
         Ok(ObjectMetadata {
-            general: self.general,
+            general,
             category,
             components,
             place_components,
@@ -272,7 +282,7 @@ mod tests {
 
     use super::*;
     use crate::core::{
-        asset::metadata::{MetadataDeserializer, METADATA_EXTENSION},
+        asset::metadata::METADATA_EXTENSION,
         object::{
             door::Door,
             placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
@@ -298,9 +308,8 @@ mod tests {
             if let Some(extension) = entry.path().extension() {
                 if extension == METADATA_EXTENSION {
                     let data = fs::read_to_string(entry.path())?;
-                    let deserializer = toml::Deserializer::new(&data);
-                    MetadataDeserializer::<ObjectMetadata>::new(&type_registry)
-                        .deserialize(deserializer)?;
+                    ron::Options::default()
+                        .from_str_seed(&data, ObjectMetadata::deserializer(&type_registry))?;
                 }
             }
         }

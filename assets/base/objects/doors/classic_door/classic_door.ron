@@ -1,0 +1,24 @@
+(
+    general: (
+        name: "Classic door",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -1.0, -2.9),
+    ),
+    category: Doors,
+    components: [
+        { 
+          "WallMount": (
+            cutout: [
+                (x: -0.4358678, y: 0.0),
+                (x: -0.4358678, y: 2.0339782),
+                (x: 0.4358678, y: 2.0339782),
+                (x: 0.4358678, y: 0.0)
+            ],
+            hole: false,
+          ),
+        },
+    ],
+    place_components: [{ "WallSnap": Inside }],
+    spawn_components: [{ "Door": (half_width: 0.4, trigger_distance: 2.5) }]
+)

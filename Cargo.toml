@@ -39,7 +39,6 @@ strum = { version = "0.26", features = ["derive"] }
 num_enum = "0.7"
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
-toml = "0.8"
 bincode = "1.3"
 ron = "0.8"
 walkdir = "2.5"

@@ -1,13 +1,6 @@
 pub(crate) mod object_metadata;
 
-use std::{
-    any, env,
-    fmt::{self, Formatter},
-    fs,
-    marker::PhantomData,
-    path::Path,
-    str,
-};
+use std::{env, fs, marker::PhantomData, path::Path};
 
 use anyhow::Result;
 use bevy::{
@@ -17,10 +10,7 @@ use bevy::{
     reflect::{TypeRegistry, TypeRegistryArc},
     utils::BoxedFuture,
 };
-use serde::{
-    de::{self, DeserializeSeed, MapAccess, Visitor},
-    Deserialize, Deserializer, Serialize,
-};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use object_metadata::ObjectMetadata;
@@ -63,7 +53,7 @@ impl<T> FromWorld for MetadataLoader<T> {
     }
 }
 
-const METADATA_EXTENSION: &str = "toml";
+const METADATA_EXTENSION: &str = "ron";
 
 impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
     type Asset = T;
@@ -79,10 +69,9 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
         Box::pin(async move {
             let mut data = String::new();
             reader.read_to_string(&mut data).await?;
+            let metadata = ron::Options::default()
+                .from_str_seed(&data, T::deserializer(&self.registry.read()))?;
 
-            let deserializer = toml::Deserializer::new(&data);
-            let metadata =
-                MetadataDeserializer::new(&self.registry.read()).deserialize(deserializer)?;
             Ok(metadata)
         })
     }
@@ -141,7 +130,7 @@ trait Metadata {
     const DIR: &'static str;
 
     /// Creates its own deserializer.
-    fn deserializer(registry: &TypeRegistry, general: GeneralMetadata) -> Self::Deserializer<'_>;
+    fn deserializer(registry: &TypeRegistry) -> Self::Deserializer<'_>;
 }
 
 /// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
@@ -156,62 +145,4 @@ pub(crate) struct GeneralMetadata {
     pub(crate) author: String,
     pub(crate) license: String,
     pub(crate) preview_translation: Vec3,
-}
-
-/// Deserializes metadata in a form of dictionary with two keys: `general` and `T::NAME`.
-///
-/// Deserializes [`GeneralMetadata`] and passes it to the deserializer for `T`.
-/// Manual deserialization is required because metadata could contain reflected components.
-struct MetadataDeserializer<'a, T> {
-    registry: &'a TypeRegistry,
-    marker: PhantomData<T>,
-}
-
-impl<'a, T> MetadataDeserializer<'a, T> {
-    fn new(registry: &'a TypeRegistry) -> Self {
-        Self {
-            registry,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<'de, T: Metadata> DeserializeSeed<'de> for MetadataDeserializer<'_, T> {
-    type Value = T;
-
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_map(self)
-    }
-}
-
-impl<'de, T: Metadata> Visitor<'de> for MetadataDeserializer<'_, T> {
-    type Value = T;
-
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-        formatter.write_str(any::type_name::<Self::Value>())
-    }
-
-    fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
-        let Some(key1): Option<String> = map.next_key()? else {
-            return Err(de::Error::missing_field("general"));
-        };
-
-        if key1 != "general" {
-            return Err(de::Error::custom("'general' field should come first"));
-        }
-
-        let general = map.next_value()?;
-
-        let Some(key2): Option<String> = map.next_key()? else {
-            return Err(de::Error::missing_field(T::SECTION));
-        };
-
-        if key2 != T::SECTION {
-            return Err(de::Error::unknown_field(&key2, &[T::SECTION]));
-        }
-
-        let kind = map.next_value_seed(T::deserializer(self.registry, general))?;
-
-        Ok(kind)
-    }
 }

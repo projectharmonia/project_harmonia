@@ -48,7 +48,7 @@ impl Settings {
     /// Will be initialed with defaults if the file does not exist.
     fn read(file_name: &Path) -> Result<Settings> {
         match fs::read_to_string(file_name) {
-            Ok(content) => toml::from_str::<Settings>(&content)
+            Ok(content) => ron::from_str::<Settings>(&content)
                 .with_context(|| format!("unable to read settings from {file_name:?}")),
             Err(_) => Ok(Settings::default()),
         }
@@ -58,7 +58,8 @@ impl Settings {
     ///
     /// Automatically creates all parent folders.
     fn write(&self, file_name: &Path) -> Result<()> {
-        let content = toml::to_string_pretty(&self).context("unable to serialize settings")?;
+        let content = ron::ser::to_string_pretty(&self, Default::default())
+            .context("unable to serialize settings")?;
 
         let parent_folder = file_name
             .parent()

@@ -62,7 +62,7 @@ impl Default for GamePaths {
 
         let mut settings = config_dir.clone();
         settings.push(env!("CARGO_PKG_NAME"));
-        settings.set_extension("toml");
+        settings.set_extension("ron");
 
         let mut worlds = config_dir;
         worlds.push("worlds");
