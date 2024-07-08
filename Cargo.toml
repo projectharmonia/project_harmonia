@@ -5,7 +5,7 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
-bevy = { version = "0.13.2", default-features = false, features = [
+bevy = { version = "0.14.0", default-features = false, features = [
   "animation",
   "bevy_gltf",
   "bevy_ui",
