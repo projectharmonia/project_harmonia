@@ -12,8 +12,8 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::ui_root::UiRoot;
 use project_harmonia_base::{
-    game_paths::GamePaths,
     core::GameState,
+    game_paths::GamePaths,
     game_world::{GameLoad, GameWorld},
     message::error_message,
     network::{self, DEFAULT_PORT},

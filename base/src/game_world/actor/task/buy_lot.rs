@@ -10,8 +10,8 @@ use crate::game_world::{
     actor::task::{Task, TaskList, TaskListSet, TaskState},
     building::lot::{LotFamily, LotVertices},
     city::Ground,
-    hover::Hovered,
     family::ActorFamily,
+    hover::Hovered,
 };
 
 pub(super) struct BuyLotPlugin;

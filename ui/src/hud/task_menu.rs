@@ -9,8 +9,8 @@ use project_harmonia_base::{
             task::{Task, TaskList, TaskRequest},
             SelectedActor,
         },
-        hover::Hovered,
         family::FamilyMode,
+        hover::Hovered,
     },
     settings::Action,
 };
