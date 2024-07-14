@@ -14,7 +14,7 @@ use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::cursor_hover::{highlighting::OutlineHighlightingExt, CursorHoverable};
+use super::hover::{highlighting::OutlineHighlightingExt, Hoverable};
 use crate::{
     animation_state::AnimationState,
     asset::collection::{AssetCollection, Collection},
@@ -83,7 +83,7 @@ impl ActorPlugin {
                     SpatialBundle::default(),
                     OutlineBundle::highlighting(),
                     RigidBody::Kinematic,
-                    CursorHoverable,
+                    Hoverable,
                 ))
                 .with_children(|parent| {
                     parent.spawn((

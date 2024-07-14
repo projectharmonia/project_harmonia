@@ -9,33 +9,31 @@ use super::player_camera::CameraCaster;
 use crate::core::GameState;
 use highlighting::HighlightingPlugin;
 
-pub(super) struct CursorHoverPlugin;
+pub(super) struct HoverPlugin;
 
-impl Plugin for CursorHoverPlugin {
+impl Plugin for HoverPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(HighlightingPlugin)
-            .init_resource::<CursorHoverSettings>()
+            .init_resource::<HoverEnabled>()
             .add_systems(
                 PreUpdate,
                 (
-                    Self::raycast
-                        .pipe(Self::update)
-                        .run_if(cursor_hover_enabled),
+                    Self::raycast.pipe(Self::update).run_if(hover_enabled),
                     Self::remove_all
-                        .run_if(resource_changed::<CursorHoverSettings>)
-                        .run_if(not(cursor_hover_enabled)),
+                        .run_if(resource_changed::<HoverEnabled>)
+                        .run_if(not(hover_enabled)),
                 )
                     .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
             );
     }
 }
 
-impl CursorHoverPlugin {
+impl HoverPlugin {
     fn raycast(
         spatial_query: SpatialQuery,
         camera_caster: CameraCaster,
         parents: Query<&Parent>,
-        cursor_hoverable: Query<Entity, With<CursorHoverable>>,
+        hoverable: Query<Entity, With<Hoverable>>,
     ) -> Option<(Entity, Vec3)> {
         let ray = camera_caster.ray()?;
         let hit = spatial_query.cast_ray(
@@ -46,7 +44,7 @@ impl CursorHoverPlugin {
             Default::default(),
         )?;
 
-        let hovered_entity = cursor_hoverable
+        let hovered_entity = hoverable
             .iter_many(iter::once(hit.entity).chain(parents.iter_ancestors(hit.entity)))
             .next()?;
         let point = ray.origin + ray.direction * hit.time_of_impact;
@@ -57,49 +55,47 @@ impl CursorHoverPlugin {
     fn update(
         In(hit): In<Option<(Entity, Vec3)>>,
         mut commands: Commands,
-        cursor_hovers: Query<Entity, With<CursorHover>>,
+        hovered: Query<Entity, With<Hovered>>,
     ) {
-        match (hit, cursor_hovers.get_single().ok()) {
+        match (hit, hovered.get_single().ok()) {
             (Some((hit_entity, point)), None) => {
-                commands.entity(hit_entity).insert(CursorHover(point));
+                commands.entity(hit_entity).insert(Hovered(point));
             }
             (None, Some(previous_entity)) => {
-                commands.entity(previous_entity).remove::<CursorHover>();
+                commands.entity(previous_entity).remove::<Hovered>();
             }
             (Some((hit_entity, point)), Some(previous_entity)) => {
-                commands.entity(hit_entity).insert(CursorHover(point));
+                commands.entity(hit_entity).insert(Hovered(point));
                 if hit_entity != previous_entity {
-                    commands.entity(previous_entity).remove::<CursorHover>();
+                    commands.entity(previous_entity).remove::<Hovered>();
                 }
             }
             (None, None) => (),
         }
     }
 
-    fn remove_all(mut commands: Commands, hovered: Query<Entity, With<CursorHover>>) {
+    fn remove_all(mut commands: Commands, hovered: Query<Entity, With<Hovered>>) {
         if let Ok(hovered_entity) = hovered.get_single() {
-            commands.entity(hovered_entity).remove::<CursorHover>();
+            commands.entity(hovered_entity).remove::<Hovered>();
         }
     }
 }
 
-fn cursor_hover_enabled(hover_settings: Res<CursorHoverSettings>) -> bool {
-    hover_settings.enabled
+fn hover_enabled(hover_enabled: Res<HoverEnabled>) -> bool {
+    hover_enabled.0
 }
 
 #[derive(Resource)]
-pub(super) struct CursorHoverSettings {
-    pub(super) enabled: bool,
-}
+pub(super) struct HoverEnabled(pub(super) bool);
 
-impl Default for CursorHoverSettings {
+impl Default for HoverEnabled {
     fn default() -> Self {
-        Self { enabled: true }
+        Self(true)
     }
 }
 
 #[derive(Component)]
-pub(super) struct CursorHoverable;
+pub(super) struct Hoverable;
 
 #[derive(Component, Deref)]
-pub struct CursorHover(pub(crate) Vec3);
+pub struct Hovered(pub(crate) Vec3);

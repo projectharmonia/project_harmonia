@@ -9,7 +9,7 @@ use project_harmonia_base::{
             task::{Task, TaskList, TaskRequest},
             SelectedActor,
         },
-        cursor_hover::CursorHover,
+        hover::Hovered,
         family::FamilyMode,
     },
     settings::Action,
@@ -46,7 +46,7 @@ impl TaskMenuPlugin {
         mut commands: Commands,
         mut list_events: ResMut<Events<TaskList>>,
         theme: Res<Theme>,
-        hovered: Query<&Name, With<CursorHover>>,
+        hovered: Query<&Name, With<Hovered>>,
         windows: Query<&Window, With<PrimaryWindow>>,
         roots: Query<Entity, With<UiRoot>>,
     ) {

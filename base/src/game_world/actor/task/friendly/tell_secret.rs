@@ -15,7 +15,7 @@ use crate::{
             task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
             Actor, ActorAnimation,
         },
-        cursor_hover::CursorHover,
+        hover::Hovered,
     },
     navigation::{following::Following, NavPath, Navigation},
 };
@@ -45,7 +45,7 @@ impl Plugin for TellSecretPlugin {
 impl TellSecretPlugin {
     fn add_to_list(
         mut list_events: EventWriter<TaskList>,
-        mut actors: Query<Entity, (With<Actor>, With<CursorHover>)>,
+        mut actors: Query<Entity, (With<Actor>, With<Hovered>)>,
     ) {
         if let Ok(entity) = actors.get_single_mut() {
             list_events.send(TellSecret(entity).into());

@@ -16,7 +16,7 @@ use crate::{
     core::GameState,
     game_world::{
         city::CityMode,
-        cursor_hover::{CursorHover, CursorHoverSettings},
+        hover::{HoverEnabled, Hovered},
         family::{BuildingMode, FamilyMode},
         object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
         player_camera::CameraCaster,
@@ -113,9 +113,9 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn pick(
         mut commands: Commands,
-        hovered_objects: Query<(Entity, &Parent), (With<ObjectPath>, With<CursorHover>)>,
+        hovered: Query<(Entity, &Parent), (With<ObjectPath>, With<Hovered>)>,
     ) {
-        if let Ok((placing_entity, parent)) = hovered_objects.get_single() {
+        if let Ok((placing_entity, parent)) = hovered.get_single() {
             commands.entity(**parent).with_children(|parent| {
                 parent.spawn(PlacingObject::Moving(placing_entity));
             });
@@ -126,7 +126,7 @@ impl PlacingObjectPlugin {
     fn init(
         mut commands: Commands,
         camera_caster: CameraCaster,
-        mut hover_settings: ResMut<CursorHoverSettings>,
+        mut hover_enabled: ResMut<HoverEnabled>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
         objects: Query<(&Position, &Rotation, &ObjectPath)>,
@@ -176,7 +176,7 @@ impl PlacingObjectPlugin {
             }
         }
 
-        hover_settings.enabled = false;
+        hover_enabled.0 = false;
     }
 
     fn rotate(
@@ -316,11 +316,11 @@ impl PlacingObjectPlugin {
 
     fn end_placing(
         mut commands: Commands,
-        mut hover_settings: ResMut<CursorHoverSettings>,
+        mut hover_enabled: ResMut<HoverEnabled>,
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
         if let Ok(placing_entity) = placing_objects.get_single() {
-            hover_settings.enabled = true;
+            hover_enabled.0 = true;
             commands.entity(placing_entity).despawn_recursive();
         }
     }

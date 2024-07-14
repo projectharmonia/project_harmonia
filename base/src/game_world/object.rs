@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     building::lot::LotVertices,
     city::{City, HALF_CITY_SIZE},
-    cursor_hover::{highlighting::OutlineHighlightingExt, CursorHoverable},
+    hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };
 use crate::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
@@ -83,7 +83,7 @@ impl ObjectPlugin {
             entity.insert((
                 scene_handle,
                 Name::new(metadata.general.name.clone()),
-                CursorHoverable,
+                Hoverable,
                 RigidBody::Kinematic,
                 OutlineBundle::highlighting(),
                 SpatialBundle::default(),

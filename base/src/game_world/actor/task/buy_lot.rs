@@ -10,7 +10,7 @@ use crate::game_world::{
     actor::task::{Task, TaskList, TaskListSet, TaskState},
     building::lot::{LotFamily, LotVertices},
     city::Ground,
-    cursor_hover::CursorHover,
+    hover::Hovered,
     family::ActorFamily,
 };
 
@@ -33,7 +33,7 @@ impl Plugin for BuyLotPlugin {
 impl BuyLotPlugin {
     fn add_to_list(
         mut list_events: EventWriter<TaskList>,
-        mut grounds: Query<&CursorHover, With<Ground>>,
+        mut grounds: Query<&Hovered, With<Ground>>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
         if let Ok(point) = grounds.get_single_mut().map(|point| point.xz()) {

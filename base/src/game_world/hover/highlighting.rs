@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
-use crate::{core::GameState, game_world::cursor_hover::CursorHover};
+use crate::{core::GameState, game_world::hover::Hovered};
 
 pub(super) struct HighlightingPlugin;
 
@@ -16,16 +16,13 @@ impl Plugin for HighlightingPlugin {
 }
 
 impl HighlightingPlugin {
-    fn enable(mut hovered: Query<&mut OutlineVolume, Added<CursorHover>>) {
+    fn enable(mut hovered: Query<&mut OutlineVolume, Added<Hovered>>) {
         if let Ok(mut outline) = hovered.get_single_mut() {
             outline.visible = true;
         }
     }
 
-    fn disable(
-        mut unhovered: RemovedComponents<CursorHover>,
-        mut hovered: Query<&mut OutlineVolume>,
-    ) {
+    fn disable(mut unhovered: RemovedComponents<Hovered>, mut hovered: Query<&mut OutlineVolume>) {
         for entity in unhovered.read() {
             if let Ok(mut outline) = hovered.get_mut(entity) {
                 outline.visible = false;

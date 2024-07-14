@@ -8,7 +8,7 @@ use strum::{Display, EnumIter};
 
 use super::{
     actor::SelectedActor,
-    cursor_hover::CursorHoverable,
+    hover::Hoverable,
     player_camera::{PlayerCamera, PlayerCameraBundle},
 };
 use crate::{
@@ -233,7 +233,7 @@ struct GroundBundle {
     collider: Collider,
     collision_layers: CollisionLayers,
     ground: Ground,
-    cursor_hoverable: CursorHoverable,
+    cursor_hoverable: Hoverable,
     nav_mesh_affector: NavMeshAffector,
     pbr_bundle: PbrBundle,
 }
@@ -245,7 +245,7 @@ impl Default for GroundBundle {
             collider: Collider::cuboid(CITY_SIZE, 0.0, CITY_SIZE),
             collision_layers: CollisionLayers::new(LayerMask::ALL, Layer::Ground),
             ground: Ground,
-            cursor_hoverable: CursorHoverable,
+            cursor_hoverable: Hoverable,
             nav_mesh_affector: NavMeshAffector,
             pbr_bundle: Default::default(),
         }

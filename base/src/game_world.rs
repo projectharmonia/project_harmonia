@@ -1,8 +1,8 @@
 pub mod actor;
 pub mod building;
 pub mod city;
-pub mod cursor_hover;
 pub mod family;
+pub mod hover;
 pub mod object;
 mod player_camera;
 
@@ -18,8 +18,8 @@ use super::{core::GameState, game_paths::GamePaths, message::error_message};
 use actor::ActorPlugin;
 use building::BuildingPlugins;
 use city::CityPlugin;
-use cursor_hover::CursorHoverPlugin;
 use family::FamilyPlugin;
+use hover::HoverPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
 
@@ -31,7 +31,7 @@ impl Plugin for GameWorldPlugin {
             ActorPlugin,
             BuildingPlugins,
             CityPlugin,
-            CursorHoverPlugin,
+            HoverPlugin,
             FamilyPlugin,
             ObjectPlugin,
             PlayerCameraPlugin,

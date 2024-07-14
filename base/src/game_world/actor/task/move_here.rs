@@ -10,7 +10,7 @@ use crate::{
             task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
         },
         city::Ground,
-        cursor_hover::CursorHover,
+        hover::Hovered,
         GameWorld,
     },
     navigation::{ComputePath, NavPath, Navigation},
@@ -35,19 +35,19 @@ impl Plugin for MoveHerePlugin {
 impl MoveHerePlugin {
     fn add_to_list(
         mut list_events: EventWriter<TaskList>,
-        mut grounds: Query<&CursorHover, With<Ground>>,
+        mut grounds: Query<&Hovered, With<Ground>>,
     ) {
-        if let Ok(hover) = grounds.get_single_mut() {
+        if let Ok(hovered) = grounds.get_single_mut() {
             list_events.send(
                 MoveHere {
-                    endpoint: hover.0,
+                    endpoint: hovered.0,
                     movement: Movement::Walk,
                 }
                 .into(),
             );
             list_events.send(
                 MoveHere {
-                    endpoint: hover.0,
+                    endpoint: hovered.0,
                     movement: Movement::Run,
                 }
                 .into(),
