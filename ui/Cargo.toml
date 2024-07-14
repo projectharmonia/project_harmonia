@@ -14,3 +14,6 @@ bevy_simple_text_input.workspace = true
 leafwing-input-manager.workspace = true
 anyhow.workspace = true
 strum.workspace = true
+
+[lints]
+workspace = true

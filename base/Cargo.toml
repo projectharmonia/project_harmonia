@@ -26,3 +26,6 @@ bitflags.workspace = true
 # TODO 0.14: Remove direct dependencies on these crates
 ron.workspace = true
 futures-lite.workspace = true
+
+[lints]
+workspace = true

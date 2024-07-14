@@ -35,3 +35,6 @@ walkdir.workspace = true
 itertools.workspace = true
 bitflags.workspace = true
 futures-lite.workspace = true
+
+[lints]
+workspace = true

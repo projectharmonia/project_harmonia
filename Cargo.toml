@@ -36,3 +36,8 @@ walkdir = "2.5"
 itertools = "0.12"
 bitflags = "2.6"
 futures-lite = "2.3"
+
+[workspace.lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
+doc_markdown = "warn"

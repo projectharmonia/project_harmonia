@@ -1,7 +1,3 @@
-#![warn(clippy::doc_markdown)]
-#![allow(clippy::type_complexity)] // Do not warn about long queries
-#![allow(clippy::too_many_arguments)] // Do not warn about big systems
-
 mod cli;
 
 use bevy::{
