@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{
+use crate::{
     preview::{Preview, PreviewProcessed},
     ui_root::UiRoot,
 };

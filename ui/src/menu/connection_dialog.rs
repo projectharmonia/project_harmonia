@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
 
-use super::ui_root::UiRoot;
+use crate::ui_root::UiRoot;
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };

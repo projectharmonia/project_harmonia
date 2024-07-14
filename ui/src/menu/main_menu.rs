@@ -1,7 +1,8 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{settings_menu::SettingsMenuOpen, ui_root::UiRoot};
+use super::settings_menu::SettingsMenuOpen;
+use crate::ui_root::UiRoot;
 use project_harmonia_base::game_state::GameState;
 use project_harmonia_widgets::{button::TextButtonBundle, click::Click, theme::Theme};
 

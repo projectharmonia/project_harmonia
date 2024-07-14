@@ -10,7 +10,7 @@ use bevy_replicon_renet::{
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::ui_root::UiRoot;
+use crate::ui_root::UiRoot;
 use project_harmonia_base::{
     error_report,
     game_paths::GamePaths,

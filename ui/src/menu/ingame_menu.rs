@@ -2,7 +2,8 @@ use bevy::{app::AppExit, prelude::*};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::{hud::task_menu::TaskMenu, settings_menu::SettingsMenuOpen, ui_root::UiRoot};
+use super::settings_menu::SettingsMenuOpen;
+use crate::{hud::task_menu::TaskMenu, ui_root::UiRoot};
 use project_harmonia_base::{
     action::Action,
     game_state::GameState,

@@ -2,7 +2,7 @@ use bevy::{prelude::*, reflect::GetPath, ui::FocusPolicy};
 use leafwing_input_manager::user_input::InputKind;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::ui_root::UiRoot;
+use crate::ui_root::UiRoot;
 use project_harmonia_base::{
     action::Action,
     input_events::InputEvents,
