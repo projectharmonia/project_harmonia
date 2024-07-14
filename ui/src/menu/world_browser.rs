@@ -12,10 +12,10 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::ui_root::UiRoot;
 use project_harmonia_base::{
-    error_report,
     game_paths::GamePaths,
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
+    message::error_message,
     network::{self, DEFAULT_PORT},
 };
 use project_harmonia_widgets::{
@@ -32,11 +32,11 @@ impl Plugin for WorldBrowserPlugin {
                 Update,
                 (
                     Self::handle_world_clicks,
-                    Self::handle_host_dialog_clicks.pipe(error_report::report),
-                    Self::handle_remove_dialog_clicks.pipe(error_report::report),
+                    Self::handle_host_dialog_clicks.pipe(error_message),
+                    Self::handle_remove_dialog_clicks.pipe(error_message),
                     Self::handle_world_browser_clicks,
                     Self::handle_create_dialog_clicks,
-                    Self::handle_join_dialog_clicks.pipe(error_report::report),
+                    Self::handle_join_dialog_clicks.pipe(error_message),
                 )
                     .run_if(in_state(GameState::WorldBrowser)),
             );

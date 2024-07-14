@@ -1,30 +1,30 @@
 use bevy::prelude::*;
 
 use super::ui_root::UiRoot;
-use project_harmonia_base::error_report::ErrorReport;
+use project_harmonia_base::message::Message;
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };
 
-pub(super) struct ErrorDialogPlugin;
+pub(super) struct MessageBoxPlugin;
 
-impl Plugin for ErrorDialogPlugin {
+impl Plugin for MessageBoxPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (Self::show, Self::close));
     }
 }
 
-impl ErrorDialogPlugin {
+impl MessageBoxPlugin {
     fn show(
         mut commands: Commands,
-        mut error_events: EventReader<ErrorReport>,
+        mut messages: EventReader<Message>,
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
-        for error in error_events.read() {
+        for message in messages.read() {
             commands.entity(roots.single()).with_children(|parent| {
                 parent
-                    .spawn((ErrorDialog, DialogBundle::new(&theme)))
+                    .spawn((MessageBox, DialogBundle::new(&theme)))
                     .with_children(|parent| {
                         parent
                             .spawn(NodeBundle {
@@ -40,10 +40,7 @@ impl ErrorDialogPlugin {
                                 ..Default::default()
                             })
                             .with_children(|parent| {
-                                parent.spawn(LabelBundle::normal(
-                                    &theme,
-                                    format!("Error: {:#}", error.0),
-                                ));
+                                parent.spawn(LabelBundle::normal(&theme, message.0.clone()));
                                 parent.spawn((OkButton, TextButtonBundle::normal(&theme, "Ok")));
                             });
                     });
@@ -55,10 +52,10 @@ impl ErrorDialogPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<(), With<OkButton>>,
-        error_dialogs: Query<Entity, With<ErrorDialog>>,
+        message_boxes: Query<Entity, With<MessageBox>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            commands.entity(error_dialogs.single()).despawn_recursive();
+            commands.entity(message_boxes.single()).despawn_recursive();
         }
     }
 }
@@ -67,4 +64,4 @@ impl ErrorDialogPlugin {
 struct OkButton;
 
 #[derive(Component)]
-struct ErrorDialog;
+struct MessageBox;

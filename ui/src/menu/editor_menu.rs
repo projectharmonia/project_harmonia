@@ -12,12 +12,12 @@ use crate::{
 use project_harmonia_base::{
     actor::{FirstName, LastName, Sex},
     city::City,
-    error_report,
     family::{
         editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
         FamilyCreate, FamilyScene,
     },
     game_state::GameState,
+    message::error_message,
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, ImageButtonBundle, TextButtonBundle, Toggled},
@@ -49,7 +49,7 @@ impl Plugin for EditorMenuPlugin {
                     )
                         .chain(),
                     Self::handle_family_menu_clicks,
-                    Self::handle_save_family_clicks.pipe(error_report::report),
+                    Self::handle_save_family_clicks.pipe(error_message),
                     Self::handle_place_dialog_clicks,
                     Self::handle_city_place_clicks,
                 )

@@ -12,10 +12,10 @@ use clap::{Args, Parser, Subcommand};
 use project_harmonia_base::{
     actor::SelectedActor,
     city::{ActiveCity, City},
-    error_report::{self, ErrorReport},
     family::{Family, FamilyMembers},
     game_state::GameState,
     game_world::{GameLoad, GameWorld},
+    message::{error_message, Message},
     network::{self, DEFAULT_PORT},
 };
 
@@ -27,12 +27,10 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, Self::apply_subcommand.pipe(error_report::report))
+        app.add_systems(Startup, Self::apply_subcommand.pipe(error_message))
             .add_systems(
                 Update,
-                Self::quick_load
-                    .pipe(error_report::report)
-                    .run_if(second_frame),
+                Self::quick_load.pipe(error_message).run_if(second_frame),
             );
     }
 }
@@ -127,7 +125,7 @@ impl CliPlugin {
 /// Returns `true` only for the second frame.
 ///
 /// Needed to skip one frame after startup to let game world load.
-fn second_frame(mut frame: Local<usize>, error_events: EventReader<ErrorReport>) -> bool {
+fn second_frame(mut frame: Local<usize>, messages: EventReader<Message>) -> bool {
     match *frame {
         0 => {
             *frame += 1;
@@ -135,7 +133,7 @@ fn second_frame(mut frame: Local<usize>, error_events: EventReader<ErrorReport>)
         }
         1 => {
             *frame += 1;
-            error_events.is_empty()
+            messages.is_empty()
         }
         _ => false,
     }

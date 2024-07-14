@@ -5,7 +5,7 @@ use bevy::{prelude::*, scene::serde::SceneDeserializer};
 use bevy_replicon::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{error_report, game_paths::GamePaths, game_state::GameState};
+use super::{game_paths::GamePaths, game_state::GameState, message::error_message};
 
 pub(super) struct GameWorldPlugin;
 
@@ -16,14 +16,14 @@ impl Plugin for GameWorldPlugin {
             .add_systems(
                 SpawnScene,
                 Self::load
-                    .pipe(error_report::report)
+                    .pipe(error_message)
                     .run_if(on_event::<GameLoad>())
                     .before(bevy::scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
                 Self::save
-                    .pipe(error_report::report)
+                    .pipe(error_message)
                     .run_if(on_event::<GameSave>()),
             );
     }
