@@ -19,8 +19,8 @@ use project_harmonia_base::{
     network::{self, DEFAULT_PORT},
 };
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, text_edit::TextEditBundle, theme::Theme, Dialog,
-    DialogBundle, LabelBundle,
+    button::TextButtonBundle, click::Click, dialog::Dialog, dialog::DialogBundle,
+    label::LabelBundle, text_edit::TextEditBundle, theme::Theme,
 };
 
 pub(super) struct WorldBrowserPlugin;

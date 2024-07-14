@@ -16,9 +16,9 @@ use project_harmonia_base::{
 use project_harmonia_widgets::{
     button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
     click::Click,
+    label::LabelBundle,
     progress_bar::{ProgressBar, ProgressBarBundle},
     theme::Theme,
-    LabelBundle,
 };
 
 pub(super) struct FamilyHudPlugin;

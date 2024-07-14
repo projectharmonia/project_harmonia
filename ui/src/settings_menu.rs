@@ -12,8 +12,9 @@ use project_harmonia_widgets::{
     button::{ButtonText, ExclusiveButton, TabContent, TextButtonBundle, Toggled},
     checkbox::{Checkbox, CheckboxBundle},
     click::Click,
+    dialog::DialogBundle,
+    label::LabelBundle,
     theme::Theme,
-    DialogBundle, LabelBundle,
 };
 
 pub(super) struct SettingsMenuPlugin;

@@ -12,7 +12,7 @@ use project_harmonia_base::{
     wall::creating_wall::CreatingWall,
 };
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, theme::Theme, DialogBundle, LabelBundle,
+    button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };
 
 pub(super) struct InGameMenuPlugin;

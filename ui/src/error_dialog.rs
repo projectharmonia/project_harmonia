@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::ui_root::UiRoot;
 use project_harmonia_base::error_report::ErrorReport;
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, theme::Theme, DialogBundle, LabelBundle,
+    button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };
 
 pub(super) struct ErrorDialogPlugin;

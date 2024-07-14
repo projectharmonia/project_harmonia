@@ -12,7 +12,9 @@ use project_harmonia_base::{
     family::FamilyMode,
     game_state::GameState,
 };
-use project_harmonia_widgets::{button::TextButtonBundle, click::Click, theme::Theme, LabelBundle};
+use project_harmonia_widgets::{
+    button::TextButtonBundle, click::Click, label::LabelBundle, theme::Theme,
+};
 
 pub(super) struct TaskMenuPlugin;
 
