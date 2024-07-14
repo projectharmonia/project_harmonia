@@ -192,16 +192,24 @@ impl SettingsMenuPlugin {
                                         ..Default::default()
                                     })
                                     .with_children(|parent| {
-                                        for dialog_button in BindingDialogButton::iter() {
-                                            let mut button_bundle = TextButtonBundle::normal(
-                                                &theme,
-                                                dialog_button.to_string(),
-                                            );
-                                            if dialog_button == BindingDialogButton::Replace {
-                                                button_bundle.button_bundle.style.display =
-                                                    Display::None;
-                                            }
-                                            parent.spawn((dialog_button, button_bundle));
+                                        for button in BindingDialogButton::iter() {
+                                            // Replace is hidden by default and will be
+                                            // displayed only in case of binding conflict.
+                                            let display = if button == BindingDialogButton::Replace
+                                            {
+                                                Display::None
+                                            } else {
+                                                Default::default()
+                                            };
+
+                                            parent.spawn((
+                                                button,
+                                                TextButtonBundle::normal(
+                                                    &theme,
+                                                    button.to_string(),
+                                                )
+                                                .with_display(display),
+                                            ));
                                         }
                                     });
                             });

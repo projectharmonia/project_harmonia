@@ -201,7 +201,7 @@ pub struct TextButtonBundle {
     kind: TextButtonKind,
     text: ButtonText,
     last_interaction: LastInteraction,
-    pub button_bundle: ButtonBundle,
+    button_bundle: ButtonBundle,
 }
 
 impl TextButtonBundle {
@@ -233,6 +233,11 @@ impl TextButtonBundle {
                 ..Default::default()
             },
         }
+    }
+
+    pub fn with_display(mut self, display: Display) -> Self {
+        self.button_bundle.style.display = display;
+        self
     }
 }
 
