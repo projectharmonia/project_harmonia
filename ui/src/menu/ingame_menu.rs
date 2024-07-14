@@ -6,11 +6,15 @@ use super::settings_menu::SettingsMenuOpen;
 use crate::{hud::task_menu::TaskMenu, ui_root::UiRoot};
 use project_harmonia_base::{
     core::GameState,
-    game_world::{GameSave, GameWorld},
-    lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
-    object::placing_object::PlacingObject,
+    game_world::{
+        building::{
+            lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
+            wall::creating_wall::CreatingWall,
+        },
+        object::placing_object::PlacingObject,
+        GameSave, GameWorld,
+    },
     settings::Action,
-    wall::creating_wall::CreatingWall,
 };
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,

@@ -10,13 +10,15 @@ use crate::{
     ui_root::UiRoot,
 };
 use project_harmonia_base::{
-    actor::{FirstName, LastName, Sex},
-    city::City,
-    family::{
-        editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
-        FamilyCreate, FamilyScene,
-    },
     core::GameState,
+    game_world::{
+        actor::{FirstName, LastName, Sex},
+        city::City,
+        family::{
+            editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
+            FamilyCreate, FamilyScene,
+        },
+    },
     message::error_message,
 };
 use project_harmonia_widgets::{

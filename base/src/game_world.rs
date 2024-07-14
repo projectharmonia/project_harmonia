@@ -1,3 +1,11 @@
+pub mod actor;
+pub mod building;
+pub mod city;
+pub mod cursor_hover;
+pub mod family;
+pub mod object;
+mod player_camera;
+
 use std::fs;
 
 use anyhow::{Context, Result};
@@ -7,27 +15,43 @@ use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{core::GameState, game_paths::GamePaths, message::error_message};
+use actor::ActorPlugin;
+use building::BuildingPlugins;
+use city::CityPlugin;
+use cursor_hover::CursorHoverPlugin;
+use family::FamilyPlugin;
+use object::ObjectPlugin;
+use player_camera::PlayerCameraPlugin;
 
 pub(super) struct GameWorldPlugin;
 
 impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<GameSave>()
-            .add_event::<GameLoad>()
-            .add_systems(Update, Self::start_game.run_if(client_just_connected))
-            .add_systems(
-                SpawnScene,
-                Self::load
-                    .pipe(error_message)
-                    .run_if(on_event::<GameLoad>())
-                    .before(bevy::scene::scene_spawner_system),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::save
-                    .pipe(error_message)
-                    .run_if(on_event::<GameSave>()),
-            );
+        app.add_plugins((
+            ActorPlugin,
+            BuildingPlugins,
+            CityPlugin,
+            CursorHoverPlugin,
+            FamilyPlugin,
+            ObjectPlugin,
+            PlayerCameraPlugin,
+        ))
+        .add_event::<GameSave>()
+        .add_event::<GameLoad>()
+        .add_systems(Update, Self::start_game.run_if(client_just_connected))
+        .add_systems(
+            SpawnScene,
+            Self::load
+                .pipe(error_message)
+                .run_if(on_event::<GameLoad>())
+                .before(bevy::scene::scene_spawner_system),
+        )
+        .add_systems(
+            PostUpdate,
+            Self::save
+                .pipe(error_message)
+                .run_if(on_event::<GameSave>()),
+        );
     }
 }
 

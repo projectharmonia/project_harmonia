@@ -22,8 +22,10 @@ use oxidized_navigation::{
 
 use cli::{Cli, CliPlugin};
 use project_harmonia_base::{
-    actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
-    city::HALF_CITY_SIZE,
+    game_world::{
+        actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
+        city::HALF_CITY_SIZE,
+    },
     settings::Action,
     CorePlugins,
 };

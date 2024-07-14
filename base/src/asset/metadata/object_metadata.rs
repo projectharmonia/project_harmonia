@@ -283,7 +283,7 @@ mod tests {
     use super::*;
     use crate::{
         asset::metadata::METADATA_EXTENSION,
-        object::{
+        game_world::object::{
             door::Door,
             placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
             wall_mount::WallMount,

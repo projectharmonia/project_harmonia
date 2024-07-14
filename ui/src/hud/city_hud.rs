@@ -4,9 +4,8 @@ use strum::IntoEnumIterator;
 use crate::{hud::objects_node, ui_root::UiRoot};
 use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
-    city::CityMode,
     core::GameState,
-    lot::LotTool,
+    game_world::{building::lot::LotTool, city::CityMode},
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
