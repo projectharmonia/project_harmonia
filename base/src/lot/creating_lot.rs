@@ -5,7 +5,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices, UnconfirmedLot};
 use crate::{
     city::{ActiveCity, CityMode},
-    game_state::GameState,
+    core::GameState,
     player_camera::CameraCaster,
     settings::Action,
 };

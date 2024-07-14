@@ -3,10 +3,10 @@ mod animation_state;
 pub mod asset;
 pub mod city;
 mod component_commands;
+pub mod core;
 pub mod cursor_hover;
 pub mod family;
 pub mod game_paths;
-pub mod game_state;
 pub mod game_world;
 mod highlighting;
 pub mod input_events;
@@ -27,10 +27,10 @@ use actor::ActorPlugin;
 use animation_state::AnimationStatePlugin;
 use asset::AssetPlugin;
 use city::CityPlugin;
+use core::CorePlugin;
 use cursor_hover::CursorHoverPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
-use game_state::GameStatePlugin;
 use game_world::GameWorldPlugin;
 use highlighting::HighlightingPlugin;
 use lot::LotPlugin;
@@ -48,7 +48,7 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(MathPlugin)
-            .add(GameStatePlugin)
+            .add(CorePlugin)
             .add(GameWorldPlugin)
             .add(CityPlugin)
             .add(CursorHoverPlugin)

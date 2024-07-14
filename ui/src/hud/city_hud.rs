@@ -5,7 +5,7 @@ use crate::{hud::objects_node, ui_root::UiRoot};
 use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
     city::CityMode,
-    game_state::GameState,
+    core::GameState,
     lot::LotTool,
 };
 use project_harmonia_widgets::{

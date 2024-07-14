@@ -23,7 +23,7 @@ use crate::{
     actor::Actor,
     animation_state::AnimationState,
     family::FamilyMode,
-    game_state::GameState,
+    core::GameState,
     navigation::{ComputePath, NavPath},
     settings::Action,
 };

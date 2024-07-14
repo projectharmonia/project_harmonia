@@ -5,7 +5,7 @@ use bevy::{prelude::*, scene::serde::SceneDeserializer};
 use bevy_replicon::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{game_paths::GamePaths, game_state::GameState, message::error_message};
+use super::{game_paths::GamePaths, core::GameState, message::error_message};
 
 pub(super) struct GameWorldPlugin;
 

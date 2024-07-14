@@ -6,7 +6,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::{
     family::{BuildingMode, FamilyMode},
-    game_state::GameState,
+    core::GameState,
     lot::LotVertices,
     math::segment::Segment,
     player_camera::CameraCaster,

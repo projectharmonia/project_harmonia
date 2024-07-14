@@ -9,7 +9,7 @@ use project_harmonia_base::{
     actor::SelectedActor,
     city::{ActiveCity, City, CityBundle},
     family::{Family, FamilyDelete, FamilyMembers},
-    game_state::GameState,
+    core::GameState,
     game_world::GameWorld,
 };
 use project_harmonia_widgets::{

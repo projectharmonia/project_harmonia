@@ -23,7 +23,7 @@ use strum::{Display, EnumIter};
 use super::{
     actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
     component_commands::ComponentCommandsExt,
-    game_state::GameState,
+    core::GameState,
     game_world::GameWorld,
     navigation::NavigationBundle,
 };

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
-use project_harmonia_base::game_state::GameState;
+use project_harmonia_base::core::GameState;
 
 pub(super) struct UiRootPlugin;
 

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
-use super::{cursor_hover::CursorHover, game_state::GameState};
+use super::{cursor_hover::CursorHover, core::GameState};
 
 pub(super) struct HighlightingPlugin;
 

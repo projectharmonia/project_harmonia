@@ -5,7 +5,7 @@ use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
     city::ActiveCity,
     family::FamilyMode,
-    game_state::GameState,
+    core::GameState,
     object::placing_object::PlacingObject,
 };
 use project_harmonia_widgets::{

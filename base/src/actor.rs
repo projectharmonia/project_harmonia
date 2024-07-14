@@ -18,7 +18,7 @@ use super::{
     animation_state::AnimationState,
     asset::collection::{AssetCollection, Collection},
     cursor_hover::CursorHoverable,
-    game_state::GameState,
+    core::GameState,
     game_world::GameWorld,
     highlighting::OutlineHighlightingExt,
 };

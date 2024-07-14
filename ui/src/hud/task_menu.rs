@@ -9,7 +9,7 @@ use project_harmonia_base::{
     },
     cursor_hover::CursorHover,
     family::FamilyMode,
-    game_state::GameState,
+    core::GameState,
     settings::Action,
 };
 use project_harmonia_widgets::{

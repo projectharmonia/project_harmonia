@@ -7,7 +7,7 @@ use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
 use crate::{
     city::CityMode,
     family::FamilyMode,
-    game_state::GameState,
+    core::GameState,
     wall::{wall_mesh::HALF_WIDTH, Wall},
 };
 

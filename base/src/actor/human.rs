@@ -13,7 +13,7 @@ use super::{
 use crate::{
     asset::collection::{AssetCollection, Collection},
     family::{editor::EditableActor, FamilyScene},
-    game_state::GameState,
+    core::GameState,
     game_world::GameWorld,
 };
 

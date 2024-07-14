@@ -9,7 +9,7 @@ use strum::{Display, EnumIter};
 use super::{
     actor::SelectedActor,
     cursor_hover::CursorHoverable,
-    game_state::GameState,
+    core::GameState,
     game_world::GameWorld,
     player_camera::{PlayerCamera, PlayerCameraBundle},
     Layer,

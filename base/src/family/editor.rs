@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::{
     actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
     family::{FamilyMembers, SelectedFamilyCreated},
-    game_state::GameState,
+    core::GameState,
     player_camera::PlayerCameraBundle,
 };
 

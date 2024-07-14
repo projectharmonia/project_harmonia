@@ -16,7 +16,7 @@ use crate::{
     city::CityMode,
     cursor_hover::{CursorHover, CursorHoverSettings},
     family::{BuildingMode, FamilyMode},
-    game_state::GameState,
+    core::GameState,
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
     settings::Action,

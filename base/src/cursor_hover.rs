@@ -3,7 +3,7 @@ use std::iter;
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{game_state::GameState, player_camera::CameraCaster};
+use super::{core::GameState, player_camera::CameraCaster};
 
 pub(super) struct CursorHoverPlugin;
 

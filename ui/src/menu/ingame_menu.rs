@@ -5,7 +5,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use super::settings_menu::SettingsMenuOpen;
 use crate::{hud::task_menu::TaskMenu, ui_root::UiRoot};
 use project_harmonia_base::{
-    game_state::GameState,
+    core::GameState,
     game_world::{GameSave, GameWorld},
     lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
     object::placing_object::PlacingObject,

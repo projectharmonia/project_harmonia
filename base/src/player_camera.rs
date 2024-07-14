@@ -10,7 +10,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use self::exp_smoothed::ExpSmoothed;
 
-use super::{game_state::GameState, settings::Action};
+use super::{core::GameState, settings::Action};
 
 pub(super) struct PlayerCameraPlugin;
 

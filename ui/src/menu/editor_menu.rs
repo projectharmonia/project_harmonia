@@ -16,7 +16,7 @@ use project_harmonia_base::{
         editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
         FamilyCreate, FamilyScene,
     },
-    game_state::GameState,
+    core::GameState,
     message::error_message,
 };
 use project_harmonia_widgets::{

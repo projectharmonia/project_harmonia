@@ -13,7 +13,7 @@ use project_harmonia_base::{
     actor::SelectedActor,
     city::{ActiveCity, City},
     family::{Family, FamilyMembers},
-    game_state::GameState,
+    core::GameState,
     game_world::{GameLoad, GameWorld},
     message::{error_message, Message},
     network::{self, DEFAULT_PORT},

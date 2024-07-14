@@ -3,7 +3,7 @@ use bevy_replicon::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices, UnconfirmedLot};
-use crate::{city::CityMode, game_state::GameState, player_camera::CameraCaster, settings::Action};
+use crate::{city::CityMode, core::GameState, player_camera::CameraCaster, settings::Action};
 
 pub(super) struct MovingLotPlugin;
 

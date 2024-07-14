@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use project_harmonia_base::game_state::GameState;
+use project_harmonia_base::core::GameState;
 
 pub(super) struct Camera2dPlugin;
 
