@@ -2,6 +2,16 @@
 resolver = "2"
 members = ["base", "widgets", "ui", "app"]
 
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+authors = [
+  "Hennadii Chernyshchyk <genaloner@gmail.com>",
+  "Irina Chernyshchyk <irina.kdr@gmail.com>",
+]
+repository = "https://github.com/projectharmonia/project_harmonia"
+
 [workspace.dependencies]
 project_harmonia_base = { path = "base" }
 project_harmonia_ui = { path = "ui" }
