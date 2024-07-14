@@ -3294,7 +3294,7 @@ dependencies = [
  "bevy_replicon_renet",
  "bevy_xpbd_3d",
  "bincode",
- "bitflags 2.5.0",
+ "bitflags 2.6.0",
  "earcut",
  "futures-lite",
  "itertools",
