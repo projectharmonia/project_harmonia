@@ -16,7 +16,6 @@ pub mod message;
 mod navigation;
 pub mod network;
 pub mod object;
-pub mod path_debug;
 mod player_camera;
 pub mod settings;
 pub mod wall;
@@ -39,7 +38,6 @@ use math::MathPlugin;
 use message::ErrorReportPlugin;
 use navigation::NavigationPlugin;
 use object::ObjectPlugin;
-use path_debug::PathDebugPlugin;
 use player_camera::PlayerCameraPlugin;
 use settings::SettingsPlugin;
 use wall::WallPlugin;
@@ -59,7 +57,6 @@ impl PluginGroup for CorePlugins {
             .add(AnimationStatePlugin)
             .add(LotPlugin)
             .add(NavigationPlugin)
-            .add(PathDebugPlugin)
             .add(ErrorReportPlugin)
             .add(FamilyPlugin)
             .add(GamePathsPlugin)

@@ -1,4 +1,5 @@
 pub(super) mod following;
+pub(super) mod path_debug;
 
 use std::sync::{Arc, RwLock};
 
@@ -10,6 +11,7 @@ use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
+use path_debug::PathDebugPlugin;
 use serde::{Deserialize, Serialize};
 
 use super::math;
@@ -19,7 +21,8 @@ pub(super) struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Navigation>()
+        app.add_plugins((FollowingPlugin, PathDebugPlugin))
+            .register_type::<Navigation>()
             .register_type::<NavPath>()
             .register_type::<WaypointIndex>()
             .replicate::<Navigation>()
@@ -27,7 +30,6 @@ impl Plugin for NavigationPlugin {
             .replicate::<WaypointIndex>()
             .replicate::<Position>()
             .replicate::<Rotation>()
-            .add_plugins(FollowingPlugin)
             .add_systems(PreUpdate, Self::poll_paths.run_if(has_authority))
             .add_systems(Update, Self::navigate.run_if(has_authority));
     }

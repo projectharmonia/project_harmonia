@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use super::{navigation::NavPath, settings::Settings};
+use super::NavPath;
+use crate::settings::Settings;
 
 pub(super) struct PathDebugPlugin;
 
