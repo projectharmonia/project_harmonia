@@ -2,10 +2,9 @@ use bevy::{prelude::*, transform::TransformSystem};
 use bevy_xpbd_3d::prelude::*;
 
 use crate::{
-    game_world::GameWorld,
+    game_world::{GameWorld, Layer},
     object::placing_object::PlacingObject,
     wall::{Aperture, Apertures, Wall, WallPlugin},
-    Layer,
 };
 
 pub(super) struct WallMountPlugin;

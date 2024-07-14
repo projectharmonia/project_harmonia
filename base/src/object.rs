@@ -18,10 +18,9 @@ use super::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
     city::{City, HALF_CITY_SIZE},
     cursor_hover::CursorHoverable,
-    game_world::GameWorld,
+    game_world::{GameWorld, Layer},
     highlighting::OutlineHighlightingExt,
     lot::LotVertices,
-    Layer,
 };
 use door::DoorPlugin;
 use placing_object::{PlacingObject, PlacingObjectPlugin};

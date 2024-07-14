@@ -3,9 +3,10 @@ use std::fs;
 use anyhow::{Context, Result};
 use bevy::{prelude::*, scene::serde::SceneDeserializer};
 use bevy_replicon::prelude::*;
+use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{game_paths::GamePaths, core::GameState, message::error_message};
+use super::{core::GameState, game_paths::GamePaths, message::error_message};
 
 pub(super) struct GameWorldPlugin;
 
@@ -105,4 +106,11 @@ pub struct GameLoad;
 #[derive(Default, Resource)]
 pub struct GameWorld {
     pub name: String,
+}
+
+#[derive(PhysicsLayer)]
+pub(super) enum Layer {
+    Ground,
+    Object,
+    Wall,
 }

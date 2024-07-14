@@ -8,11 +8,10 @@ use strum::{Display, EnumIter};
 
 use super::{
     actor::SelectedActor,
-    cursor_hover::CursorHoverable,
     core::GameState,
-    game_world::GameWorld,
+    cursor_hover::CursorHoverable,
+    game_world::{GameWorld, Layer},
     player_camera::{PlayerCamera, PlayerCameraBundle},
-    Layer,
 };
 
 pub(super) struct CityPlugin;

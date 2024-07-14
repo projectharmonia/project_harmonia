@@ -21,7 +21,6 @@ pub mod settings;
 pub mod wall;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
-use bevy_xpbd_3d::prelude::*;
 
 use actor::ActorPlugin;
 use animation_state::AnimationStatePlugin;
@@ -66,11 +65,4 @@ impl PluginGroup for CorePlugins {
             .add(WallPlugin)
             .add(AssetPlugin) // Should run after registering components.
     }
-}
-
-#[derive(PhysicsLayer)]
-enum Layer {
-    Ground,
-    Object,
-    Wall,
 }
