@@ -1,11 +1,14 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{pbr::wireframe::WireframeConfig, prelude::*, utils::HashMap};
+use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
+use oxidized_navigation::debug_draw::DrawNavMesh;
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
-use super::{action::Action, game_paths::GamePaths, message::error_message};
+use super::{game_paths::GamePaths, message::error_message};
 
 pub(super) struct SettingsPlugin;
 
@@ -15,11 +18,12 @@ impl Plugin for SettingsPlugin {
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()
+            .init_resource::<InputMap<Action>>()
+            .init_resource::<ActionState<Action>>()
+            .add_systems(Startup, Self::apply)
             .add_systems(
                 PostUpdate,
-                Self::write
-                    .pipe(error_message)
-                    .run_if(on_event::<SettingsApply>()),
+                (Self::write.pipe(error_message), Self::apply).run_if(on_event::<SettingsApply>()),
             );
     }
 }
@@ -27,6 +31,23 @@ impl Plugin for SettingsPlugin {
 impl SettingsPlugin {
     fn write(settings: Res<Settings>, game_paths: Res<GamePaths>) -> Result<()> {
         settings.write(&game_paths.settings)
+    }
+
+    fn apply(
+        mut config_store: ResMut<GizmoConfigStore>,
+        mut wireframe_config: ResMut<WireframeConfig>,
+        mut draw_nav_mesh: ResMut<DrawNavMesh>,
+        mut input_map: ResMut<InputMap<Action>>,
+        settings: Res<Settings>,
+    ) {
+        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
+        wireframe_config.global = settings.developer.wireframe;
+        draw_nav_mesh.0 = settings.developer.debug_paths;
+
+        input_map.clear();
+        for (&action, inputs) in &settings.controls.mappings {
+            input_map.insert_one_to_many(action, inputs.iter().cloned());
+        }
     }
 }
 
@@ -76,6 +97,7 @@ impl Settings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct VideoSettings {
+    // TODO: implement.
     pub perf_stats: bool,
 }
 
@@ -120,8 +142,42 @@ impl Default for ControlsSettings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
-    pub game_inspector: bool,
     pub debug_collisions: bool,
     pub debug_paths: bool,
     pub wireframe: bool,
+}
+
+#[derive(
+    Actionlike,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Reflect,
+    Serialize,
+)]
+pub enum Action {
+    #[strum(serialize = "Camera Forward")]
+    CameraForward,
+    #[strum(serialize = "Camera Backward")]
+    CameraBackward,
+    #[strum(serialize = "Camera Left")]
+    CameraLeft,
+    #[strum(serialize = "Camera Right")]
+    CameraRight,
+    #[strum(serialize = "Rotate Camera")]
+    RotateCamera,
+    #[strum(serialize = "Zoom Camera")]
+    ZoomCamera,
+    #[strum(serialize = "Rotate Object")]
+    RotateObject,
+    Confirm,
+    Delete,
+    Cancel,
 }

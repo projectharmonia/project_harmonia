@@ -20,12 +20,12 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::{
-    action::Action,
     actor::Actor,
     animation_state::AnimationState,
     family::FamilyMode,
     game_state::GameState,
     navigation::{ComputePath, NavPath},
+    settings::Action,
 };
 use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;

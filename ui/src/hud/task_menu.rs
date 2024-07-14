@@ -3,7 +3,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::ui_root::UiRoot;
 use project_harmonia_base::{
-    action::Action,
     actor::{
         task::{Task, TaskList, TaskRequest},
         SelectedActor,
@@ -11,6 +10,7 @@ use project_harmonia_base::{
     cursor_hover::CursorHover,
     family::FamilyMode,
     game_state::GameState,
+    settings::Action,
 };
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, label::LabelBundle, theme::Theme,

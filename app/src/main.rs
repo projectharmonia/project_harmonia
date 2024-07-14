@@ -22,9 +22,9 @@ use oxidized_navigation::{
 
 use cli::{Cli, CliPlugin};
 use project_harmonia_base::{
-    action::Action,
     actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
     city::HALF_CITY_SIZE,
+    settings::Action,
     CorePlugins,
 };
 use project_harmonia_ui::UiPlugins;

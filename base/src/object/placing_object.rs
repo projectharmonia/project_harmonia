@@ -12,7 +12,6 @@ use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{
-    action::Action,
     asset::metadata::object_metadata::ObjectMetadata,
     city::CityMode,
     cursor_hover::{CursorHover, CursorHoverSettings},
@@ -20,6 +19,7 @@ use crate::{
     game_state::GameState,
     object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
     player_camera::CameraCaster,
+    settings::Action,
 };
 use side_snap::SideSnapPlugin;
 use wall_snap::WallSnapPlugin;

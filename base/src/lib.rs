@@ -1,11 +1,9 @@
-pub mod action;
 pub mod actor;
 mod animation_state;
 pub mod asset;
 pub mod city;
 mod component_commands;
 pub mod cursor_hover;
-pub mod developer;
 pub mod family;
 pub mod game_paths;
 pub mod game_state;
@@ -18,6 +16,7 @@ pub mod message;
 mod navigation;
 pub mod network;
 pub mod object;
+pub mod path_debug;
 mod player_camera;
 pub mod settings;
 pub mod wall;
@@ -25,13 +24,11 @@ pub mod wall;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 use bevy_xpbd_3d::prelude::*;
 
-use action::ActionPlugin;
 use actor::ActorPlugin;
 use animation_state::AnimationStatePlugin;
 use asset::AssetPlugin;
 use city::CityPlugin;
 use cursor_hover::CursorHoverPlugin;
-use developer::DeveloperPlugin;
 use family::FamilyPlugin;
 use game_paths::GamePathsPlugin;
 use game_state::GameStatePlugin;
@@ -42,6 +39,7 @@ use math::MathPlugin;
 use message::ErrorReportPlugin;
 use navigation::NavigationPlugin;
 use object::ObjectPlugin;
+use path_debug::PathDebugPlugin;
 use player_camera::PlayerCameraPlugin;
 use settings::SettingsPlugin;
 use wall::WallPlugin;
@@ -61,8 +59,7 @@ impl PluginGroup for CorePlugins {
             .add(AnimationStatePlugin)
             .add(LotPlugin)
             .add(NavigationPlugin)
-            .add(ActionPlugin)
-            .add(DeveloperPlugin)
+            .add(PathDebugPlugin)
             .add(ErrorReportPlugin)
             .add(FamilyPlugin)
             .add(GamePathsPlugin)

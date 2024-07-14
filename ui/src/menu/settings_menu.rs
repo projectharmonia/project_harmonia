@@ -4,9 +4,8 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::ui_root::UiRoot;
 use project_harmonia_base::{
-    action::Action,
     input_events::InputEvents,
-    settings::{Settings, SettingsApply},
+    settings::{Action, Settings, SettingsApply},
 };
 use project_harmonia_widgets::{
     button::{ButtonText, ExclusiveButton, TabContent, TextButtonBundle, Toggled},

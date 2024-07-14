@@ -4,10 +4,10 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices, UnconfirmedLot};
 use crate::{
-    action::Action,
     city::{ActiveCity, CityMode},
     game_state::GameState,
     player_camera::CameraCaster,
+    settings::Action,
 };
 
 pub(super) struct CreatingLotPlugin;
