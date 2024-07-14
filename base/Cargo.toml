@@ -1,0 +1,28 @@
+[package]
+name = "project_harmonia_base"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+bevy = { workspace = true, features = ["animation"] }
+bevy_atmosphere.workspace = true
+bevy_replicon.workspace = true
+bevy_replicon_renet.workspace = true
+bevy_xpbd_3d.workspace = true
+bevy_mod_outline.workspace = true
+oxidized_navigation.workspace = true
+leafwing-input-manager.workspace = true
+serde.workspace = true
+anyhow.workspace = true
+app_dirs2.workspace = true
+strum.workspace = true
+itertools.workspace = true
+bincode.workspace = true
+walkdir.workspace = true
+earcut.workspace = true
+num_enum.workspace = true
+bitflags.workspace = true
+# TODO 0.14: Remove direct dependencies on these crates
+ron.workspace = true
+futures-lite.workspace = true

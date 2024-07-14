@@ -1,0 +1,16 @@
+[package]
+name = "project_harmonia_ui"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+project_harmonia_base.workspace = true
+project_harmonia_widgets.workspace = true
+bevy.workspace = true
+bevy_replicon_renet.workspace = true
+bevy_replicon.workspace = true
+bevy_simple_text_input.workspace = true
+leafwing-input-manager.workspace = true
+anyhow.workspace = true
+strum.workspace = true

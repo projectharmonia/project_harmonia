@@ -1,21 +1,12 @@
-[package]
-name = "project_harmonia"
-version = "0.1.0"
-edition = "2021"
-license = "AGPL-3.0-or-later"
+[workspace]
+resolver = "2"
+members = ["base", "widgets", "ui", "app"]
 
-[dependencies]
-bevy = { version = "0.13.2", default-features = false, features = [
-  "animation",
-  "bevy_gltf",
-  "bevy_ui",
-  "bevy_sprite",
-  "bevy_text",
-  "file_watcher",
-  "tonemapping_luts",
-  "png",
-  "x11",
-] }
+[workspace.dependencies]
+project_harmonia_base = { path = "base" }
+project_harmonia_ui = { path = "ui" }
+project_harmonia_widgets = { path = "widgets" }
+bevy = { version = "0.13.2", default-features = false }
 bevy_atmosphere = "0.9"
 bevy_replicon = "0.26"
 bevy_replicon_renet = { version = "0.3", default-features = false, features = [

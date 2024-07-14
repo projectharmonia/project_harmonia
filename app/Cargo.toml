@@ -1,0 +1,37 @@
+[package]
+name = "project_harmonia"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+project_harmonia_base.workspace = true
+project_harmonia_widgets.workspace = true
+project_harmonia_ui.workspace = true
+bevy = { workspace = true, features = [
+  "file_watcher",
+  "tonemapping_luts",
+  "png",
+  "x11",
+] }
+bevy_atmosphere.workspace = true
+bevy_replicon.workspace = true
+bevy_replicon_renet.workspace = true
+bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
+bevy_mod_outline.workspace = true
+bevy_simple_text_input.workspace = true
+oxidized_navigation.workspace = true
+leafwing-input-manager.workspace = true
+app_dirs2.workspace = true
+serde.workspace = true
+earcut.workspace = true
+strum.workspace = true
+num_enum.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+bincode.workspace = true
+ron.workspace = true
+walkdir.workspace = true
+itertools.workspace = true
+bitflags.workspace = true
+futures-lite.workspace = true

@@ -52,7 +52,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy --no-deps --tests -- -D warnings
+        run: cargo clippy --workspace --tests -- -D warnings
 
   test:
     name: Test
@@ -73,4 +73,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Test
-        run: cargo test
+        run: cargo test --workspace

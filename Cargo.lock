@@ -3272,10 +3272,62 @@ dependencies = [
  "leafwing-input-manager",
  "num_enum",
  "oxidized_navigation",
+ "project_harmonia_base",
+ "project_harmonia_ui",
+ "project_harmonia_widgets",
  "ron",
  "serde",
  "strum",
  "walkdir",
+]
+
+[[package]]
+name = "project_harmonia_base"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_dirs2",
+ "bevy",
+ "bevy_atmosphere",
+ "bevy_mod_outline",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "bevy_xpbd_3d",
+ "bincode",
+ "bitflags 2.5.0",
+ "earcut",
+ "futures-lite",
+ "itertools",
+ "leafwing-input-manager",
+ "num_enum",
+ "oxidized_navigation",
+ "ron",
+ "serde",
+ "strum",
+ "walkdir",
+]
+
+[[package]]
+name = "project_harmonia_ui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "bevy_replicon",
+ "bevy_replicon_renet",
+ "bevy_simple_text_input",
+ "leafwing-input-manager",
+ "project_harmonia_base",
+ "project_harmonia_widgets",
+ "strum",
+]
+
+[[package]]
+name = "project_harmonia_widgets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_simple_text_input",
 ]
 
 [[package]]

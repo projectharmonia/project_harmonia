@@ -1,0 +1,9 @@
+[package]
+name = "project_harmonia_widgets"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+bevy.workspace = true
+bevy_simple_text_input.workspace = true
