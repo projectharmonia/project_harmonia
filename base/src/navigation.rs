@@ -25,6 +25,8 @@ impl Plugin for NavigationPlugin {
             .replicate::<Navigation>()
             .replicate::<NavPath>()
             .replicate::<WaypointIndex>()
+            .replicate::<Position>()
+            .replicate::<Rotation>()
             .add_plugins(FollowingPlugin)
             .add_systems(PreUpdate, Self::poll_paths.run_if(has_authority))
             .add_systems(Update, Self::navigate.run_if(has_authority));

@@ -41,7 +41,6 @@ use lot::LotPlugin;
 use math::MathPlugin;
 use message::ErrorReportPlugin;
 use navigation::NavigationPlugin;
-use network::NetworkPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
 use settings::SettingsPlugin;
@@ -53,7 +52,6 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(MathPlugin)
-            .add(NetworkPlugin)
             .add(GameStatePlugin)
             .add(GameWorldPlugin)
             .add(CityPlugin)

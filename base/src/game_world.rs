@@ -13,6 +13,7 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GameSave>()
             .add_event::<GameLoad>()
+            .add_systems(Update, Self::start_game.run_if(client_just_connected))
             .add_systems(
                 SpawnScene,
                 Self::load
@@ -82,6 +83,11 @@ impl GameWorldPlugin {
         game_state.set(GameState::World);
 
         Ok(())
+    }
+
+    fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
+        commands.insert_resource(GameWorld::default());
+        game_state.set(GameState::World);
     }
 }
 
