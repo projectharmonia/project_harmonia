@@ -18,6 +18,7 @@ impl Plugin for Camera2dPlugin {
 
 impl Camera2dPlugin {
     fn spawn(mut commands: Commands) {
+        debug!("spawning camera for menu");
         commands.spawn(Camera2dBundle::default());
     }
 

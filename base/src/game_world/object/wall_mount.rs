@@ -33,6 +33,7 @@ impl WallMountPlugin {
         mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
     ) {
         for (entity, mut collision_layers) in &mut objects {
+            debug!("initializing wall mount for `{entity:?}`");
             collision_layers.filters.remove(Layer::Wall);
             commands.entity(entity).insert(ObjectWall::default());
         }
@@ -77,6 +78,7 @@ impl WallMountPlugin {
                 let distance = translation.xz().distance(wall.start);
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
+                        trace!("updating apreture of `{wall_entity:?}` for `{object_entity:?}`");
                         // Remove to update distance.
                         let index = apertures
                             .position(object_entity)
@@ -88,6 +90,7 @@ impl WallMountPlugin {
 
                         apertures.insert(aperture);
                     } else {
+                        trace!("adding `{object_entity:?}` to the apreture of `{wall_entity:?}`");
                         apertures.insert(Aperture {
                             object_entity,
                             translation,
@@ -99,6 +102,7 @@ impl WallMountPlugin {
 
                         object_wall.0 = Some(wall_entity);
 
+                        trace!("removing `{object_entity:?}` from the apreture of `{current_entity:?}`");
                         let (_, mut current_apertures, _) = walls
                             .get_mut(current_entity)
                             .expect("all doors should have apertures");
@@ -108,6 +112,7 @@ impl WallMountPlugin {
                         current_apertures.remove(index);
                     }
                 } else {
+                    trace!("adding `{object_entity:?}` to the apreture of `{wall_entity:?}`");
                     apertures.insert(Aperture {
                         object_entity,
                         translation,
@@ -120,6 +125,7 @@ impl WallMountPlugin {
                     object_wall.0 = Some(wall_entity);
                 }
             } else if let Some(wall_entity) = object_wall.0.take() {
+                trace!("removing `{object_entity:?}` from the apreture of `{wall_entity:?}`");
                 let (_, mut current_apertures, _) = walls
                     .get_mut(wall_entity)
                     .expect("all doors should have apertures");

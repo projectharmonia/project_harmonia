@@ -76,8 +76,9 @@ impl TaskPlugin {
         mut request_events: ResMut<Events<FromClient<TaskRequest>>>,
         actors: Query<(), With<Actor>>,
     ) {
-        for event in request_events.drain().map(|event| event.event) {
+        for FromClient { client_id, event } in request_events.drain() {
             if actors.get(event.entity).is_ok() {
+                info!("`{client_id:?}` requests task '{}'", event.task.name());
                 commands.entity(event.entity).with_children(|parent| {
                     parent
                         .spawn(TaskBundle::new(&*event.task))
@@ -90,21 +91,22 @@ impl TaskPlugin {
     }
 
     fn activate_queued(
-        mut tasks: Query<(&TaskGroups, &mut TaskState)>,
+        mut tasks: Query<(Entity, &TaskGroups, &mut TaskState)>,
         actors: Query<&Children, With<Actor>>,
     ) {
         for children in &actors {
             let current_groups = tasks
                 .iter_many(children)
-                .filter(|(_, &task_state)| task_state != TaskState::Queued)
-                .map(|(&groups, _)| groups)
+                .filter(|(.., &task_state)| task_state != TaskState::Queued)
+                .map(|(_, &groups, _)| groups)
                 .reduce(|acc, groups| acc & groups)
                 .unwrap_or_default();
 
             let mut iter = tasks.iter_many_mut(children);
-            while let Some((groups, mut task_state)) = iter.fetch_next() {
+            while let Some((entity, groups, mut task_state)) = iter.fetch_next() {
                 if *task_state == TaskState::Queued && !groups.intersects(current_groups) {
                     *task_state = TaskState::Active;
+                    debug!("setting `{task_state:?}` for `{entity:?}`");
                     break;
                 }
             }
@@ -116,8 +118,9 @@ impl TaskPlugin {
         mut cancel_events: EventReader<FromClient<TaskCancel>>,
         mut tasks: Query<&mut TaskState>,
     ) {
-        for event in cancel_events.read().map(|event| &event.event) {
+        for FromClient { client_id, event } in cancel_events.read() {
             if let Ok(mut task_state) = tasks.get_mut(event.0) {
+                info!("`{client_id:?}` cancels task `{:?}`", event.0);
                 match *task_state {
                     TaskState::Queued => commands.entity(event.0).despawn(),
                     TaskState::Active => *task_state = TaskState::Cancelled,
@@ -136,11 +139,13 @@ impl TaskPlugin {
     ) {
         for (entity, parent, groups, &task_state) in &tasks {
             if task_state == TaskState::Cancelled {
+                debug!("despawning cancelled task `{entity:?}`");
                 let (mut nav_path, mut animation_state) = actors
                     .get_mut(**parent)
                     .expect("actor should have animaition state");
 
                 if groups.contains(TaskGroups::LEGS) {
+                    debug!("cancelling task navigation");
                     nav_path.clear();
                     commands.entity(**parent).remove::<ComputePath>();
                 }
@@ -222,7 +227,7 @@ impl TaskBundle {
     }
 }
 
-#[derive(Clone, Component, Copy, Default, PartialEq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Component, Copy, Debug, Default, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub enum TaskState {
     #[default]

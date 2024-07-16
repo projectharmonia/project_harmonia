@@ -22,6 +22,7 @@ impl MessageBoxPlugin {
         roots: Query<Entity, With<UiRoot>>,
     ) {
         for message in messages.read() {
+            info!("showing dialog");
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn((MessageBox, DialogBundle::new(&theme)))
@@ -55,6 +56,7 @@ impl MessageBoxPlugin {
         message_boxes: Query<Entity, With<MessageBox>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            info!("closing dialog");
             commands.entity(message_boxes.single()).despawn_recursive();
         }
     }

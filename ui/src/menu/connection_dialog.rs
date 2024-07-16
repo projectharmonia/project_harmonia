@@ -23,6 +23,7 @@ impl Plugin for ConnectionDialogPlugin {
 
 impl ConnectionDialogPlugin {
     fn show(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+        info!("showing connection dialog");
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((ConnectionDialog, DialogBundle::new(&theme)))
@@ -56,12 +57,14 @@ impl ConnectionDialogPlugin {
         dialogs: Query<Entity, With<ConnectionDialog>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            info!("cancelling connection");
             commands.remove_resource::<RenetClient>();
             commands.entity(dialogs.single()).despawn_recursive();
         }
     }
 
     fn close(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
+        info!("closing connection dialog");
         commands.entity(dialogs.single()).despawn_recursive();
     }
 }

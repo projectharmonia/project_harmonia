@@ -24,10 +24,10 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .replicate::<City>()
             .init_resource::<PlacedCities>()
-            .add_systems(OnEnter(GameState::City), Self::setup)
+            .add_systems(OnEnter(GameState::City), Self::init_activated)
             .add_systems(
                 OnEnter(GameState::Family),
-                (Self::activate, Self::setup).chain(),
+                (Self::activate, Self::init_activated).chain(),
             )
             .add_systems(OnExit(GameState::City), Self::deactivate)
             .add_systems(OnExit(GameState::Family), Self::deactivate)
@@ -57,6 +57,8 @@ impl CityPlugin {
         added_cities: Query<Entity, Added<City>>,
     ) {
         for entity in &added_cities {
+            debug!("initializing city `{entity:?}`");
+
             let transform =
                 Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
             commands
@@ -83,14 +85,17 @@ impl CityPlugin {
     }
 
     fn activate(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
-        commands.entity(actors.single().get()).insert(ActiveCity);
+        let entity = actors.single().get();
+        info!("activating city `{entity:?}`");
+        commands.entity(entity).insert(ActiveCity);
     }
 
-    fn setup(
+    fn init_activated(
         mut commands: Commands,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
         let (entity, mut visibility) = activated_cities.single_mut();
+        debug!("initializing activated city `{entity:?}`");
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
@@ -115,6 +120,7 @@ impl CityPlugin {
         lights: Query<Entity, With<Sun>>,
     ) {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
+            info!("deactivating city `{entity:?}`");
             *visibility = Visibility::Hidden;
             commands.entity(entity).remove::<ActiveCity>();
             commands.entity(cameras.single()).despawn();

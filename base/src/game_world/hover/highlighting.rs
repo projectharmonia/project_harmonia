@@ -18,6 +18,7 @@ impl Plugin for HighlightingPlugin {
 impl HighlightingPlugin {
     fn enable(mut hovered: Query<&mut OutlineVolume, Added<Hovered>>) {
         if let Ok(mut outline) = hovered.get_single_mut() {
+            debug!("highlighting enabled");
             outline.visible = true;
         }
     }
@@ -25,6 +26,7 @@ impl HighlightingPlugin {
     fn disable(mut unhovered: RemovedComponents<Hovered>, mut hovered: Query<&mut OutlineVolume>) {
         for entity in unhovered.read() {
             if let Ok(mut outline) = hovered.get_mut(entity) {
+                debug!("highlighting disabled");
                 outline.visible = false;
             }
         }

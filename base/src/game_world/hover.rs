@@ -19,7 +19,7 @@ impl Plugin for HoverPlugin {
                 PreUpdate,
                 (
                     Self::raycast.pipe(Self::update).run_if(hover_enabled),
-                    Self::remove_all
+                    Self::cleanup
                         .run_if(resource_changed::<HoverEnabled>)
                         .run_if(not(hover_enabled)),
                 )
@@ -59,14 +59,17 @@ impl HoverPlugin {
     ) {
         match (hit, hovered.get_single().ok()) {
             (Some((hit_entity, point)), None) => {
+                debug!("hovered `{hit_entity:?}`");
                 commands.entity(hit_entity).insert(Hovered(point));
             }
             (None, Some(previous_entity)) => {
+                debug!("unhovered `{previous_entity:?}`");
                 commands.entity(previous_entity).remove::<Hovered>();
             }
             (Some((hit_entity, point)), Some(previous_entity)) => {
                 commands.entity(hit_entity).insert(Hovered(point));
                 if hit_entity != previous_entity {
+                    debug!("changing hover from `{previous_entity:?}` to `{hit_entity:?}`");
                     commands.entity(previous_entity).remove::<Hovered>();
                 }
             }
@@ -74,7 +77,8 @@ impl HoverPlugin {
         }
     }
 
-    fn remove_all(mut commands: Commands, hovered: Query<Entity, With<Hovered>>) {
+    fn cleanup(mut commands: Commands, hovered: Query<Entity, With<Hovered>>) {
+        debug!("cleaning hover");
         if let Ok(hovered_entity) = hovered.get_single() {
             commands.entity(hovered_entity).remove::<Hovered>();
         }

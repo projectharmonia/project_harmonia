@@ -47,6 +47,7 @@ impl Plugin for LotPlugin {
 impl LotPlugin {
     fn init(mut commands: Commands, spawned_lots: Query<Entity, Added<LotVertices>>) {
         for entity in &spawned_lots {
+            debug!("initializing log `{entity:?}`");
             commands.entity(entity).insert(SpatialBundle::default());
         }
     }
@@ -67,6 +68,7 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
         for FromClient { client_id, event } in create_events.read().cloned() {
+            info!("`{client_id:?}` creates lot");
             commands.entity(event.city_entity).with_children(|parent| {
                 parent.spawn(LotBundle::new(event.polygon));
             });
@@ -85,6 +87,7 @@ impl LotPlugin {
         for FromClient { client_id, event } in move_events.read().copied() {
             match lots.get_mut(event.entity) {
                 Ok(mut vertices) => {
+                    info!("`{client_id:?}` moves lot `{:?}`", event.entity);
                     for vertex in vertices.iter_mut() {
                         *vertex += event.offset;
                     }
@@ -104,6 +107,7 @@ impl LotPlugin {
         mut confirm_events: EventWriter<ToClients<LotEventConfirmed>>,
     ) {
         for FromClient { client_id, event } in delete_events.read().copied() {
+            info!("`{client_id:?}` deletes lot `{:?}`", event.0);
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),

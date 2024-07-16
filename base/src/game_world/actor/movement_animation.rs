@@ -25,10 +25,14 @@ impl Plugin for MovementAnimationPlugin {
 impl MovementAnimationPlugin {
     fn update_animation(
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut actors: Query<(&Sex, &Navigation, &NavPath, &mut AnimationState), Changed<NavPath>>,
+        mut actors: Query<
+            (Entity, &Sex, &Navigation, &NavPath, &mut AnimationState),
+            Changed<NavPath>,
+        >,
     ) {
-        for (sex, navigation, nav_path, mut animation_state) in &mut actors {
+        for (entity, sex, navigation, nav_path, mut animation_state) in &mut actors {
             if nav_path.is_empty() {
+                debug!("playing idle animation for `{entity:?}`");
                 animation_state.set_default(actor_animations.handle(ActorAnimation::Idle));
                 continue;
             }
@@ -50,6 +54,7 @@ impl MovementAnimationPlugin {
                 }
             };
 
+            debug!("playing animation `{animation:?}` for `{entity:?}`");
             animation_state.set_default(actor_animations.handle(animation));
         }
     }

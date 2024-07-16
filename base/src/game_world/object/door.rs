@@ -32,6 +32,7 @@ impl Plugin for DoorPlugin {
 impl DoorPlugin {
     fn init(mut commands: Commands, objects: Query<Entity, Added<Door>>) {
         for entity in &objects {
+            debug!("initializing door for {entity:?}");
             commands.entity(entity).insert(DoorState::default());
         }
     }
@@ -56,6 +57,7 @@ impl DoorPlugin {
                     let door_end = door_transform.transform_point(-door_point).xz();
                     let door_segment = Segment::new(door_start, door_end);
                     if nav_segment.intersects(door_segment) {
+                        debug!("marking path of actor `{actor_entity:?}` as passing");
                         door_state.passing_actors.push(actor_entity);
                     }
                 }
@@ -90,12 +92,14 @@ impl DoorPlugin {
                 .fetch_next()
             {
                 if !door_state.animation_loaded {
+                    debug!("loading open animation for `{object_entity:?}`");
                     let animation_path = metadata::gltf_asset(&object_path.0, "Animation0");
                     animation_player.play(asset_server.load(animation_path));
                     door_state.animation_loaded = true;
                 }
 
                 let speed = if should_open { 1.0 } else { -1.0 };
+                debug!("playing open animation");
                 animation_player.set_speed(speed);
 
                 if animation_player.is_finished() {
@@ -108,6 +112,7 @@ impl DoorPlugin {
                     }
                 }
 
+                debug!("setting opened to `{should_open}`");
                 door_state.opened = should_open;
             }
         }
@@ -119,6 +124,7 @@ impl DoorPlugin {
     ) {
         for entity in removed_actors.read() {
             for mut door_state in &mut objects {
+                debug!("removing path of deleted actor `{entity:?}`");
                 door_state.remove_passing(entity);
             }
         }

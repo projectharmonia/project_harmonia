@@ -76,7 +76,7 @@ impl ObjectPlugin {
                 .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
             let scene_path = metadata::gltf_asset(&object_path.0, "Scene0");
-            debug!("spawning object {scene_path:?}");
+            debug!("initializing object `{entity:?}` for '{scene_path:?}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             let mut entity = commands.entity(entity);
@@ -136,6 +136,7 @@ impl ObjectPlugin {
             let collider = Collider::convex_hull_from_mesh(&merged_mesh)
                 .expect("object mesh should be in compatible format");
 
+            debug!("inserting collider for `{object_entity:?}`");
             commands.entity(object_entity).insert(collider);
         }
     }
@@ -150,7 +151,7 @@ impl ObjectPlugin {
         for FromClient { client_id, event } in buy_events.read().cloned() {
             if event.position.y.abs() > HALF_CITY_SIZE {
                 error!(
-                    "received object spawn position {} with 'y' outside of city size",
+                    "received position {} with 'y' outside of city size",
                     event.position
                 );
                 continue;
@@ -161,10 +162,7 @@ impl ObjectPlugin {
                 .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
                 .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
             else {
-                error!(
-                    "unable to find a city for object spawn position {}",
-                    event.position
-                );
+                error!("unable to find a city for position {}", event.position);
                 continue;
             };
 
@@ -175,6 +173,7 @@ impl ObjectPlugin {
                 .map(|(lot_entity, _)| lot_entity)
                 .unwrap_or(city_entity);
 
+            info!("`{client_id:?}` buys object {:?}", event.metadata_path);
             commands.entity(parent_entity).with_children(|parent| {
                 parent.spawn(ObjectBundle::new(
                     event.metadata_path,
@@ -197,6 +196,7 @@ impl ObjectPlugin {
         for FromClient { client_id, event } in move_events.read().copied() {
             match objects.get_mut(event.entity) {
                 Ok((mut position, mut rotation)) => {
+                    info!("`{client_id:?}` moves object `{:?}`", event.entity);
                     **position = event.position;
                     **rotation = event.rotation;
                     confirm_events.send(ToClients {
@@ -204,7 +204,7 @@ impl ObjectPlugin {
                         event: ObjectEventConfirmed,
                     });
                 }
-                Err(e) => error!("unable to apply object movement: {e}",),
+                Err(e) => error!("unable to move: {e}",),
             }
         }
     }
@@ -215,6 +215,7 @@ impl ObjectPlugin {
         mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
     ) {
         for FromClient { client_id, event } in sell_events.read().copied() {
+            info!("`{client_id:?}` sells object `{:?}`", event.0);
             commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
@@ -250,7 +251,7 @@ impl ObjectBundle {
 #[reflect(Component)]
 pub(crate) struct ObjectPath(AssetPath<'static>);
 
-#[derive(Clone, Deserialize, Event, Serialize)]
+#[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct ObjectBuy {
     metadata_path: AssetPath<'static>,
     position: Vec3,

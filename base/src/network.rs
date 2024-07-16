@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
+use bevy::prelude::*;
 use bevy_replicon_renet::renet::transport::{
     ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
     ServerConfig,
@@ -13,6 +14,8 @@ pub const DEFAULT_PORT: u16 = 4761;
 const PROTOCOL_ID: u64 = 7;
 
 pub fn create_server(port: u16) -> Result<NetcodeServerTransport> {
+    info!("creating server transport");
+
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
     let socket = UdpSocket::bind(public_addr)?;
@@ -29,6 +32,8 @@ pub fn create_server(port: u16) -> Result<NetcodeServerTransport> {
 }
 
 pub fn create_client(ip: IpAddr, port: u16) -> Result<NetcodeClientTransport> {
+    info!("creating client transport");
+
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;
     let server_addr = SocketAddr::new(ip, port);

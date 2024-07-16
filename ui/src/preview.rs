@@ -58,7 +58,7 @@ impl PreviewPlugin {
         if let Some((preview_entity, &preview, ..)) = previews.iter().find(|&(.., c)| !c) {
             let (translation, scene_handle) = match preview {
                 Preview::Actor(entity) => {
-                    debug!("generating preview for actor {entity:?}");
+                    debug!("generating preview for actor `{entity:?}`");
 
                     let scene_handle = actors
                         .get(entity)
@@ -71,7 +71,7 @@ impl PreviewPlugin {
                         .get_path(id)
                         .expect("metadata should always come from file");
                     let scene_path = metadata::gltf_asset(&metadata_path, "Scene0");
-                    debug!("generating preview for object {scene_path:?}");
+                    debug!("generating preview for object '{scene_path:?}'");
 
                     let metadata = object_metadata.get(id).unwrap();
                     let scene_handle = asset_server.load(scene_path);
@@ -143,7 +143,7 @@ impl PreviewPlugin {
         } else if asset_state == LoadState::Failed
             || deps_state == RecursiveDependencyLoadState::Failed
         {
-            error!("unable to load asset for preview");
+            error!("unable to load asset");
             preview_state.set(PreviewState::Inactive);
         }
     }
@@ -155,6 +155,7 @@ impl PreviewPlugin {
         chidlren: Query<&Children>,
         meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
+        debug!("waiting for rendering");
         let scene_entity = preview_scenes.single();
         for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
             commands
@@ -163,7 +164,6 @@ impl PreviewPlugin {
         }
 
         preview_state.set(PreviewState::Inactive);
-        debug!("rendering preview");
     }
 
     fn despawn_scene(
@@ -181,9 +181,9 @@ impl PreviewPlugin {
                     panic!("preview camera should render only to images");
                 };
                 *target_handle = image_handle.clone();
-                debug!("preview rendered");
+                debug!("preview is ready");
             } else {
-                debug!("preview target is no longer valid");
+                info!("preview target is no longer valid");
             }
 
             commands.entity(entity).despawn_recursive();

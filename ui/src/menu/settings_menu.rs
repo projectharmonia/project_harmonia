@@ -47,6 +47,7 @@ impl SettingsMenuPlugin {
         theme: Res<Theme>,
         roots: Query<Entity, With<UiRoot>>,
     ) {
+        info!("opening setting menu");
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((
@@ -158,6 +159,7 @@ impl SettingsMenuPlugin {
         buttons: Query<(Entity, &Mapping)>,
     ) {
         for (entity, mapping) in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            info!("starting binding for '{}'", mapping.action);
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn((BindingButton(entity), DialogBundle::new(&theme)))
@@ -238,6 +240,7 @@ impl SettingsMenuPlugin {
             .iter()
             .find(|(_, mapping)| mapping.input_kind == Some(input_kind))
         {
+            info!("found conflict with '{}'", mapping.action);
             labels.single_mut().sections[0].value = format!(
                 "\"{input_kind}\" is already used by \"{:?}\"",
                 mapping.action
@@ -257,6 +260,7 @@ impl SettingsMenuPlugin {
                 .get_mut(binding_button.0)
                 .expect("binding dialog should point to a button with mapping");
             mapping.input_kind = Some(input_kind);
+            info!("assigning binding to '{}'", mapping.action);
             commands.entity(dialog_entity).despawn_recursive();
         }
     }
@@ -284,14 +288,16 @@ impl SettingsMenuPlugin {
                         .get_mut(binding_button.0)
                         .expect("binding should point to a button");
                     mapping.input_kind = input_kind;
+                    info!("reassigning binding to '{}'", mapping.action);
                 }
                 BindingDialogButton::Delete => {
                     let mut mapping = mapping_buttons
                         .get_mut(binding_button.0)
                         .expect("binding should point to a button");
+                    info!("deleting binding for '{}'", mapping.action);
                     mapping.input_kind = None;
                 }
-                BindingDialogButton::Cancel => (),
+                BindingDialogButton::Cancel => info!("cancelling binding"),
             }
             commands.entity(entity).despawn_recursive();
         }
@@ -330,6 +336,7 @@ impl SettingsMenuPlugin {
                 apply_events.send_default();
             }
 
+            info!("closing settings menu");
             commands.entity(settings_menus.single()).despawn_recursive()
         }
     }

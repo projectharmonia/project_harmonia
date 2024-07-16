@@ -31,6 +31,7 @@ impl CityHudPlugin {
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
     ) {
+        debug!("showing city HUD");
         commands
             .spawn((
                 UiRoot,
@@ -102,6 +103,7 @@ impl CityHudPlugin {
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
+                info!("changing city mode to `{mode:?}`");
                 city_mode.set(mode);
             }
         }
@@ -113,6 +115,7 @@ impl CityHudPlugin {
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
+                info!("changing lot tool to `{mode:?}`");
                 lot_tool.set(mode);
             }
         }

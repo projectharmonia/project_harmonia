@@ -110,6 +110,8 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
                             .path()
                             .strip_prefix(&assets_dir)
                             .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
+
+                        debug!("loading metadata for {path:?}");
                         handles.push(asset_server.load(path.to_path_buf()));
                     }
                 }

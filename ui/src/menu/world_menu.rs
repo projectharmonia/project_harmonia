@@ -60,6 +60,7 @@ impl WorldMenuPlugin {
         families: Query<(Entity, &Family)>,
         cities: Query<(Entity, &City)>,
     ) {
+        info!("entering world menu");
         commands
             .spawn((
                 UiRoot,
@@ -167,6 +168,7 @@ impl WorldMenuPlugin {
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
             if nodes.iter().all(|world_entity| world_entity.0 != entity) {
+                debug!("creating button for family '{}'", family.name);
                 commands.entity(tab_content.0).with_children(|parent| {
                     setup_entity_node::<FamilyButton>(parent, &theme, entity, &family.name);
                 });
@@ -187,6 +189,7 @@ impl WorldMenuPlugin {
                 .find(|(_, &tab)| tab == WorldTab::Cities)
                 .expect("tab with cities should be spawned on state enter");
             if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
+                debug!("creating button for city '{}'", city.name);
                 commands.entity(tab_content.0).with_children(|parent| {
                     setup_entity_node::<CityButton>(parent, &theme, entity, &city.name);
                 });
@@ -218,10 +221,12 @@ impl WorldMenuPlugin {
                         .first()
                         .expect("family always have at least one member");
 
+                    info!("starting playing for family `{:?}`", world_entity.0);
                     commands.entity(actor_entity).insert(SelectedActor);
                     game_state.set(GameState::Family);
                 }
                 FamilyButton::Delete => {
+                    info!("deleting family `{:?}`", world_entity.0);
                     delete_events.send(FamilyDelete(world_entity.0));
                 }
             }
@@ -244,10 +249,14 @@ impl WorldMenuPlugin {
             // TODO: use event for despawn, otherwise client will despawn the city locally.
             match family_button {
                 CityButton::Edit => {
+                    info!("starting editing city `{:?}`", world_entity.0);
                     commands.entity(world_entity.0).insert(ActiveCity);
                     game_state.set(GameState::City);
                 }
-                CityButton::Delete => commands.entity(world_entity.0).despawn(),
+                CityButton::Delete => {
+                    info!("deleting city `{:?}`", world_entity.0);
+                    commands.entity(world_entity.0).despawn();
+                }
             }
         }
     }
@@ -285,6 +294,7 @@ impl WorldMenuPlugin {
     ) {
         for &dialog_button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             if dialog_button == CityDialogButton::Create {
+                info!("creating new city");
                 let mut city_name = text_edits.single_mut();
                 commands.spawn(CityBundle::new(mem::take(&mut city_name.0)));
             }

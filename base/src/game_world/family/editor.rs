@@ -28,6 +28,7 @@ impl Plugin for EditorPlugin {
 
 impl EditorPlugin {
     fn setup(mut commands: Commands) {
+        debug!("initializing editor");
         commands
             .spawn(EditableFamilyBundle::default())
             .with_children(|parent| {
@@ -51,6 +52,7 @@ impl EditorPlugin {
         families: Query<&FamilyMembers>,
     ) {
         for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
+            info!("starting playing");
             let actor_entity = *members
                 .first()
                 .expect("family should always have at least one member");
@@ -64,6 +66,7 @@ impl EditorPlugin {
         actors: Query<Entity, With<EditableActor>>,
         families: Query<Entity, With<EditableFamily>>,
     ) {
+        info!("resetting family");
         for entity in &actors {
             commands.entity(entity).despawn_recursive();
         }

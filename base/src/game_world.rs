@@ -64,6 +64,7 @@ impl GameWorldPlugin {
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.name);
+        info!("saving world to {world_path:?}");
 
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
@@ -88,6 +89,8 @@ impl GameWorldPlugin {
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&game_world.name);
+        info!("loading world from {world_path:?}");
+
         let bytes =
             fs::read(&world_path).with_context(|| format!("unable to load {world_path:?}"))?;
         let mut deserializer = ron::Deserializer::from_bytes(&bytes)
@@ -111,6 +114,7 @@ impl GameWorldPlugin {
     }
 
     fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
+        info!("joining replicated world");
         commands.insert_resource(GameWorld::default());
         game_state.set(GameState::World);
     }

@@ -41,6 +41,7 @@ impl WallSnapPlugin {
     fn init_placing(mut placing_objects: Query<(&mut PlaceState, &WallSnap), Added<WallSnap>>) {
         if let Ok((mut placing_object, snap)) = placing_objects.get_single_mut() {
             if snap.required() {
+                debug!("disabling placing until snapped");
                 placing_object.allowed_place = false;
             }
         }
@@ -69,6 +70,7 @@ impl WallSnapPlugin {
             .map(|wall| (wall, wall.closest_point(object_point)))
             .find(|(_, point)| point.distance(object_point) <= SNAP_DELTA)
         {
+            trace!("snapping to wall");
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
             let disp = wall.displacement();
             let sign = disp.perp_dot(object_point - wall_point).signum();
@@ -82,15 +84,18 @@ impl WallSnapPlugin {
             position.z = snap_point.y;
             if limit.is_none() {
                 // Apply rotation only for newly snapped objects.
+                debug!("applying rotation {angle}");
                 **rotation = Quat::from_rotation_y(angle);
                 limit.0 = Some(PI);
                 if snap.required() {
+                    debug!("allowing placing");
                     state.allowed_place = true;
                 }
             }
         } else if limit.is_some() {
             limit.0 = None;
             if snap.required() {
+                debug!("disallowing placing");
                 state.allowed_place = false;
             }
         }

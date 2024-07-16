@@ -40,6 +40,7 @@ impl AnimationStatePlugin {
                 .iter_many_mut(children.iter_descendants(entity))
                 .fetch_next()
             {
+                debug!("initializing animation for `{entity:?}`");
                 animation_state.apply(&mut animation_player);
             }
         }
@@ -55,6 +56,7 @@ impl AnimationStatePlugin {
                 .iter_many_mut(children.iter_descendants(entity))
                 .fetch_next()
             {
+                debug!("applying animation for `{entity:?}`");
                 animation_state.apply(&mut animation_player);
             }
         }
@@ -75,6 +77,7 @@ impl AnimationStatePlugin {
                     animation_state.handle = None;
                     animation_state.apply(&mut animation_player);
 
+                    debug!("animation finished for `{entity:?}`");
                     finish_events.send(AnimationFinished(entity));
                 }
             }

@@ -56,6 +56,7 @@ impl FamilyHudPlugin {
         families: Query<(&Budget, &FamilyMembers), With<SelectedFamily>>,
         actors: Query<Entity, With<SelectedActor>>,
     ) {
+        debug!("showing family hud");
         commands
             .spawn((
                 UiRoot,
@@ -128,6 +129,7 @@ impl FamilyHudPlugin {
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
+                info!("changing family mode to `{mode:?}`");
                 family_mode.set(mode);
             }
         }
@@ -159,6 +161,7 @@ impl FamilyHudPlugin {
         {
             match *state {
                 TaskState::Queued => {
+                    debug!("creating queued task button for `{task_entity:?}`");
                     commands
                         .entity(queued_task_nodes.single())
                         .with_children(|parent| {
@@ -173,10 +176,12 @@ impl FamilyHudPlugin {
                         .iter()
                         .find(|(_, button_task)| button_task.0 == task_entity)
                     {
+                        debug!("turning queued button for `{task_entity:?}` into active");
                         commands
                             .entity(button_entity)
                             .set_parent(active_task_nodes.single());
                     } else {
+                        debug!("creating active task button for `{task_entity:?}`");
                         commands
                             .entity(active_task_nodes.single())
                             .with_children(|parent| {
@@ -187,7 +192,9 @@ impl FamilyHudPlugin {
                             });
                     }
                 }
-                TaskState::Cancelled => continue,
+                TaskState::Cancelled => {
+                    debug!("marking button for task `{task_entity:?}` as cancelled")
+                }
             };
         }
     }
@@ -212,6 +219,7 @@ impl FamilyHudPlugin {
                 .iter()
                 .find(|(_, button_task)| button_task.0 == task_entity)
             {
+                debug!("removing task button for `{task_entity:?}`");
                 commands.entity(button_entity).despawn_recursive();
             }
         }
@@ -222,6 +230,7 @@ impl FamilyHudPlugin {
         mut labels: Query<&mut Text, With<BudgetLabel>>,
     ) {
         if let Ok(budget) = families.get_single() {
+            debug!("changing budget to `{budget:?}`");
             labels.single_mut().sections[0].value = budget.to_string();
         }
     }
@@ -263,8 +272,10 @@ impl FamilyHudPlugin {
                 .iter_mut()
                 .find(|(_, bar_need)| bar_need.0 == entity)
             {
+                trace!("updating bar with `{need:?}` for `{entity:?}`");
                 progress_bar.0 = need.0;
             } else {
+                trace!("creating bar with `{need:?}` for `{entity:?}`");
                 commands.entity(tab_content.0).with_children(|parent| {
                     parent.spawn(LabelBundle::symbol(&theme, glyph.0));
                     parent.spawn((BarNeed(entity), ProgressBarBundle::new(&theme, need.0)));
@@ -283,6 +294,7 @@ impl FamilyHudPlugin {
                 .iter()
                 .find(|(_, bar_need)| bar_need.0 == need_entity)
             {
+                debug!("despawning bar for need `{need_entity:?}`");
                 commands.entity(bar_entity).despawn_recursive();
             }
         }
@@ -294,6 +306,7 @@ impl FamilyHudPlugin {
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
+                info!("changing building mode to `{mode:?}`");
                 building_mode.set(mode);
             }
         }
@@ -557,13 +570,13 @@ struct ActiveTasksNode;
 #[derive(Component)]
 struct QueuedTasksNode;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct ButtonTask(Entity);
 
 #[derive(Component)]
 struct BudgetLabel;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct PlayActor(Entity);
 
 #[derive(Component)]

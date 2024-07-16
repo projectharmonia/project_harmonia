@@ -61,9 +61,9 @@ impl PlayerCameraPlugin {
         let (mut orbit_origin, transform) = cameras.single_mut();
 
         const MOVEMENT_SPEED: f32 = 10.0;
-        orbit_origin.dest += movement_direction(&action_state, transform.rotation)
-            * time.delta_seconds()
-            * MOVEMENT_SPEED;
+        let direction = movement_direction(&action_state, transform.rotation);
+        trace!("camera movement direction is `{direction:?}`");
+        orbit_origin.dest += direction * time.delta_seconds() * MOVEMENT_SPEED;
         orbit_origin.smooth(time.delta_seconds());
     }
 

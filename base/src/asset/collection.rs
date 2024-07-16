@@ -9,8 +9,11 @@ impl<T: AssetCollection + IntoEnumIterator> FromWorld for Collection<T> {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
         let handles = T::iter()
-            .map(|value| asset_server.load(value.asset_path()))
+            .map(|value| value.asset_path())
+            .inspect(|asset_path| debug!("preloading '{asset_path}'"))
+            .map(|asset_path| asset_server.load(asset_path))
             .collect();
+
         Self(handles)
     }
 }

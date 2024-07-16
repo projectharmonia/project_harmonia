@@ -40,6 +40,8 @@ impl SettingsPlugin {
         mut input_map: ResMut<InputMap<Action>>,
         settings: Res<Settings>,
     ) {
+        info!("applying settings");
+
         config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
         wireframe_config.global = settings.developer.wireframe;
         draw_nav_mesh.0 = settings.developer.debug_paths;
@@ -68,6 +70,8 @@ impl Settings {
     /// Creates [`Settings`] from the application settings file.
     /// Will be initialed with defaults if the file does not exist.
     fn read(file_name: &Path) -> Result<Settings> {
+        info!("reading settings from {file_name:?}");
+
         match fs::read_to_string(file_name) {
             Ok(content) => ron::from_str::<Settings>(&content)
                 .with_context(|| format!("unable to read settings from {file_name:?}")),
@@ -79,6 +83,8 @@ impl Settings {
     ///
     /// Automatically creates all parent folders.
     fn write(&self, file_name: &Path) -> Result<()> {
+        info!("writing settings to {file_name:?}");
+
         let content = ron::ser::to_string_pretty(&self, Default::default())
             .context("unable to serialize settings")?;
 

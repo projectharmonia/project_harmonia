@@ -51,6 +51,7 @@ impl CreatingLotPlugin {
         cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Some(point) = camera_caster.intersect_ground() {
+            info!("starting placing lot");
             // Spawn with two the same vertices because we edit the last one on cursor movement.
             commands.entity(cities.single()).with_children(|parent| {
                 parent.spawn((LotVertices(vec![point.xz(); 2].into()), CreatingLot));
@@ -72,8 +73,10 @@ impl CreatingLotPlugin {
                 const SNAP_DELTA: f32 = 0.1;
                 let delta = first_vertex - point;
                 if delta.x.abs() <= SNAP_DELTA && delta.y.abs() <= SNAP_DELTA {
+                    trace!("snapping vertex position to last vertex `{last_vertex:?}`");
                     *last_vertex = first_vertex;
                 } else {
+                    trace!("updating vertex position to `{point:?}`");
                     *last_vertex = point;
                 }
             }
@@ -91,11 +94,13 @@ impl CreatingLotPlugin {
                 .expect("vertices should have at least 2 vertices");
             let last_vertex = *lot_vertices.last().unwrap();
             if first_vertex == last_vertex {
+                info!("confirming lot creation");
                 create_events.send(LotCreate {
                     polygon: lot_vertices.0.clone(),
                     city_entity: cities.single(),
                 });
             } else {
+                info!("confirming lot point");
                 lot_vertices.push(last_vertex);
             }
         }
@@ -103,6 +108,7 @@ impl CreatingLotPlugin {
 
     fn end_creating(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
         if let Ok(entity) = creating_lots.get_single() {
+            info!("ending lot creation");
             commands.entity(entity).despawn();
         }
     }

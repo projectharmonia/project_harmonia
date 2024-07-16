@@ -69,6 +69,7 @@ impl CreatingWallPlugin {
                     .find(|vertex| vertex.distance(point) < SNAP_DELTA)
                     .unwrap_or(point);
 
+                info!("spawning new wall");
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((CreatingWall, Wall(Segment::splat(point))));
                 });
@@ -99,9 +100,9 @@ impl CreatingWallPlugin {
             } else {
                 Color::RED
             };
-            *material_handle = materials.add(material);
+            debug!("setting base color to `{:?}`", material.base_color);
 
-            debug!("assigned material color for placing wall");
+            *material_handle = materials.add(material);
         }
     }
 
@@ -125,6 +126,7 @@ impl CreatingWallPlugin {
                     .find(|vertex| vertex.distance(point) < SNAP_DELTA)
                     .unwrap_or(point);
 
+                trace!("updating wall end to `{vertex:?}`");
                 wall.end = vertex;
             }
         }
@@ -136,6 +138,7 @@ impl CreatingWallPlugin {
         mut walls: Query<(Entity, &Parent, &Wall), (With<CreatingWall>, Without<UnconfirmedWall>)>,
     ) {
         if let Ok((wall_entity, parent, &wall)) = walls.get_single_mut() {
+            info!("configrming wall");
             commands.entity(wall_entity).insert(UnconfirmedWall);
 
             create_events.send(WallCreate {
@@ -147,6 +150,7 @@ impl CreatingWallPlugin {
 
     fn end_creating(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
         if let Ok(entity) = walls.get_single() {
+            debug!("despawning confirmed wall");
             commands.entity(entity).despawn();
         }
     }

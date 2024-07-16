@@ -55,6 +55,7 @@ impl HumanPlugin {
                 .next()
                 .is_none()
             {
+                debug!("initializing human `{entity:?}`");
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn(NeedBundle::<Bladder>::default());
                     parent.spawn(NeedBundle::<Energy>::default());
@@ -73,6 +74,7 @@ impl HumanPlugin {
         actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
     ) {
         for (entity, &sex) in &actors {
+            debug!("initializing sex for human `{entity:?}`");
             commands
                 .entity(entity)
                 .insert(human_scenes.handle(sex.into()));
@@ -86,6 +88,10 @@ impl HumanPlugin {
     ) {
         if let Ok(mut family_scene) = family_scenes.get_single_mut() {
             for (mut first_name, mut last_name, &sex) in &mut actors {
+                debug!(
+                    "adding human '{} {}' to family scene '{}'",
+                    first_name.0, last_name.0, family_scene.name
+                );
                 family_scene.actors.push(Box::new(HumanBundle::new(
                     mem::take(&mut first_name),
                     mem::take(&mut last_name),

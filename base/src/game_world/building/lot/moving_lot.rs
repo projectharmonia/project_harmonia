@@ -60,6 +60,7 @@ impl MovingLotPlugin {
                 .iter()
                 .find(|(.., vertices)| vertices.contains_point(point.xz()))
             {
+                info!("picking lot `{entity:?}`");
                 commands.entity(**parent).with_children(|parent| {
                     parent.spawn((
                         vertices.clone(),
@@ -89,6 +90,7 @@ impl MovingLotPlugin {
         mut moving_lots: Query<(&mut Transform, &MovingLot), Without<UnconfirmedLot>>,
     ) {
         if let Ok((transform, moving_lot)) = moving_lots.get_single_mut() {
+            info!("confirming lot movement");
             move_events.send(LotMove {
                 entity: moving_lot.entity,
                 offset: transform.translation.xz(),
@@ -101,12 +103,14 @@ impl MovingLotPlugin {
         moving_lots: Query<&MovingLot, Without<UnconfirmedLot>>,
     ) {
         if let Ok(moving_lot) = moving_lots.get_single() {
+            info!("deleting picked lot");
             delete.send(LotDelete(moving_lot.entity));
         }
     }
 
     fn end_creating(mut commands: Commands, mut moving_lots: Query<Entity, With<MovingLot>>) {
         if let Ok(entity) = moving_lots.get_single_mut() {
+            info!("ending lot movement");
             commands.entity(entity).despawn();
         }
     }
@@ -114,6 +118,10 @@ impl MovingLotPlugin {
     fn cleanup_despawned(mut commands: Commands, mut moving_lots: Query<(Entity, &MovingLot)>) {
         if let Ok((entity, moving_lot)) = moving_lots.get_single_mut() {
             if commands.get_entity(moving_lot.entity).is_none() {
+                info!(
+                    "cancelling movement for despawned lot `{:?}`",
+                    moving_lot.entity
+                );
                 commands.entity(entity).despawn();
             }
         }

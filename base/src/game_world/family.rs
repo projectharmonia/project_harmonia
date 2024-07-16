@@ -51,7 +51,7 @@ impl Plugin for FamilyPlugin {
                 OnEnter(GameState::Family),
                 (Self::select, Self::reset_states),
             )
-            .add_systems(OnExit(GameState::Family), Self::remove_selection)
+            .add_systems(OnExit(GameState::Family), Self::deselect)
             .add_systems(
                 PreUpdate,
                 (
@@ -84,6 +84,8 @@ impl FamilyPlugin {
     ) {
         let mut new_families = HashMap::<_, Vec<_>>::new();
         for (actor_entity, family) in &actors {
+            debug!("updating family for actor `{actor_entity:?}`");
+
             // Remove previous.
             for mut members in &mut families {
                 if let Some(index) = members.iter().position(|&entity| entity == actor_entity) {
@@ -114,6 +116,7 @@ impl FamilyPlugin {
         mut create_events: ResMut<Events<FromClient<FamilyCreate>>>,
     ) {
         for FromClient { client_id, event } in create_events.drain() {
+            info!("creating new family");
             let family_entity = commands
                 .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
                 .id();
@@ -144,30 +147,31 @@ impl FamilyPlugin {
     fn delete(
         mut commands: Commands,
         mut delete_events: EventReader<FromClient<FamilyDelete>>,
-        families: Query<(Entity, &mut FamilyMembers)>,
+        families: Query<&mut FamilyMembers>,
     ) {
-        for entity in delete_events.read().map(|event| event.event.0) {
-            match families.get(entity) {
-                Ok((family_entity, members)) => {
+        for family_entity in delete_events.read().map(|event| event.event.0) {
+            match families.get(family_entity) {
+                Ok(members) => {
+                    info!("deleting family `{family_entity:?}`");
                     commands.entity(family_entity).despawn();
                     for &entity in &members.0 {
                         commands.entity(entity).despawn_recursive();
                     }
                 }
-                Err(e) => error!("received an invalid family entity to despawn: {e}"),
+                Err(e) => error!("received an invalid family to despawn: {e}"),
             }
         }
     }
 
     pub fn select(mut commands: Commands, actors: Query<&ActorFamily, With<SelectedActor>>) {
-        commands.entity(actors.single().0).insert(SelectedFamily);
+        let family = actors.single();
+        info!("selecting `{family:?}`");
+        commands.entity(family.0).insert(SelectedFamily);
     }
 
-    fn remove_selection(
-        mut commands: Commands,
-        families: Query<&ActorFamily, With<SelectedActor>>,
-    ) {
+    fn deselect(mut commands: Commands, families: Query<&ActorFamily, With<SelectedActor>>) {
         if let Ok(family) = families.get_single() {
+            info!("deselecting `{family:?}`");
             commands.entity(family.0).remove::<SelectedFamily>();
         }
     }
@@ -303,7 +307,7 @@ pub struct Family {
 #[derive(Component)]
 pub struct SelectedFamily;
 
-#[derive(Clone, Component, Copy, Default, Deserialize, Reflect, Serialize, Deref)]
+#[derive(Clone, Component, Copy, Default, Debug, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
 pub struct Budget(u32);
 
@@ -314,7 +318,7 @@ pub struct Budget(u32);
 pub struct FamilyMembers(Vec<Entity>);
 
 /// Contains the family entity to which the actor belongs.
-#[derive(Component, Reflect, Serialize, Deserialize)]
+#[derive(Component, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(Component, MapEntities)]
 pub struct ActorFamily(pub Entity);
 

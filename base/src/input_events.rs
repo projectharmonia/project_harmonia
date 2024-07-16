@@ -24,6 +24,7 @@ impl InputEvents<'_, '_> {
             .read()
             .find(|input| input.state == ButtonState::Released)
         {
+            info!("received `{:?}`", input.key_code);
             return Some(input.key_code.into());
         }
 
@@ -39,12 +40,14 @@ impl InputEvents<'_, '_> {
                 .read()
                 .find(|input| input.state == ButtonState::Released)
             {
+                info!("received `{:?}`", input.button);
                 return Some(input.button.into());
             }
         }
 
         if let Some(input) = self.gamepad_buttons.read().next() {
             if input.value == 1.0 {
+                info!("received `{:?}`", input.button_type);
                 return Some(input.button_type.into());
             }
         }

@@ -40,10 +40,11 @@ impl ObjectsNodePlugin {
     ) {
         for (toggled, &preview) in &buttons {
             let Preview::Object(id) = preview else {
-                continue;
+                panic!("buttons should contain only object previews");
             };
 
             if toggled.0 {
+                debug!("starting spawning object `{id:?}`");
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
@@ -72,6 +73,7 @@ impl ObjectsNodePlugin {
 
             match interaction {
                 Interaction::Hovered => {
+                    debug!("showing popup");
                     let (Val::Px(button_width), Val::Px(button_height)) =
                         (style.width, style.height)
                     else {
@@ -119,6 +121,7 @@ impl ObjectsNodePlugin {
                 }
                 Interaction::Pressed | Interaction::None => {
                     if let Ok(entity) = popups.get_single() {
+                        debug!("closing popup");
                         commands.entity(entity).despawn_recursive();
                     }
                 }
@@ -135,6 +138,7 @@ impl ObjectsNodePlugin {
             // If there is no button, then the object was moved.
             if let Some(mut toggled) = buttons.iter_mut().find(|toggled| toggled.0) {
                 if placing_objects.is_empty() {
+                    debug!("untoggling button for placed object");
                     toggled.0 = false;
                 }
             }

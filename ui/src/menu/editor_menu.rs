@@ -67,6 +67,7 @@ impl Plugin for EditorMenuPlugin {
 
 impl EditorMenuPlugin {
     fn setup(mut commands: Commands, theme: Res<Theme>) {
+        info!("entering family editor");
         commands
             .spawn((
                 UiRoot,
@@ -93,6 +94,7 @@ impl EditorMenuPlugin {
         families: Query<Entity, With<EditableFamily>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            info!("adding new member");
             commands.entity(families.single()).with_children(|parent| {
                 parent.spawn(EditableActorBundle::default());
             });
@@ -106,6 +108,7 @@ impl EditorMenuPlugin {
         actor_nodes: Query<Entity, With<ActorsNode>>,
     ) {
         for entity in &actors {
+            debug!("creating button for actor `{entity:?}`");
             commands
                 .entity(actor_nodes.single())
                 .with_children(|parent| {
@@ -133,6 +136,7 @@ impl EditorMenuPlugin {
                 .iter()
                 .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
                 .expect("each actor should have a corresponding button");
+            debug!("updating preview for actor `{actor_entity:?}`");
             commands.entity(button_entity).remove::<PreviewProcessed>();
         }
     }
@@ -147,6 +151,7 @@ impl EditorMenuPlugin {
                 .iter()
                 .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
                 .expect("each actor should have a corresponding button");
+            debug!("removing button for despawned actor `{actor_entity:?}`");
             commands.entity(button_entity).despawn_recursive();
         }
     }
@@ -170,6 +175,7 @@ impl EditorMenuPlugin {
                 {
                     *visibility = Visibility::Hidden;
                 }
+                info!("switching actor to `{edit_actor:?}`");
 
                 // Update UI with parameters of the current actor.
                 let (mut visibility, &actor_sex, first_name, last_name) = actors
@@ -199,6 +205,7 @@ impl EditorMenuPlugin {
                     .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
                     .find(|(_, &visibility)| visibility == Visibility::Visible)
                 {
+                    info!("changing sex to '{button_sex}'");
                     *actor_sex = button_sex;
                 }
             }
@@ -215,6 +222,7 @@ impl EditorMenuPlugin {
                 .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
                 .find(|(_, &visibility)| visibility == Visibility::Visible)
             {
+                debug!("updating first name to '{}'", text.0);
                 first_name.0.clone_from(&text.0);
             }
         }
@@ -230,6 +238,7 @@ impl EditorMenuPlugin {
                 .filter(|(visibility, _)| !visibility.is_changed()) // Avoid changes on actor switching.
                 .find(|(_, &visibility)| visibility == Visibility::Visible)
             {
+                debug!("updating second name to '{}'", text.0);
                 last_name.0.clone_from(&text.0);
             }
         }
@@ -264,17 +273,20 @@ impl EditorMenuPlugin {
         roots: Query<Entity, With<UiRoot>>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            if button == SaveDialogButton::Save {
-                let mut family_name = text_edits.single_mut();
-                let family_scene = FamilyScene::new(mem::take(&mut family_name.0));
+            match button {
+                SaveDialogButton::Save => {
+                    let mut family_name = text_edits.single_mut();
+                    let family_scene = FamilyScene::new(mem::take(&mut family_name.0));
 
-                setup_place_family_dialog(
-                    &mut commands,
-                    roots.single(),
-                    family_scene,
-                    &theme,
-                    &cities,
-                );
+                    setup_place_family_dialog(
+                        &mut commands,
+                        roots.single(),
+                        family_scene,
+                        &theme,
+                        &cities,
+                    );
+                }
+                SaveDialogButton::Cancel => info!("cancelling saving"),
             }
 
             commands.entity(dialogs.single()).despawn_recursive();
@@ -291,8 +303,11 @@ impl EditorMenuPlugin {
         buttons: Query<&PlaceDialogButton>,
     ) {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            if button == PlaceDialogButton::CreateNew {
-                reset_events.send_default();
+            match button {
+                PlaceDialogButton::CreateNew => {
+                    reset_events.send_default();
+                }
+                PlaceDialogButton::Cancel => info!("cancelling placing"),
             }
             commands.entity(dialogs.single()).despawn_recursive()
         }
@@ -310,6 +325,7 @@ impl EditorMenuPlugin {
             let (dialog_entity, mut scene) = dialogs.single_mut();
             match button {
                 CityPlaceButton::PlaceAndPlay => {
+                    info!("placing family with select");
                     spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
                         scene: mem::take(&mut scene),
@@ -317,6 +333,7 @@ impl EditorMenuPlugin {
                     });
                 }
                 CityPlaceButton::Place => {
+                    info!("placing family");
                     spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
                         scene: mem::take(&mut scene),
@@ -425,6 +442,7 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
 }
 
 fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    info!("showing save family dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn(DialogBundle::new(theme))
@@ -473,6 +491,7 @@ fn setup_place_family_dialog(
     theme: &Theme,
     cities: &Query<(Entity, &City)>,
 ) {
+    info!("showing placing dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn((family_scene, DialogBundle::new(theme)))
@@ -573,7 +592,7 @@ struct PlusButton;
 #[derive(Component)]
 struct ActorsNode;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct EditActor(Entity);
 
 #[derive(Component)]

@@ -57,7 +57,7 @@ impl Plugin for PlacingObjectPlugin {
                         Self::pick
                             .run_if(action_just_pressed(Action::Confirm))
                             .run_if(not(any_with_component::<PlacingObject>)),
-                        Self::sell.run_if(action_just_pressed(Action::Delete)),
+                        Self::delete.run_if(action_just_pressed(Action::Delete)),
                         Self::end_placing.run_if(action_just_pressed(Action::Cancel)),
                     ),
                     (
@@ -115,9 +115,10 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         hovered: Query<(Entity, &Parent), (With<ObjectPath>, With<Hovered>)>,
     ) {
-        if let Ok((placing_entity, parent)) = hovered.get_single() {
+        if let Ok((object_entity, parent)) = hovered.get_single() {
+            info!("picking object `{object_entity:?}`");
             commands.entity(**parent).with_children(|parent| {
-                parent.spawn(PlacingObject::Moving(placing_entity));
+                parent.spawn(PlacingObject::Moving(object_entity));
             });
         }
     }
@@ -135,7 +136,7 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        debug!("creating {placing_object:?}");
+        debug!("initializing placing object `{placing_entity:?}` for `{placing_object:?}`");
         match placing_object {
             PlacingObject::Spawning(id) => {
                 let metadata_path = asset_server
@@ -184,6 +185,11 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((mut rotation, limit)) = placing_objects.get_single_mut() {
             **rotation *= Quat::from_axis_angle(Vec3::Y, limit.unwrap_or(FRAC_PI_4));
+
+            debug!(
+                "rotating placing object to '{}'",
+                rotation.to_euler(EulerRot::YXZ).0.to_degrees()
+            );
         }
     }
 
@@ -216,6 +222,7 @@ impl PlacingObjectPlugin {
             }
 
             if state.collides != collides {
+                debug!("setting collides to `{collides:?}`");
                 state.collides = collides;
             }
         }
@@ -296,17 +303,18 @@ impl PlacingObjectPlugin {
                     }
                 }
 
-                debug!("requested confirmation for {placing_object:?}");
+                info!("confirming `{placing_object:?}`");
             }
         }
     }
 
-    fn sell(
+    fn delete(
         mut commands: Commands,
         mut sell_events: EventWriter<ObjectSell>,
         placing_objects: Query<(Entity, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
         if let Ok((entity, &placing_object)) = placing_objects.get_single() {
+            info!("deleting placing object");
             if let PlacingObject::Moving(entity) = placing_object {
                 sell_events.send(ObjectSell(entity));
             }
@@ -320,6 +328,7 @@ impl PlacingObjectPlugin {
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
         if let Ok(placing_entity) = placing_objects.get_single() {
+            info!("ending placing");
             hover_enabled.0 = true;
             commands.entity(placing_entity).despawn_recursive();
         }
@@ -333,6 +342,7 @@ impl PlacingObjectPlugin {
         if let Some(new_entity) = new_placing_objects.iter().last() {
             for placing_entity in &placing_objects {
                 if placing_entity != new_entity {
+                    debug!("removing previous placing object `{placing_entity:?}`");
                     commands.entity(placing_entity).despawn_recursive();
                 }
             }

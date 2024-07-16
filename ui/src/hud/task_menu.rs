@@ -55,6 +55,7 @@ impl TaskMenuPlugin {
             return;
         }
 
+        info!("displaying task menu");
         let cursor_pos = windows.single().cursor_position().unwrap_or_default();
         commands.entity(roots.single()).with_children(|parent| {
             parent
@@ -102,6 +103,7 @@ impl TaskMenuPlugin {
             let (menu_entity, mut task_menu) = task_menus.single_mut();
             let task = task_menu.swap_remove(task_index.0);
 
+            info!("selecting task '{}'", task.name());
             send_requests.send(TaskRequest {
                 entity: active_actors.single(),
                 task,
@@ -113,6 +115,7 @@ impl TaskMenuPlugin {
 
     fn close(mut commands: Commands, task_menus: Query<Entity, With<TaskMenu>>) {
         if let Ok(entity) = task_menus.get_single() {
+            info!("closing task menu");
             commands.entity(entity).despawn_recursive();
         }
     }

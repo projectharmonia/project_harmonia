@@ -45,6 +45,7 @@ impl Plugin for WorldBrowserPlugin {
 
 impl WorldBrowserPlugin {
     fn setup(mut commands: Commands, theme: Res<Theme>, game_paths: Res<GamePaths>) {
+        info!("entering world browser");
         commands
             .spawn((
                 UiRoot,
@@ -162,27 +163,30 @@ impl WorldBrowserPlugin {
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             let (dialog_entity, world_node) = dialogs.single();
-            if button == HostDialogButton::Host {
-                let server = RenetServer::new(ConnectionConfig {
-                    server_channels_config: network_channels.get_server_configs(),
-                    client_channels_config: network_channels.get_client_configs(),
-                    ..Default::default()
-                });
-                let port = text_edits.single();
-                let transport = network::create_server(port.sections[0].value.parse()?)
-                    .context("unable to create server")?;
+            match button {
+                HostDialogButton::Host => {
+                    let server = RenetServer::new(ConnectionConfig {
+                        server_channels_config: network_channels.get_server_configs(),
+                        client_channels_config: network_channels.get_client_configs(),
+                        ..Default::default()
+                    });
+                    let port = text_edits.single();
+                    let transport = network::create_server(port.sections[0].value.parse()?)
+                        .context("unable to create server")?;
 
-                commands.insert_resource(server);
-                commands.insert_resource(transport);
+                    commands.insert_resource(server);
+                    commands.insert_resource(transport);
 
-                let mut world_name = labels
-                    .get_mut(world_node.label_entity)
-                    .expect("world label should contain text");
-                commands.insert_resource(GameWorld {
-                    name: mem::take(&mut world_name.sections[0].value),
-                });
+                    let mut world_name = labels
+                        .get_mut(world_node.label_entity)
+                        .expect("world label should contain text");
+                    commands.insert_resource(GameWorld {
+                        name: mem::take(&mut world_name.sections[0].value),
+                    });
 
-                load_events.send_default();
+                    load_events.send_default();
+                }
+                HostDialogButton::Cancel => info!("cancelling hosting"),
             }
             commands.entity(dialog_entity).despawn_recursive();
         }
@@ -203,11 +207,14 @@ impl WorldBrowserPlugin {
             let world_name = labels
                 .get(world_node.label_entity)
                 .expect("world label should contain text");
-            if button == RemoveDialogButton::Remove {
-                let world_path = game_paths.world_path(&world_name.sections[0].value);
-                fs::remove_file(&world_path)
-                    .with_context(|| format!("unable to remove {world_path:?}"))?;
-                commands.entity(world_node.node_entity).despawn_recursive();
+            match button {
+                RemoveDialogButton::Remove => {
+                    let world_path = game_paths.world_path(&world_name.sections[0].value);
+                    fs::remove_file(&world_path)
+                        .with_context(|| format!("unable to remove {world_path:?}"))?;
+                    commands.entity(world_node.node_entity).despawn_recursive();
+                }
+                RemoveDialogButton::Cancel => info!("cancelling removal"),
             }
             commands.entity(dialog_entity).despawn_recursive();
         }
@@ -243,12 +250,15 @@ impl WorldBrowserPlugin {
         dialogs: Query<Entity, With<Dialog>>,
     ) {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            if button == CreateDialogButton::Create {
-                let mut world_name = text_edits.single_mut();
-                commands.insert_resource(GameWorld {
-                    name: mem::take(&mut world_name.0),
-                });
-                game_state.set(GameState::World);
+            match button {
+                CreateDialogButton::Create => {
+                    let mut world_name = text_edits.single_mut();
+                    commands.insert_resource(GameWorld {
+                        name: mem::take(&mut world_name.0),
+                    });
+                    game_state.set(GameState::World);
+                }
+                CreateDialogButton::Cancel => info!("cancelling creation"),
             }
             commands.entity(dialogs.single()).despawn_recursive();
         }
@@ -279,7 +289,10 @@ impl WorldBrowserPlugin {
                     commands.insert_resource(client);
                     commands.insert_resource(transport);
                 }
-                JoinDialogButton::Cancel => commands.entity(dialogs.single()).despawn_recursive(),
+                JoinDialogButton::Cancel => {
+                    info!("cancelling join");
+                    commands.entity(dialogs.single()).despawn_recursive();
+                }
             }
         }
 
@@ -343,6 +356,7 @@ fn setup_host_world_dialog(
     world_name: &str,
 ) {
     commands.entity(root_entity).with_children(|parent| {
+        info!("showing host dialog");
         parent
             .spawn((DialogBundle::new(theme), world_node))
             .with_children(|parent| {
@@ -408,6 +422,7 @@ fn setup_remove_world_dialog(
     world_name: &str,
 ) {
     commands.entity(root_entity).with_children(|parent| {
+        info!("showing remove dialog");
         parent
             .spawn((DialogBundle::new(theme), world_node))
             .with_children(|parent| {
@@ -452,6 +467,7 @@ fn setup_remove_world_dialog(
 }
 
 fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    info!("showing create dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn(DialogBundle::new(theme))
@@ -494,6 +510,7 @@ fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme
 }
 
 fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+    info!("showing join dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn(DialogBundle::new(theme))

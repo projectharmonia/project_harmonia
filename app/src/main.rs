@@ -1,7 +1,6 @@
 mod cli;
 
 use bevy::{
-    log::LogPlugin,
     pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{
@@ -45,18 +44,13 @@ fn main() {
             prediction_distance: 0.0,
         })
         .add_plugins((
-            DefaultPlugins
-                .set(LogPlugin {
-                    filter: "info,project_harmonia=debug".into(),
+            DefaultPlugins.set(RenderPlugin {
+                render_creation: RenderCreation::Automatic(WgpuSettings {
+                    features: WgpuFeatures::POLYGON_MODE_LINE,
                     ..Default::default()
-                })
-                .set(RenderPlugin {
-                    render_creation: RenderCreation::Automatic(WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..Default::default()
-                    }),
-                    synchronous_pipeline_compilation: true,
                 }),
+                synchronous_pipeline_compilation: true,
+            }),
             RepliconPlugins,
             RepliconRenetPlugins,
             WireframePlugin,

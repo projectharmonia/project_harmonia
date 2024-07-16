@@ -52,6 +52,7 @@ impl Plugin for InGameMenuPlugin {
 
 impl InGameMenuPlugin {
     fn open(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+        info!("showing in-game menu");
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((IngameMenu, DialogBundle::new(&theme)))
@@ -97,10 +98,12 @@ impl InGameMenuPlugin {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
                 IngameMenuButton::Resume => {
+                    info!("closing in-game menu");
                     commands.entity(ingame_menus.single()).despawn_recursive()
                 }
                 IngameMenuButton::Save => {
                     save_events.send_default();
+                    info!("closing in-game menu");
                     commands.entity(ingame_menus.single()).despawn_recursive();
                 }
                 IngameMenuButton::Settings => {
@@ -137,6 +140,7 @@ impl InGameMenuPlugin {
                             game_state.set(GameState::MainMenu);
                         }
                         ExitDialog::Game => {
+                            info!("exiting game");
                             exit_events.send_default();
                         }
                     }
@@ -147,15 +151,20 @@ impl InGameMenuPlugin {
                         game_state.set(GameState::MainMenu);
                     }
                     ExitDialog::Game => {
+                        info!("exiting game");
                         exit_events.send_default();
                     }
                 },
-                ExitDialogButton::Cancel => commands.entity(dialog_entity).despawn_recursive(),
+                ExitDialogButton::Cancel => {
+                    info!("cancelling exit");
+                    commands.entity(dialog_entity).despawn_recursive();
+                }
             }
         }
     }
 
     fn close(mut commands: Commands, ingame_menus: Query<Entity, With<IngameMenu>>) {
+        info!("closing in-game menu");
         commands.entity(ingame_menus.single()).despawn_recursive();
     }
 }
@@ -166,6 +175,7 @@ fn setup_exit_dialog(
     theme: &Theme,
     exit_dialog: ExitDialog,
 ) {
+    info!("showing exit dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
             .spawn((exit_dialog, DialogBundle::new(theme)))

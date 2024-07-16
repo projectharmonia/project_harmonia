@@ -20,6 +20,7 @@ impl Plugin for MainMenuPlugin {
 
 impl MainMenuPlugin {
     fn setup(mut commands: Commands, theme: Res<Theme>) {
+        info!("entering main menu");
         commands
             .spawn((
                 UiRoot,
@@ -58,6 +59,7 @@ impl MainMenuPlugin {
                     settings_events.send_default();
                 }
                 MainMenuButton::Exit => {
+                    info!("exiting game");
                     exit_events.send_default();
                 }
             }
