@@ -67,9 +67,10 @@ impl DoorPlugin {
 
     /// Plays animation for actors whose close to the door and going to intersect it.
     fn play_animation(
-        mut animation_players: Query<&mut AnimationPlayer>,
+        mut commands: Commands,
+        mut animation_players: Query<(Entity, &mut AnimationPlayer)>,
         asset_server: Res<AssetServer>,
-        animation_clips: Res<Assets<AnimationClip>>,
+        mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
         actors: Query<&GlobalTransform>,
         mut objects: Query<(Entity, &GlobalTransform, &ObjectPath, &Door, &mut DoorState)>,
@@ -87,32 +88,34 @@ impl DoorPlugin {
                 continue;
             }
 
-            if let Some(mut animation_player) = animation_players
+            if let Some((entity, mut animation_player)) = animation_players
                 .iter_many_mut(children.iter_descendants(object_entity))
                 .fetch_next()
             {
-                if !door_state.animation_loaded {
-                    debug!("loading open animation for `{object_entity:?}`");
-                    let animation_path = metadata::gltf_asset(&object_path.0, "Animation0");
-                    animation_player.play(asset_server.load(animation_path));
-                    door_state.animation_loaded = true;
-                }
-
                 let speed = if should_open { 1.0 } else { -1.0 };
-                debug!("playing open animation");
-                animation_player.set_speed(speed);
-
-                if animation_player.is_finished() {
-                    // If animation in a finished state, it should be manually triggered again.
-                    animation_player.replay();
-                    if !should_open {
-                        if let Some(clip) = animation_clips.get(animation_player.animation_clip()) {
-                            animation_player.seek_to(clip.duration());
+                if let Some(animation_index) = door_state.animation_index {
+                    if animation_player.is_playing_animation(animation_index) {
+                        // If the animation in a finished state, it should be manually triggered again.
+                        let active_animation = animation_player
+                            .animation_mut(animation_index)
+                            .expect("open animation should be always active");
+                        active_animation.replay();
+                        if !should_open {
+                            // HACK: seek to the end by passing a big value.
+                            active_animation.seek_to(20.0);
                         }
                     }
+                } else {
+                    let animation_path = metadata::gltf_asset(&object_path.0, "Animation0");
+                    let (graph, animation_index) =
+                        AnimationGraph::from_clip(asset_server.load(animation_path));
+                    commands.entity(entity).insert(graphs.add(graph));
+                    door_state.animation_index = Some(animation_index);
+                    animation_player.play(animation_index);
                 }
 
-                debug!("setting opened to `{should_open}`");
+                debug!("playing open animation with speed {speed}");
+                animation_player.adjust_speeds(speed);
                 door_state.opened = should_open;
             }
         }
@@ -148,7 +151,7 @@ pub(crate) struct Door {
 /// Stores calculated information about the door.
 #[derive(Component, Default)]
 struct DoorState {
-    animation_loaded: bool,
+    animation_index: Option<AnimationNodeIndex>,
     opened: bool,
 
     /// Actors whose navigation paths intersect this door.

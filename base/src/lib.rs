@@ -1,4 +1,3 @@
-mod animation_state;
 pub mod asset;
 mod component_commands;
 pub mod core;
@@ -13,7 +12,6 @@ pub mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
-use animation_state::AnimationStatePlugin;
 use asset::AssetPlugin;
 use core::CorePlugin;
 use game_paths::GamePathsPlugin;
@@ -31,7 +29,6 @@ impl PluginGroup for CorePlugins {
             .add(MathPlugin)
             .add(CorePlugin)
             .add(GameWorldPlugin)
-            .add(AnimationStatePlugin)
             .add(NavigationPlugin)
             .add(ErrorReportPlugin)
             .add(GamePathsPlugin)

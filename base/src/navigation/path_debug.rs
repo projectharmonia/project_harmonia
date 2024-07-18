@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{color::palettes::css::LIMEGREEN, prelude::*};
 
 use super::NavPath;
 use crate::settings::Settings;
@@ -14,7 +14,7 @@ impl Plugin for PathDebugPlugin {
 impl PathDebugPlugin {
     fn draw_lines(mut gizmos: Gizmos, actors: Query<&NavPath>) {
         for nav_path in &actors {
-            gizmos.linestrip(nav_path.0.iter().copied(), Color::LIME_GREEN);
+            gizmos.linestrip(nav_path.0.iter().copied(), LIMEGREEN);
         }
     }
 }

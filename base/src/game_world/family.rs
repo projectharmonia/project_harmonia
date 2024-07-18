@@ -8,7 +8,7 @@ use bevy::{
         reflect::ReflectMapEntities,
     },
     prelude::*,
-    reflect::serde::{ReflectSerializer, UntypedReflectDeserializer},
+    reflect::serde::{ReflectDeserializer, ReflectSerializer},
     utils::HashMap,
 };
 use bevy_replicon::{
@@ -213,8 +213,7 @@ fn deserialize_family_spawn(
     for _ in 0..actors_count {
         let mut deserializer =
             bincode::Deserializer::with_reader(&mut *cursor, DefaultOptions::new());
-        let reflect =
-            UntypedReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
+        let reflect = ReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
         let type_info = reflect.get_represented_type_info().unwrap();
         let type_path = type_info.type_path();
         let registration = ctx

@@ -32,14 +32,12 @@ impl EntityCommand for InsertReflectBundle {
             .data::<ReflectBundle>()
             .unwrap_or_else(|| panic!("{type_path} should have reflect(Bundle)"));
 
-        reflect_bundle.insert(&mut world.entity_mut(entity), &*self.0);
+        reflect_bundle.insert(&mut world.entity_mut(entity), &*self.0, &registry);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use bevy::ecs::system::CommandQueue;
-
     use super::*;
 
     #[test]
@@ -52,13 +50,12 @@ mod tests {
             .register::<DummyBundle>();
 
         let entity = world.spawn_empty().id();
-        let mut queue = CommandQueue::default();
-        let mut commands = Commands::new(&mut queue, &world);
+        let mut commands = world.commands();
         commands
             .entity(entity)
             .insert_reflect_bundle(DummyBundle::default().clone_value());
 
-        queue.apply(&mut world);
+        world.flush_commands();
 
         assert!(world.entity(entity).contains::<DummyComponent>());
     }

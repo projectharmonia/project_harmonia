@@ -129,7 +129,7 @@ impl ObjectPlugin {
                         .cloned()
                         .expect("scene mesh should always be valid");
                     mesh.transform_by(transform);
-                    merged_mesh.merge(mesh);
+                    merged_mesh.merge(&mesh);
                 }
             }
 
@@ -247,7 +247,7 @@ impl ObjectBundle {
 }
 
 /// Contains path to the object metadata file.
-#[derive(Clone, Component, Debug, Default, Event, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(crate) struct ObjectPath(AssetPath<'static>);
 

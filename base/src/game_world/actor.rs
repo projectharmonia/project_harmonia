@@ -1,5 +1,5 @@
+mod animation_state;
 pub(super) mod human;
-mod movement_animation;
 pub mod needs;
 pub mod task;
 
@@ -16,13 +16,12 @@ use strum::{Display, EnumIter};
 
 use super::hover::{highlighting::OutlineHighlightingExt, Hoverable};
 use crate::{
-    animation_state::AnimationState,
     asset::collection::{AssetCollection, Collection},
     core::GameState,
     game_world::GameWorld,
 };
+use animation_state::{AnimationState, AnimationStatePlugin};
 use human::HumanPlugin;
-use movement_animation::MovementAnimationPlugin;
 use needs::NeedsPlugin;
 use task::TaskPlugin;
 
@@ -31,16 +30,12 @@ pub(super) struct ActorPlugin;
 impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<ActorAnimation>>()
-            .add_plugins((
-                MovementAnimationPlugin,
-                NeedsPlugin,
-                HumanPlugin,
-                TaskPlugin,
-            ))
+            .add_plugins((AnimationStatePlugin, NeedsPlugin, HumanPlugin, TaskPlugin))
             .register_type::<Actor>()
             .register_type::<FirstName>()
             .register_type::<Sex>()
             .register_type::<LastName>()
+            .register_type::<Movement>()
             .replicate::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
@@ -70,17 +65,13 @@ pub const ACTOR_HEIGHT: f32 = 1.2;
 pub const ACTOR_RADIUS: f32 = 0.3;
 
 impl ActorPlugin {
-    fn init(
-        mut commands: Commands,
-        actor_animations: Res<Collection<ActorAnimation>>,
-        actors: Query<Entity, Added<Actor>>,
-    ) {
+    fn init(mut commands: Commands, actors: Query<Entity, Added<Actor>>) {
         for entity in &actors {
             debug!("initializing actor `{entity:?}`");
             commands
                 .entity(entity)
                 .insert((
-                    AnimationState::new(actor_animations.handle(ActorAnimation::Idle)),
+                    AnimationState::default(),
                     SpatialBundle::default(),
                     OutlineBundle::highlighting(),
                     RigidBody::Kinematic,
@@ -207,6 +198,23 @@ impl AssetCollection for ActorAnimation {
             ActorAnimation::ThoughtfulNod => {
                 "base/actors/animations/thoughtful_nod.gltf#Animation0"
             }
+        }
+    }
+}
+
+/// Type of actor movement.
+#[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
+pub(super) enum Movement {
+    #[default]
+    Walk,
+    Run,
+}
+
+impl Movement {
+    pub(super) fn speed(self) -> f32 {
+        match self {
+            Movement::Walk => 2.0,
+            Movement::Run => 4.0,
         }
     }
 }

@@ -6,7 +6,12 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::{asset::AssetPath, prelude::*, scene};
+use bevy::{
+    asset::AssetPath,
+    color::palettes::css::{RED, WHITE},
+    prelude::*,
+    scene,
+};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -242,9 +247,9 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((placing_entity, state)) = placing_objects.get_single() {
             let color = if state.placeable() {
-                Color::WHITE
+                WHITE.into()
             } else {
-                Color::RED
+                RED.into()
             };
 
             let mut iter =

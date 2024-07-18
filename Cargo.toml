@@ -16,22 +16,21 @@ repository = "https://github.com/projectharmonia/project_harmonia"
 project_harmonia_base = { path = "base" }
 project_harmonia_ui = { path = "ui" }
 project_harmonia_widgets = { path = "widgets" }
-bevy = { version = "0.13.2", default-features = false }
-bevy_atmosphere = "0.9"
-bevy_replicon = "0.26"
-bevy_replicon_renet = { version = "0.3", default-features = false, features = [
+bevy = { version = "0.14", default-features = false }
+bevy_atmosphere = "0.10"
+bevy_replicon = "0.27"
+bevy_replicon_renet = { git = "https://github.com/ironpeak/bevy_replicon_renet", default-features = false, features = [
   "renet_transport",
 ] }
-bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
-bevy_mod_outline = "0.7"
-bevy_simple_text_input = "0.7"
-oxidized_navigation = { git = "https://github.com/TheGrimsey/oxidized_navigation", features = [
+bevy_xpbd_3d = { version = "0.5", features = ["serialize"] }
+bevy_mod_outline = "0.8"
+bevy_simple_text_input = "0.8"
+oxidized_navigation = { version = "0.11", default-features = false, features = [
   "xpbd",
   "debug_draw",
 ] }
-leafwing-input-manager = { version = "0.13", default-features = false, features = [
+leafwing-input-manager = { version = "0.14", default-features = false, features = [
   "ui",
-  "block_ui_interactions",
 ] }
 app_dirs2 = "2.5"
 serde = "1.0"
@@ -41,11 +40,9 @@ num_enum = "0.7"
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
 bincode = "1.3"
-ron = "0.8"
 walkdir = "2.5"
-itertools = "0.12"
+itertools = "0.13"
 bitflags = "2.6"
-futures-lite = "2.3"
 
 [workspace.lints.clippy]
 type_complexity = "allow"

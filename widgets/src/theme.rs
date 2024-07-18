@@ -73,43 +73,43 @@ impl FromWorld for Theme {
                 normal_text: TextStyle {
                     font: text_handle.clone(),
                     font_size: 25.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9),
                 },
                 large_text: TextStyle {
                     font: text_handle.clone(),
                     font_size: 30.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9),
                 },
                 symbol_text: TextStyle {
                     font: symbol_handle.clone(),
                     font_size: 25.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9),
                 },
-                normal_color: Color::rgb(0.15, 0.15, 0.15),
-                hovered_color: Color::rgb(0.25, 0.25, 0.25),
-                pressed_color: Color::rgb(0.35, 0.75, 0.35),
-                hovered_pressed_color: Color::rgb(0.25, 0.65, 0.25),
+                normal_color: Color::srgb(0.15, 0.15, 0.15),
+                hovered_color: Color::srgb(0.25, 0.25, 0.25),
+                pressed_color: Color::srgb(0.35, 0.75, 0.35),
+                hovered_pressed_color: Color::srgb(0.25, 0.65, 0.25),
             },
             label: LabelTheme {
                 small: TextStyle {
                     font: text_handle.clone(),
                     font_size: 17.0,
-                    color: Color::rgb(0.1, 0.1, 0.1),
+                    color: Color::srgb(0.1, 0.1, 0.1),
                 },
                 normal: TextStyle {
                     font: text_handle.clone(),
                     font_size: 25.0,
-                    color: Color::rgb(0.1, 0.1, 0.1),
+                    color: Color::srgb(0.1, 0.1, 0.1),
                 },
                 large: TextStyle {
                     font: text_handle.clone(),
                     font_size: 35.0,
-                    color: Color::rgb(0.1, 0.1, 0.1),
+                    color: Color::srgb(0.1, 0.1, 0.1),
                 },
                 symbol: TextStyle {
                     font: symbol_handle,
                     font_size: 20.0,
-                    color: Color::rgb(0.1, 0.1, 0.1),
+                    color: Color::srgb(0.1, 0.1, 0.1),
                 },
             },
             text_edit: TextEditTheme {
@@ -122,11 +122,11 @@ impl FromWorld for Theme {
                 text: TextStyle {
                     font: text_handle,
                     font_size: 25.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9),
                 },
-                background_color: Color::rgb(0.15, 0.15, 0.15),
-                active_border: Color::rgb(0.35, 0.75, 0.35),
-                inactive_border: Color::rgb(0.35, 0.35, 0.35),
+                background_color: Color::srgb(0.15, 0.15, 0.15),
+                active_border: Color::srgb(0.35, 0.75, 0.35),
+                inactive_border: Color::srgb(0.35, 0.35, 0.35),
             },
             checkbox: CheckboxTheme {
                 node: Style {
@@ -147,7 +147,7 @@ impl FromWorld for Theme {
                     height: Val::Px(14.0),
                     ..Default::default()
                 },
-                tick_color: Color::rgb(0.35, 0.75, 0.35),
+                tick_color: Color::srgb(0.35, 0.75, 0.35),
             },
             gap: GapTheme {
                 normal: Val::Px(10.0),
@@ -158,13 +158,13 @@ impl FromWorld for Theme {
                 global: UiRect::all(Val::Px(15.0)),
             },
             progress_bar: ProgressBarTheme {
-                background_color: Color::rgb(0.5, 0.5, 0.5),
-                fill_color: Color::rgb(0.35, 0.75, 0.35),
+                background_color: Color::srgb(0.5, 0.5, 0.5),
+                fill_color: Color::srgb(0.35, 0.75, 0.35),
             },
-            background_color: Color::rgb(0.9, 0.9, 0.9),
-            modal_color: Color::rgba(0.0, 0.0, 0.0, 0.0), // TODO: Make gray when we will have multiple UI roots.
-            panel_color: Color::rgb(0.8, 0.8, 0.8),
-            popup_color: Color::rgb(0.75, 0.75, 0.75),
+            background_color: Color::srgb(0.9, 0.9, 0.9),
+            modal_color: Color::srgba(0.0, 0.0, 0.0, 0.0), // TODO: Make gray when we will have multiple UI roots.
+            panel_color: Color::srgb(0.8, 0.8, 0.8),
+            popup_color: Color::srgb(0.75, 0.75, 0.75),
         }
     }
 }

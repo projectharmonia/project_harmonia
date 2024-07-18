@@ -1,6 +1,7 @@
 mod cli;
 
 use bevy::{
+    color::palettes::css::ANTIQUE_WHITE,
     pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{
@@ -36,7 +37,7 @@ fn main() {
         .init_resource::<Cli>()
         .insert_resource(Msaa::Off) // Required by SSAO.
         .insert_resource(AmbientLight {
-            color: Color::ANTIQUE_WHITE,
+            color: ANTIQUE_WHITE.into(),
             brightness: 1000.0,
         })
         // TODO: workaround to place objects close together, remove after the next release.

@@ -8,7 +8,7 @@ use std::{fmt::Debug, io::Cursor};
 use bevy::{
     ecs::{entity::MapEntities, reflect::ReflectCommandExt},
     prelude::*,
-    reflect::serde::{ReflectSerializer, UntypedReflectDeserializer},
+    reflect::serde::{ReflectDeserializer, ReflectSerializer},
 };
 use bevy_replicon::{
     core::ctx::{ClientSendCtx, ServerReceiveCtx},
@@ -20,9 +20,11 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::{
-    animation_state::AnimationState,
     core::GameState,
-    game_world::{actor::Actor, family::FamilyMode},
+    game_world::{
+        actor::{animation_state::AnimationState, Actor},
+        family::FamilyMode,
+    },
     navigation::{ComputePath, NavPath},
     settings::Action,
 };
@@ -150,7 +152,7 @@ impl TaskPlugin {
                     commands.entity(**parent).remove::<ComputePath>();
                 }
 
-                animation_state.stop();
+                animation_state.stop_montage();
 
                 commands.entity(entity).despawn();
             }
@@ -176,7 +178,7 @@ fn deserialize_task_request(
 ) -> bincode::Result<TaskRequest> {
     let entity = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let mut deserializer = bincode::Deserializer::with_reader(cursor, DefaultOptions::new());
-    let reflect = UntypedReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
+    let reflect = ReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
     let type_info = reflect.get_represented_type_info().unwrap();
     let type_path = type_info.type_path();
     let registration = ctx

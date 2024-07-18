@@ -36,10 +36,6 @@ impl PreviewPlugin {
         commands.spawn((
             PREVIEW_RENDER_LAYER,
             DirectionalLightBundle {
-                directional_light: DirectionalLight {
-                    shadows_enabled: true,
-                    ..Default::default()
-                },
                 transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                 ..Default::default()
             },
@@ -96,7 +92,6 @@ impl PreviewPlugin {
     }
 
     fn wait_for_loading(
-        mut asset_events: EventWriter<AssetEvent<Image>>,
         mut preview_state: ResMut<NextState<PreviewState>>,
         mut images: ResMut<Assets<Image>>,
         asset_server: Res<AssetServer>,
@@ -130,17 +125,12 @@ impl PreviewPlugin {
 
             let image_handle = images.add(image);
 
-            // A workaround for this bug: https://github.com/bevyengine/bevy/issues/5595.
-            asset_events.send(AssetEvent::Modified {
-                id: image_handle.id(),
-            });
-
             let mut camera = preview_cameras.single_mut();
             camera.is_active = true;
             camera.target = RenderTarget::Image(image_handle.clone());
 
             preview_state.set(PreviewState::Rendering);
-        } else if asset_state == LoadState::Failed
+        } else if matches!(asset_state, LoadState::Failed(_))
             || deps_state == RecursiveDependencyLoadState::Failed
         {
             error!("unable to load asset");
@@ -172,7 +162,9 @@ impl PreviewPlugin {
         preview_scenes: Query<(Entity, &PreviewTarget)>,
         mut targets: Query<&mut Handle<Image>>,
     ) {
-        let mut preview_camera = preview_cameras.single_mut();
+        let Ok(mut preview_camera) = preview_cameras.get_single_mut() else {
+            return;
+        };
         preview_camera.is_active = false;
 
         if let Ok((entity, preview_target)) = preview_scenes.get_single() {

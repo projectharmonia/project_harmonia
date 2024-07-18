@@ -1,4 +1,8 @@
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{
+    color::palettes::css::{RED, WHITE},
+    math::Vec3Swizzles,
+    prelude::*,
+};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
@@ -96,9 +100,9 @@ impl CreatingWallPlugin {
 
             material.alpha_mode = AlphaMode::Add;
             material.base_color = if colliding_entities.is_empty() {
-                Color::WHITE
+                WHITE.into()
             } else {
-                Color::RED
+                RED.into()
             };
             debug!("setting base color to `{:?}`", material.base_color);
 

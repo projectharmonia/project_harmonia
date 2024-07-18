@@ -5,11 +5,10 @@ use std::sync::{Arc, RwLock};
 
 use bevy::{
     prelude::*,
-    tasks::{AsyncComputeTaskPool, Task},
+    tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
-use futures_lite::future;
 use oxidized_navigation::{query, tiles::NavMeshTiles, NavMeshSettings};
 use path_debug::PathDebugPlugin;
 use serde::{Deserialize, Serialize};

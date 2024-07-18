@@ -19,7 +19,7 @@ bevy = { workspace = true, features = [
 bevy_atmosphere.workspace = true
 bevy_replicon.workspace = true
 bevy_replicon_renet.workspace = true
-bevy_xpbd_3d = { version = "0.4", features = ["serialize"] }
+bevy_xpbd_3d.workspace = true
 bevy_mod_outline.workspace = true
 bevy_simple_text_input.workspace = true
 oxidized_navigation.workspace = true
@@ -32,11 +32,9 @@ num_enum.workspace = true
 clap.workspace = true
 anyhow.workspace = true
 bincode.workspace = true
-ron.workspace = true
 walkdir.workspace = true
 itertools.workspace = true
 bitflags.workspace = true
-futures-lite.workspace = true
 
 [lints]
 workspace = true

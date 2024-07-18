@@ -42,7 +42,7 @@ impl OutlineHighlightingExt for OutlineBundle {
         Self {
             outline: OutlineVolume {
                 visible: false,
-                colour: Color::rgba(1.0, 1.0, 1.0, 0.3),
+                colour: Color::srgba(1.0, 1.0, 1.0, 0.3),
                 width: 3.0,
             },
             ..Default::default()

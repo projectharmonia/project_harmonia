@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     game_world::{
         actor::{
-            movement_animation::Movement,
             task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
+            Movement,
         },
         city::Ground,
         hover::Hovered,

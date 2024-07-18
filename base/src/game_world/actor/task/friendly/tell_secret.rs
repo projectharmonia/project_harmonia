@@ -1,4 +1,5 @@
 use bevy::{
+    animation::RepeatAnimation,
     ecs::{entity::MapEntities, reflect::ReflectMapEntities},
     prelude::*,
 };
@@ -6,16 +7,15 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    animation_state::{AnimationFinished, AnimationState},
     asset::collection::Collection,
-    game_world::GameWorld,
     game_world::{
         actor::{
-            movement_animation::Movement,
+            animation_state::{AnimationState, Montage, MontageFinished},
             task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
-            Actor, ActorAnimation,
+            Actor, ActorAnimation, Movement,
         },
         hover::Hovered,
+        GameWorld,
     },
     navigation::{following::Following, NavPath, Navigation},
 };
@@ -75,7 +75,7 @@ impl TellSecretPlugin {
         mut actors: Query<(Entity, &Children, &NavPath, &mut AnimationState), Changed<NavPath>>,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
-        for (actor_entity, children, nav_path, mut animation_state) in &mut actors {
+        for (actor_entity, children, nav_path, mut animator) in &mut actors {
             if !nav_path.is_empty() {
                 continue;
             }
@@ -87,7 +87,8 @@ impl TellSecretPlugin {
                 continue;
             };
 
-            animation_state.play_once(actor_animations.handle(ActorAnimation::TellSecret));
+            let montage = Montage::new(actor_animations.handle(ActorAnimation::TellSecret));
+            animator.play_montage(montage);
 
             // TODO: Handle cancellation of currently active tasks.
             commands.entity(tell_secret.0).with_children(|parent| {
@@ -111,14 +112,16 @@ impl TellSecretPlugin {
                     .expect("listener should have transform and animation");
 
                 listen_transform.look_at(tell_transform.translation, Vec3::Y);
-                animation_state.repeat(actor_animations.handle(ActorAnimation::ThoughtfulNod));
+                let montage = Montage::new(actor_animations.handle(ActorAnimation::ThoughtfulNod))
+                    .with_repeat(RepeatAnimation::Forever);
+                animation_state.play_montage(montage);
             }
         }
     }
 
     fn finish(
         mut commands: Commands,
-        mut finish_events: EventReader<AnimationFinished>,
+        mut finish_events: EventReader<MontageFinished>,
         children: Query<&Children>,
         tasks: Query<(Entity, &TaskState), With<TellSecret>>,
     ) {

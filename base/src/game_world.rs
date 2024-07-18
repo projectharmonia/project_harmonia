@@ -9,7 +9,10 @@ mod player_camera;
 use std::fs;
 
 use anyhow::{Context, Result};
-use bevy::{prelude::*, scene::serde::SceneDeserializer};
+use bevy::{
+    prelude::*,
+    scene::{ron, serde::SceneDeserializer},
+};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
@@ -70,9 +73,10 @@ impl GameWorldPlugin {
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
         let mut scene = DynamicScene::default();
+        let registry = registry.read();
         bevy_replicon::scene::replicate_into(&mut scene, world);
         let bytes = scene
-            .serialize_ron(&registry)
+            .serialize(&registry)
             .expect("game world should be serialized");
 
         fs::write(&world_path, bytes)

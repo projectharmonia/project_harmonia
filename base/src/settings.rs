@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use bevy::{pbr::wireframe::WireframeConfig, prelude::*, utils::HashMap};
+use bevy::{pbr::wireframe::WireframeConfig, prelude::*, scene::ron, utils::HashMap};
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
 use oxidized_navigation::debug_draw::DrawNavMesh;
@@ -14,7 +14,7 @@ pub(super) struct SettingsPlugin;
 
 impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
-        let game_paths = app.world.resource::<GamePaths>();
+        let game_paths = app.world().resource::<GamePaths>();
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()

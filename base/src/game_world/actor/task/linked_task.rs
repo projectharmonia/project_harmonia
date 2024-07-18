@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::TaskState;
-use crate::animation_state::AnimationState;
+use crate::game_world::actor::animation_state::AnimationState;
 
 pub(super) struct LinkedTaskPlugin;
 
@@ -60,8 +60,8 @@ impl LinkedTaskPlugin {
                 if task_state == TaskState::Active {
                     let mut animation_state = actors
                         .get_mut(**parent)
-                        .expect("actor should have animaition state");
-                    animation_state.stop();
+                        .expect("actor should have animator");
+                    animation_state.stop_montage();
 
                     commands.entity(linked_entity).despawn();
                 }

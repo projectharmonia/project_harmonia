@@ -8,7 +8,7 @@ use bevy::{
     asset::{io::Reader, AssetLoader, AssetPath, AsyncReadExt, LoadContext},
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryArc},
-    utils::BoxedFuture,
+    scene::ron,
 };
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use walkdir::WalkDir;
@@ -60,20 +60,18 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
     type Settings = ();
     type Error = anyhow::Error;
 
-    fn load<'a>(
+    async fn load<'a>(
         &'a self,
-        reader: &'a mut Reader,
+        reader: &'a mut Reader<'_>,
         _settings: &'a Self::Settings,
-        _load_context: &'a mut LoadContext,
-    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
-        Box::pin(async move {
-            let mut data = String::new();
-            reader.read_to_string(&mut data).await?;
-            let metadata = ron::Options::default()
-                .from_str_seed(&data, T::deserializer(&self.registry.read()))?;
+        _load_context: &'a mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut data = String::new();
+        reader.read_to_string(&mut data).await?;
+        let metadata =
+            ron::Options::default().from_str_seed(&data, T::deserializer(&self.registry.read()))?;
 
-            Ok(metadata)
-        })
+        Ok(metadata)
     }
 
     fn extensions(&self) -> &[&str] {

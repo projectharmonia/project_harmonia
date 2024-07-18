@@ -7,7 +7,7 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy = { workspace = true, features = ["animation"] }
+bevy = { workspace = true, features = ["animation", "bevy_state"] }
 bevy_atmosphere.workspace = true
 bevy_replicon.workspace = true
 bevy_replicon_renet.workspace = true
@@ -25,9 +25,6 @@ walkdir.workspace = true
 earcut.workspace = true
 num_enum.workspace = true
 bitflags.workspace = true
-# TODO 0.14: Remove direct dependencies on these crates
-ron.workspace = true
-futures-lite.workspace = true
 
 [lints]
 workspace = true

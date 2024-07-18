@@ -278,6 +278,7 @@ mod tests {
     use std::fs;
 
     use anyhow::Result;
+    use bevy::scene::ron;
     use walkdir::WalkDir;
 
     use super::*;

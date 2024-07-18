@@ -190,7 +190,7 @@ impl CameraCaster<'_, '_> {
 
     pub(super) fn intersect_ground(&self) -> Option<Vec3> {
         let ray = self.ray()?;
-        let distance = ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))?;
+        let distance = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))?;
         Some(ray.get_point(distance))
     }
 }
