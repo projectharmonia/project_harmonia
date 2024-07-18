@@ -1,0 +1,9 @@
+(
+    general: (
+        name: "Children's ladder",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -0.5, -4.4),
+    ),
+    category: OutdoorActivities,
+)

@@ -52,6 +52,7 @@ pub enum ObjectCategory {
     Rocks,
     Foliage,
     OutdoorFurniture,
+    OutdoorActivities,
     Electronics,
     Furniture,
     Windows,
@@ -63,6 +64,7 @@ impl ObjectCategory {
         ObjectCategory::Rocks,
         ObjectCategory::Foliage,
         ObjectCategory::OutdoorFurniture,
+        ObjectCategory::OutdoorActivities,
     ];
 
     pub const FAMILY_CATEGORIES: &'static [ObjectCategory] = &[
@@ -80,6 +82,7 @@ impl ObjectCategory {
             ObjectCategory::Rocks => "🗻",
             ObjectCategory::Foliage => "🍀",
             ObjectCategory::OutdoorFurniture => "🏡",
+            ObjectCategory::OutdoorActivities => "🔤",
             ObjectCategory::Electronics => "📺",
             ObjectCategory::Furniture => "💺",
             ObjectCategory::Windows => "🔲",
