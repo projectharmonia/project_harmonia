@@ -1,0 +1,9 @@
+(
+    general: (
+        name: "Sandbox",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -1.0, -5.0),
+    ),
+    category: OutdoorActivities,
+)
