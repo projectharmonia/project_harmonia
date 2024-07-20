@@ -10,37 +10,33 @@ use super::{
     actor::SelectedActor,
     hover::Hoverable,
     player_camera::{PlayerCamera, PlayerCameraBundle},
+    WorldState,
 };
-use crate::{
-    core::GameState,
-    game_world::{GameWorld, Layer},
-};
+use crate::{core::GameState, game_world::Layer};
 
 pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<CityMode>()
+        app.add_sub_state::<CityMode>()
+            .enable_state_scoped_entities::<CityMode>()
             .register_type::<City>()
             .replicate::<City>()
             .init_resource::<PlacedCities>()
-            .add_systems(OnEnter(GameState::City), Self::init_activated)
+            .add_systems(OnEnter(WorldState::City), Self::init_activated)
             .add_systems(
-                OnEnter(GameState::Family),
+                OnEnter(WorldState::Family),
                 (Self::activate, Self::init_activated).chain(),
             )
-            .add_systems(OnExit(GameState::City), Self::deactivate)
-            .add_systems(OnExit(GameState::Family), Self::deactivate)
+            .add_systems(OnExit(WorldState::City), Self::deactivate)
+            .add_systems(OnExit(WorldState::Family), Self::deactivate)
             .add_systems(
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
-            .add_systems(
-                PostUpdate,
-                Self::cleanup.run_if(resource_removed::<GameWorld>()),
-            );
+            .add_systems(OnExit(GameState::InGame), Self::cleanup);
     }
 }
 
@@ -185,8 +181,9 @@ impl FromWorld for GroundScene {
 }
 
 #[derive(
-    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States,
+    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
 )]
+#[source(WorldState = WorldState::City)]
 pub enum CityMode {
     #[default]
     Objects,

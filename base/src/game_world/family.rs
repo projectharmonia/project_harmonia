@@ -20,10 +20,12 @@ use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor};
+use super::{
+    actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
+    WorldState,
+};
 use crate::{
-    component_commands::ComponentCommandsExt, core::GameState, game_world::GameWorld,
-    navigation::NavigationBundle,
+    component_commands::ComponentCommandsExt, core::GameState, navigation::NavigationBundle,
 };
 use editor::EditorPlugin;
 
@@ -32,8 +34,10 @@ pub struct FamilyPlugin;
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EditorPlugin)
-            .init_state::<FamilyMode>()
-            .init_state::<BuildingMode>()
+            .add_sub_state::<FamilyMode>()
+            .enable_state_scoped_entities::<FamilyMode>()
+            .add_sub_state::<BuildingMode>()
+            .enable_state_scoped_entities::<BuildingMode>()
             .register_type::<ActorFamily>()
             .register_type::<Family>()
             .register_type::<Budget>()
@@ -47,11 +51,8 @@ impl Plugin for FamilyPlugin {
             )
             .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
             .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
-            .add_systems(
-                OnEnter(GameState::Family),
-                (Self::select, Self::reset_states),
-            )
-            .add_systems(OnExit(GameState::Family), Self::deselect)
+            .add_systems(OnEnter(WorldState::Family), Self::select)
+            .add_systems(OnExit(WorldState::Family), Self::deselect)
             .add_systems(
                 PreUpdate,
                 (
@@ -59,24 +60,13 @@ impl Plugin for FamilyPlugin {
                     (Self::create, Self::delete).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
-            .add_systems(
-                PostUpdate,
-                Self::cleanup.run_if(resource_removed::<GameWorld>()),
-            );
+            .add_systems(OnExit(GameState::InGame), Self::cleanup);
     }
 }
 
 impl FamilyPlugin {
-    fn reset_states(
-        mut family_mode: ResMut<NextState<FamilyMode>>,
-        mut building_mode: ResMut<NextState<BuildingMode>>,
-    ) {
-        family_mode.set(Default::default());
-        building_mode.set(Default::default());
-    }
-
     fn update_members(
         mut commands: Commands,
         actors: Query<(Entity, &ActorFamily), Changed<ActorFamily>>,
@@ -242,8 +232,9 @@ fn deserialize_family_spawn(
 }
 
 #[derive(
-    States, Component, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default,
+    SubStates, Component, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default,
 )]
+#[source(WorldState = WorldState::Family)]
 pub enum FamilyMode {
     #[default]
     Life,
@@ -260,8 +251,9 @@ impl FamilyMode {
 }
 
 #[derive(
-    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States,
+    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
 )]
+#[source(FamilyMode = FamilyMode::Building)]
 pub enum BuildingMode {
     #[default]
     Objects,

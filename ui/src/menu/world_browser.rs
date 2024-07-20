@@ -10,7 +10,7 @@ use bevy_replicon_renet::{
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::ui_root::UiRoot;
+use super::MenuState;
 use project_harmonia_base::{
     core::GameState,
     game_paths::GamePaths,
@@ -27,7 +27,7 @@ pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::WorldBrowser), Self::setup)
+        app.add_systems(OnEnter(MenuState::WorldBrowser), Self::setup)
             .add_systems(
                 Update,
                 (
@@ -38,7 +38,7 @@ impl Plugin for WorldBrowserPlugin {
                     Self::handle_create_dialog_clicks,
                     Self::handle_join_dialog_clicks.pipe(error_message),
                 )
-                    .run_if(in_state(GameState::WorldBrowser)),
+                    .run_if(in_state(MenuState::WorldBrowser)),
             );
     }
 }
@@ -48,7 +48,7 @@ impl WorldBrowserPlugin {
         info!("entering world browser");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(MenuState::WorldBrowser),
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),
@@ -116,7 +116,7 @@ impl WorldBrowserPlugin {
         theme: Res<Theme>,
         buttons: Query<(&WorldButton, &WorldNode)>,
         labels: Query<&Text>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for (world_button, &world_node) in
             buttons.iter_many(click_events.read().map(|event| event.0))
@@ -227,7 +227,7 @@ impl WorldBrowserPlugin {
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
         buttons: Query<&WorldBrowserButton>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
@@ -256,7 +256,7 @@ impl WorldBrowserPlugin {
                     commands.insert_resource(GameWorld {
                         name: mem::take(&mut world_name.0),
                     });
-                    game_state.set(GameState::World);
+                    game_state.set(GameState::InGame);
                 }
                 CreateDialogButton::Cancel => info!("cancelling creation"),
             }

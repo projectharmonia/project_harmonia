@@ -2,13 +2,11 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use crate::{
-    core::GameState,
-    game_world::{
-        actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
-        family::{FamilyMembers, SelectedFamilyCreated},
-        player_camera::PlayerCameraBundle,
-    },
+use crate::game_world::{
+    actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
+    family::{FamilyMembers, SelectedFamilyCreated},
+    player_camera::PlayerCameraBundle,
+    WorldState,
 };
 
 pub(crate) struct EditorPlugin;
@@ -16,9 +14,12 @@ pub(crate) struct EditorPlugin;
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
-            .add_systems(OnEnter(GameState::FamilyEditor), Self::setup)
-            .add_systems(OnExit(GameState::FamilyEditor), Self::cleanup)
-            .add_systems(Update, Self::play.run_if(in_state(GameState::FamilyEditor)))
+            .add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
+            .add_systems(OnExit(WorldState::FamilyEditor), Self::cleanup)
+            .add_systems(
+                Update,
+                Self::play.run_if(in_state(WorldState::FamilyEditor)),
+            )
             .add_systems(
                 PostUpdate,
                 Self::reset_family.run_if(on_event::<FamilyReset>()),
@@ -48,7 +49,7 @@ impl EditorPlugin {
     fn play(
         mut commands: Commands,
         mut spawn_select_events: EventReader<SelectedFamilyCreated>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         families: Query<&FamilyMembers>,
     ) {
         for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
@@ -57,7 +58,7 @@ impl EditorPlugin {
                 .first()
                 .expect("family should always have at least one member");
             commands.entity(actor_entity).insert(SelectedActor);
-            game_state.set(GameState::Family);
+            world_state.set(WorldState::Family);
         }
     }
 

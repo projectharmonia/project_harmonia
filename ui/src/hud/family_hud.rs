@@ -2,10 +2,9 @@ use bevy::prelude::*;
 use strum::{EnumIter, IntoEnumIterator};
 
 use super::objects_node;
-use crate::{preview::Preview, ui_root::UiRoot};
+use crate::preview::Preview;
 use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
-    core::GameState,
     game_world::{
         actor::{
             needs::{Need, NeedGlyph},
@@ -13,6 +12,7 @@ use project_harmonia_base::{
             SelectedActor,
         },
         family::{Budget, BuildingMode, FamilyMembers, FamilyMode, FamilyPlugin, SelectedFamily},
+        WorldState,
     },
 };
 use project_harmonia_widgets::{
@@ -28,7 +28,7 @@ pub(super) struct FamilyHudPlugin;
 impl Plugin for FamilyHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            OnEnter(GameState::Family),
+            OnEnter(WorldState::Family),
             Self::setup.after(FamilyPlugin::select),
         )
         .add_systems(
@@ -41,7 +41,7 @@ impl Plugin for FamilyHudPlugin {
                 Self::set_building_mode.run_if(in_state(FamilyMode::Building)),
                 (Self::cancel_task, Self::select_actor).run_if(in_state(FamilyMode::Life)),
             )
-                .run_if(in_state(GameState::Family)),
+                .run_if(in_state(WorldState::Family)),
         )
         .add_systems(PostUpdate, (Self::cleanup_tasks, Self::cleanup_need_bars));
     }
@@ -59,7 +59,7 @@ impl FamilyHudPlugin {
         debug!("showing family hud");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(WorldState::Family),
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),

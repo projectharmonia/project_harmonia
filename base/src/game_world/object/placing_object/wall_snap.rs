@@ -4,13 +4,10 @@ use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
 use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
-use crate::{
-    core::GameState,
-    game_world::{
-        building::wall::{wall_mesh::HALF_WIDTH, Wall},
-        city::CityMode,
-        family::FamilyMode,
-    },
+use crate::game_world::{
+    building::wall::{wall_mesh::HALF_WIDTH, Wall},
+    city::CityMode,
+    family::BuildingMode,
 };
 
 pub(super) struct WallSnapPlugin;
@@ -26,13 +23,7 @@ impl Plugin for WallSnapPlugin {
                     .after(PlacingObjectPlugin::apply_position),
             )
                 .chain()
-                .run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                        ),
-                ),
+                .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
         );
     }
 }

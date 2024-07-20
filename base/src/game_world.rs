@@ -39,6 +39,8 @@ impl Plugin for GameWorldPlugin {
             ObjectPlugin,
             PlayerCameraPlugin,
         ))
+        .add_sub_state::<WorldState>()
+        .enable_state_scoped_entities::<WorldState>()
         .add_event::<GameSave>()
         .add_event::<GameLoad>()
         .add_systems(Update, Self::start_game.run_if(client_just_connected))
@@ -54,7 +56,8 @@ impl Plugin for GameWorldPlugin {
             Self::save
                 .pipe(error_message)
                 .run_if(on_event::<GameSave>()),
-        );
+        )
+        .add_systems(OnExit(GameState::InGame), Self::cleanup);
     }
 }
 
@@ -112,7 +115,7 @@ impl GameWorldPlugin {
         }
 
         scene_spawner.spawn_dynamic(scenes.add(scene));
-        game_state.set(GameState::World);
+        game_state.set(GameState::InGame);
 
         Ok(())
     }
@@ -120,7 +123,11 @@ impl GameWorldPlugin {
     fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
         info!("joining replicated world");
         commands.insert_resource(GameWorld::default());
-        game_state.set(GameState::World);
+        game_state.set(GameState::InGame);
+    }
+
+    fn cleanup(mut commands: Commands) {
+        commands.remove_resource::<GameWorld>();
     }
 }
 
@@ -138,6 +145,16 @@ pub struct GameLoad;
 #[derive(Default, Resource)]
 pub struct GameWorld {
     pub name: String,
+}
+
+#[derive(SubStates, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[source(GameState = GameState::InGame)]
+pub enum WorldState {
+    #[default]
+    World,
+    FamilyEditor,
+    City,
+    Family,
 }
 
 #[derive(PhysicsLayer)]

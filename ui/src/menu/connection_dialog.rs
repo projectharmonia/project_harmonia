@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
 
-use crate::ui_root::UiRoot;
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };
@@ -22,7 +21,11 @@ impl Plugin for ConnectionDialogPlugin {
 }
 
 impl ConnectionDialogPlugin {
-    fn show(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+    fn show(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+    ) {
         info!("showing connection dialog");
         commands.entity(roots.single()).with_children(|parent| {
             parent

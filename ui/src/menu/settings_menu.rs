@@ -2,7 +2,6 @@ use bevy::{prelude::*, reflect::GetPath, ui::FocusPolicy};
 use leafwing_input_manager::user_input::InputKind;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::ui_root::UiRoot;
 use project_harmonia_base::{
     input_events::InputEvents,
     settings::{Action, Settings, SettingsApply},
@@ -45,7 +44,7 @@ impl SettingsMenuPlugin {
         mut tab_commands: Commands,
         settings: Res<Settings>,
         theme: Res<Theme>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         info!("opening setting menu");
         commands.entity(roots.single()).with_children(|parent| {
@@ -155,7 +154,7 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
         buttons: Query<(Entity, &Mapping)>,
     ) {
         for (entity, mapping) in buttons.iter_many(click_events.read().map(|event| event.0)) {

@@ -3,7 +3,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::settings_menu::SettingsMenuOpen;
-use crate::{hud::task_menu::TaskMenu, ui_root::UiRoot};
+use crate::hud::task_menu::TaskMenu;
 use project_harmonia_base::{
     core::GameState,
     game_world::{
@@ -12,7 +12,7 @@ use project_harmonia_base::{
             wall::creating_wall::CreatingWall,
         },
         object::placing_object::PlacingObject,
-        GameSave, GameWorld,
+        GameSave, WorldState,
     },
     settings::Action,
 };
@@ -36,7 +36,7 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<MovingLot>))
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<CreatingWall>))
-                    .run_if(in_state(GameState::Family).or_else(in_state(GameState::City))),
+                    .run_if(in_state(WorldState::Family).or_else(in_state(WorldState::City))),
                 (
                     Self::handle_menu_clicks,
                     Self::handle_exit_dialog_clicks,
@@ -51,7 +51,11 @@ impl Plugin for InGameMenuPlugin {
 }
 
 impl InGameMenuPlugin {
-    fn open(mut commands: Commands, theme: Res<Theme>, roots: Query<Entity, With<UiRoot>>) {
+    fn open(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+    ) {
         info!("showing in-game menu");
         commands.entity(roots.single()).with_children(|parent| {
             parent
@@ -90,9 +94,9 @@ impl InGameMenuPlugin {
         mut settings_events: EventWriter<SettingsMenuOpen>,
         mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         buttons: Query<&IngameMenuButton>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
         ingame_menus: Query<Entity, With<IngameMenu>>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
@@ -109,7 +113,7 @@ impl InGameMenuPlugin {
                 IngameMenuButton::Settings => {
                     settings_events.send_default();
                 }
-                IngameMenuButton::World => game_state.set(GameState::World),
+                IngameMenuButton::World => world_state.set(WorldState::World),
                 IngameMenuButton::MainMenu => {
                     setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::MainMenu)
                 }
@@ -135,10 +139,7 @@ impl InGameMenuPlugin {
                 ExitDialogButton::SaveAndExit => {
                     save_events.send_default();
                     match exit_dialog {
-                        ExitDialog::MainMenu => {
-                            commands.remove_resource::<GameWorld>();
-                            game_state.set(GameState::MainMenu);
-                        }
+                        ExitDialog::MainMenu => game_state.set(GameState::Menu),
                         ExitDialog::Game => {
                             info!("exiting game");
                             exit_events.send_default();
@@ -146,10 +147,7 @@ impl InGameMenuPlugin {
                     }
                 }
                 ExitDialogButton::Exit => match exit_dialog {
-                    ExitDialog::MainMenu => {
-                        commands.remove_resource::<GameWorld>();
-                        game_state.set(GameState::MainMenu);
-                    }
+                    ExitDialog::MainMenu => game_state.set(GameState::Menu),
                     ExitDialog::Game => {
                         info!("exiting game");
                         exit_events.send_default();

@@ -18,7 +18,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{
     asset::metadata::object_metadata::ObjectMetadata,
-    core::GameState,
     game_world::{
         city::CityMode,
         family::{BuildingMode, FamilyMode},
@@ -44,16 +43,7 @@ impl Plugin for PlacingObjectPlugin {
                 Self::end_placing
                     .after(ClientSet::Receive)
                     .run_if(on_event::<ObjectEventConfirmed>())
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family).and_then(
-                                    in_state(FamilyMode::Building)
-                                        .and_then(in_state(BuildingMode::Objects)),
-                                ),
-                            ),
-                    ),
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 Update,
@@ -73,44 +63,18 @@ impl Plugin for PlacingObjectPlugin {
                     )
                         .chain(),
                 )
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family).and_then(
-                                    in_state(FamilyMode::Building)
-                                        .and_then(in_state(BuildingMode::Objects)),
-                                ),
-                            ),
-                    ),
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 SpawnScene,
                 Self::update_materials
                     .after(scene::scene_spawner_system)
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family).and_then(
-                                    in_state(FamilyMode::Building)
-                                        .and_then(in_state(BuildingMode::Objects)),
-                                ),
-                            ),
-                    ),
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 PostUpdate,
-                (Self::init, Self::ensure_single).run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(
-                                in_state(FamilyMode::Building)
-                                    .and_then(in_state(BuildingMode::Objects)),
-                            ),
-                        ),
-                ),
+                (Self::init, Self::ensure_single)
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             );
     }
 }

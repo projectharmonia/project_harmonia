@@ -2,9 +2,12 @@ use bevy::{prelude::*, transform::TransformSystem};
 use bevy_xpbd_3d::prelude::*;
 
 use super::placing_object::PlacingObject;
-use crate::game_world::{
-    building::wall::{Aperture, Apertures, Wall, WallPlugin},
-    GameWorld, Layer,
+use crate::{
+    core::GameState,
+    game_world::{
+        building::wall::{Aperture, Apertures, Wall, WallPlugin},
+        Layer,
+    },
 };
 
 pub(super) struct WallMountPlugin;
@@ -14,14 +17,14 @@ impl Plugin for WallMountPlugin {
         app.register_type::<Vec2>()
             .register_type::<Vec<Vec2>>()
             .register_type::<WallMount>()
-            .add_systems(Update, Self::init.run_if(resource_exists::<GameWorld>))
+            .add_systems(Update, Self::init.run_if(in_state(GameState::InGame)))
             .add_systems(
                 PostUpdate,
                 (Self::cleanup_apertures, Self::update_apertures)
                     .chain()
                     .before(WallPlugin::update_meshes)
                     .after(TransformSystem::TransformPropagate)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }

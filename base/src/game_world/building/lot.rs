@@ -6,7 +6,7 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use crate::{game_world::GameWorld, math::polygon::Polygon};
+use crate::{core::GameState, game_world::city::CityMode, math::polygon::Polygon};
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -14,7 +14,8 @@ pub(super) struct LotPlugin;
 
 impl Plugin for LotPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<LotTool>()
+        app.add_sub_state::<LotTool>()
+            .enable_state_scoped_entities::<LotTool>()
             .add_plugins((CreatingLotPlugin, MovingLotPlugin))
             .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
@@ -27,12 +28,12 @@ impl Plugin for LotPlugin {
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 PostUpdate,
                 (
-                    Self::draw_lines.run_if(resource_exists::<GameWorld>),
+                    Self::draw_lines.run_if(in_state(GameState::InGame)),
                     (
                         Self::create.before(ServerSet::StoreHierarchy),
                         Self::apply_movement,
@@ -118,8 +119,9 @@ impl LotPlugin {
 }
 
 #[derive(
-    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, States,
+    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
 )]
+#[source(CityMode = CityMode::Lots)]
 pub enum LotTool {
     #[default]
     Create,

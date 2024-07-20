@@ -1,9 +1,7 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use crate::ui_root::UiRoot;
 use project_harmonia_base::{
-    core::GameState,
     game_world::{
         actor::{
             task::{Task, TaskList, TaskRequest},
@@ -29,15 +27,9 @@ impl Plugin for TaskMenuPlugin {
                 Self::close
                     .run_if(action_just_pressed(Action::Cancel).or_else(on_event::<TaskList>())),
             )
-                .run_if(in_state(GameState::Family))
                 .run_if(in_state(FamilyMode::Life)),
         )
-        .add_systems(
-            PostUpdate,
-            Self::open
-                .run_if(in_state(GameState::Family))
-                .run_if(in_state(FamilyMode::Life)),
-        );
+        .add_systems(PostUpdate, Self::open.run_if(in_state(FamilyMode::Life)));
     }
 }
 
@@ -48,7 +40,7 @@ impl TaskMenuPlugin {
         theme: Res<Theme>,
         hovered: Query<&Name, With<Hovered>>,
         windows: Query<&Window, With<PrimaryWindow>>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         let tasks = list_events.drain().map(|event| event.0).collect::<Vec<_>>();
         if tasks.is_empty() {

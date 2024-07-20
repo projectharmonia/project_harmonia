@@ -4,6 +4,7 @@ use oxidized_navigation::{NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    core::GameState,
     game_world::{
         actor::{
             task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
@@ -11,7 +12,6 @@ use crate::{
         },
         city::Ground,
         hover::Hovered,
-        GameWorld,
     },
     navigation::{ComputePath, NavPath, Navigation},
 };
@@ -25,7 +25,7 @@ impl Plugin for MoveHerePlugin {
             .add_systems(
                 Update,
                 (Self::add_to_list.in_set(TaskListSet), Self::finish)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             // Should run in `PostUpdate` to let tiles initialize.
             .add_systems(PostUpdate, Self::start_navigation.run_if(has_authority));

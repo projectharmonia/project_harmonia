@@ -9,7 +9,7 @@ use strum::EnumCount;
 use super::{ActorAnimation, Movement, Sex};
 use crate::{
     asset::collection::Collection,
-    game_world::GameWorld,
+    core::GameState,
     navigation::{NavPath, Navigation},
 };
 
@@ -21,13 +21,10 @@ impl Plugin for AnimationStatePlugin {
             .add_systems(
                 SpawnScene,
                 Self::init_scene
-                    .run_if(resource_exists::<GameWorld>)
+                    .run_if(in_state(GameState::InGame))
                     .after(scene::scene_spawner_system),
             )
-            .add_systems(
-                PostUpdate,
-                Self::update.run_if(resource_exists::<GameWorld>),
-            );
+            .add_systems(PostUpdate, Self::update.run_if(in_state(GameState::InGame)));
     }
 }
 

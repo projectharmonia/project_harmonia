@@ -1,21 +1,17 @@
 use bevy::prelude::*;
-use strum::EnumIter;
 
 pub(super) struct CorePlugin;
 
 impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GameState>();
+        app.init_state::<GameState>()
+            .enable_state_scoped_entities::<GameState>();
     }
 }
 
-#[derive(States, Clone, Copy, Debug, Eq, Hash, PartialEq, Default, EnumIter)]
+#[derive(States, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum GameState {
     #[default]
-    MainMenu,
-    WorldBrowser,
-    FamilyEditor,
-    World,
-    City,
-    Family,
+    Menu,
+    InGame,
 }

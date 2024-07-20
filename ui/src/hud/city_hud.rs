@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
-use crate::{hud::objects_node, ui_root::UiRoot};
+use crate::hud::objects_node;
 use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
-    core::GameState,
-    game_world::{building::lot::LotTool, city::CityMode},
+    game_world::{building::lot::LotTool, city::CityMode, WorldState},
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
@@ -16,10 +15,10 @@ pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::City), Self::setup)
+        app.add_systems(OnEnter(WorldState::City), Self::setup)
             .add_systems(
                 Update,
-                (Self::set_city_mode, Self::set_lot_tool).run_if(in_state(GameState::City)),
+                (Self::set_city_mode, Self::set_lot_tool).run_if(in_state(WorldState::City)),
             );
     }
 }
@@ -34,7 +33,7 @@ impl CityHudPlugin {
         debug!("showing city HUD");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(WorldState::City),
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),

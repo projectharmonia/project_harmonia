@@ -1,10 +1,13 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::{preview::Preview, ui_root::UiRoot};
+use crate::preview::Preview;
 use project_harmonia_base::{
     asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
-    core::GameState,
-    game_world::{city::ActiveCity, family::FamilyMode, object::placing_object::PlacingObject},
+    game_world::{
+        city::{ActiveCity, CityMode},
+        family::FamilyMode,
+        object::placing_object::PlacingObject,
+    },
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
@@ -23,11 +26,7 @@ impl Plugin for ObjectsNodePlugin {
                 Self::untoggle_spawned,
                 Self::reload_buttons,
             )
-                .run_if(
-                    in_state(GameState::City).or_else(
-                        in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                    ),
-                ),
+                .run_if(in_state(CityMode::Objects).or_else(in_state(FamilyMode::Building))),
         );
     }
 }
@@ -64,7 +63,7 @@ impl ObjectsNodePlugin {
         >,
         windows: Query<&Window, With<PrimaryWindow>>,
         popups: Query<Entity, With<ObjectPopup>>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for (&interaction, style, transform, &preview) in &buttons {
             let Preview::Object(id) = preview else {

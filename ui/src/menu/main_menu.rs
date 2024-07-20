@@ -1,19 +1,17 @@
 use bevy::{app::AppExit, prelude::*};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use super::settings_menu::SettingsMenuOpen;
-use crate::ui_root::UiRoot;
-use project_harmonia_base::core::GameState;
+use super::{settings_menu::SettingsMenuOpen, MenuState};
 use project_harmonia_widgets::{button::TextButtonBundle, click::Click, theme::Theme};
 
 pub(super) struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), Self::setup)
+        app.add_systems(OnEnter(MenuState::MainMenu), Self::setup)
             .add_systems(
                 Update,
-                Self::handle_clicks.run_if(in_state(GameState::MainMenu)),
+                Self::handle_clicks.run_if(in_state(MenuState::MainMenu)),
             );
     }
 }
@@ -23,7 +21,7 @@ impl MainMenuPlugin {
         info!("entering main menu");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(MenuState::MainMenu),
                 NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
@@ -49,12 +47,12 @@ impl MainMenuPlugin {
         mut settings_events: EventWriter<SettingsMenuOpen>,
         mut exit_events: EventWriter<AppExit>,
         mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut menu_state: ResMut<NextState<MenuState>>,
         buttons: Query<&MainMenuButton>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
-                MainMenuButton::Play => game_state.set(GameState::WorldBrowser),
+                MainMenuButton::Play => menu_state.set(MenuState::WorldBrowser),
                 MainMenuButton::Settings => {
                     settings_events.send_default();
                 }

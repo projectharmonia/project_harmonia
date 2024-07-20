@@ -21,7 +21,8 @@ use super::{
 };
 use crate::{
     asset::metadata::{self, object_metadata::ObjectMetadata},
-    game_world::{GameWorld, Layer},
+    core::GameState,
+    game_world::Layer,
 };
 use door::DoorPlugin;
 use placing_object::{PlacingObject, PlacingObjectPlugin};
@@ -41,13 +42,13 @@ impl Plugin for ObjectPlugin {
             .add_systems(
                 PreUpdate,
                 Self::init
-                    .run_if(resource_exists::<GameWorld>)
+                    .run_if(in_state(GameState::InGame))
                     .after(ClientSet::Receive),
             )
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<GameWorld>)
+                    .run_if(in_state(GameState::InGame))
                     .after(scene::scene_spawner_system),
             )
             .add_systems(

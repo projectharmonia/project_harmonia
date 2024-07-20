@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use super::ui_root::UiRoot;
 use project_harmonia_base::message::Message;
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
@@ -19,7 +18,7 @@ impl MessageBoxPlugin {
         mut commands: Commands,
         mut messages: EventReader<Message>,
         theme: Res<Theme>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for message in messages.read() {
             info!("showing dialog");

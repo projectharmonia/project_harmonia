@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
-use crate::{core::GameState, game_world::hover::Hovered};
+use crate::game_world::{hover::Hovered, WorldState};
 
 pub(super) struct HighlightingPlugin;
 
@@ -10,7 +10,7 @@ impl Plugin for HighlightingPlugin {
         app.add_systems(
             Update,
             (Self::enable, Self::disable)
-                .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
+                .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
         );
     }
 }

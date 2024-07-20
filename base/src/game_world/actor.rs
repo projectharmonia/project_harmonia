@@ -14,11 +14,13 @@ use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::hover::{highlighting::OutlineHighlightingExt, Hoverable};
+use super::{
+    hover::{highlighting::OutlineHighlightingExt, Hoverable},
+    WorldState,
+};
 use crate::{
     asset::collection::{AssetCollection, Collection},
     core::GameState,
-    game_world::GameWorld,
 };
 use animation_state::{AnimationState, AnimationStatePlugin};
 use human::HumanPlugin;
@@ -40,21 +42,21 @@ impl Plugin for ActorPlugin {
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
-            .add_systems(OnExit(GameState::Family), Self::remove_selection)
+            .add_systems(OnExit(WorldState::Family), Self::remove_selection)
             .add_systems(
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 Update,
-                Self::update_names.run_if(resource_exists::<GameWorld>),
+                Self::update_names.run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 SpawnScene,
                 Self::init_children
-                    .run_if(resource_exists::<GameWorld>)
+                    .run_if(in_state(GameState::InGame))
                     .after(scene::scene_spawner_system),
             )
             .add_systems(PostUpdate, Self::ensure_single_selection);

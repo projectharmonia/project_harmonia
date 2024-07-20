@@ -5,8 +5,7 @@ use std::iter;
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::player_camera::CameraCaster;
-use crate::core::GameState;
+use super::{player_camera::CameraCaster, WorldState};
 use highlighting::HighlightingPlugin;
 
 pub(super) struct HoverPlugin;
@@ -23,7 +22,7 @@ impl Plugin for HoverPlugin {
                         .run_if(resource_changed::<HoverEnabled>)
                         .run_if(not(hover_enabled)),
                 )
-                    .run_if(in_state(GameState::City).or_else(in_state(GameState::Family))),
+                    .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
             );
     }
 }

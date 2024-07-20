@@ -9,7 +9,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::{
-    core::GameState,
     game_world::{
         building::lot::LotVertices,
         family::{BuildingMode, FamilyMode},
@@ -29,8 +28,6 @@ impl Plugin for CreatingWallPlugin {
                 PreUpdate,
                 Self::end_creating
                     .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::Family))
-                    .run_if(in_state(FamilyMode::Building))
                     .run_if(in_state(BuildingMode::Walls))
                     .run_if(on_event::<WallCreateConfirmed>()),
             )
@@ -45,8 +42,6 @@ impl Plugin for CreatingWallPlugin {
                     Self::confirm.run_if(action_just_pressed(Action::Confirm)),
                     Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
                 )
-                    .run_if(in_state(GameState::Family))
-                    .run_if(in_state(FamilyMode::Building))
                     .run_if(in_state(BuildingMode::Walls)),
             );
     }

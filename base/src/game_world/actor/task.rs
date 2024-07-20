@@ -20,7 +20,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::{
-    core::GameState,
     game_world::{
         actor::{animation_state::AnimationState, Actor},
         family::FamilyMode,
@@ -56,7 +55,6 @@ impl Plugin for TaskPlugin {
             Update,
             TaskListSet
                 .run_if(action_just_pressed(Action::Confirm))
-                .run_if(in_state(GameState::Family))
                 .run_if(in_state(FamilyMode::Life)),
         )
         .add_systems(

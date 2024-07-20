@@ -10,7 +10,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use self::exp_smoothed::ExpSmoothed;
 
-use crate::{core::GameState, settings::Action};
+use crate::{game_world::WorldState, settings::Action};
 
 pub(super) struct PlayerCameraPlugin;
 
@@ -21,16 +21,16 @@ impl Plugin for PlayerCameraPlugin {
             (
                 (
                     Self::update_rotation,
-                    Self::update_origin.run_if(not(in_state(GameState::FamilyEditor))),
+                    Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
                     Self::update_spring_arm,
                 ),
                 Self::apply_transform,
             )
                 .chain()
                 .run_if(
-                    in_state(GameState::FamilyEditor)
-                        .or_else(in_state(GameState::City))
-                        .or_else(in_state(GameState::Family)),
+                    in_state(WorldState::FamilyEditor)
+                        .or_else(in_state(WorldState::City))
+                        .or_else(in_state(WorldState::Family)),
                 ),
         );
     }

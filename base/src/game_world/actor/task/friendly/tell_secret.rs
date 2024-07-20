@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     asset::collection::Collection,
+    core::GameState,
     game_world::{
         actor::{
             animation_state::{AnimationState, Montage, MontageFinished},
@@ -15,7 +16,6 @@ use crate::{
             Actor, ActorAnimation, Movement,
         },
         hover::Hovered,
-        GameWorld,
     },
     navigation::{following::Following, NavPath, Navigation},
 };
@@ -37,7 +37,7 @@ impl Plugin for TellSecretPlugin {
                     Self::start_listening,
                     Self::finish,
                 )
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }

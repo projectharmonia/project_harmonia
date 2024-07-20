@@ -4,7 +4,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices, UnconfirmedLot};
 use crate::{
-    core::GameState,
     game_world::{
         city::{ActiveCity, CityMode},
         player_camera::CameraCaster,
@@ -22,8 +21,6 @@ impl Plugin for CreatingLotPlugin {
                 PreUpdate,
                 Self::end_creating
                     .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::City))
-                    .run_if(in_state(CityMode::Lots))
                     .run_if(in_state(LotTool::Create))
                     .run_if(on_event::<LotEventConfirmed>()),
             )
@@ -37,8 +34,6 @@ impl Plugin for CreatingLotPlugin {
                     Self::confirm.run_if(action_just_pressed(Action::Confirm)),
                     Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
                 )
-                    .run_if(in_state(GameState::City))
-                    .run_if(in_state(CityMode::Lots))
                     .run_if(in_state(LotTool::Create)),
             );
     }

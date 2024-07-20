@@ -10,12 +10,11 @@ use bevy_replicon_renet::{
 use clap::{Args, Parser, Subcommand};
 
 use project_harmonia_base::{
-    core::GameState,
     game_world::{
         actor::SelectedActor,
         city::{ActiveCity, City},
         family::{Family, FamilyMembers},
-        GameLoad, GameWorld,
+        GameLoad, GameWorld, WorldState,
     },
     message::{error_message, Message},
     network::{self, DEFAULT_PORT},
@@ -89,7 +88,7 @@ impl CliPlugin {
 
     fn quick_load(
         mut commands: Commands,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &City)>,
         families: Query<(&Family, &FamilyMembers)>,
@@ -103,7 +102,7 @@ impl CliPlugin {
                         .with_context(|| format!("unable to find city named {name}"))?;
 
                     commands.entity(entity).insert(ActiveCity);
-                    game_state.set(GameState::City);
+                    world_state.set(WorldState::City);
                 }
                 QuickLoad::Family { name } => {
                     let (_, members) = families
@@ -115,7 +114,7 @@ impl CliPlugin {
                         .first()
                         .expect("family should contain at least one actor");
                     commands.entity(entity).insert(SelectedActor);
-                    game_state.set(GameState::Family);
+                    world_state.set(WorldState::Family);
                 }
             }
         }

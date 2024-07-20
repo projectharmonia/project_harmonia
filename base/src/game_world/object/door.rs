@@ -3,9 +3,7 @@ use itertools::Itertools;
 
 use super::ObjectPath;
 use crate::{
-    asset::metadata,
-    game_world::{actor::Actor, GameWorld},
-    math::segment::Segment,
+    asset::metadata, core::GameState, game_world::actor::Actor, math::segment::Segment,
     navigation::NavPath,
 };
 
@@ -20,11 +18,11 @@ impl Plugin for DoorPlugin {
                     Self::init,
                     (Self::update_passing_actors, Self::play_animation).chain(),
                 )
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_passing_actors.run_if(resource_exists::<GameWorld>),
+                Self::cleanup_passing_actors.run_if(in_state(GameState::InGame)),
             );
     }
 }

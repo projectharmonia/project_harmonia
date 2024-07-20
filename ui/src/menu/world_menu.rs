@@ -4,15 +4,11 @@ use bevy::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::ui_root::UiRoot;
-use project_harmonia_base::{
-    core::GameState,
-    game_world::{
-        actor::SelectedActor,
-        city::{ActiveCity, City, CityBundle},
-        family::{Family, FamilyDelete, FamilyMembers},
-        GameWorld,
-    },
+use project_harmonia_base::game_world::{
+    actor::SelectedActor,
+    city::{ActiveCity, City, CityBundle},
+    family::{Family, FamilyDelete, FamilyMembers},
+    GameWorld, WorldState,
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
@@ -28,7 +24,7 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::World), Self::setup)
+        app.add_systems(OnEnter(WorldState::World), Self::setup)
             .add_systems(
                 Update,
                 (
@@ -37,7 +33,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::handle_create_clicks,
                     Self::handle_city_dialog_clicks,
                 )
-                    .run_if(in_state(GameState::World)),
+                    .run_if(in_state(WorldState::World)),
             )
             .add_systems(
                 PostUpdate,
@@ -46,7 +42,7 @@ impl Plugin for WorldMenuPlugin {
                     Self::create_city_nodes,
                     Self::remove_entity_nodes,
                 )
-                    .run_if(in_state(GameState::World)),
+                    .run_if(in_state(WorldState::World)),
             );
     }
 }
@@ -63,7 +59,7 @@ impl WorldMenuPlugin {
         info!("entering world menu");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(WorldState::World),
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),
@@ -201,7 +197,7 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut delete_events: EventWriter<FamilyDelete>,
         mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         buttons: Query<(&WorldEntityNode, &FamilyButton)>,
         nodes: Query<&WorldEntity>,
         families: Query<&FamilyMembers>,
@@ -223,7 +219,7 @@ impl WorldMenuPlugin {
 
                     info!("starting playing for family `{:?}`", world_entity.0);
                     commands.entity(actor_entity).insert(SelectedActor);
-                    game_state.set(GameState::Family);
+                    world_state.set(WorldState::Family);
                 }
                 FamilyButton::Delete => {
                     info!("deleting family `{:?}`", world_entity.0);
@@ -236,7 +232,7 @@ impl WorldMenuPlugin {
     fn handle_city_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         buttons: Query<(&WorldEntityNode, &CityButton)>,
         nodes: Query<&WorldEntity>,
     ) {
@@ -251,7 +247,7 @@ impl WorldMenuPlugin {
                 CityButton::Edit => {
                     info!("starting editing city `{:?}`", world_entity.0);
                     commands.entity(world_entity.0).insert(ActiveCity);
-                    game_state.set(GameState::City);
+                    world_state.set(WorldState::City);
                 }
                 CityButton::Delete => {
                     info!("deleting city `{:?}`", world_entity.0);
@@ -264,11 +260,11 @@ impl WorldMenuPlugin {
     fn handle_create_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         theme: Res<Theme>,
         buttons: Query<(), With<CreateEntityButton>>,
         tabs: Query<(&Toggled, &WorldTab)>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
             let current_tab = tabs
@@ -277,7 +273,7 @@ impl WorldMenuPlugin {
                 .expect("one tab should always be active");
 
             match current_tab {
-                WorldTab::Families => game_state.set(GameState::FamilyEditor),
+                WorldTab::Families => world_state.set(WorldState::FamilyEditor),
                 WorldTab::Cities => {
                     setup_create_city_dialog(&mut commands, roots.single(), &theme);
                 }

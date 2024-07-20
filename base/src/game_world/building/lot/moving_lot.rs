@@ -4,7 +4,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotDelete, LotEventConfirmed, LotMove, LotTool, LotVertices, UnconfirmedLot};
 use crate::{
-    core::GameState,
     game_world::{city::CityMode, player_camera::CameraCaster},
     settings::Action,
 };
@@ -19,8 +18,6 @@ impl Plugin for MovingLotPlugin {
                 PreUpdate,
                 Self::end_creating
                     .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::City))
-                    .run_if(in_state(CityMode::Lots))
                     .run_if(in_state(LotTool::Move))
                     .run_if(on_event::<LotEventConfirmed>()),
             )
@@ -35,16 +32,11 @@ impl Plugin for MovingLotPlugin {
                     Self::delete.run_if(action_just_pressed(Action::Delete)),
                     Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
                 )
-                    .run_if(in_state(GameState::City))
-                    .run_if(in_state(CityMode::Lots))
                     .run_if(in_state(LotTool::Move)),
             )
             .add_systems(
                 PostUpdate,
-                Self::cleanup_despawned
-                    .run_if(in_state(GameState::City))
-                    .run_if(in_state(CityMode::Lots))
-                    .run_if(in_state(LotTool::Move)),
+                Self::cleanup_despawned.run_if(in_state(LotTool::Move)),
             );
     }
 }

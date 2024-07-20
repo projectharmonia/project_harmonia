@@ -2,10 +2,7 @@ use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
 use super::{PlacingObject, PlacingObjectPlugin};
-use crate::{
-    core::GameState,
-    game_world::{city::CityMode, family::FamilyMode},
-};
+use crate::game_world::{city::CityMode, family::BuildingMode};
 
 pub(super) struct SideSnapPlugin;
 
@@ -20,24 +17,12 @@ impl Plugin for SideSnapPlugin {
                         .before(PlacingObjectPlugin::check_collision)
                         .after(PlacingObjectPlugin::apply_position),
                 )
-                    .run_if(
-                        in_state(GameState::City)
-                            .and_then(in_state(CityMode::Objects))
-                            .or_else(
-                                in_state(GameState::Family)
-                                    .and_then(in_state(FamilyMode::Building)),
-                            ),
-                    ),
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 PostUpdate,
-                Self::update_nodes.run_if(
-                    in_state(GameState::City)
-                        .and_then(in_state(CityMode::Objects))
-                        .or_else(
-                            in_state(GameState::Family).and_then(in_state(FamilyMode::Building)),
-                        ),
-                ),
+                Self::update_nodes
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             );
     }
 }

@@ -15,7 +15,7 @@ use crate::{
     core::GameState,
     game_world::{
         family::{editor::EditableActor, FamilyScene},
-        GameWorld,
+        WorldState,
     },
 };
 
@@ -31,13 +31,13 @@ impl Plugin for HumanPlugin {
                 PreUpdate,
                 Self::update_sex
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 Update,
                 (
                     Self::init_needs, // Should run after `ParentSync` to detect if needs was initialized correctly.
-                    Self::init_children.run_if(in_state(GameState::FamilyEditor)),
+                    Self::init_children.run_if(in_state(WorldState::FamilyEditor)),
                 ),
             );
     }

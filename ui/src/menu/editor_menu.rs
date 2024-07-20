@@ -5,12 +5,8 @@ use bevy::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::{
-    preview::{Preview, PreviewProcessed},
-    ui_root::UiRoot,
-};
+use crate::preview::{Preview, PreviewProcessed};
 use project_harmonia_base::{
-    core::GameState,
     game_world::{
         actor::{FirstName, LastName, Sex},
         city::City,
@@ -18,6 +14,7 @@ use project_harmonia_base::{
             editor::{EditableActor, EditableActorBundle, EditableFamily, FamilyReset},
             FamilyCreate, FamilyScene,
         },
+        WorldState,
     },
     message::error_message,
 };
@@ -35,7 +32,7 @@ pub(super) struct EditorMenuPlugin;
 
 impl Plugin for EditorMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::FamilyEditor), Self::setup)
+        app.add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
             .add_systems(
                 Update,
                 (
@@ -55,12 +52,12 @@ impl Plugin for EditorMenuPlugin {
                     Self::handle_place_dialog_clicks,
                     Self::handle_city_place_clicks,
                 )
-                    .run_if(in_state(GameState::FamilyEditor)),
+                    .run_if(in_state(WorldState::FamilyEditor)),
             )
             .add_systems(
                 PostUpdate,
                 (Self::create_actor_buttons, Self::remove_actor_buttons)
-                    .run_if(in_state(GameState::FamilyEditor)),
+                    .run_if(in_state(WorldState::FamilyEditor)),
             );
     }
 }
@@ -70,7 +67,7 @@ impl EditorMenuPlugin {
         info!("entering family editor");
         commands
             .spawn((
-                UiRoot,
+                StateScoped(WorldState::FamilyEditor),
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),
@@ -247,17 +244,17 @@ impl EditorMenuPlugin {
     fn handle_family_menu_clicks(
         mut commands: Commands,
         mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
+        mut world_state: ResMut<NextState<WorldState>>,
         theme: Res<Theme>,
         buttons: Query<&FamilyMenuButton>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
                 FamilyMenuButton::Confirm => {
                     setup_save_family_dialog(&mut commands, roots.single(), &theme);
                 }
-                FamilyMenuButton::Cancel => game_state.set(GameState::World),
+                FamilyMenuButton::Cancel => world_state.set(WorldState::World),
             }
         }
     }
@@ -270,7 +267,7 @@ impl EditorMenuPlugin {
         buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
         cities: Query<(Entity, &City)>,
-        roots: Query<Entity, With<UiRoot>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {

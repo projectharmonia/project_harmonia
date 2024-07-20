@@ -14,10 +14,7 @@ use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    game_world::{GameWorld, Layer},
-    math::segment::Segment,
-};
+use crate::{core::GameState, game_world::Layer, math::segment::Segment};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
 use triangulator::Triangulator;
 use wall_mesh::WallMesh;
@@ -35,7 +32,7 @@ impl Plugin for WallPlugin {
                 PreUpdate,
                 Self::init
                     .after(ClientSet::Receive)
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 PostUpdate,
@@ -50,7 +47,7 @@ impl Plugin for WallPlugin {
                     )
                         .chain(),
                 )
-                    .run_if(resource_exists::<GameWorld>),
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }
