@@ -1,6 +1,6 @@
 use std::mem;
 
-use bevy::{ecs::reflect::ReflectBundle, prelude::*};
+use bevy::{asset::AssetPath, ecs::reflect::ReflectBundle, prelude::*};
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
@@ -143,10 +143,10 @@ enum HumanScene {
 impl AssetCollection for HumanScene {
     type AssetType = Scene;
 
-    fn asset_path(&self) -> &'static str {
+    fn asset_path(&self) -> AssetPath<'static> {
         match self {
-            Self::Male => "base/actors/bot/y_bot/y_bot.gltf#Scene0",
-            Self::Female => "base/actors/bot/x_bot/x_bot.gltf#Scene0",
+            Self::Male => GltfAssetLabel::Scene(0).from_asset("base/actors/bot/y_bot/y_bot.gltf"),
+            Self::Female => GltfAssetLabel::Scene(0).from_asset("base/actors/bot/x_bot/x_bot.gltf"),
         }
     }
 }

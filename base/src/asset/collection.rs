@@ -1,4 +1,7 @@
-use bevy::{asset::Asset, prelude::*};
+use bevy::{
+    asset::{Asset, AssetPath},
+    prelude::*,
+};
 use strum::IntoEnumIterator;
 
 /// Resource that preload the collection and gives access to it.
@@ -29,5 +32,5 @@ pub(crate) trait AssetCollection {
     type AssetType: Asset;
 
     /// Returns associated asset path based on the current value.
-    fn asset_path(&self) -> &'static str;
+    fn asset_path(&self) -> AssetPath<'static>;
 }

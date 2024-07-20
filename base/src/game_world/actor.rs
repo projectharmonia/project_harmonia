@@ -4,6 +4,7 @@ pub mod needs;
 pub mod task;
 
 use bevy::{
+    asset::AssetPath,
     prelude::*,
     scene::{self, SceneInstanceReady},
 };
@@ -189,17 +190,28 @@ pub(super) enum ActorAnimation {
 impl AssetCollection for ActorAnimation {
     type AssetType = AnimationClip;
 
-    fn asset_path(&self) -> &'static str {
+    fn asset_path(&self) -> AssetPath<'static> {
         match self {
-            ActorAnimation::Idle => "base/actors/animations/idle.gltf#Animation0",
-            ActorAnimation::MaleWalk => "base/actors/animations/male_walk.gltf#Animation0",
-            ActorAnimation::FemaleWalk => "base/actors/animations/female_walk.gltf#Animation0",
-            ActorAnimation::MaleRun => "base/actors/animations/male_run.gltf#Animation0",
-            ActorAnimation::FemaleRun => "base/actors/animations/female_run.gltf#Animation0",
-            ActorAnimation::TellSecret => "base/actors/animations/tell_secret.gltf#Animation0",
-            ActorAnimation::ThoughtfulNod => {
-                "base/actors/animations/thoughtful_nod.gltf#Animation0"
+            ActorAnimation::Idle => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/idle.gltf")
             }
+            ActorAnimation::MaleWalk => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/male_walk.gltf")
+            }
+            ActorAnimation::FemaleWalk => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/female_walk.gltf")
+            }
+            ActorAnimation::MaleRun => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/male_run.gltf")
+            }
+            ActorAnimation::FemaleRun => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/female_run.gltf")
+            }
+            ActorAnimation::TellSecret => {
+                GltfAssetLabel::Animation(0).from_asset("base/actors/animations/tell_secret.gltf")
+            }
+            ActorAnimation::ThoughtfulNod => GltfAssetLabel::Animation(0)
+                .from_asset("base/actors/animations/thoughtful_nod.gltf"),
         }
     }
 }

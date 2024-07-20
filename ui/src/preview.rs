@@ -66,7 +66,7 @@ impl PreviewPlugin {
                     let metadata_path = asset_server
                         .get_path(id)
                         .expect("metadata should always come from file");
-                    let scene_path = metadata::gltf_asset(&metadata_path, "Scene0");
+                    let scene_path = metadata::gltf_asset(&metadata_path, GltfAssetLabel::Scene(0));
                     debug!("generating preview for object '{scene_path:?}'");
 
                     let metadata = object_metadata.get(id).unwrap();

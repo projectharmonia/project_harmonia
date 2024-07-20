@@ -134,9 +134,8 @@ trait Metadata {
 }
 
 /// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
-pub fn gltf_asset(metadata_path: &AssetPath, label: &'static str) -> AssetPath<'static> {
-    let scene_path: AssetPath = metadata_path.path().with_extension("gltf").into();
-    scene_path.with_label(label)
+pub fn gltf_asset(metadata_path: &AssetPath, label: GltfAssetLabel) -> AssetPath<'static> {
+    label.from_asset(metadata_path.path().with_extension("gltf"))
 }
 
 #[derive(Serialize, Deserialize)]
