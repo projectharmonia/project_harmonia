@@ -41,7 +41,7 @@ impl NavigationPlugin {
     ) {
         for (entity, mut compute_path, mut nav_path) in &mut actors {
             if let Some(path) = future::block_on(future::poll_once(&mut compute_path.0)) {
-                debug!("computed path for `{entity:?}`");
+                debug!("computed path for `{entity}`");
                 nav_path.0 = path;
                 commands.entity(entity).remove::<ComputePath>();
             }
@@ -68,7 +68,7 @@ impl NavigationPlugin {
 
             // Reset current waypoint index when navigation path changes.
             if nav_path.is_changed() {
-                debug!("resetting waypoint index for `{entity:?}`");
+                debug!("resetting waypoint index for `{entity}`");
                 waypoint_index.0 = 1; // Always skip first waypoint since it's initial position.
             }
 
@@ -84,13 +84,13 @@ impl NavigationPlugin {
             const DISTANCE_EPSILON: f32 = 0.1;
             if waypoint_index.0 == nav_path.len() - 1 {
                 if disp.length() < navigation.offset.unwrap_or(DISTANCE_EPSILON) {
-                    debug!("`{entity:?}` finished navigation");
+                    debug!("`{entity}` finished navigation");
                     nav_path.clear();
                 }
             } else if disp.length() < DISTANCE_EPSILON {
                 waypoint_index.0 += 1;
                 debug!(
-                    "incremented waypoint index to {} for `{entity:?}`",
+                    "incremented waypoint index to {} for `{entity}`",
                     waypoint_index.0
                 );
             }

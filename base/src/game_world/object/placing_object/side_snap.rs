@@ -30,7 +30,7 @@ impl Plugin for SideSnapPlugin {
 impl SideSnapPlugin {
     fn init(mut commands: Commands, objects: Query<Entity, Added<SideSnap>>) {
         for entity in &objects {
-            debug!("initializing side snapping for `{entity:?}`");
+            debug!("initializing side snapping for `{entity}`");
             commands.entity(entity).insert(SideSnapNodes::default());
         }
     }
@@ -105,7 +105,7 @@ impl SideSnapPlugin {
 }
 
 fn connect_nodes(nodes: &mut Query<&mut SideSnapNodes>, left_entity: Entity, right_entity: Entity) {
-    debug!("connecting `{left_entity:?}` with `{right_entity:?}`");
+    debug!("connecting `{left_entity}` with `{right_entity}`");
     let mut left_nodes = nodes
         .get_mut(left_entity)
         .expect("left side snap entity should have nodes");

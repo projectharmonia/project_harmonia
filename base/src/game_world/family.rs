@@ -74,7 +74,7 @@ impl FamilyPlugin {
     ) {
         let mut new_families = HashMap::<_, Vec<_>>::new();
         for (actor_entity, family) in &actors {
-            debug!("updating family for actor `{actor_entity:?}`");
+            debug!("updating family for actor `{actor_entity}`");
 
             // Remove previous.
             for mut members in &mut families {
@@ -142,7 +142,7 @@ impl FamilyPlugin {
         for family_entity in delete_events.read().map(|event| event.event.0) {
             match families.get(family_entity) {
                 Ok(members) => {
-                    info!("deleting family `{family_entity:?}`");
+                    info!("deleting family `{family_entity}`");
                     commands.entity(family_entity).despawn();
                     for &entity in &members.0 {
                         commands.entity(entity).despawn_recursive();

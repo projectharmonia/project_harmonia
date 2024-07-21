@@ -55,7 +55,7 @@ impl HumanPlugin {
                 .next()
                 .is_none()
             {
-                debug!("initializing human `{entity:?}`");
+                debug!("initializing human `{entity}`");
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn(NeedBundle::<Bladder>::default());
                     parent.spawn(NeedBundle::<Energy>::default());
@@ -74,7 +74,7 @@ impl HumanPlugin {
         actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
     ) {
         for (entity, &sex) in &actors {
-            debug!("initializing sex for human `{entity:?}`");
+            debug!("initializing sex for human `{entity}`");
             commands
                 .entity(entity)
                 .insert(human_scenes.handle(sex.into()));

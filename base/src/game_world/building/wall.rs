@@ -60,7 +60,7 @@ impl WallPlugin {
         walls: Query<(Entity, Has<CreatingWall>), Added<Wall>>,
     ) {
         for (entity, creating_wall) in &walls {
-            debug!("initializing wall `{entity:?}`");
+            debug!("initializing wall `{entity}`");
             let mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
                 .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
@@ -92,7 +92,7 @@ impl WallPlugin {
         mut walls: Query<&mut WallConnections>,
     ) {
         for entity in removed_walls.read() {
-            debug!("removing connections for despawned wall `{entity:?}`");
+            debug!("removing connections for despawned wall `{entity}`");
             for mut connections in &mut walls {
                 if let Some((point_kind, index)) = connections.position(entity) {
                     connections.remove(point_kind, index);
@@ -139,7 +139,7 @@ impl WallPlugin {
                 {
                     if wall.start == other_wall.start {
                         trace!(
-                            "connecting start of {wall_entity:?} with start of `{other_entity:?}`"
+                            "connecting start of `{wall_entity}` with start of `{other_entity}`"
                         );
                         connections.start.push(WallConnection {
                             entity: other_entity,
@@ -152,9 +152,7 @@ impl WallPlugin {
                             point_kind: PointKind::Start,
                         });
                     } else if wall.start == other_wall.end {
-                        trace!(
-                            "connecting start of {wall_entity:?} with end of `{other_entity:?}`"
-                        );
+                        trace!("connecting start of `{wall_entity}` with end of `{other_entity}`");
                         connections.start.push(WallConnection {
                             entity: other_entity,
                             segment: *other_wall,
@@ -166,7 +164,7 @@ impl WallPlugin {
                             point_kind: PointKind::Start,
                         });
                     } else if wall.end == other_wall.end {
-                        trace!("connecting end of {wall_entity:?} with end of `{other_entity:?}`");
+                        trace!("connecting end of `{wall_entity}` with end of `{other_entity}`");
                         connections.end.push(WallConnection {
                             entity: other_entity,
                             segment: *other_wall,
@@ -178,9 +176,7 @@ impl WallPlugin {
                             point_kind: PointKind::End,
                         });
                     } else if wall.end == other_wall.start {
-                        trace!(
-                            "connecting end of {wall_entity:?} with start of `{other_entity:?}`"
-                        );
+                        trace!("connecting end of `{wall_entity}` with start of `{other_entity}`");
                         connections.end.push(WallConnection {
                             entity: other_entity,
                             segment: *other_wall,

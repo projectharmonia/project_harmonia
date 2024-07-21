@@ -77,7 +77,7 @@ impl ObjectPlugin {
                 .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
 
             let scene_path = metadata::gltf_asset(&object_path.0, GltfAssetLabel::Scene(0));
-            debug!("initializing object `{entity:?}` for '{scene_path:?}'");
+            debug!("initializing object `{entity}` for '{scene_path}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             let mut entity = commands.entity(entity);
@@ -137,7 +137,7 @@ impl ObjectPlugin {
             let collider = Collider::convex_hull_from_mesh(&merged_mesh)
                 .expect("object mesh should be in compatible format");
 
-            debug!("inserting collider for `{object_entity:?}`");
+            debug!("inserting collider for `{object_entity}`");
             commands.entity(object_entity).insert(collider);
         }
     }

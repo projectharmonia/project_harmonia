@@ -106,7 +106,7 @@ impl TaskPlugin {
             while let Some((entity, groups, mut task_state)) = iter.fetch_next() {
                 if *task_state == TaskState::Queued && !groups.intersects(current_groups) {
                     *task_state = TaskState::Active;
-                    debug!("setting `{task_state:?}` for `{entity:?}`");
+                    debug!("setting `{task_state:?}` for `{entity}`");
                     break;
                 }
             }
@@ -139,7 +139,7 @@ impl TaskPlugin {
     ) {
         for (entity, parent, groups, &task_state) in &tasks {
             if task_state == TaskState::Cancelled {
-                debug!("despawning cancelled task `{entity:?}`");
+                debug!("despawning cancelled task `{entity}`");
                 let (mut nav_path, mut animation_state) = actors
                     .get_mut(**parent)
                     .expect("actor should have animaition state");

@@ -105,7 +105,7 @@ impl EditorMenuPlugin {
         actor_nodes: Query<Entity, With<ActorsNode>>,
     ) {
         for entity in &actors {
-            debug!("creating button for actor `{entity:?}`");
+            debug!("creating button for actor `{entity}`");
             commands
                 .entity(actor_nodes.single())
                 .with_children(|parent| {
@@ -133,7 +133,7 @@ impl EditorMenuPlugin {
                 .iter()
                 .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
                 .expect("each actor should have a corresponding button");
-            debug!("updating preview for actor `{actor_entity:?}`");
+            debug!("updating preview for actor `{actor_entity}`");
             commands.entity(button_entity).remove::<PreviewProcessed>();
         }
     }
@@ -148,7 +148,7 @@ impl EditorMenuPlugin {
                 .iter()
                 .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
                 .expect("each actor should have a corresponding button");
-            debug!("removing button for despawned actor `{actor_entity:?}`");
+            debug!("removing button for despawned actor `{actor_entity}`");
             commands.entity(button_entity).despawn_recursive();
         }
     }

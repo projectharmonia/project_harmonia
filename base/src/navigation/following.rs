@@ -36,7 +36,7 @@ impl FollowingPlugin {
                 .get(following.0)
                 .expect("target entity should have transform");
 
-            debug!("setting path to target `{entity:?}`");
+            debug!("setting path to target `{entity}`");
             commands.entity(entity).insert(ComputePath::new(
                 nav_mesh.get(),
                 nav_settings.clone(),
@@ -55,7 +55,7 @@ impl FollowingPlugin {
     ) {
         for (entity, transform, following) in &followers {
             if let Ok(target_transform) = transforms.get(following.0) {
-                debug!("updating path to target `{entity:?}`");
+                debug!("updating path to target `{entity}`");
                 commands.entity(entity).insert(ComputePath::new(
                     nav_mesh.get(),
                     nav_settings.clone(),

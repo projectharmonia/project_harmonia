@@ -58,17 +58,17 @@ impl HoverPlugin {
     ) {
         match (hit, hovered.get_single().ok()) {
             (Some((hit_entity, point)), None) => {
-                debug!("hovered `{hit_entity:?}`");
+                debug!("hovered `{hit_entity}`");
                 commands.entity(hit_entity).insert(Hovered(point));
             }
             (None, Some(previous_entity)) => {
-                debug!("unhovered `{previous_entity:?}`");
+                debug!("unhovered `{previous_entity}`");
                 commands.entity(previous_entity).remove::<Hovered>();
             }
             (Some((hit_entity, point)), Some(previous_entity)) => {
                 commands.entity(hit_entity).insert(Hovered(point));
                 if hit_entity != previous_entity {
-                    debug!("changing hover from `{previous_entity:?}` to `{hit_entity:?}`");
+                    debug!("changing hover from `{previous_entity}` to `{hit_entity}`");
                     commands.entity(previous_entity).remove::<Hovered>();
                 }
             }

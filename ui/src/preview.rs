@@ -54,7 +54,7 @@ impl PreviewPlugin {
         if let Some((preview_entity, &preview, ..)) = previews.iter().find(|&(.., c)| !c) {
             let (translation, scene_handle) = match preview {
                 Preview::Actor(entity) => {
-                    debug!("generating preview for actor `{entity:?}`");
+                    debug!("generating preview for actor `{entity}`");
 
                     let scene_handle = actors
                         .get(entity)

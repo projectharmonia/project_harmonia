@@ -70,7 +70,7 @@ pub const ACTOR_RADIUS: f32 = 0.3;
 impl ActorPlugin {
     fn init(mut commands: Commands, actors: Query<Entity, Added<Actor>>) {
         for entity in &actors {
-            debug!("initializing actor `{entity:?}`");
+            debug!("initializing actor `{entity}`");
             commands
                 .entity(entity)
                 .insert((
@@ -98,7 +98,7 @@ impl ActorPlugin {
         children: Query<&Children>,
     ) {
         for actor_entity in actors.iter_many(ready_events.read().map(|event| event.parent)) {
-            debug!("initializing outline for `{actor_entity:?}`");
+            debug!("initializing outline for `{actor_entity}`");
             for child_entity in children.iter_descendants(actor_entity) {
                 commands
                     .entity(child_entity)
@@ -115,7 +115,7 @@ impl ActorPlugin {
         >,
     ) {
         for (entity, first_name, last_name) in &mut changed_names {
-            debug!("updating full name for `{entity:?}`");
+            debug!("updating full name for `{entity}`");
             let mut entity = commands.entity(entity);
             entity.insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
         }
@@ -123,7 +123,7 @@ impl ActorPlugin {
 
     fn remove_selection(mut commands: Commands, actors: Query<Entity, With<SelectedActor>>) {
         if let Ok(entity) = actors.get_single() {
-            info!("deselecting actor `{entity:?}`");
+            info!("deselecting actor `{entity}`");
             commands.entity(entity).remove::<SelectedActor>();
         }
     }
@@ -135,7 +135,7 @@ impl ActorPlugin {
     ) {
         if let Some(activated_entity) = just_selected_actors.iter().last() {
             for actor_entity in actors.iter().filter(|&entity| entity != activated_entity) {
-                debug!("deselecting previous actor `{actor_entity:?}`");
+                debug!("deselecting previous actor `{actor_entity}`");
                 commands.entity(actor_entity).remove::<SelectedActor>();
             }
         }

@@ -30,7 +30,7 @@ impl Plugin for DoorPlugin {
 impl DoorPlugin {
     fn init(mut commands: Commands, objects: Query<Entity, Added<Door>>) {
         for entity in &objects {
-            debug!("initializing door for {entity:?}");
+            debug!("initializing door for `{entity}`");
             commands.entity(entity).insert(DoorState::default());
         }
     }
@@ -55,7 +55,7 @@ impl DoorPlugin {
                     let door_end = door_transform.transform_point(-door_point).xz();
                     let door_segment = Segment::new(door_start, door_end);
                     if nav_segment.intersects(door_segment) {
-                        debug!("marking path of actor `{actor_entity:?}` as passing");
+                        debug!("marking path of actor `{actor_entity}` as passing");
                         door_state.passing_actors.push(actor_entity);
                     }
                 }
@@ -126,7 +126,7 @@ impl DoorPlugin {
     ) {
         for entity in removed_actors.read() {
             for mut door_state in &mut objects {
-                debug!("removing path of deleted actor `{entity:?}`");
+                debug!("removing path of deleted actor `{entity}`");
                 door_state.remove_passing(entity);
             }
         }

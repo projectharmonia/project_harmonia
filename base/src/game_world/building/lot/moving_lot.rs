@@ -52,7 +52,7 @@ impl MovingLotPlugin {
                 .iter()
                 .find(|(.., vertices)| vertices.contains_point(point.xz()))
             {
-                info!("picking lot `{entity:?}`");
+                info!("picking lot `{entity}`");
                 commands.entity(**parent).with_children(|parent| {
                     parent.spawn((
                         vertices.clone(),

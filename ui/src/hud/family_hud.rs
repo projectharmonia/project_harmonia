@@ -161,7 +161,7 @@ impl FamilyHudPlugin {
         {
             match *state {
                 TaskState::Queued => {
-                    debug!("creating queued task button for `{task_entity:?}`");
+                    debug!("creating queued task button for `{task_entity}`");
                     commands
                         .entity(queued_task_nodes.single())
                         .with_children(|parent| {
@@ -176,12 +176,12 @@ impl FamilyHudPlugin {
                         .iter()
                         .find(|(_, button_task)| button_task.0 == task_entity)
                     {
-                        debug!("turning queued button for `{task_entity:?}` into active");
+                        debug!("turning queued button for `{task_entity}` into active");
                         commands
                             .entity(button_entity)
                             .set_parent(active_task_nodes.single());
                     } else {
-                        debug!("creating active task button for `{task_entity:?}`");
+                        debug!("creating active task button for `{task_entity}`");
                         commands
                             .entity(active_task_nodes.single())
                             .with_children(|parent| {
@@ -193,7 +193,7 @@ impl FamilyHudPlugin {
                     }
                 }
                 TaskState::Cancelled => {
-                    debug!("marking button for task `{task_entity:?}` as cancelled")
+                    debug!("marking button for task `{task_entity}` as cancelled")
                 }
             };
         }
@@ -219,7 +219,7 @@ impl FamilyHudPlugin {
                 .iter()
                 .find(|(_, button_task)| button_task.0 == task_entity)
             {
-                debug!("removing task button for `{task_entity:?}`");
+                debug!("removing task button for `{task_entity}`");
                 commands.entity(button_entity).despawn_recursive();
             }
         }
@@ -272,10 +272,10 @@ impl FamilyHudPlugin {
                 .iter_mut()
                 .find(|(_, bar_need)| bar_need.0 == entity)
             {
-                trace!("updating bar with `{need:?}` for `{entity:?}`");
+                trace!("updating bar with `{need:?}` for `{entity}`");
                 progress_bar.0 = need.0;
             } else {
-                trace!("creating bar with `{need:?}` for `{entity:?}`");
+                trace!("creating bar with `{need:?}` for `{entity}`");
                 commands.entity(tab_content.0).with_children(|parent| {
                     parent.spawn(LabelBundle::symbol(&theme, glyph.0));
                     parent.spawn((BarNeed(entity), ProgressBarBundle::new(&theme, need.0)));
@@ -294,7 +294,7 @@ impl FamilyHudPlugin {
                 .iter()
                 .find(|(_, bar_need)| bar_need.0 == need_entity)
             {
-                debug!("despawning bar for need `{need_entity:?}`");
+                debug!("despawning bar for need `{need_entity}`");
                 commands.entity(bar_entity).despawn_recursive();
             }
         }

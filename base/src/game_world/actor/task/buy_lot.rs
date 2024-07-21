@@ -60,7 +60,7 @@ impl BuyLotPlugin {
                 if lots.get(buy.0).is_ok() {
                     commands.entity(buy.0).insert(LotFamily(family.0));
                 } else {
-                    error!("{buy:?} from actor {entity:?} points to not a lot");
+                    error!("`{buy:?}` from actor `{entity}` points to not a lot");
                 }
                 commands.entity(entity).despawn();
             }

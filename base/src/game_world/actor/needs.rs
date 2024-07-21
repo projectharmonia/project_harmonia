@@ -49,7 +49,7 @@ impl Plugin for NeedsPlugin {
 impl NeedsPlugin {
     fn init_hunger(mut commands: Commands, needs: Query<Entity, Added<Hunger>>) {
         for entity in &needs {
-            trace!("initializing hunger need for `{entity:?}`");
+            trace!("initializing hunger need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("🍴"), NeedRate(-0.4)));
@@ -58,7 +58,7 @@ impl NeedsPlugin {
 
     fn init_social(mut commands: Commands, needs: Query<Entity, Added<Social>>) {
         for entity in &needs {
-            trace!("initializing social need for `{entity:?}`");
+            trace!("initializing social need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("💬"), NeedRate(-0.1)));
@@ -67,7 +67,7 @@ impl NeedsPlugin {
 
     fn init_hygiene(mut commands: Commands, needs: Query<Entity, Added<Hygiene>>) {
         for entity in &needs {
-            trace!("initializing hygiene need for `{entity:?}`");
+            trace!("initializing hygiene need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("🚿"), NeedRate(-0.3)));
@@ -76,7 +76,7 @@ impl NeedsPlugin {
 
     fn init_fun(mut commands: Commands, needs: Query<Entity, Added<Fun>>) {
         for entity in &needs {
-            trace!("initializing fun need for `{entity:?}`");
+            trace!("initializing fun need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("🎉"), NeedRate(-0.1)));
@@ -85,7 +85,7 @@ impl NeedsPlugin {
 
     fn init_energy(mut commands: Commands, needs: Query<Entity, Added<Energy>>) {
         for entity in &needs {
-            trace!("initializing energy need for `{entity:?}`");
+            trace!("initializing energy need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("🔋"), NeedRate(-0.2)));
@@ -94,7 +94,7 @@ impl NeedsPlugin {
 
     fn init_bladder(mut commands: Commands, needs: Query<Entity, Added<Bladder>>) {
         for entity in &needs {
-            trace!("initializing bladder need for `{entity:?}`");
+            trace!("initializing bladder need for `{entity}`");
             commands
                 .entity(entity)
                 .insert((NeedGlyph("🚽"), NeedRate(-0.5)));

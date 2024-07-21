@@ -53,7 +53,7 @@ impl CityPlugin {
         added_cities: Query<Entity, Added<City>>,
     ) {
         for entity in &added_cities {
-            debug!("initializing city `{entity:?}`");
+            debug!("initializing city `{entity}`");
 
             let transform =
                 Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
@@ -82,7 +82,7 @@ impl CityPlugin {
 
     fn activate(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
         let entity = actors.single().get();
-        info!("activating city `{entity:?}`");
+        info!("activating city `{entity}`");
         commands.entity(entity).insert(ActiveCity);
     }
 
@@ -91,7 +91,7 @@ impl CityPlugin {
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
         let (entity, mut visibility) = activated_cities.single_mut();
-        debug!("initializing activated city `{entity:?}`");
+        debug!("initializing activated city `{entity}`");
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
@@ -116,7 +116,7 @@ impl CityPlugin {
         lights: Query<Entity, With<Sun>>,
     ) {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
-            info!("deactivating city `{entity:?}`");
+            info!("deactivating city `{entity}`");
             *visibility = Visibility::Hidden;
             commands.entity(entity).remove::<ActiveCity>();
             commands.entity(cameras.single()).despawn();
