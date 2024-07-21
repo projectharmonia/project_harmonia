@@ -10,6 +10,8 @@ use bevy::{
     },
 };
 use bevy_atmosphere::prelude::*;
+#[cfg(feature = "inspector")]
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetPlugins;
@@ -33,8 +35,8 @@ use project_harmonia_ui::UiPlugins;
 use project_harmonia_widgets::WidgetsPlugin;
 
 fn main() {
-    App::new()
-        .init_resource::<Cli>()
+    let mut app = App::new();
+    app.init_resource::<Cli>()
         .insert_resource(Msaa::Off) // Required by SSAO.
         .insert_resource(AmbientLight {
             color: ANTIQUE_WHITE.into(),
@@ -76,6 +78,10 @@ fn main() {
             TextInputPlugin,
             OutlinePlugin,
         ))
-        .add_plugins((CliPlugin, CorePlugins, WidgetsPlugin, UiPlugins))
-        .run();
+        .add_plugins((CliPlugin, CorePlugins, WidgetsPlugin, UiPlugins));
+
+    #[cfg(feature = "inspector")]
+    app.add_plugins(WorldInspectorPlugin::default());
+
+    app.run();
 }

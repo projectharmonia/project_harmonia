@@ -24,6 +24,7 @@ bevy_mod_outline.workspace = true
 bevy_simple_text_input.workspace = true
 oxidized_navigation.workspace = true
 leafwing-input-manager.workspace = true
+bevy-inspector-egui = { workspace = true, optional = true }
 app_dirs2.workspace = true
 serde.workspace = true
 earcut.workspace = true
@@ -35,6 +36,9 @@ bincode.workspace = true
 walkdir.workspace = true
 itertools.workspace = true
 bitflags.workspace = true
+
+[features]
+inspector = ["dep:bevy-inspector-egui", "leafwing-input-manager/egui"]
 
 [lints]
 workspace = true
