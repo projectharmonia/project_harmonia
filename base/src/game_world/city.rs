@@ -94,6 +94,7 @@ impl CityPlugin {
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
+                Name::new("Sun"),
                 StateScoped(**world_state),
                 DirectionalLightBundle {
                     directional_light: DirectionalLight {
@@ -105,6 +106,7 @@ impl CityPlugin {
                 },
             ));
             parent.spawn((
+                Name::new("Player camera"),
                 StateScoped(**world_state),
                 PlayerCameraBundle::default(),
                 AtmosphereCamera::default(),
@@ -193,6 +195,7 @@ impl CityMode {
 
 #[derive(Bundle, Default)]
 pub struct CityBundle {
+    name: Name,
     city: City,
     replication: Replicated,
 }
@@ -200,7 +203,8 @@ pub struct CityBundle {
 impl CityBundle {
     pub fn new(name: String) -> Self {
         Self {
-            city: City { name },
+            name: Name::new(name),
+            city: City,
             replication: Replicated,
         }
     }
@@ -208,9 +212,7 @@ impl CityBundle {
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub struct City {
-    pub name: String,
-}
+pub struct City;
 
 #[derive(Component)]
 pub struct ActiveCity;

@@ -276,16 +276,18 @@ impl BuildingMode {
 
 #[derive(Bundle)]
 struct FamilyBundle {
-    family: Family,
+    name: Name,
     budget: Budget,
+    family: Family,
     replication: Replicated,
 }
 
 impl FamilyBundle {
     fn new(name: String, budget: Budget) -> Self {
         Self {
-            family: Family { name },
+            name: Name::new(name),
             budget,
+            family: Family,
             replication: Replicated,
         }
     }
@@ -293,9 +295,7 @@ impl FamilyBundle {
 
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub struct Family {
-    pub name: String,
-}
+pub struct Family;
 
 /// Indicates locally controlled family.
 ///

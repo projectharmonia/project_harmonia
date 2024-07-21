@@ -266,7 +266,7 @@ impl EditorMenuPlugin {
         mut text_edits: Query<&mut TextInputValue, With<FamilyNameEdit>>,
         buttons: Query<&SaveDialogButton>,
         dialogs: Query<Entity, With<Dialog>>,
-        cities: Query<(Entity, &City)>,
+        cities: Query<(Entity, &Name), With<City>>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
@@ -486,7 +486,7 @@ fn setup_place_family_dialog(
     root_entity: Entity,
     family_scene: FamilyScene,
     theme: &Theme,
-    cities: &Query<(Entity, &City)>,
+    cities: &Query<(Entity, &Name), With<City>>,
 ) {
     info!("showing placing dialog");
     commands.entity(root_entity).with_children(|parent| {
@@ -519,7 +519,7 @@ fn setup_place_family_dialog(
                             })
                             .with_children(|parent| {
                                 // TODO: Use combobox.
-                                for (entity, city) in cities {
+                                for (entity, name) in cities {
                                     parent
                                         .spawn(NodeBundle {
                                             style: Style {
@@ -529,7 +529,7 @@ fn setup_place_family_dialog(
                                             ..Default::default()
                                         })
                                         .with_children(|parent| {
-                                            parent.spawn(LabelBundle::normal(theme, &city.name));
+                                            parent.spawn(LabelBundle::normal(theme, name));
                                             for button in CityPlaceButton::iter() {
                                                 parent.spawn((
                                                     button,

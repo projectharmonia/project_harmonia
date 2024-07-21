@@ -53,8 +53,8 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         game_world: Res<GameWorld>,
-        families: Query<(Entity, &Family)>,
-        cities: Query<(Entity, &City)>,
+        families: Query<(Entity, &Name), With<Family>>,
+        cities: Query<(Entity, &Name), With<City>>,
     ) {
         info!("entering world menu");
         commands
@@ -103,20 +103,13 @@ impl WorldMenuPlugin {
                         })
                         .with_children(|parent| match tab {
                             WorldTab::Families => {
-                                for (entity, family) in &families {
-                                    setup_entity_node::<FamilyButton>(
-                                        parent,
-                                        &theme,
-                                        entity,
-                                        &family.name,
-                                    );
+                                for (entity, name) in &families {
+                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
                                 }
                             }
                             WorldTab::Cities => {
-                                for (entity, city) in &cities {
-                                    setup_entity_node::<CityButton>(
-                                        parent, &theme, entity, &city.name,
-                                    );
+                                for (entity, name) in &cities {
+                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
                                 }
                             }
                         })
@@ -154,19 +147,19 @@ impl WorldMenuPlugin {
     fn create_family_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
-        families: Query<(Entity, &Family), Added<Family>>,
+        families: Query<(Entity, &Name), Added<Family>>,
         tabs: Query<(&TabContent, &WorldTab)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for (entity, family) in &families {
+        for (entity, name) in &families {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Families)
                 .expect("tab with families should be spawned on state enter");
             if nodes.iter().all(|world_entity| world_entity.0 != entity) {
-                debug!("creating button for family '{}'", family.name);
+                debug!("creating button for family '{name}'");
                 commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<FamilyButton>(parent, &theme, entity, &family.name);
+                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
                 });
             }
         }
@@ -175,19 +168,19 @@ impl WorldMenuPlugin {
     fn create_city_nodes(
         mut commands: Commands,
         theme: Res<Theme>,
-        cities: Query<(Entity, &City), Added<City>>,
+        cities: Query<(Entity, &Name), Added<City>>,
         tabs: Query<(&TabContent, &WorldTab)>,
         nodes: Query<&WorldEntity>,
     ) {
-        for (entity, city) in &cities {
+        for (entity, name) in &cities {
             let (tab_content, _) = tabs
                 .iter()
                 .find(|(_, &tab)| tab == WorldTab::Cities)
                 .expect("tab with cities should be spawned on state enter");
             if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
-                debug!("creating button for city '{}'", city.name);
+                debug!("creating button for city '{name}'");
                 commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<CityButton>(parent, &theme, entity, &city.name);
+                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
                 });
             }
         }
