@@ -205,18 +205,18 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"vintage_table_normal.png",
-			"uri":"vintage_table_normal_png.png"
+			"name":"vintage_table_normal",
+			"uri":"vintage_table_normal.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"vintage_table_base_color.png",
-			"uri":"vintage_table_base_color_png.png"
+			"name":"vintage_table_base_color",
+			"uri":"vintage_table_base_color.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"vintage_table_metallic_roughness.png",
-			"uri":"vintage_table_metallic_roughness_png.png"
+			"name":"vintage_table_metallic_roughness",
+			"uri":"vintage_table_metallic_roughness.png"
 		}
 	],
 	"accessors":[

@@ -377,7 +377,7 @@
 		},
 		{
 			"mimeType":"image/png",
-			"name":"counter_metallic_roughness.png",
+			"name":"counter_metallic_roughness",
 			"uri":"counter_metallic_roughness.png"
 		}
 	],
