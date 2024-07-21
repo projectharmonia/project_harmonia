@@ -9,11 +9,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::{
-    game_world::{
-        building::lot::LotVertices,
-        family::{BuildingMode, FamilyMode},
-        player_camera::CameraCaster,
-    },
+    game_world::{building::lot::LotVertices, family::BuildingMode, player_camera::CameraCaster},
     math::segment::Segment,
     settings::Action,
 };
@@ -22,28 +18,26 @@ pub(super) struct CreatingWallPlugin;
 
 impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(FamilyMode::Building), Self::end_creating)
-            .add_systems(OnExit(BuildingMode::Walls), Self::end_creating)
-            .add_systems(
-                PreUpdate,
-                Self::end_creating
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(BuildingMode::Walls))
-                    .run_if(on_event::<WallCreateConfirmed>()),
+        app.add_systems(
+            PreUpdate,
+            Self::end_creating
+                .after(ClientSet::Receive)
+                .run_if(in_state(BuildingMode::Walls))
+                .run_if(on_event::<WallCreateConfirmed>()),
+        )
+        .add_systems(
+            Update,
+            (
+                Self::start_creating
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<CreatingWall>)),
+                Self::update_end,
+                Self::update_material,
+                Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
             )
-            .add_systems(
-                Update,
-                (
-                    Self::start_creating
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<CreatingWall>)),
-                    Self::update_end,
-                    Self::update_material,
-                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
-                )
-                    .run_if(in_state(BuildingMode::Walls)),
-            );
+                .run_if(in_state(BuildingMode::Walls)),
+        );
     }
 }
 
@@ -70,7 +64,11 @@ impl CreatingWallPlugin {
 
                 info!("spawning new wall");
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((CreatingWall, Wall(Segment::splat(point))));
+                    parent.spawn((
+                        StateScoped(BuildingMode::Walls),
+                        CreatingWall,
+                        Wall(Segment::splat(point)),
+                    ));
                 });
             }
         }

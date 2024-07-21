@@ -15,7 +15,6 @@ impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<FamilyReset>()
             .add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
-            .add_systems(OnExit(WorldState::FamilyEditor), Self::cleanup)
             .add_systems(
                 Update,
                 Self::play.run_if(in_state(WorldState::FamilyEditor)),
@@ -31,7 +30,10 @@ impl EditorPlugin {
     fn setup(mut commands: Commands) {
         debug!("initializing editor");
         commands
-            .spawn(EditableFamilyBundle::default())
+            .spawn((
+                StateScoped(WorldState::FamilyEditor),
+                EditableFamilyBundle::default(),
+            ))
             .with_children(|parent| {
                 parent.spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
@@ -76,10 +78,6 @@ impl EditorPlugin {
         commands.entity(families.single()).with_children(|parent| {
             parent.spawn(EditableActorBundle::default());
         });
-    }
-
-    fn cleanup(mut commands: Commands, family_editors: Query<Entity, With<EditableFamily>>) {
-        commands.entity(family_editors.single()).despawn_recursive();
     }
 }
 

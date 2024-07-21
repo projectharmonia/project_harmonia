@@ -4,10 +4,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{LotCreate, LotEventConfirmed, LotTool, LotVertices, UnconfirmedLot};
 use crate::{
-    game_world::{
-        city::{ActiveCity, CityMode},
-        player_camera::CameraCaster,
-    },
+    game_world::{city::ActiveCity, player_camera::CameraCaster},
     settings::Action,
 };
 
@@ -15,27 +12,25 @@ pub(super) struct CreatingLotPlugin;
 
 impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(CityMode::Lots), Self::end_creating)
-            .add_systems(OnExit(LotTool::Create), Self::end_creating)
-            .add_systems(
-                PreUpdate,
-                Self::end_creating
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(LotTool::Create))
-                    .run_if(on_event::<LotEventConfirmed>()),
+        app.add_systems(
+            PreUpdate,
+            Self::end_creating
+                .after(ClientSet::Receive)
+                .run_if(in_state(LotTool::Create))
+                .run_if(on_event::<LotEventConfirmed>()),
+        )
+        .add_systems(
+            Update,
+            (
+                Self::start_creating
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<CreatingLot>)),
+                Self::set_vertex_position,
+                Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
             )
-            .add_systems(
-                Update,
-                (
-                    Self::start_creating
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<CreatingLot>)),
-                    Self::set_vertex_position,
-                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
-                )
-                    .run_if(in_state(LotTool::Create)),
-            );
+                .run_if(in_state(LotTool::Create)),
+        );
     }
 }
 
@@ -49,7 +44,11 @@ impl CreatingLotPlugin {
             info!("starting placing lot");
             // Spawn with two the same vertices because we edit the last one on cursor movement.
             commands.entity(cities.single()).with_children(|parent| {
-                parent.spawn((LotVertices(vec![point.xz(); 2].into()), CreatingLot));
+                parent.spawn((
+                    StateScoped(LotTool::Create),
+                    LotVertices(vec![point.xz(); 2].into()),
+                    CreatingLot,
+                ));
             });
         }
     }

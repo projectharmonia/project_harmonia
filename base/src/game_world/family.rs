@@ -57,16 +57,27 @@ impl Plugin for FamilyPlugin {
                 PreUpdate,
                 (
                     Self::update_members,
+                    Self::init,
                     (Self::create, Self::delete).run_if(has_authority),
                 )
                     .after(ClientSet::Receive)
                     .run_if(in_state(GameState::InGame)),
-            )
-            .add_systems(OnExit(GameState::InGame), Self::cleanup);
+            );
     }
 }
 
 impl FamilyPlugin {
+    fn init(
+        mut commands: Commands,
+        families: Query<Entity, (With<Family>, Without<StateScoped<GameState>>)>,
+    ) {
+        for entity in &families {
+            commands
+                .entity(entity)
+                .insert(StateScoped(GameState::InGame));
+        }
+    }
+
     fn update_members(
         mut commands: Commands,
         actors: Query<(Entity, &ActorFamily), Changed<ActorFamily>>,
@@ -163,12 +174,6 @@ impl FamilyPlugin {
         if let Ok(family) = families.get_single() {
             info!("deselecting `{family:?}`");
             commands.entity(family.0).remove::<SelectedFamily>();
-        }
-    }
-
-    fn cleanup(mut commands: Commands, families: Query<Entity, With<Family>>) {
-        for entity in &families {
-            commands.entity(entity).despawn();
         }
     }
 }

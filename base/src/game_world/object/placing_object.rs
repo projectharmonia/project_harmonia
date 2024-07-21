@@ -20,7 +20,7 @@ use crate::{
     asset::metadata::object_metadata::ObjectMetadata,
     game_world::{
         city::CityMode,
-        family::{BuildingMode, FamilyMode},
+        family::BuildingMode,
         hover::{HoverEnabled, Hovered},
         object::{ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectPath, ObjectSell},
         player_camera::CameraCaster,
@@ -36,8 +36,6 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
-            .add_systems(OnExit(CityMode::Objects), Self::end_placing)
-            .add_systems(OnExit(FamilyMode::Building), Self::end_placing)
             .add_systems(
                 PreUpdate,
                 Self::end_placing
@@ -98,6 +96,8 @@ impl PlacingObjectPlugin {
         camera_caster: CameraCaster,
         mut hover_enabled: ResMut<HoverEnabled>,
         asset_server: Res<AssetServer>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
         placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
         objects: Query<(&Position, &Rotation, &ObjectPath)>,
     ) {
@@ -106,6 +106,7 @@ impl PlacingObjectPlugin {
         };
 
         debug!("initializing placing object `{placing_entity}` for `{placing_object:?}`");
+        let mut placing_entity = commands.entity(placing_entity);
         match placing_object {
             PlacingObject::Spawning(id) => {
                 let metadata_path = asset_server
@@ -118,12 +119,10 @@ impl PlacingObjectPlugin {
                 let (y, ..) = rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
 
-                commands
-                    .entity(placing_entity)
-                    .insert(PlacingInitBundle::spawning(
-                        metadata_path.into_owned(),
-                        rounded_angle,
-                    ));
+                placing_entity.insert(PlacingInitBundle::spawning(
+                    metadata_path.into_owned(),
+                    rounded_angle,
+                ));
             }
             PlacingObject::Moving(object_entity) => {
                 let (&position, &rotation, object_path) = objects
@@ -135,15 +134,19 @@ impl PlacingObjectPlugin {
                     .map(|point| *position - point)
                     .unwrap_or(*position);
 
-                commands
-                    .entity(placing_entity)
-                    .insert(PlacingInitBundle::moving(
-                        object_path.clone(),
-                        CursorOffset(offset),
-                        position,
-                        rotation,
-                    ));
+                placing_entity.insert(PlacingInitBundle::moving(
+                    object_path.clone(),
+                    CursorOffset(offset),
+                    position,
+                    rotation,
+                ));
             }
+        }
+
+        if let Some(city_mode) = city_mode {
+            placing_entity.insert(StateScoped(**city_mode));
+        } else if let Some(building_mode) = building_mode {
+            placing_entity.insert(StateScoped(**building_mode));
         }
 
         hover_enabled.0 = false;

@@ -147,7 +147,7 @@ pub struct GameWorld {
     pub name: String,
 }
 
-#[derive(SubStates, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(SubStates, Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 #[source(GameState = GameState::InGame)]
 pub enum WorldState {
     #[default]

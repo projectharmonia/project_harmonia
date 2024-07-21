@@ -7,10 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
-    actor::SelectedActor,
-    hover::Hoverable,
-    player_camera::{PlayerCamera, PlayerCameraBundle},
-    WorldState,
+    actor::SelectedActor, hover::Hoverable, player_camera::PlayerCameraBundle, WorldState,
 };
 use crate::{core::GameState, game_world::Layer};
 
@@ -26,7 +23,7 @@ impl Plugin for CityPlugin {
             .add_systems(OnEnter(WorldState::City), Self::init_activated)
             .add_systems(
                 OnEnter(WorldState::Family),
-                (Self::activate, Self::init_activated).chain(),
+                (Self::activate_by_actor, Self::init_activated).chain(),
             )
             .add_systems(OnExit(WorldState::City), Self::deactivate)
             .add_systems(OnExit(WorldState::Family), Self::deactivate)
@@ -60,6 +57,7 @@ impl CityPlugin {
             commands
                 .entity(entity)
                 .insert((
+                    StateScoped(GameState::InGame),
                     TransformBundle::from_transform(transform),
                     VisibilityBundle {
                         visibility: Visibility::Hidden,
@@ -80,14 +78,15 @@ impl CityPlugin {
         }
     }
 
-    fn activate(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
-        let entity = actors.single().get();
+    fn activate_by_actor(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
+        let entity = **actors.single();
         info!("activating city `{entity}`");
         commands.entity(entity).insert(ActiveCity);
     }
 
     fn init_activated(
         mut commands: Commands,
+        world_state: Res<State<WorldState>>,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
         let (entity, mut visibility) = activated_cities.single_mut();
@@ -95,7 +94,7 @@ impl CityPlugin {
         *visibility = Visibility::Visible;
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
-                Sun,
+                StateScoped(**world_state),
                 DirectionalLightBundle {
                     directional_light: DirectionalLight {
                         shadows_enabled: true,
@@ -105,35 +104,28 @@ impl CityPlugin {
                     ..Default::default()
                 },
             ));
-            parent.spawn((PlayerCameraBundle::default(), AtmosphereCamera::default()));
+            parent.spawn((
+                StateScoped(**world_state),
+                PlayerCameraBundle::default(),
+                AtmosphereCamera::default(),
+            ));
         });
     }
 
     fn deactivate(
         mut commands: Commands,
         mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
-        cameras: Query<Entity, With<PlayerCamera>>,
-        lights: Query<Entity, With<Sun>>,
     ) {
         if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
             info!("deactivating city `{entity}`");
             *visibility = Visibility::Hidden;
             commands.entity(entity).remove::<ActiveCity>();
-            commands.entity(cameras.single()).despawn();
-            commands.entity(lights.single()).despawn();
         }
     }
 
     /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
-    fn cleanup(
-        mut commands: Commands,
-        mut placed_citites: ResMut<PlacedCities>,
-        cities: Query<Entity, With<City>>,
-    ) {
+    fn cleanup(mut placed_citites: ResMut<PlacedCities>) {
         placed_citites.0 = 0;
-        for entity in &cities {
-            commands.entity(entity).despawn_recursive();
-        }
     }
 }
 
@@ -257,6 +249,3 @@ impl Default for GroundBundle {
 
 #[derive(Component)]
 pub(super) struct Ground;
-
-#[derive(Component)]
-struct Sun;
