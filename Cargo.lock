@@ -1041,7 +1041,8 @@ dependencies = [
 [[package]]
 name = "bevy_renet"
 version = "0.0.12"
-source = "git+https://github.com/raffaeleragni/renet?rev=f36762ca7cf338300159be6206c191928a019f41#f36762ca7cf338300159be6206c191928a019f41"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "587b1dc5b9677d41fec66cd45a456c60bc8fc89dfd4b82f82b7bce2f2e78f7e2"
 dependencies = [
  "bevy",
  "renet",
@@ -1064,7 +1065,7 @@ dependencies = [
 [[package]]
 name = "bevy_replicon_renet"
 version = "0.3.0"
-source = "git+https://github.com/ironpeak/bevy_replicon_renet#93f4eb86eda4ee716ea20ab0df9cf282f4084c02"
+source = "git+https://github.com/ironpeak/bevy_replicon_renet#0b29b6bc615abf71bf5f6a8248a9ed3a78d237a4"
 dependencies = [
  "bevy",
  "bevy_renet",
@@ -3998,8 +3999,9 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "renet"
-version = "0.0.15"
-source = "git+https://github.com/raffaeleragni/renet?rev=f36762ca7cf338300159be6206c191928a019f41#f36762ca7cf338300159be6206c191928a019f41"
+version = "0.0.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cc90bf4168562c39eecba53bff2bb03e0ed7a308f5a2cfe7e59c2a40d24d7ec"
 dependencies = [
  "bevy_ecs",
  "bytes",
@@ -4010,8 +4012,9 @@ dependencies = [
 
 [[package]]
 name = "renetcode"
-version = "0.0.11"
-source = "git+https://github.com/raffaeleragni/renet?rev=f36762ca7cf338300159be6206c191928a019f41#f36762ca7cf338300159be6206c191928a019f41"
+version = "0.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6e292e11c9a59586298131c2cb8cdea8376ca34f0240390bb029806055940d2"
 dependencies = [
  "chacha20poly1305",
  "log",
