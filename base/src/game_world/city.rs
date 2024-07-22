@@ -47,7 +47,7 @@ impl CityPlugin {
         ground_scene: Local<GroundScene>,
         mut commands: Commands,
         mut placed_citites: ResMut<PlacedCities>,
-        added_cities: Query<Entity, Added<City>>,
+        added_cities: Query<Entity, (With<City>, Without<Transform>)>,
     ) {
         for entity in &added_cities {
             debug!("initializing city `{entity}`");

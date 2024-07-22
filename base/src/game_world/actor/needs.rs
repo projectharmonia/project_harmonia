@@ -47,7 +47,10 @@ impl Plugin for NeedsPlugin {
 }
 
 impl NeedsPlugin {
-    fn init_hunger(mut commands: Commands, needs: Query<Entity, Added<Hunger>>) {
+    fn init_hunger(
+        mut commands: Commands,
+        needs: Query<Entity, (With<Hunger>, Without<NeedRate>)>,
+    ) {
         for entity in &needs {
             trace!("initializing hunger need for `{entity}`");
             commands
@@ -56,7 +59,10 @@ impl NeedsPlugin {
         }
     }
 
-    fn init_social(mut commands: Commands, needs: Query<Entity, Added<Social>>) {
+    fn init_social(
+        mut commands: Commands,
+        needs: Query<Entity, (With<Social>, Without<NeedRate>)>,
+    ) {
         for entity in &needs {
             trace!("initializing social need for `{entity}`");
             commands
@@ -65,7 +71,10 @@ impl NeedsPlugin {
         }
     }
 
-    fn init_hygiene(mut commands: Commands, needs: Query<Entity, Added<Hygiene>>) {
+    fn init_hygiene(
+        mut commands: Commands,
+        needs: Query<Entity, (With<Hygiene>, Without<NeedRate>)>,
+    ) {
         for entity in &needs {
             trace!("initializing hygiene need for `{entity}`");
             commands
@@ -74,7 +83,7 @@ impl NeedsPlugin {
         }
     }
 
-    fn init_fun(mut commands: Commands, needs: Query<Entity, Added<Fun>>) {
+    fn init_fun(mut commands: Commands, needs: Query<Entity, (With<Fun>, Without<NeedRate>)>) {
         for entity in &needs {
             trace!("initializing fun need for `{entity}`");
             commands
@@ -83,7 +92,10 @@ impl NeedsPlugin {
         }
     }
 
-    fn init_energy(mut commands: Commands, needs: Query<Entity, Added<Energy>>) {
+    fn init_energy(
+        mut commands: Commands,
+        needs: Query<Entity, (With<Energy>, Without<NeedRate>)>,
+    ) {
         for entity in &needs {
             trace!("initializing energy need for `{entity}`");
             commands
@@ -92,7 +104,10 @@ impl NeedsPlugin {
         }
     }
 
-    fn init_bladder(mut commands: Commands, needs: Query<Entity, Added<Bladder>>) {
+    fn init_bladder(
+        mut commands: Commands,
+        needs: Query<Entity, (With<Bladder>, Without<NeedRate>)>,
+    ) {
         for entity in &needs {
             trace!("initializing bladder need for `{entity}`");
             commands

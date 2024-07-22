@@ -98,7 +98,7 @@ impl PlacingObjectPlugin {
         asset_server: Res<AssetServer>,
         city_mode: Option<Res<State<CityMode>>>,
         building_mode: Option<Res<State<BuildingMode>>>,
-        placing_objects: Query<(Entity, &PlacingObject), Added<PlacingObject>>,
+        placing_objects: Query<(Entity, &PlacingObject), Without<ObjectPath>>,
         objects: Query<(&Position, &Rotation, &ObjectPath)>,
     ) {
         let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {

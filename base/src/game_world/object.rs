@@ -68,7 +68,7 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        spawned_objects: Query<(Entity, &ObjectPath, Has<PlacingObject>), Added<ObjectPath>>,
+        spawned_objects: Query<(Entity, &ObjectPath, Has<PlacingObject>), Without<Handle<Scene>>>,
     ) {
         for (entity, object_path, placing_object) in &spawned_objects {
             let metadata_handle = asset_server.load(&object_path.0);

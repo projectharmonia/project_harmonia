@@ -57,7 +57,7 @@ impl WallPlugin {
         wall_material: Local<WallMaterial>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, Has<CreatingWall>), Added<Wall>>,
+        walls: Query<(Entity, Has<CreatingWall>), (With<Wall>, Without<Handle<Mesh>>)>,
     ) {
         for (entity, creating_wall) in &walls {
             debug!("initializing wall `{entity}`");

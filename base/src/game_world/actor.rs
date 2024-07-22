@@ -68,7 +68,7 @@ pub const ACTOR_HEIGHT: f32 = 1.2;
 pub const ACTOR_RADIUS: f32 = 0.3;
 
 impl ActorPlugin {
-    fn init(mut commands: Commands, actors: Query<Entity, Added<Actor>>) {
+    fn init(mut commands: Commands, actors: Query<Entity, (With<Actor>, Without<RigidBody>)>) {
         for entity in &actors {
             debug!("initializing actor `{entity}`");
             commands

@@ -28,7 +28,10 @@ impl Plugin for SideSnapPlugin {
 }
 
 impl SideSnapPlugin {
-    fn init(mut commands: Commands, objects: Query<Entity, Added<SideSnap>>) {
+    fn init(
+        mut commands: Commands,
+        objects: Query<Entity, (With<SideSnap>, Without<SideSnapNodes>)>,
+    ) {
         for entity in &objects {
             debug!("initializing side snapping for `{entity}`");
             commands.entity(entity).insert(SideSnapNodes::default());

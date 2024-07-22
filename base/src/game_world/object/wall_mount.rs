@@ -33,7 +33,7 @@ impl WallMountPlugin {
     /// Additional intializaiton for wall mount objects.
     fn init(
         mut commands: Commands,
-        mut objects: Query<(Entity, &mut CollisionLayers), Added<WallMount>>,
+        mut objects: Query<(Entity, &mut CollisionLayers), (With<WallMount>, Without<ObjectWall>)>,
     ) {
         for (entity, mut collision_layers) in &mut objects {
             debug!("initializing wall mount for `{entity}`");

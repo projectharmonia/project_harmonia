@@ -46,7 +46,10 @@ impl Plugin for LotPlugin {
 }
 
 impl LotPlugin {
-    fn init(mut commands: Commands, spawned_lots: Query<Entity, Added<LotVertices>>) {
+    fn init(
+        mut commands: Commands,
+        spawned_lots: Query<Entity, (With<LotVertices>, Without<Transform>)>,
+    ) {
         for entity in &spawned_lots {
             debug!("initializing log `{entity}`");
             commands.entity(entity).insert(SpatialBundle::default());

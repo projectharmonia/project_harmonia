@@ -28,7 +28,7 @@ impl Plugin for DoorPlugin {
 }
 
 impl DoorPlugin {
-    fn init(mut commands: Commands, objects: Query<Entity, Added<Door>>) {
+    fn init(mut commands: Commands, objects: Query<Entity, (With<Door>, Without<DoorState>)>) {
         for entity in &objects {
             debug!("initializing door for `{entity}`");
             commands.entity(entity).insert(DoorState::default());
