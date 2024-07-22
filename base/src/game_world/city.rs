@@ -18,7 +18,7 @@ impl Plugin for CityPlugin {
         app.add_sub_state::<CityMode>()
             .enable_state_scoped_entities::<CityMode>()
             .register_type::<City>()
-            .replicate::<City>()
+            .replicate_group::<(City, Name)>()
             .init_resource::<PlacedCities>()
             .add_systems(OnEnter(WorldState::City), Self::init_activated)
             .add_systems(

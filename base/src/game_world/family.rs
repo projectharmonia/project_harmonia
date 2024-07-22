@@ -42,8 +42,8 @@ impl Plugin for FamilyPlugin {
             .register_type::<Family>()
             .register_type::<Budget>()
             .replicate::<ActorFamily>()
-            .replicate::<Family>()
             .replicate::<Budget>()
+            .replicate_group::<(Family, Name)>()
             .add_client_event_with(
                 ChannelKind::Unordered,
                 serialize_family_spawn,
