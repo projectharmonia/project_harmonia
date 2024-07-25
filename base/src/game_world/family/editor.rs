@@ -2,11 +2,14 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use crate::game_world::{
-    actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
-    family::{FamilyMembers, SelectedFamilyCreated},
-    player_camera::PlayerCameraBundle,
-    WorldState,
+use crate::{
+    asset::collection::Collection,
+    game_world::{
+        actor::{human::Human, FirstName, LastName, SelectedActor, Sex},
+        family::{FamilyMembers, SelectedFamilyCreated},
+        player_camera::{EnvironmentMap, PlayerCameraBundle},
+        WorldState,
+    },
 };
 
 pub(crate) struct EditorPlugin;
@@ -27,7 +30,7 @@ impl Plugin for EditorPlugin {
 }
 
 impl EditorPlugin {
-    fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    fn setup(mut commands: Commands, environment_map: Res<Collection<EnvironmentMap>>) {
         debug!("initializing editor");
         commands
             .spawn((
@@ -43,7 +46,7 @@ impl EditorPlugin {
                     transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..Default::default()
                 });
-                parent.spawn(PlayerCameraBundle::new(&asset_server));
+                parent.spawn(PlayerCameraBundle::new(&environment_map));
                 parent.spawn(EditableActorBundle::default());
             });
     }

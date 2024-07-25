@@ -3,6 +3,7 @@ mod exp_smoothed;
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
+    asset::AssetPath,
     core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
     ecs::system::SystemParam,
     input::mouse::MouseMotion,
@@ -10,32 +11,38 @@ use bevy::{
     window::PrimaryWindow,
 };
 use leafwing_input_manager::prelude::ActionState;
+use num_enum::IntoPrimitive;
+use strum::EnumIter;
 
 use self::exp_smoothed::ExpSmoothed;
-
-use crate::{game_world::WorldState, settings::Action};
+use crate::{
+    asset::collection::{AssetCollection, Collection},
+    game_world::WorldState,
+    settings::Action,
+};
 
 pub(super) struct PlayerCameraPlugin;
 
 impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
+        app.init_resource::<Collection<EnvironmentMap>>()
+            .add_systems(
+                Update,
                 (
-                    Self::update_rotation,
-                    Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
-                    Self::update_spring_arm,
-                ),
-                Self::apply_transform,
-            )
-                .chain()
-                .run_if(
-                    in_state(WorldState::FamilyEditor)
-                        .or_else(in_state(WorldState::City))
-                        .or_else(in_state(WorldState::Family)),
-                ),
-        );
+                    (
+                        Self::update_rotation,
+                        Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
+                        Self::update_spring_arm,
+                    ),
+                    Self::apply_transform,
+                )
+                    .chain()
+                    .run_if(
+                        in_state(WorldState::FamilyEditor)
+                            .or_else(in_state(WorldState::City))
+                            .or_else(in_state(WorldState::Family)),
+                    ),
+            );
     }
 }
 
@@ -126,7 +133,7 @@ pub(crate) struct PlayerCameraBundle {
 }
 
 impl PlayerCameraBundle {
-    pub(crate) fn new(asset_server: &AssetServer) -> Self {
+    pub(crate) fn new(environment_map: &Collection<EnvironmentMap>) -> Self {
         Self {
             orbit_origin: Default::default(),
             orbit_rotation: Default::default(),
@@ -142,10 +149,28 @@ impl PlayerCameraBundle {
             },
             bloom: BloomSettings::default(),
             environment_map: EnvironmentMapLight {
-                diffuse_map: asset_server.load("environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2"),
-                specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
+                diffuse_map: environment_map.handle(EnvironmentMap::Diffuse),
+                specular_map: environment_map.handle(EnvironmentMap::Specular),
                 intensity: 1750.0,
             },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, EnumIter, IntoPrimitive)]
+#[repr(usize)]
+pub(super) enum EnvironmentMap {
+    Diffuse,
+    Specular,
+}
+
+impl AssetCollection for EnvironmentMap {
+    type AssetType = Image;
+
+    fn asset_path(&self) -> AssetPath<'static> {
+        match self {
+            EnvironmentMap::Diffuse => "environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2".into(),
+            EnvironmentMap::Specular => "environment_maps/pisa_specular_rgb9e5_zstd.ktx2".into(),
         }
     }
 }

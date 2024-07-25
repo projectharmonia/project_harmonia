@@ -7,9 +7,12 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
-    actor::SelectedActor, hover::Hoverable, player_camera::PlayerCameraBundle, WorldState,
+    actor::SelectedActor,
+    hover::Hoverable,
+    player_camera::{EnvironmentMap, PlayerCameraBundle},
+    WorldState,
 };
-use crate::{core::GameState, game_world::Layer};
+use crate::{asset::collection::Collection, core::GameState, game_world::Layer};
 
 pub(super) struct CityPlugin;
 
@@ -87,7 +90,7 @@ impl CityPlugin {
     fn init_activated(
         mut commands: Commands,
         world_state: Res<State<WorldState>>,
-        asset_server: Res<AssetServer>,
+        environment_map: Res<Collection<EnvironmentMap>>,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
         let (entity, mut visibility) = activated_cities.single_mut();
@@ -109,7 +112,7 @@ impl CityPlugin {
             parent.spawn((
                 Name::new("Player camera"),
                 StateScoped(**world_state),
-                PlayerCameraBundle::new(&asset_server),
+                PlayerCameraBundle::new(&environment_map),
                 AtmosphereCamera::default(),
             ));
         });
