@@ -1,0 +1,9 @@
+(
+    general: (
+        name: "Swing",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -0.9, -3.0),
+    ),
+    category: OutdoorActivities,
+)
