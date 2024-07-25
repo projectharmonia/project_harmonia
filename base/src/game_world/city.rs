@@ -87,6 +87,7 @@ impl CityPlugin {
     fn init_activated(
         mut commands: Commands,
         world_state: Res<State<WorldState>>,
+        asset_server: Res<AssetServer>,
         mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
     ) {
         let (entity, mut visibility) = activated_cities.single_mut();
@@ -108,7 +109,7 @@ impl CityPlugin {
             parent.spawn((
                 Name::new("Player camera"),
                 StateScoped(**world_state),
-                PlayerCameraBundle::default(),
+                PlayerCameraBundle::new(&asset_server),
                 AtmosphereCamera::default(),
             ));
         });

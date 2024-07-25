@@ -27,7 +27,7 @@ impl Plugin for EditorPlugin {
 }
 
 impl EditorPlugin {
-    fn setup(mut commands: Commands) {
+    fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         debug!("initializing editor");
         commands
             .spawn((
@@ -43,7 +43,7 @@ impl EditorPlugin {
                     transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..Default::default()
                 });
-                parent.spawn(PlayerCameraBundle::default());
+                parent.spawn(PlayerCameraBundle::new(&asset_server));
                 parent.spawn(EditableActorBundle::default());
             });
     }

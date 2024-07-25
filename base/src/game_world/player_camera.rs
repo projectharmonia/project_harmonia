@@ -3,8 +3,11 @@ mod exp_smoothed;
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
-    ecs::system::SystemParam, input::mouse::MouseMotion, pbr::ScreenSpaceAmbientOcclusionBundle,
-    prelude::*, window::PrimaryWindow,
+    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    ecs::system::SystemParam,
+    input::mouse::MouseMotion,
+    prelude::*,
+    window::PrimaryWindow,
 };
 use leafwing_input_manager::prelude::ActionState;
 
@@ -118,24 +121,31 @@ pub(crate) struct PlayerCameraBundle {
     spring_arm: SpringArm,
     player_camera: PlayerCamera,
     camera_3d_bundle: Camera3dBundle,
-    ssao_bundle: ScreenSpaceAmbientOcclusionBundle,
+    bloom: BloomSettings,
+    environment_map: EnvironmentMapLight,
 }
 
-impl Default for PlayerCameraBundle {
-    fn default() -> Self {
+impl PlayerCameraBundle {
+    pub(crate) fn new(asset_server: &AssetServer) -> Self {
         Self {
             orbit_origin: Default::default(),
             orbit_rotation: Default::default(),
             spring_arm: Default::default(),
             player_camera: PlayerCamera,
             camera_3d_bundle: Camera3dBundle {
+                tonemapping: Tonemapping::AcesFitted,
                 camera: Camera {
                     hdr: true,
                     ..Default::default()
                 },
                 ..Default::default()
             },
-            ssao_bundle: Default::default(),
+            bloom: BloomSettings::default(),
+            environment_map: EnvironmentMapLight {
+                diffuse_map: asset_server.load("environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2"),
+                specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
+                intensity: 1750.0,
+            },
         }
     }
 }

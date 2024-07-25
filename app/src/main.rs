@@ -1,7 +1,6 @@
 mod cli;
 
 use bevy::{
-    color::palettes::css::ANTIQUE_WHITE,
     pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{
@@ -37,11 +36,6 @@ use project_harmonia_widgets::WidgetsPlugin;
 fn main() {
     let mut app = App::new();
     app.init_resource::<Cli>()
-        .insert_resource(Msaa::Off) // Required by SSAO.
-        .insert_resource(AmbientLight {
-            color: ANTIQUE_WHITE.into(),
-            brightness: 1000.0,
-        })
         // TODO: workaround to place objects close together, remove after the next release.
         .insert_resource(NarrowPhaseConfig {
             prediction_distance: 0.0,
