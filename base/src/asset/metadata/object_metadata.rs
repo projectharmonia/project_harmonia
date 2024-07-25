@@ -27,7 +27,6 @@ pub struct ObjectMetadata {
 impl Metadata for ObjectMetadata {
     type Deserializer<'a> = ObjectMetadataDeserializer<'a>;
 
-    const SECTION: &'static str = "object";
     const DIR: &'static str = "objects";
 
     fn deserializer(registry: &TypeRegistry) -> Self::Deserializer<'_> {

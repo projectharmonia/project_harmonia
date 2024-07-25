@@ -123,9 +123,6 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
 trait Metadata {
     type Deserializer<'a>: for<'de> DeserializeSeed<'de, Value = Self>;
 
-    /// Name of section in metadata file.
-    const SECTION: &'static str;
-
     /// Directory from which files should be preloaded.
     const DIR: &'static str;
 
