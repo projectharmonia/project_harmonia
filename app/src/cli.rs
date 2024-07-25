@@ -16,7 +16,7 @@ use project_harmonia_base::{
         family::FamilyMembers,
         GameLoad, GameWorld, WorldState,
     },
-    message::{error_message, Message},
+    message::error_message,
     network::{self, DEFAULT_PORT},
 };
 
@@ -31,7 +31,14 @@ impl Plugin for CliPlugin {
         app.add_systems(Startup, Self::apply_subcommand.pipe(error_message))
             .add_systems(
                 Update,
-                Self::quick_load.pipe(error_message).run_if(second_frame),
+                Self::quick_load.pipe(error_message).run_if(
+                    in_state(WorldState::World)
+                        // HACK: wait for family members initialiaztion.
+                        // They initalized in `PreUpdate`, but state transitions happens later.
+                        // Can be removed after switching to hooks.
+                        .and_then(any_with_component::<FamilyMembers>)
+                        .and_then(run_once()),
+                ),
             );
     }
 }
@@ -120,23 +127,6 @@ impl CliPlugin {
         }
 
         Ok(())
-    }
-}
-
-/// Returns `true` only for the second frame.
-///
-/// Needed to skip one frame after startup to let game world load.
-fn second_frame(mut frame: Local<usize>, messages: EventReader<Message>) -> bool {
-    match *frame {
-        0 => {
-            *frame += 1;
-            false
-        }
-        1 => {
-            *frame += 1;
-            messages.is_empty()
-        }
-        _ => false,
     }
 }
 
