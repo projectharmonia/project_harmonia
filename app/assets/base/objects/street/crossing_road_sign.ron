@@ -1,0 +1,9 @@
+(
+    general: (
+        name: "Crossing road sign",
+        license: "CC BY-SA 4.0",
+        author: "Yara Gardaria",
+        preview_translation: (0.0, -1.4, -3.5),
+    ),
+    category: Street,
+)
