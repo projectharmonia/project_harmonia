@@ -1,6 +1,7 @@
 mod cli;
 
 use bevy::{
+    core_pipeline::experimental::taa::TemporalAntiAliasPlugin,
     pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{
@@ -48,6 +49,7 @@ fn main() {
                 }),
                 synchronous_pipeline_compilation: true,
             }),
+            TemporalAntiAliasPlugin,
             RepliconPlugins,
             RepliconRenetPlugins,
             WireframePlugin,

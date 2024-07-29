@@ -4,9 +4,13 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
     asset::AssetPath,
-    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    core_pipeline::{
+        bloom::BloomSettings, experimental::taa::TemporalAntiAliasBundle, prepass::NormalPrepass,
+        tonemapping::Tonemapping,
+    },
     ecs::system::SystemParam,
     input::mouse::MouseMotion,
+    pbr::ScreenSpaceAmbientOcclusionSettings,
     prelude::*,
     window::PrimaryWindow,
 };
@@ -128,8 +132,15 @@ pub(crate) struct PlayerCameraBundle {
     spring_arm: SpringArm,
     player_camera: PlayerCamera,
     camera_3d_bundle: Camera3dBundle,
+    taa_bundle: TemporalAntiAliasBundle,
     bloom: BloomSettings,
     environment_map: EnvironmentMapLight,
+
+    /// Needed for SSAO.
+    ///
+    /// The bundle can't be included because TAA and SSAO bundles both contain [`DepthPrepass`].
+    normal_prepass: NormalPrepass,
+    ssao_settings: ScreenSpaceAmbientOcclusionSettings,
 }
 
 impl PlayerCameraBundle {
@@ -147,6 +158,9 @@ impl PlayerCameraBundle {
                 },
                 ..Default::default()
             },
+            taa_bundle: Default::default(),
+            ssao_settings: Default::default(),
+            normal_prepass: Default::default(),
             bloom: BloomSettings::default(),
             environment_map: EnvironmentMapLight {
                 diffuse_map: environment_map.handle(EnvironmentMap::Diffuse),
