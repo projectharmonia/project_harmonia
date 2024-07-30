@@ -1,8 +1,5 @@
 pub mod creating_wall;
-mod triangulator;
 pub(crate) mod wall_mesh;
-
-use std::mem;
 
 use bevy::{
     ecs::entity::MapEntities,
@@ -14,9 +11,9 @@ use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use crate::{core::GameState, game_world::Layer, math::segment::Segment};
+use super::spline::{SplineConnections, SplinePlugin, SplineSegment};
+use crate::{core::GameState, game_world::Layer, math::triangulator::Triangulator};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
-use triangulator::Triangulator;
 use wall_mesh::WallMesh;
 
 pub(crate) struct WallPlugin;
@@ -40,12 +37,7 @@ impl Plugin for WallPlugin {
                     Self::create
                         .run_if(has_authority)
                         .before(ServerSet::StoreHierarchy),
-                    (
-                        Self::cleanup_connections,
-                        Self::update_connections,
-                        Self::update_meshes,
-                    )
-                        .chain(),
+                    Self::update_meshes.after(SplinePlugin::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
@@ -69,7 +61,6 @@ impl WallPlugin {
 
             let mut entity = commands.entity(entity);
             entity.insert((
-                WallConnections::default(),
                 Apertures::default(),
                 Collider::default(),
                 CollisionLayers::new(Layer::Wall, Layer::Object),
@@ -87,143 +78,34 @@ impl WallPlugin {
         }
     }
 
-    fn cleanup_connections(
-        mut removed_walls: RemovedComponents<Wall>,
-        mut walls: Query<&mut WallConnections>,
-    ) {
-        for entity in removed_walls.read() {
-            debug!("removing connections for despawned wall `{entity}`");
-            for mut connections in &mut walls {
-                if let Some((point_kind, index)) = connections.position(entity) {
-                    connections.remove(point_kind, index);
-                }
-            }
-        }
-    }
-
-    /// Updates [`WallConnections`] between walls.
-    ///
-    /// Contains `Added<Aperture>` because it should run after world loading too.
-    fn update_connections(
-        mut walls: Query<(Entity, &Wall, &mut WallConnections)>,
-        children: Query<&Children>,
-        changed_walls: Query<
-            (Entity, &Parent, &Wall),
-            (Or<(Changed<Wall>, Added<Apertures>)>, With<WallConnections>),
-        >,
-    ) {
-        for (wall_entity, parent, &wall) in &changed_walls {
-            // Take changed connections to avoid mutability issues.
-            let (.., mut connections) = walls
-                .get_mut(wall_entity)
-                .expect("query is a subset of the changed query");
-            let mut connections = mem::take(&mut *connections);
-
-            // Cleanup old connections.
-            for other_entity in connections.drain() {
-                let (.., mut other_connections) = walls
-                    .get_mut(other_entity)
-                    .expect("connected wall should also have connections");
-                if let Some((point_kind, index)) = other_connections.position(wall_entity) {
-                    other_connections.remove(point_kind, index);
-                }
-            }
-
-            // If wall have zero length, exclude it from connections.
-            if wall.start != wall.end {
-                // Scan all walls from this lot for possible connections.
-                let mut iter = walls.iter_many_mut(children.get(**parent).unwrap());
-                while let Some((other_entity, &other_wall, mut other_connections)) = iter
-                    .fetch_next()
-                    .filter(|&(entity, ..)| entity != wall_entity)
-                {
-                    if wall.start == other_wall.start {
-                        trace!(
-                            "connecting start of `{wall_entity}` with start of `{other_entity}`"
-                        );
-                        connections.start.push(WallConnection {
-                            entity: other_entity,
-                            segment: *other_wall,
-                            point_kind: PointKind::Start,
-                        });
-                        other_connections.start.push(WallConnection {
-                            entity: wall_entity,
-                            segment: *wall,
-                            point_kind: PointKind::Start,
-                        });
-                    } else if wall.start == other_wall.end {
-                        trace!("connecting start of `{wall_entity}` with end of `{other_entity}`");
-                        connections.start.push(WallConnection {
-                            entity: other_entity,
-                            segment: *other_wall,
-                            point_kind: PointKind::End,
-                        });
-                        other_connections.end.push(WallConnection {
-                            entity: wall_entity,
-                            segment: *wall,
-                            point_kind: PointKind::Start,
-                        });
-                    } else if wall.end == other_wall.end {
-                        trace!("connecting end of `{wall_entity}` with end of `{other_entity}`");
-                        connections.end.push(WallConnection {
-                            entity: other_entity,
-                            segment: *other_wall,
-                            point_kind: PointKind::End,
-                        });
-                        other_connections.end.push(WallConnection {
-                            entity: wall_entity,
-                            segment: *wall,
-                            point_kind: PointKind::End,
-                        });
-                    } else if wall.end == other_wall.start {
-                        trace!("connecting end of `{wall_entity}` with start of `{other_entity}`");
-                        connections.end.push(WallConnection {
-                            entity: other_entity,
-                            segment: *other_wall,
-                            point_kind: PointKind::Start,
-                        });
-                        other_connections.start.push(WallConnection {
-                            entity: wall_entity,
-                            segment: *wall,
-                            point_kind: PointKind::End,
-                        });
-                    }
-                }
-            }
-
-            // Reinsert updated connections back.
-            *walls.get_mut(wall_entity).unwrap().2 = connections;
-        }
-    }
-
     pub(crate) fn update_meshes(
         mut triangulator: Local<Triangulator>,
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
             (
                 &Handle<Mesh>,
-                Ref<Wall>,
-                &WallConnections,
+                Ref<SplineSegment>,
+                &SplineConnections,
                 &mut Apertures,
                 &mut Collider,
             ),
-            Or<(Changed<WallConnections>, Changed<Apertures>)>,
+            Or<(Changed<SplineConnections>, Changed<Apertures>)>,
         >,
     ) {
-        for (mesh_handle, wall, connections, mut apertures, mut collider) in &mut changed_walls {
+        for (mesh_handle, segment, connections, mut apertures, mut collider) in &mut changed_walls {
             let mesh = meshes
                 .get_mut(mesh_handle)
                 .expect("wall handles should be valid");
 
             trace!("regenerating wall mesh");
             let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(*wall, connections, &apertures, &mut triangulator);
+            wall_mesh.generate(*segment, connections, &apertures, &mut triangulator);
             wall_mesh.apply(mesh);
 
             // Creating walls shouldn't affect navigation.
-            if apertures.collision_outdated || wall.is_changed() || collider.is_added() {
+            if apertures.collision_outdated || segment.is_changed() || collider.is_added() {
                 trace!("regenerating wall collision");
-                *collider = wall_mesh::generate_collider(*wall, &apertures);
+                *collider = wall_mesh::generate_collider(*segment, &apertures);
                 apertures.collision_outdated = false;
             }
         }
@@ -242,7 +124,7 @@ impl WallPlugin {
                 event: WallCreateConfirmed,
             });
             commands.entity(event.lot_entity).with_children(|parent| {
-                parent.spawn(WallBundle::new(event.wall));
+                parent.spawn(WallBundle::new(event.segment));
             });
         }
     }
@@ -275,78 +157,25 @@ impl FromWorld for WallMaterial {
 #[derive(Bundle)]
 struct WallBundle {
     wall: Wall,
+    spline_segment: SplineSegment,
     parent_sync: ParentSync,
     replication: Replicated,
 }
 
 impl WallBundle {
-    fn new(wall: Wall) -> Self {
+    fn new(segment: SplineSegment) -> Self {
         Self {
-            wall,
+            wall: Wall,
+            spline_segment: segment,
             parent_sync: Default::default(),
             replication: Replicated,
         }
     }
 }
 
-#[derive(Clone, Component, Deref, DerefMut, Copy, Default, Deserialize, Reflect, Serialize)]
+#[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
-pub(crate) struct Wall(Segment);
-
-/// Dynamically updated component with precalculated connected entities for each wall point.
-#[derive(Component, Default)]
-pub(crate) struct WallConnections {
-    start: Vec<WallConnection>,
-    end: Vec<WallConnection>,
-}
-
-impl WallConnections {
-    fn drain(&mut self) -> impl Iterator<Item = Entity> + '_ {
-        self.start
-            .drain(..)
-            .chain(self.end.drain(..))
-            .map(|WallConnection { entity, .. }| entity)
-    }
-
-    /// Returns point kind and index to which it connected for an entity.
-    ///
-    /// Used for [`Self::remove`] later.
-    /// It's two different functions to avoid triggering change detection if there is no such entity.
-    fn position(&self, wall_entity: Entity) -> Option<(PointKind, usize)> {
-        if let Some(index) = self
-            .start
-            .iter()
-            .position(|&WallConnection { entity, .. }| entity == wall_entity)
-        {
-            Some((PointKind::Start, index))
-        } else {
-            self.end
-                .iter()
-                .position(|&WallConnection { entity, .. }| entity == wall_entity)
-                .map(|index| (PointKind::End, index))
-        }
-    }
-
-    /// Removes connection by its index from specific point.
-    fn remove(&mut self, point_kind: PointKind, index: usize) {
-        match point_kind {
-            PointKind::Start => self.start.remove(index),
-            PointKind::End => self.end.remove(index),
-        };
-    }
-}
-
-struct WallConnection {
-    entity: Entity,
-    segment: Segment,
-    point_kind: PointKind,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum PointKind {
-    Start,
-    End,
-}
+pub(crate) struct Wall;
 
 /// Dynamically updated component with precalculated apertures for wall objects.
 ///
@@ -418,7 +247,7 @@ pub(crate) struct Aperture {
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 struct WallCreate {
     lot_entity: Entity,
-    wall: Wall,
+    segment: SplineSegment,
 }
 
 impl MapEntities for WallCreate {

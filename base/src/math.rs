@@ -1,5 +1,6 @@
 pub(super) mod polygon;
 pub(super) mod segment;
+pub(super) mod triangulator;
 
 use bevy::prelude::*;
 

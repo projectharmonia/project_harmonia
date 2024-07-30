@@ -7,9 +7,13 @@ use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{Wall, WallCreate, WallCreateConfirmed};
+use super::{WallCreate, WallCreateConfirmed};
 use crate::{
-    game_world::{building::lot::LotVertices, family::BuildingMode, player_camera::CameraCaster},
+    game_world::{
+        building::{lot::LotVertices, spline::SplineSegment, wall::Wall},
+        family::BuildingMode,
+        player_camera::CameraCaster,
+    },
     math::segment::Segment,
     settings::Action,
 };
@@ -47,7 +51,7 @@ impl CreatingWallPlugin {
     fn start_creating(
         camera_caster: CameraCaster,
         mut commands: Commands,
-        walls: Query<&Wall>,
+        walls: Query<&SplineSegment, With<Wall>>,
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
     ) {
         if let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) {
@@ -58,7 +62,7 @@ impl CreatingWallPlugin {
                 // Use an existing point if it is within the `SNAP_DELTA` distance.
                 let point = walls
                     .iter_many(children.into_iter().flatten())
-                    .flat_map(|wall| [wall.start, wall.end])
+                    .flat_map(|segment| segment.points())
                     .find(|vertex| vertex.distance(point) < SNAP_DELTA)
                     .unwrap_or(point);
 
@@ -67,7 +71,8 @@ impl CreatingWallPlugin {
                     parent.spawn((
                         StateScoped(BuildingMode::Walls),
                         CreatingWall,
-                        Wall(Segment::splat(point)),
+                        Wall,
+                        SplineSegment(Segment::splat(point)),
                     ));
                 });
             }
@@ -106,25 +111,25 @@ impl CreatingWallPlugin {
     fn update_end(
         camera_caster: CameraCaster,
         mut creating_walls: Query<
-            (&mut Wall, &Parent),
+            (&mut SplineSegment, &Parent),
             (With<CreatingWall>, Without<UnconfirmedWall>),
         >,
-        walls: Query<&Wall, Without<CreatingWall>>,
+        walls: Query<&SplineSegment, (With<Wall>, Without<CreatingWall>)>,
         children: Query<&Children>,
     ) {
-        if let Ok((mut wall, parent)) = creating_walls.get_single_mut() {
+        if let Ok((mut segment, parent)) = creating_walls.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) {
                 let children = children.get(**parent).unwrap();
 
                 // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
                 let vertex = walls
                     .iter_many(children)
-                    .flat_map(|wall| [wall.start, wall.end])
+                    .flat_map(|segment| segment.points())
                     .find(|vertex| vertex.distance(point) < SNAP_DELTA)
                     .unwrap_or(point);
 
                 trace!("updating wall end to `{vertex:?}`");
-                wall.end = vertex;
+                segment.end = vertex;
             }
         }
     }
@@ -132,15 +137,18 @@ impl CreatingWallPlugin {
     fn confirm(
         mut commands: Commands,
         mut create_events: EventWriter<WallCreate>,
-        mut walls: Query<(Entity, &Parent, &Wall), (With<CreatingWall>, Without<UnconfirmedWall>)>,
+        mut walls: Query<
+            (Entity, &Parent, &SplineSegment),
+            (With<CreatingWall>, Without<UnconfirmedWall>),
+        >,
     ) {
-        if let Ok((wall_entity, parent, &wall)) = walls.get_single_mut() {
+        if let Ok((wall_entity, parent, &segment)) = walls.get_single_mut() {
             info!("configrming wall");
             commands.entity(wall_entity).insert(UnconfirmedWall);
 
             create_events.send(WallCreate {
                 lot_entity: **parent,
-                wall,
+                segment,
             });
         }
     }

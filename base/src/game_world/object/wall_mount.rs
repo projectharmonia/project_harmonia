@@ -5,7 +5,10 @@ use super::placing_object::PlacingObject;
 use crate::{
     core::GameState,
     game_world::{
-        building::wall::{Aperture, Apertures, Wall, WallPlugin},
+        building::{
+            spline::SplineSegment,
+            wall::{Aperture, Apertures, WallPlugin},
+        },
         Layer,
     },
 };
@@ -59,7 +62,7 @@ impl WallMountPlugin {
     ///
     /// Should run in [`PostUpdate`] to avoid 1 frame delay after [`GlobalTransform`] changes.
     fn update_apertures(
-        mut walls: Query<(Entity, &mut Apertures, &Wall)>,
+        mut walls: Query<(Entity, &mut Apertures, &SplineSegment)>,
         mut objects: Query<
             (
                 Entity,

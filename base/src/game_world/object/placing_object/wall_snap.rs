@@ -5,7 +5,10 @@ use bevy_xpbd_3d::prelude::*;
 
 use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
 use crate::game_world::{
-    building::wall::{wall_mesh::HALF_WIDTH, Wall},
+    building::{
+        spline::SplineSegment,
+        wall::{wall_mesh::HALF_WIDTH, Wall},
+    },
     city::CityMode,
     family::BuildingMode,
 };
@@ -39,7 +42,7 @@ impl WallSnapPlugin {
     }
 
     fn snap(
-        walls: Query<&Wall>,
+        walls: Query<&SplineSegment, With<Wall>>,
         mut placing_objects: Query<(
             &mut Position,
             &mut Rotation,

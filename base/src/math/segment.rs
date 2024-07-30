@@ -1,6 +1,7 @@
 use std::ops::{Add, Sub};
 
 use bevy::prelude::*;
+use itertools::MinMaxResult;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
@@ -87,7 +88,7 @@ impl Segment {
         Some(Vec2 { x, y })
     }
 
-    /// Returns `true` if two segments are intersects.
+    /// Returns `true` if two segments intersect.
     pub(crate) fn intersects(&self, other: Self) -> bool {
         let Some(intersection) = self.line_intersection(other) else {
             return false;
@@ -100,9 +101,53 @@ impl Segment {
         distance1 - self.len() < TOLERANCE && distance2 - other.len() < TOLERANCE
     }
 
-    /// Returns distance from `start` to `end`.
+    /// Calculates the left and right points for the `start` point of the segment based on `half_width`,
+    /// considering intersections with other segments.
+    ///
+    /// `width_disp` is the width displacement vector of the segment.
+    /// `half_width` is the half-width of the points for other segments.
+    pub(crate) fn offset_points(
+        self,
+        width_disp: Vec2,
+        half_width: f32,
+        connections: MinMaxResult<Segment>,
+    ) -> (Vec2, Vec2) {
+        match connections {
+            MinMaxResult::NoElements => (self.start + width_disp, self.start - width_disp),
+            MinMaxResult::OneElement(other_segment) => {
+                let other_width = other_segment.displacement().perp().normalize() * half_width;
+                let left = (self + width_disp)
+                    .line_intersection(other_segment - other_width)
+                    .unwrap_or_else(|| self.start + width_disp);
+                let right = (self - width_disp)
+                    .line_intersection(other_segment.inverse() + other_width)
+                    .unwrap_or_else(|| self.start + width_disp);
+
+                (left, right)
+            }
+            MinMaxResult::MinMax(min_segment, max_segment) => {
+                let max_width = max_segment.displacement().perp().normalize() * half_width;
+                let left = (self + width_disp)
+                    .line_intersection(max_segment - max_width)
+                    .unwrap_or_else(|| self.start + width_disp);
+                let min_width = min_segment.displacement().perp().normalize() * half_width;
+                let right = (self - width_disp)
+                    .line_intersection(min_segment.inverse() + min_width)
+                    .unwrap_or_else(|| self.start + width_disp);
+
+                (left, right)
+            }
+        }
+    }
+
+    /// Returns distance from start to end.
     fn len(&self) -> f32 {
         self.start.distance(self.end)
+    }
+
+    // Returns start and end points.
+    pub(crate) fn points(&self) -> [Vec2; 2] {
+        [self.start, self.end]
     }
 
     /// Calculates the slope (Δy/Δx).
