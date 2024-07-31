@@ -136,5 +136,4 @@ pub struct GeneralMetadata {
     pub name: String,
     pub author: String,
     pub license: String,
-    pub preview_translation: Vec3,
 }

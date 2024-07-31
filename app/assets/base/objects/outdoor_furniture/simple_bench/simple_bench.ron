@@ -3,7 +3,7 @@
         name: "Simple bench",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
-        preview_translation: (0.0, -0.25, -2.8),
     ),
     category: OutdoorFurniture,
+    preview_translation: (0.0, -0.25, -2.8),
 )

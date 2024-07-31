@@ -3,7 +3,7 @@
         name: "Medium stone",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
-        preview_translation: (-0.20, -0.35, -2.1),
     ),
     category: Rocks,
+    preview_translation: (-0.20, -0.35, -2.1),
 )

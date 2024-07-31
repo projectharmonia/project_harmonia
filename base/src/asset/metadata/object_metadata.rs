@@ -20,6 +20,7 @@ use super::{GeneralMetadata, Metadata};
 pub struct ObjectMetadata {
     pub general: GeneralMetadata,
     pub category: ObjectCategory,
+    pub preview_translation: Vec3,
     pub components: Vec<Box<dyn Reflect>>,
     pub place_components: Vec<Box<dyn Reflect>>,
     pub spawn_components: Vec<Box<dyn Reflect>>,
@@ -40,6 +41,7 @@ impl Metadata for ObjectMetadata {
 enum ObjectMetadataField {
     General,
     Category,
+    PreviewTranslation,
     Components,
     PlaceComponents,
     SpawnComponents,
@@ -118,6 +120,7 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
     fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
         let mut general = None;
         let mut category = None;
+        let mut preview_translation = None;
         let mut components = None;
         let mut place_components = None;
         let mut spawn_components = None;
@@ -138,6 +141,14 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
                         ));
                     }
                     category = Some(map.next_value()?);
+                }
+                ObjectMetadataField::PreviewTranslation => {
+                    if preview_translation.is_some() {
+                        return Err(de::Error::duplicate_field(
+                            ObjectMetadataField::PreviewTranslation.into(),
+                        ));
+                    }
+                    preview_translation = Some(map.next_value()?);
                 }
                 ObjectMetadataField::Components => {
                     if components.is_some() {
@@ -173,6 +184,9 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
             general.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::General.into()))?;
         let category = category
             .ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Category.into()))?;
+        let preview_translation = preview_translation.ok_or_else(|| {
+            de::Error::missing_field(ObjectMetadataField::PreviewTranslation.into())
+        })?;
         let components = components.unwrap_or_default();
         let place_components = place_components.unwrap_or_default();
         let spawn_components = spawn_components.unwrap_or_default();
@@ -180,6 +194,7 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         Ok(ObjectMetadata {
             general,
             category,
+            preview_translation,
             components,
             place_components,
             spawn_components,
