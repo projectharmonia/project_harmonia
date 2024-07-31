@@ -6,6 +6,7 @@ use std::{
 use bevy::{
     prelude::*,
     reflect::{serde::TypedReflectDeserializer, TypeRegistry},
+    scene::ron::{self, error::SpannedResult},
 };
 use serde::{
     de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
@@ -25,12 +26,10 @@ pub struct ObjectMetadata {
 }
 
 impl Metadata for ObjectMetadata {
-    type Deserializer<'a> = ObjectMetadataDeserializer<'a>;
-
     const DIR: &'static str = "objects";
 
-    fn deserializer(registry: &TypeRegistry) -> Self::Deserializer<'_> {
-        ObjectMetadataDeserializer { registry }
+    fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self> {
+        options.from_str_seed(data, ObjectMetadataDeserializer { registry })
     }
 }
 
@@ -298,24 +297,27 @@ mod tests {
 
     #[test]
     fn deserialization() -> Result<()> {
-        const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/base/objects");
-        let mut type_registry = TypeRegistry::new();
-        type_registry.register::<Vec2>();
-        type_registry.register::<Vec<Vec2>>();
-        type_registry.register::<WallMount>();
-        type_registry.register::<WallSnap>();
-        type_registry.register::<SideSnap>();
-        type_registry.register::<Door>();
+        let assets_dir = format!(
+            "{}/assets/base/{}",
+            env!("CARGO_MANIFEST_DIR"),
+            ObjectMetadata::DIR
+        );
+        let mut registry = TypeRegistry::new();
+        registry.register::<Vec2>();
+        registry.register::<Vec<Vec2>>();
+        registry.register::<WallMount>();
+        registry.register::<WallSnap>();
+        registry.register::<SideSnap>();
+        registry.register::<Door>();
 
-        for entry in WalkDir::new(ASSETS_DIR)
+        for entry in WalkDir::new(assets_dir)
             .into_iter()
             .filter_map(|entry| entry.ok())
         {
             if let Some(extension) = entry.path().extension() {
                 if extension == METADATA_EXTENSION {
                     let data = fs::read_to_string(entry.path())?;
-                    ron::Options::default()
-                        .from_str_seed(&data, ObjectMetadata::deserializer(&type_registry))?;
+                    ObjectMetadata::from_str(&data, ron::Options::default(), &registry)?;
                 }
             }
         }

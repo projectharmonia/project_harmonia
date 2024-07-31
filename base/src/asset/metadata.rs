@@ -8,9 +8,9 @@ use bevy::{
     asset::{io::Reader, AssetLoader, AssetPath, AsyncReadExt, LoadContext},
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryArc},
-    scene::ron,
+    scene::ron::{self, error::SpannedResult},
 };
-use serde::{de::DeserializeSeed, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use object_metadata::ObjectMetadata;
@@ -68,8 +68,7 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = String::new();
         reader.read_to_string(&mut data).await?;
-        let metadata =
-            ron::Options::default().from_str_seed(&data, T::deserializer(&self.registry.read()))?;
+        let metadata = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
 
         Ok(metadata)
     }
@@ -120,14 +119,11 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
     }
 }
 
-trait Metadata {
-    type Deserializer<'a>: for<'de> DeserializeSeed<'de, Value = Self>;
-
+trait Metadata: Sized {
     /// Directory from which files should be preloaded.
     const DIR: &'static str;
 
-    /// Creates its own deserializer.
-    fn deserializer(registry: &TypeRegistry) -> Self::Deserializer<'_>;
+    fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self>;
 }
 
 /// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
