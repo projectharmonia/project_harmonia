@@ -72,7 +72,7 @@ impl PreviewPlugin {
                     let metadata = object_metadata.get(id).unwrap();
                     let scene_handle = asset_server.load(scene_path);
 
-                    (metadata.general.preview_translation, scene_handle)
+                    (metadata.preview_translation, scene_handle)
                 }
             };
 

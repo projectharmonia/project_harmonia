@@ -294,7 +294,7 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, path::Path};
 
     use anyhow::Result;
     use bevy::scene::ron;
@@ -312,11 +312,7 @@ mod tests {
 
     #[test]
     fn deserialization() -> Result<()> {
-        let assets_dir = format!(
-            "{}/assets/base/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            ObjectMetadata::DIR
-        );
+        let assets_dir = Path::new("../app/assets/base").join(ObjectMetadata::DIR);
         let mut registry = TypeRegistry::new();
         registry.register::<Vec2>();
         registry.register::<Vec<Vec2>>();
