@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 
-use super::ObjectPath;
+use super::ObjectMeta;
 use crate::{
     asset::metadata, core::GameState, game_world::actor::Actor, math::segment::Segment,
     navigation::NavPath,
@@ -71,9 +71,9 @@ impl DoorPlugin {
         mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
         actors: Query<&GlobalTransform>,
-        mut objects: Query<(Entity, &GlobalTransform, &ObjectPath, &Door, &mut DoorState)>,
+        mut objects: Query<(Entity, &GlobalTransform, &ObjectMeta, &Door, &mut DoorState)>,
     ) {
-        for (object_entity, object_transform, object_path, door, mut door_state) in &mut objects {
+        for (object_entity, object_transform, object_meta, door, mut door_state) in &mut objects {
             let object_translation = object_transform.translation().xz();
             let should_open = door_state
                 .passing_actors
@@ -105,7 +105,7 @@ impl DoorPlugin {
                     }
                 } else {
                     let animation_path =
-                        metadata::gltf_asset(&object_path.0, GltfAssetLabel::Animation(0));
+                        metadata::gltf_asset(&object_meta.0, GltfAssetLabel::Animation(0));
                     let (graph, animation_index) =
                         AnimationGraph::from_clip(asset_server.load(animation_path));
                     commands.entity(entity).insert(graphs.add(graph));

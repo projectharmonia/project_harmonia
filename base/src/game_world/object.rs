@@ -33,8 +33,8 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
-            .register_type::<ObjectPath>()
-            .replicate::<ObjectPath>()
+            .register_type::<ObjectMeta>()
+            .replicate::<ObjectMeta>()
             .add_client_event::<ObjectBuy>(ChannelKind::Unordered)
             .add_mapped_client_event::<ObjectMove>(ChannelKind::Ordered)
             .add_mapped_client_event::<ObjectSell>(ChannelKind::Unordered)
@@ -68,15 +68,15 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         object_metadata: Res<Assets<ObjectMetadata>>,
-        spawned_objects: Query<(Entity, &ObjectPath, Has<PlacingObject>), Without<Handle<Scene>>>,
+        spawned_objects: Query<(Entity, &ObjectMeta, Has<PlacingObject>), Without<Handle<Scene>>>,
     ) {
-        for (entity, object_path, placing_object) in &spawned_objects {
-            let metadata_handle = asset_server.load(&object_path.0);
+        for (entity, object_meta, placing_object) in &spawned_objects {
+            let metadata_handle = asset_server.load(&object_meta.0);
             let metadata = object_metadata
                 .get(&metadata_handle)
-                .unwrap_or_else(|| panic!("{object_path:?} should correspond to metadata"));
+                .unwrap_or_else(|| panic!("{object_meta:?} should correspond to metadata"));
 
-            let scene_path = metadata::gltf_asset(&object_path.0, GltfAssetLabel::Scene(0));
+            let scene_path = metadata::gltf_asset(&object_meta.0, GltfAssetLabel::Scene(0));
             debug!("initializing object `{entity}` for '{scene_path}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
@@ -110,7 +110,7 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        objects: Query<Entity, With<ObjectPath>>,
+        objects: Query<Entity, With<ObjectMeta>>,
         chidlren: Query<&Children>,
         child_meshes: Query<(&Transform, &Handle<Mesh>)>,
     ) {
@@ -228,7 +228,7 @@ impl ObjectPlugin {
 
 #[derive(Bundle)]
 struct ObjectBundle {
-    object_path: ObjectPath,
+    object_meta: ObjectMeta,
     position: Position,
     rotation: Rotation,
     parent_sync: ParentSync,
@@ -238,7 +238,7 @@ struct ObjectBundle {
 impl ObjectBundle {
     fn new(metadata_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
         Self {
-            object_path: ObjectPath(metadata_path),
+            object_meta: ObjectMeta(metadata_path),
             position: Position(translation),
             rotation: Rotation(rotation),
             parent_sync: Default::default(),
@@ -250,7 +250,7 @@ impl ObjectBundle {
 /// Contains path to the object metadata file.
 #[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(crate) struct ObjectPath(AssetPath<'static>);
+pub(crate) struct ObjectMeta(AssetPath<'static>);
 
 #[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct ObjectBuy {
