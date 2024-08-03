@@ -17,12 +17,12 @@ use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{
-    asset::metadata::object_metadata::ObjectMetadata,
+    asset::info::object_info::ObjectInfo,
     game_world::{
         city::CityMode,
         family::BuildingMode,
         hover::{HoverEnabled, Hovered},
-        object::{ObjectBuy, ObjectEventConfirmed, ObjectMeta, ObjectMove, ObjectSell},
+        object::{ObjectBuy, ObjectEventConfirmed, ObjectInfoPath, ObjectMove, ObjectSell},
         player_camera::CameraCaster,
     },
     settings::Action,
@@ -80,7 +80,7 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn pick(
         mut commands: Commands,
-        hovered: Query<(Entity, &Parent), (With<ObjectMeta>, With<Hovered>)>,
+        hovered: Query<(Entity, &Parent), (With<ObjectInfoPath>, With<Hovered>)>,
     ) {
         if let Ok((object_entity, parent)) = hovered.get_single() {
             info!("picking object `{object_entity}`");
@@ -98,8 +98,8 @@ impl PlacingObjectPlugin {
         asset_server: Res<AssetServer>,
         city_mode: Option<Res<State<CityMode>>>,
         building_mode: Option<Res<State<BuildingMode>>>,
-        placing_objects: Query<(Entity, &PlacingObject), Without<ObjectMeta>>,
-        objects: Query<(&Position, &Rotation, &ObjectMeta)>,
+        placing_objects: Query<(Entity, &PlacingObject), Without<ObjectInfoPath>>,
+        objects: Query<(&Position, &Rotation, &ObjectInfoPath)>,
     ) {
         let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
             return;
@@ -109,9 +109,9 @@ impl PlacingObjectPlugin {
         let mut placing_entity = commands.entity(placing_entity);
         match placing_object {
             PlacingObject::Spawning(id) => {
-                let metadata_path = asset_server
+                let info_path = asset_server
                     .get_path(id)
-                    .expect("metadata should always come from file");
+                    .expect("info should always come from file");
 
                 // Rotate towards camera and round to the nearest cardinal direction.
                 let (transform, _) = camera_caster.cameras.single();
@@ -120,12 +120,12 @@ impl PlacingObjectPlugin {
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
 
                 placing_entity.insert(PlacingInitBundle::spawning(
-                    metadata_path.into_owned(),
+                    info_path.into_owned(),
                     rounded_angle,
                 ));
             }
             PlacingObject::Moving(object_entity) => {
-                let (&position, &rotation, object_meta) = objects
+                let (&position, &rotation, info_path) = objects
                     .get(object_entity)
                     .expect("moving object should have scene and path");
 
@@ -135,7 +135,7 @@ impl PlacingObjectPlugin {
                     .unwrap_or(*position);
 
                 placing_entity.insert(PlacingInitBundle::moving(
-                    object_meta.clone(),
+                    info_path.clone(),
                     CursorOffset(offset),
                     position,
                     rotation,
@@ -257,11 +257,11 @@ impl PlacingObjectPlugin {
 
                 match placing_object {
                     PlacingObject::Spawning(id) => {
-                        let metadata_path = asset_server
+                        let info_path = asset_server
                             .get_path(id)
-                            .expect("metadata should always come from file");
+                            .expect("info should always come from file");
                         buy_events.send(ObjectBuy {
-                            metadata_path: metadata_path.into_owned(),
+                            info_path: info_path.into_owned(),
                             position: **position,
                             rotation: **rotation,
                         });
@@ -325,14 +325,14 @@ impl PlacingObjectPlugin {
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Component, Debug, Clone, Copy)]
 pub enum PlacingObject {
-    Spawning(AssetId<ObjectMetadata>),
+    Spawning(AssetId<ObjectInfo>),
     Moving(Entity),
 }
 
 /// Additional components that needed for [`PlacingObject`].
 #[derive(Bundle)]
 struct PlacingInitBundle {
-    object_meta: ObjectMeta,
+    info_path: ObjectInfoPath,
     cursor_offset: CursorOffset,
     position: Position,
     rotation: Rotation,
@@ -341,9 +341,9 @@ struct PlacingInitBundle {
 }
 
 impl PlacingInitBundle {
-    fn spawning(metadata_path: AssetPath<'static>, angle: f32) -> Self {
+    fn spawning(info_path: AssetPath<'static>, angle: f32) -> Self {
         Self {
-            object_meta: ObjectMeta(metadata_path.into_owned()),
+            info_path: ObjectInfoPath(info_path.into_owned()),
             cursor_offset: Default::default(),
             position: Default::default(),
             rotation: Rotation(Quat::from_rotation_y(angle)),
@@ -353,13 +353,13 @@ impl PlacingInitBundle {
     }
 
     fn moving(
-        object_meta: ObjectMeta,
+        info_path: ObjectInfoPath,
         cursor_offset: CursorOffset,
         position: Position,
         rotation: Rotation,
     ) -> Self {
         Self {
-            object_meta,
+            info_path,
             cursor_offset,
             position,
             rotation,

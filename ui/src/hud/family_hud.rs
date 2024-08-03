@@ -4,7 +4,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use super::objects_node;
 use crate::preview::Preview;
 use project_harmonia_base::{
-    asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
+    asset::info::object_info::{ObjectCategory, ObjectInfo},
     game_world::{
         actor::{
             needs::{Need, NeedGlyph},
@@ -52,7 +52,7 @@ impl FamilyHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        objects_info: Res<Assets<ObjectInfo>>,
         families: Query<(&Budget, &FamilyMembers), With<SelectedFamily>>,
         actors: Query<Entity, With<SelectedActor>>,
     ) {
@@ -101,12 +101,9 @@ impl FamilyHudPlugin {
                                 setup_members_node(parent, &theme, members, actors.single());
                                 setup_info_node(parent, &mut tab_commands, &theme);
                             }
-                            FamilyMode::Building => setup_building_hud(
-                                parent,
-                                &mut tab_commands,
-                                &theme,
-                                &object_metadata,
-                            ),
+                            FamilyMode::Building => {
+                                setup_building_hud(parent, &mut tab_commands, &theme, &objects_info)
+                            }
                         })
                         .id();
 
@@ -492,7 +489,7 @@ fn setup_building_hud(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
-    object_metadata: &Assets<ObjectMetadata>,
+    objects_info: &Assets<ObjectInfo>,
 ) {
     let tabs_entity = parent
         .spawn(NodeBundle {
@@ -525,7 +522,7 @@ fn setup_building_hud(
                         parent,
                         tab_commands,
                         theme,
-                        object_metadata,
+                        objects_info,
                         ObjectCategory::FAMILY_CATEGORIES,
                     );
                 }

@@ -1,4 +1,4 @@
-pub mod object_metadata;
+pub mod object_info;
 
 use std::{
     env, fs,
@@ -17,38 +17,38 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
-use object_metadata::ObjectMetadata;
+use object_info::ObjectInfo;
 
-pub(super) struct MetadataPlugins;
+pub(super) struct InfoPlugins;
 
-impl PluginGroup for MetadataPlugins {
+impl PluginGroup for InfoPlugins {
     fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>().add(MetadataPlugin::<ObjectMetadata>::default())
+        PluginGroupBuilder::start::<Self>().add(InfoPlugin::<ObjectInfo>::default())
     }
 }
 
-struct MetadataPlugin<T>(PhantomData<T>);
+struct InfoPlugin<T>(PhantomData<T>);
 
-impl<T> Default for MetadataPlugin<T> {
+impl<T> Default for InfoPlugin<T> {
     fn default() -> Self {
         Self(PhantomData)
     }
 }
 
-impl<T: Asset + Metadata> Plugin for MetadataPlugin<T> {
+impl<T: Asset + Info> Plugin for InfoPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_asset::<T>()
-            .init_asset_loader::<MetadataLoader<T>>()
-            .init_resource::<MetadataHandles<T>>();
+            .init_asset_loader::<InfoLoader<T>>()
+            .init_resource::<InfoHandles<T>>();
     }
 }
 
-pub struct MetadataLoader<T> {
+pub struct InfoLoader<T> {
     registry: TypeRegistryArc,
     marker: PhantomData<T>,
 }
 
-impl<T> FromWorld for MetadataLoader<T> {
+impl<T> FromWorld for InfoLoader<T> {
     fn from_world(world: &mut World) -> Self {
         Self {
             registry: world.resource::<AppTypeRegistry>().0.clone(),
@@ -57,9 +57,9 @@ impl<T> FromWorld for MetadataLoader<T> {
     }
 }
 
-const METADATA_EXTENSION: &str = "info.ron";
+const INFO_EXTENSION: &str = "info.ron";
 
-impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
+impl<T: Asset + Info> AssetLoader for InfoLoader<T> {
     type Asset = T;
     type Settings = ();
     type Error = anyhow::Error;
@@ -73,27 +73,27 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
         let mut data = String::new();
         reader.read_to_string(&mut data).await?;
 
-        let mut metadata = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
+        let mut info = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
         if let Some(dir) = load_context.path().parent() {
-            for path in metadata.iter_paths_mut() {
+            for path in info.iter_paths_mut() {
                 *path = dir.join(&*path);
             }
         }
 
-        Ok(metadata)
+        Ok(info)
     }
 
     fn extensions(&self) -> &[&str] {
-        &[METADATA_EXTENSION]
+        &[INFO_EXTENSION]
     }
 }
 
-/// Preloads and stores metadata handles.
+/// Preloads and stores info handles.
 #[derive(Resource)]
 #[allow(dead_code)]
-struct MetadataHandles<T: Asset>(Vec<Handle<T>>);
+struct InfoHandles<T: Asset>(Vec<Handle<T>>);
 
-impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
+impl<T: Asset + Info> FromWorld for InfoHandles<T> {
     fn from_world(world: &mut World) -> Self {
         let assets_dir =
             Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_default()).join("assets");
@@ -115,14 +115,14 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
                 if entry
                     .path()
                     .to_str()
-                    .is_some_and(|path| path.ends_with(METADATA_EXTENSION))
+                    .is_some_and(|path| path.ends_with(INFO_EXTENSION))
                 {
                     let path = entry
                         .path()
                         .strip_prefix(&assets_dir)
                         .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
 
-                    debug!("loading metadata for {path:?}");
+                    debug!("loading info for {path:?}");
                     handles.push(asset_server.load(path.to_path_buf()));
                 }
             }
@@ -132,7 +132,7 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
     }
 }
 
-trait Metadata: Sized {
+trait Info: Sized {
     /// Directory from which files should be preloaded.
     const DIR: &'static str;
 
@@ -145,7 +145,7 @@ trait Metadata: Sized {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct GeneralMetadata {
+pub struct GeneralInfo {
     pub name: String,
     pub asset: PathBuf,
     pub author: String,
@@ -162,7 +162,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        asset::metadata::METADATA_EXTENSION,
+        asset::info::INFO_EXTENSION,
         game_world::object::{
             door::Door,
             placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
@@ -180,12 +180,12 @@ mod tests {
         registry.register::<SideSnap>();
         registry.register::<Door>();
 
-        deserialize::<ObjectMetadata>(&registry)?;
+        deserialize::<ObjectInfo>(&registry)?;
 
         Ok(())
     }
 
-    fn deserialize<A: Metadata>(registry: &TypeRegistry) -> Result<()> {
+    fn deserialize<A: Info>(registry: &TypeRegistry) -> Result<()> {
         let assets_dir = Path::new("../app/assets/base").join(A::DIR);
         for entry in WalkDir::new(assets_dir)
             .into_iter()
@@ -195,7 +195,7 @@ mod tests {
             if entry
                 .path()
                 .to_str()
-                .is_some_and(|path| path.ends_with(METADATA_EXTENSION))
+                .is_some_and(|path| path.ends_with(INFO_EXTENSION))
             {
                 let data = fs::read_to_string(entry.path())?;
                 A::from_str(&data, ron::Options::default(), &registry)

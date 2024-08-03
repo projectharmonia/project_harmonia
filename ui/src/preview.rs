@@ -10,7 +10,7 @@ use bevy::{
     },
 };
 
-use project_harmonia_base::asset::metadata::object_metadata::ObjectMetadata;
+use project_harmonia_base::asset::info::object_info::ObjectInfo;
 
 pub(super) struct PreviewPlugin;
 
@@ -46,7 +46,7 @@ impl PreviewPlugin {
         mut commands: Commands,
         mut preview_state: ResMut<NextState<PreviewState>>,
         asset_server: Res<AssetServer>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        objects_info: Res<Assets<ObjectInfo>>,
         previews: Query<(Entity, &Preview, Has<CalculatedClip>), Without<PreviewProcessed>>,
         actors: Query<&Handle<Scene>>,
         preview_cameras: Query<Entity, With<PreviewCamera>>,
@@ -63,17 +63,15 @@ impl PreviewPlugin {
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
                 Preview::Object(id) => {
-                    let metadata = object_metadata
-                        .get(id)
-                        .expect("metadata should be preloaded");
+                    let info = objects_info.get(id).expect("info should be preloaded");
 
                     let scene_path =
-                        GltfAssetLabel::Scene(0).from_asset(metadata.general.asset.clone());
+                        GltfAssetLabel::Scene(0).from_asset(info.general.asset.clone());
                     debug!("generating preview for object '{scene_path:?}'");
 
                     let scene_handle = asset_server.load(scene_path);
 
-                    (metadata.preview_translation, scene_handle)
+                    (info.preview_translation, scene_handle)
                 }
             };
 
@@ -228,7 +226,7 @@ enum PreviewState {
 #[derive(Component)]
 struct PreviewCamera;
 
-/// Specifies preview that should be generated for specific actor in the world or for an object by its metadata.
+/// Specifies preview that should be generated for specific actor in the world or for an object by its info.
 ///
 /// Generated image handle will be written to the image handle on this entity.
 /// Preview generation happens only if UI element entity is visible.
@@ -236,7 +234,7 @@ struct PreviewCamera;
 #[derive(Clone, Component, Copy)]
 pub(crate) enum Preview {
     Actor(Entity),
-    Object(AssetId<ObjectMetadata>),
+    Object(AssetId<ObjectInfo>),
 }
 
 /// Marks entity with [`Preview`] as processed end excludes it from preview generation.

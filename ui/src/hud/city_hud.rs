@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::hud::objects_node;
 use project_harmonia_base::{
-    asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
+    asset::info::object_info::{ObjectCategory, ObjectInfo},
     game_world::{building::lot::LotTool, city::CityMode, WorldState},
 };
 use project_harmonia_widgets::{
@@ -28,7 +28,7 @@ impl CityHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        objects_info: Res<Assets<ObjectInfo>>,
     ) {
         debug!("showing city HUD");
         commands
@@ -75,7 +75,7 @@ impl CityHudPlugin {
                                     parent,
                                     &mut tab_commands,
                                     &theme,
-                                    &object_metadata,
+                                    &objects_info,
                                     ObjectCategory::CITY_CATEGORIES,
                                 );
                             }

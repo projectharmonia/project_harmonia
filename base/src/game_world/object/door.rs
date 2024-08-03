@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 
-use super::ObjectMeta;
+use super::ObjectInfoPath;
 use crate::{
-    asset::metadata::object_metadata::ObjectMetadata, core::GameState, game_world::actor::Actor,
+    asset::info::object_info::ObjectInfo, core::GameState, game_world::actor::Actor,
     math::segment::Segment, navigation::NavPath,
 };
 
@@ -68,13 +68,19 @@ impl DoorPlugin {
         mut commands: Commands,
         mut animation_players: Query<(Entity, &mut AnimationPlayer)>,
         asset_server: Res<AssetServer>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        objects_info: Res<Assets<ObjectInfo>>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
         actors: Query<&GlobalTransform>,
-        mut objects: Query<(Entity, &GlobalTransform, &ObjectMeta, &Door, &mut DoorState)>,
+        mut objects: Query<(
+            Entity,
+            &GlobalTransform,
+            &ObjectInfoPath,
+            &Door,
+            &mut DoorState,
+        )>,
     ) {
-        for (object_entity, object_transform, object_meta, door, mut door_state) in &mut objects {
+        for (object_entity, object_transform, info_path, door, mut door_state) in &mut objects {
             let object_translation = object_transform.translation().xz();
             let should_open = door_state
                 .passing_actors
@@ -105,13 +111,13 @@ impl DoorPlugin {
                         }
                     }
                 } else {
-                    let metadata_handle = asset_server
-                        .get_handle(&object_meta.0)
-                        .expect("metadata should be preloaded");
-                    let metadata = object_metadata.get(&metadata_handle).unwrap();
+                    let info_handle = asset_server
+                        .get_handle(&info_path.0)
+                        .expect("info should be preloaded");
+                    let info = objects_info.get(&info_handle).unwrap();
 
                     let animation_path =
-                        GltfAssetLabel::Animation(0).from_asset(metadata.general.asset.clone());
+                        GltfAssetLabel::Animation(0).from_asset(info.general.asset.clone());
                     debug!("initializing open animation '{animation_path}' for `{object_entity}`");
 
                     let (graph, animation_index) =

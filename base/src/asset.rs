@@ -1,16 +1,16 @@
 pub(super) mod collection;
+pub mod info;
 pub(super) mod material;
-pub mod metadata;
 
 use bevy::prelude::*;
 
+use info::InfoPlugins;
 use material::MaterialPlugin;
-use metadata::MetadataPlugins;
 
 pub(super) struct AssetPlugin;
 
 impl Plugin for AssetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((MaterialPlugin, MetadataPlugins));
+        app.add_plugins((MaterialPlugin, InfoPlugins));
     }
 }

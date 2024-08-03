@@ -2,7 +2,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::preview::Preview;
 use project_harmonia_base::{
-    asset::metadata::object_metadata::{ObjectCategory, ObjectMetadata},
+    asset::info::object_info::{ObjectCategory, ObjectInfo},
     game_world::{
         city::{ActiveCity, CityMode},
         family::FamilyMode,
@@ -57,7 +57,7 @@ impl ObjectsNodePlugin {
     fn show_popup(
         mut commands: Commands,
         theme: Res<Theme>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        objects_info: Res<Assets<ObjectInfo>>,
         buttons: Query<
             (Entity, &Interaction, &Style, &GlobalTransform, &Preview),
             (Changed<Interaction>, With<ObjectButton>),
@@ -73,7 +73,7 @@ impl ObjectsNodePlugin {
                 continue;
             }
 
-            let metadata = object_metadata.get(id).unwrap();
+            let info = objects_info.get(id).unwrap();
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn(PopupBundle::new(
@@ -86,14 +86,11 @@ impl ObjectsNodePlugin {
                     .with_children(|parent| {
                         parent.spawn(TextBundle::from_sections([
                             TextSection::new(
-                                metadata.general.name.clone() + "\n\n",
+                                info.general.name.clone() + "\n\n",
                                 theme.label.normal.clone(),
                             ),
                             TextSection::new(
-                                format!(
-                                    "{}\n{}",
-                                    metadata.general.license, metadata.general.author,
-                                ),
+                                format!("{}\n{}", info.general.license, info.general.author,),
                                 theme.label.small.clone(),
                             ),
                         ]));
@@ -120,8 +117,8 @@ impl ObjectsNodePlugin {
 
     fn reload_buttons(
         mut commands: Commands,
-        mut change_events: EventReader<AssetEvent<ObjectMetadata>>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
+        mut change_events: EventReader<AssetEvent<ObjectInfo>>,
+        objects_info: Res<Assets<ObjectInfo>>,
         theme: Res<Theme>,
         buttons: Query<(Entity, &Preview), With<ObjectButton>>,
         categories: Query<(&ObjectCategory, &TabContent)>,
@@ -131,20 +128,20 @@ impl ObjectsNodePlugin {
                 debug!("recreating button for asset {id}");
 
                 for (entity, &preview) in &buttons {
-                    if let Preview::Object(metadata_id) = preview {
-                        if id == metadata_id {
+                    if let Preview::Object(info_id) = preview {
+                        if id == info_id {
                             commands.entity(entity).despawn_recursive();
                             break;
                         }
                     }
                 }
 
-                let object_metadata = object_metadata
+                let object_info = objects_info
                     .get(id)
-                    .expect("metadata should always come from file");
+                    .expect("info should always come from file");
 
                 let tab_content = categories.iter().find_map(|(&category, &tab_content)| {
-                    if category == object_metadata.category {
+                    if category == object_info.category {
                         Some(tab_content)
                     } else {
                         None
@@ -165,7 +162,7 @@ pub(super) fn setup_objects_node(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
-    object_metadata: &Assets<ObjectMetadata>,
+    objects_info: &Assets<ObjectInfo>,
     categories: &[ObjectCategory],
 ) {
     let tabs_entity = parent
@@ -192,9 +189,9 @@ pub(super) fn setup_objects_node(
                 ..Default::default()
             })
             .with_children(|parent| {
-                for (id, _) in object_metadata
+                for (id, _) in objects_info
                     .iter()
-                    .filter(|(_, metadata)| metadata.category == category)
+                    .filter(|(_, info)| info.category == category)
                 {
                     parent.spawn(ObjectButtonBundle::new(id, theme));
                 }
@@ -226,7 +223,7 @@ struct ObjectButtonBundle {
 }
 
 impl ObjectButtonBundle {
-    fn new(id: AssetId<ObjectMetadata>, theme: &Theme) -> Self {
+    fn new(id: AssetId<ObjectInfo>, theme: &Theme) -> Self {
         Self {
             object_button: ObjectButton,
             preview: Preview::Object(id),

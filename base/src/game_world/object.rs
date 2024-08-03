@@ -19,7 +19,7 @@ use super::{
     city::{City, HALF_CITY_SIZE},
     hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };
-use crate::{asset::metadata::object_metadata::ObjectMetadata, core::GameState, game_world::Layer};
+use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
 use door::DoorPlugin;
 use placing_object::{PlacingObject, PlacingObjectPlugin};
 use wall_mount::WallMountPlugin;
@@ -29,8 +29,8 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
-            .register_type::<ObjectMeta>()
-            .replicate::<ObjectMeta>()
+            .register_type::<ObjectInfoPath>()
+            .replicate::<ObjectInfoPath>()
             .add_client_event::<ObjectBuy>(ChannelKind::Unordered)
             .add_mapped_client_event::<ObjectMove>(ChannelKind::Ordered)
             .add_mapped_client_event::<ObjectSell>(ChannelKind::Unordered)
@@ -63,23 +63,26 @@ impl ObjectPlugin {
     fn init(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
-        object_metadata: Res<Assets<ObjectMetadata>>,
-        spawned_objects: Query<(Entity, &ObjectMeta, Has<PlacingObject>), Without<Handle<Scene>>>,
+        objects_info: Res<Assets<ObjectInfo>>,
+        spawned_objects: Query<
+            (Entity, &ObjectInfoPath, Has<PlacingObject>),
+            Without<Handle<Scene>>,
+        >,
     ) {
-        for (entity, object_meta, placing_object) in &spawned_objects {
-            let metadata_handle = asset_server
-                .get_handle(&object_meta.0)
-                .expect("metadata should be preloaded");
-            let metadata = object_metadata.get(&metadata_handle).unwrap();
+        for (entity, info_path, placing_object) in &spawned_objects {
+            let info_handle = asset_server
+                .get_handle(&info_path.0)
+                .expect("info should be preloaded");
+            let info = objects_info.get(&info_handle).unwrap();
 
-            let scene_path = GltfAssetLabel::Scene(0).from_asset(metadata.general.asset.clone());
+            let scene_path = GltfAssetLabel::Scene(0).from_asset(info.general.asset.clone());
             debug!("initializing object `{entity}` for '{scene_path}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             let mut entity = commands.entity(entity);
             entity.insert((
                 scene_handle,
-                Name::new(metadata.general.name.clone()),
+                Name::new(info.general.name.clone()),
                 Hoverable,
                 RigidBody::Kinematic,
                 OutlineBundle::highlighting(),
@@ -87,15 +90,15 @@ impl ObjectPlugin {
                 CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
             ));
 
-            for component in &metadata.components {
+            for component in &info.components {
                 entity.insert_reflect(component.clone_value());
             }
             if placing_object {
-                for component in &metadata.place_components {
+                for component in &info.place_components {
                     entity.insert_reflect(component.clone_value());
                 }
             } else {
-                for component in &metadata.spawn_components {
+                for component in &info.spawn_components {
                     entity.insert_reflect(component.clone_value());
                 }
             }
@@ -106,7 +109,7 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        objects: Query<Entity, With<ObjectMeta>>,
+        objects: Query<Entity, With<ObjectInfoPath>>,
         chidlren: Query<&Children>,
         child_meshes: Query<(&Transform, &Handle<Mesh>)>,
     ) {
@@ -170,10 +173,10 @@ impl ObjectPlugin {
                 .map(|(lot_entity, _)| lot_entity)
                 .unwrap_or(city_entity);
 
-            info!("`{client_id:?}` buys object {:?}", event.metadata_path);
+            info!("`{client_id:?}` buys object {:?}", event.info_path);
             commands.entity(parent_entity).with_children(|parent| {
                 parent.spawn(ObjectBundle::new(
-                    event.metadata_path,
+                    event.info_path,
                     event.position,
                     event.rotation,
                 ));
@@ -224,7 +227,7 @@ impl ObjectPlugin {
 
 #[derive(Bundle)]
 struct ObjectBundle {
-    object_meta: ObjectMeta,
+    info_path: ObjectInfoPath,
     position: Position,
     rotation: Rotation,
     parent_sync: ParentSync,
@@ -232,9 +235,9 @@ struct ObjectBundle {
 }
 
 impl ObjectBundle {
-    fn new(metadata_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
+    fn new(info_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
         Self {
-            object_meta: ObjectMeta(metadata_path),
+            info_path: ObjectInfoPath(info_path),
             position: Position(translation),
             rotation: Rotation(rotation),
             parent_sync: Default::default(),
@@ -243,14 +246,14 @@ impl ObjectBundle {
     }
 }
 
-/// Contains path to the object metadata file.
+/// Contains path to the object info file.
 #[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(crate) struct ObjectMeta(AssetPath<'static>);
+pub(crate) struct ObjectInfoPath(AssetPath<'static>);
 
 #[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct ObjectBuy {
-    metadata_path: AssetPath<'static>,
+    info_path: AssetPath<'static>,
     position: Vec3,
     rotation: Quat,
 }

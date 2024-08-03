@@ -15,11 +15,11 @@ use serde::{
 };
 use strum::{Display, IntoStaticStr, VariantNames};
 
-use super::{GeneralMetadata, Metadata};
+use super::{GeneralInfo, Info};
 
 #[derive(TypePath, Asset)]
-pub struct ObjectMetadata {
-    pub general: GeneralMetadata,
+pub struct ObjectInfo {
+    pub general: GeneralInfo,
     pub category: ObjectCategory,
     pub preview_translation: Vec3,
     pub components: Vec<Box<dyn Reflect>>,
@@ -27,11 +27,11 @@ pub struct ObjectMetadata {
     pub spawn_components: Vec<Box<dyn Reflect>>,
 }
 
-impl Metadata for ObjectMetadata {
+impl Info for ObjectInfo {
     const DIR: &'static str = "objects";
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self> {
-        options.from_str_seed(data, ObjectMetadataDeserializer { registry })
+        options.from_str_seed(data, ObjectInfoDeserializer { registry })
     }
 
     fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
@@ -39,11 +39,11 @@ impl Metadata for ObjectMetadata {
     }
 }
 
-/// Fields of [`ObjectMetadata`] for manual deserialization.
+/// Fields of [`ObjectInfo`] for manual deserialization.
 #[derive(Deserialize, VariantNames, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 #[serde(field_identifier, rename_all = "snake_case")]
-enum ObjectMetadataField {
+enum ObjectInfoField {
     General,
     Category,
     PreviewTranslation,
@@ -99,24 +99,24 @@ impl ObjectCategory {
     }
 }
 
-pub(super) struct ObjectMetadataDeserializer<'a> {
+pub(super) struct ObjectInfoDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'de> DeserializeSeed<'de> for ObjectMetadataDeserializer<'_> {
-    type Value = ObjectMetadata;
+impl<'de> DeserializeSeed<'de> for ObjectInfoDeserializer<'_> {
+    type Value = ObjectInfo;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_struct(
             any::type_name::<Self::Value>(),
-            ObjectMetadataField::VARIANTS,
+            ObjectInfoField::VARIANTS,
             self,
         )
     }
 }
 
-impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
-    type Value = ObjectMetadata;
+impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
+    type Value = ObjectInfo;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -131,52 +131,48 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         let mut spawn_components = None;
         while let Some(key) = map.next_key()? {
             match key {
-                ObjectMetadataField::General => {
+                ObjectInfoField::General => {
                     if general.is_some() {
-                        return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::General.into(),
-                        ));
+                        return Err(de::Error::duplicate_field(ObjectInfoField::General.into()));
                     }
                     general = Some(map.next_value()?);
                 }
-                ObjectMetadataField::Category => {
+                ObjectInfoField::Category => {
                     if category.is_some() {
-                        return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::Category.into(),
-                        ));
+                        return Err(de::Error::duplicate_field(ObjectInfoField::Category.into()));
                     }
                     category = Some(map.next_value()?);
                 }
-                ObjectMetadataField::PreviewTranslation => {
+                ObjectInfoField::PreviewTranslation => {
                     if preview_translation.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::PreviewTranslation.into(),
+                            ObjectInfoField::PreviewTranslation.into(),
                         ));
                     }
                     preview_translation = Some(map.next_value()?);
                 }
-                ObjectMetadataField::Components => {
+                ObjectInfoField::Components => {
                     if components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::Components.into(),
+                            ObjectInfoField::Components.into(),
                         ));
                     }
                     components =
                         Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
                 }
-                ObjectMetadataField::PlaceComponents => {
+                ObjectInfoField::PlaceComponents => {
                     if place_components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::PlaceComponents.into(),
+                            ObjectInfoField::PlaceComponents.into(),
                         ));
                     }
                     place_components =
                         Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
                 }
-                ObjectMetadataField::SpawnComponents => {
+                ObjectInfoField::SpawnComponents => {
                     if spawn_components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectMetadataField::SpawnComponents.into(),
+                            ObjectInfoField::SpawnComponents.into(),
                         ));
                     }
                     spawn_components =
@@ -186,17 +182,16 @@ impl<'de> Visitor<'de> for ObjectMetadataDeserializer<'_> {
         }
 
         let general =
-            general.ok_or_else(|| de::Error::missing_field(ObjectMetadataField::General.into()))?;
-        let category = category
-            .ok_or_else(|| de::Error::missing_field(ObjectMetadataField::Category.into()))?;
-        let preview_translation = preview_translation.ok_or_else(|| {
-            de::Error::missing_field(ObjectMetadataField::PreviewTranslation.into())
-        })?;
+            general.ok_or_else(|| de::Error::missing_field(ObjectInfoField::General.into()))?;
+        let category =
+            category.ok_or_else(|| de::Error::missing_field(ObjectInfoField::Category.into()))?;
+        let preview_translation = preview_translation
+            .ok_or_else(|| de::Error::missing_field(ObjectInfoField::PreviewTranslation.into()))?;
         let components = components.unwrap_or_default();
         let place_components = place_components.unwrap_or_default();
         let spawn_components = spawn_components.unwrap_or_default();
 
-        Ok(ObjectMetadata {
+        Ok(ObjectInfo {
             general,
             category,
             preview_translation,
