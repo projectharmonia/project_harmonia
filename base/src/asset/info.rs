@@ -198,7 +198,7 @@ mod tests {
                 .is_some_and(|path| path.ends_with(INFO_EXTENSION))
             {
                 let data = fs::read_to_string(entry.path())?;
-                A::from_str(&data, ron::Options::default(), &registry)
+                A::from_str(&data, ron::Options::default(), registry)
                     .with_context(|| format!("unable to parse {:?}", entry.path()))?;
             }
         }
