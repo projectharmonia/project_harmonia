@@ -47,8 +47,9 @@ pub const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn init(
-        ground_scene: Local<GroundScene>,
+        ground_mesh: Local<GroundMesh>,
         mut commands: Commands,
+        asset_server: Res<AssetServer>,
         mut placed_citites: ResMut<PlacedCities>,
         added_cities: Query<Entity, (With<City>, Without<Transform>)>,
     ) {
@@ -70,8 +71,9 @@ impl CityPlugin {
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {
-                            mesh: ground_scene.mesh_handle.clone(),
-                            material: ground_scene.material_handle.clone(),
+                            mesh: ground_mesh.0.clone(),
+                            material: asset_server
+                                .load("base/ground/spring_grass/spring_glass.ron"),
                             ..Default::default()
                         },
                         ..Default::default()
@@ -135,12 +137,9 @@ impl CityPlugin {
     }
 }
 
-struct GroundScene {
-    mesh_handle: Handle<Mesh>,
-    material_handle: Handle<StandardMaterial>,
-}
+struct GroundMesh(Handle<Mesh>);
 
-impl FromWorld for GroundScene {
+impl FromWorld for GroundMesh {
     fn from_world(world: &mut World) -> Self {
         let mut mesh = Plane3d::default().mesh().size(CITY_SIZE, CITY_SIZE).build();
         let Some(VertexAttributeValues::Float32x2(uvs)) = mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0)
@@ -158,23 +157,7 @@ impl FromWorld for GroundScene {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh_handle = meshes.add(mesh);
 
-        let asset_server = world.resource::<AssetServer>();
-        let material = StandardMaterial {
-            base_color_texture: Some(
-                asset_server.load("base/ground/spring_grass/spring_grass_base_color.png"),
-            ),
-            perceptual_roughness: 0.0,
-            reflectance: 0.0,
-            ..Default::default()
-        };
-
-        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let material_handle = materials.add(material);
-
-        Self {
-            mesh_handle,
-            material_handle,
-        }
+        Self(mesh_handle)
     }
 }
 

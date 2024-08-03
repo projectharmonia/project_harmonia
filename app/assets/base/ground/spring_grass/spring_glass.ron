@@ -1,0 +1,5 @@
+(
+    base_color_texture: Some("spring_grass_base_color.png"),
+    perceptual_roughness: 0.0,
+    reflectance: 0.0,
+)

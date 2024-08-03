@@ -46,8 +46,8 @@ impl Plugin for WallPlugin {
 
 impl WallPlugin {
     fn init(
-        wall_material: Local<WallMaterial>,
         mut commands: Commands,
+        asset_server: Res<AssetServer>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<(Entity, Has<CreatingWall>), (With<Wall>, Without<Handle<Mesh>>)>,
     ) {
@@ -66,7 +66,7 @@ impl WallPlugin {
                 CollisionLayers::new(Layer::Wall, Layer::Object),
                 NoFrustumCulling,
                 PbrBundle {
-                    material: wall_material.0.clone(),
+                    material: asset_server.load("base/walls/brick/brick.ron"),
                     mesh: meshes.add(mesh),
                     ..Default::default()
                 },
@@ -127,30 +127,6 @@ impl WallPlugin {
                 parent.spawn(WallBundle::new(event.segment));
             });
         }
-    }
-}
-
-struct WallMaterial(Handle<StandardMaterial>);
-
-impl FromWorld for WallMaterial {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server = world.resource::<AssetServer>();
-
-        let material = StandardMaterial {
-            base_color_texture: Some(asset_server.load("base/walls/brick/brick_base_color.png")),
-            metallic_roughness_texture: Some(
-                asset_server.load("base/walls/brick/brick_roughnes_metalic.png"),
-            ),
-            normal_map_texture: Some(asset_server.load("base/walls/brick/brick_normal.png")),
-            occlusion_texture: Some(asset_server.load("base/walls/brick/brick_occlusion.png")),
-            perceptual_roughness: 0.0,
-            reflectance: 0.0,
-            ..Default::default()
-        };
-
-        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-
-        Self(materials.add(material))
     }
 }
 
