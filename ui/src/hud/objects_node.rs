@@ -11,6 +11,7 @@ use project_harmonia_base::{
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
+    popup::PopupBundle,
     theme::Theme,
 };
 
@@ -58,73 +59,46 @@ impl ObjectsNodePlugin {
         theme: Res<Theme>,
         object_metadata: Res<Assets<ObjectMetadata>>,
         buttons: Query<
-            (&Interaction, &Style, &GlobalTransform, &Preview),
+            (Entity, &Interaction, &Style, &GlobalTransform, &Preview),
             (Changed<Interaction>, With<ObjectButton>),
         >,
         windows: Query<&Window, With<PrimaryWindow>>,
-        popups: Query<Entity, With<ObjectPopup>>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        for (&interaction, style, transform, &preview) in &buttons {
+        for (entity, &interaction, style, transform, &preview) in &buttons {
             let Preview::Object(id) = preview else {
                 continue;
             };
-
-            match interaction {
-                Interaction::Hovered => {
-                    debug!("showing popup");
-                    let (Val::Px(button_width), Val::Px(button_height)) =
-                        (style.width, style.height)
-                    else {
-                        panic!("button size should be set in pixels");
-                    };
-                    let button_pos = transform.translation();
-                    let window = windows.single();
-                    let left = button_pos.x - button_width / 2.0;
-                    let bottom = window.resolution.height() - button_pos.y + button_height / 2.0;
-                    let metadata = object_metadata.get(id).unwrap();
-
-                    commands.entity(roots.single()).with_children(|parent| {
-                        parent
-                            .spawn((
-                                ObjectPopup,
-                                NodeBundle {
-                                    style: Style {
-                                        flex_direction: FlexDirection::Column,
-                                        padding: theme.padding.normal,
-                                        left: Val::Px(left),
-                                        bottom: Val::Px(bottom),
-                                        position_type: PositionType::Absolute,
-                                        ..Default::default()
-                                    },
-                                    background_color: theme.popup_color.into(),
-                                    ..Default::default()
-                                },
-                            ))
-                            .with_children(|parent| {
-                                parent.spawn(TextBundle::from_sections([
-                                    TextSection::new(
-                                        metadata.general.name.clone() + "\n\n",
-                                        theme.label.normal.clone(),
-                                    ),
-                                    TextSection::new(
-                                        format!(
-                                            "{}\n{}",
-                                            metadata.general.license, metadata.general.author,
-                                        ),
-                                        theme.label.small.clone(),
-                                    ),
-                                ]));
-                            });
-                    });
-                }
-                Interaction::Pressed | Interaction::None => {
-                    if let Ok(entity) = popups.get_single() {
-                        debug!("closing popup");
-                        commands.entity(entity).despawn_recursive();
-                    }
-                }
+            if interaction != Interaction::Hovered {
+                continue;
             }
+
+            let metadata = object_metadata.get(id).unwrap();
+            commands.entity(roots.single()).with_children(|parent| {
+                parent
+                    .spawn(PopupBundle::new(
+                        &theme,
+                        windows.single(),
+                        entity,
+                        style,
+                        transform,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn(TextBundle::from_sections([
+                            TextSection::new(
+                                metadata.general.name.clone() + "\n\n",
+                                theme.label.normal.clone(),
+                            ),
+                            TextSection::new(
+                                format!(
+                                    "{}\n{}",
+                                    metadata.general.license, metadata.general.author,
+                                ),
+                                theme.label.small.clone(),
+                            ),
+                        ]));
+                    });
+            });
         }
     }
 
@@ -241,9 +215,6 @@ pub(super) fn setup_objects_node(
 
 #[derive(Component)]
 struct ObjectButton;
-
-#[derive(Component)]
-struct ObjectPopup;
 
 #[derive(Bundle)]
 struct ObjectButtonBundle {
