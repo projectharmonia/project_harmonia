@@ -63,14 +63,14 @@ impl PreviewPlugin {
                     (Vec3::new(0.0, -1.67, -0.42), scene_handle.clone())
                 }
                 Preview::Object(id) => {
-                    let metadata_path = asset_server
-                        .get_path(id)
-                        .expect("metadata should always come from file");
-                    let scene_path = GltfAssetLabel::Scene(0)
-                        .from_asset(metadata_path.path().with_extension("gltf"));
+                    let metadata = object_metadata
+                        .get(id)
+                        .expect("metadata should be preloaded");
+
+                    let scene_path =
+                        GltfAssetLabel::Scene(0).from_asset(metadata.general.asset.clone());
                     debug!("generating preview for object '{scene_path:?}'");
 
-                    let metadata = object_metadata.get(id).unwrap();
                     let scene_handle = asset_server.load(scene_path);
 
                     (metadata.preview_translation, scene_handle)

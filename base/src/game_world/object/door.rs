@@ -3,7 +3,8 @@ use itertools::Itertools;
 
 use super::ObjectMeta;
 use crate::{
-    core::GameState, game_world::actor::Actor, math::segment::Segment, navigation::NavPath,
+    asset::metadata::object_metadata::ObjectMetadata, core::GameState, game_world::actor::Actor,
+    math::segment::Segment, navigation::NavPath,
 };
 
 pub(super) struct DoorPlugin;
@@ -67,6 +68,7 @@ impl DoorPlugin {
         mut commands: Commands,
         mut animation_players: Query<(Entity, &mut AnimationPlayer)>,
         asset_server: Res<AssetServer>,
+        object_metadata: Res<Assets<ObjectMetadata>>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
         actors: Query<&GlobalTransform>,
@@ -103,8 +105,15 @@ impl DoorPlugin {
                         }
                     }
                 } else {
-                    let animation_path = GltfAssetLabel::Animation(0)
-                        .from_asset(object_meta.0.path().with_extension("gltf"));
+                    let metadata_handle = asset_server
+                        .get_handle(&object_meta.0)
+                        .expect("metadata should be preloaded");
+                    let metadata = object_metadata.get(&metadata_handle).unwrap();
+
+                    let animation_path =
+                        GltfAssetLabel::Animation(0).from_asset(metadata.general.asset.clone());
+                    debug!("initializing open animation '{animation_path}' for `{object_entity}`");
+
                     let (graph, animation_index) =
                         AnimationGraph::from_clip(asset_server.load(animation_path));
                     commands.entity(entity).insert(graphs.add(graph));

@@ -67,13 +67,12 @@ impl ObjectPlugin {
         spawned_objects: Query<(Entity, &ObjectMeta, Has<PlacingObject>), Without<Handle<Scene>>>,
     ) {
         for (entity, object_meta, placing_object) in &spawned_objects {
-            let metadata_handle = asset_server.load(&object_meta.0);
-            let metadata = object_metadata
-                .get(&metadata_handle)
-                .unwrap_or_else(|| panic!("{object_meta:?} should correspond to metadata"));
+            let metadata_handle = asset_server
+                .get_handle(&object_meta.0)
+                .expect("metadata should be preloaded");
+            let metadata = object_metadata.get(&metadata_handle).unwrap();
 
-            let scene_path =
-                GltfAssetLabel::Scene(0).from_asset(object_meta.0.path().with_extension("gltf"));
+            let scene_path = GltfAssetLabel::Scene(0).from_asset(metadata.general.asset.clone());
             debug!("initializing object `{entity}` for '{scene_path}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);

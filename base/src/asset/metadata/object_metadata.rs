@@ -1,6 +1,7 @@
 use std::{
     any,
     fmt::{self, Formatter},
+    path::PathBuf,
 };
 
 use bevy::{
@@ -31,6 +32,10 @@ impl Metadata for ObjectMetadata {
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self> {
         options.from_str_seed(data, ObjectMetadataDeserializer { registry })
+    }
+
+    fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
+        [&mut self.general.asset].into_iter()
     }
 }
 
@@ -289,50 +294,5 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Default)")))?;
 
         Ok(reflect_default.default())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{fs, path::Path};
-
-    use anyhow::Result;
-    use bevy::scene::ron;
-    use walkdir::WalkDir;
-
-    use super::*;
-    use crate::{
-        asset::metadata::METADATA_EXTENSION,
-        game_world::object::{
-            door::Door,
-            placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
-            wall_mount::WallMount,
-        },
-    };
-
-    #[test]
-    fn deserialization() -> Result<()> {
-        let assets_dir = Path::new("../app/assets/base").join(ObjectMetadata::DIR);
-        let mut registry = TypeRegistry::new();
-        registry.register::<Vec2>();
-        registry.register::<Vec<Vec2>>();
-        registry.register::<WallMount>();
-        registry.register::<WallSnap>();
-        registry.register::<SideSnap>();
-        registry.register::<Door>();
-
-        for entry in WalkDir::new(assets_dir)
-            .into_iter()
-            .filter_map(|entry| entry.ok())
-        {
-            if let Some(extension) = entry.path().extension() {
-                if extension == METADATA_EXTENSION {
-                    let data = fs::read_to_string(entry.path())?;
-                    ObjectMetadata::from_str(&data, ron::Options::default(), &registry)?;
-                }
-            }
-        }
-
-        Ok(())
     }
 }

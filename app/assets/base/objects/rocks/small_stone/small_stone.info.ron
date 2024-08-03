@@ -1,9 +1,10 @@
 (
     general: (
-        name: "Medium stone",
+        name: "Small stone",
+        asset: "small_stone.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
     category: Rocks,
-    preview_translation: (-0.20, -0.35, -2.1),
+    preview_translation: (0.0, -0.25, -1.3),
 )

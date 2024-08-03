@@ -1,9 +1,10 @@
 (
     general: (
-        name: "Swing",
+        name: "Swing-balancer",
+        asset: "swing_balancer.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
     category: OutdoorActivities,
-    preview_translation: (0.0, -0.9, -3.0),
+    preview_translation: (0.0, -0.5, -3.0),
 )

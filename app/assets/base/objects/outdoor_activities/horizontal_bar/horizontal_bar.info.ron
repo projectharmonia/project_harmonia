@@ -1,9 +1,10 @@
 (
     general: (
-        name: "Sandbox",
+        name: "Horizontal bar",
+        asset: "horizontal_bar.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
     category: OutdoorActivities,
-    preview_translation: (0.0, -1.0, -5.0),
+    preview_translation: (0.0, -1.0, -5.2),
 )

@@ -1,6 +1,10 @@
 pub mod object_metadata;
 
-use std::{env, fs, marker::PhantomData, path::Path};
+use std::{
+    env, fs,
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 use bevy::{
@@ -53,7 +57,7 @@ impl<T> FromWorld for MetadataLoader<T> {
     }
 }
 
-const METADATA_EXTENSION: &str = "ron";
+const METADATA_EXTENSION: &str = "info.ron";
 
 impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
     type Asset = T;
@@ -64,11 +68,17 @@ impl<T: Asset + Metadata> AssetLoader for MetadataLoader<T> {
         &'a self,
         reader: &'a mut Reader<'_>,
         _settings: &'a Self::Settings,
-        _load_context: &'a mut LoadContext<'_>,
+        load_context: &'a mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = String::new();
         reader.read_to_string(&mut data).await?;
-        let metadata = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
+
+        let mut metadata = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
+        if let Some(dir) = load_context.path().parent() {
+            for path in metadata.iter_paths_mut() {
+                *path = dir.join(&*path);
+            }
+        }
 
         Ok(metadata)
     }
@@ -101,16 +111,19 @@ impl<T: Asset + Metadata> FromWorld for MetadataHandles<T> {
                 .into_iter()
                 .filter_map(|entry| entry.ok())
             {
-                if let Some(extension) = entry.path().extension() {
-                    if extension == METADATA_EXTENSION {
-                        let path = entry
-                            .path()
-                            .strip_prefix(&assets_dir)
-                            .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
+                // Use `ends_with` because extension consists of 2 dots.
+                if entry
+                    .path()
+                    .to_str()
+                    .is_some_and(|path| path.ends_with(METADATA_EXTENSION))
+                {
+                    let path = entry
+                        .path()
+                        .strip_prefix(&assets_dir)
+                        .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
 
-                        debug!("loading metadata for {path:?}");
-                        handles.push(asset_server.load(path.to_path_buf()));
-                    }
+                    debug!("loading metadata for {path:?}");
+                    handles.push(asset_server.load(path.to_path_buf()));
                 }
             }
         }
@@ -124,11 +137,72 @@ trait Metadata: Sized {
     const DIR: &'static str;
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self>;
+
+    /// Returns iterator over mutable references of all paths.
+    ///
+    /// Needed to convert from paths relative to the file into absolute paths.
+    fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf>;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct GeneralMetadata {
     pub name: String,
+    pub asset: PathBuf,
     pub author: String,
     pub license: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, path::Path};
+
+    use anyhow::{Context, Result};
+    use bevy::scene::ron;
+    use walkdir::WalkDir;
+
+    use super::*;
+    use crate::{
+        asset::metadata::METADATA_EXTENSION,
+        game_world::object::{
+            door::Door,
+            placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
+            wall_mount::WallMount,
+        },
+    };
+
+    #[test]
+    fn deserialization() -> Result<()> {
+        let mut registry = TypeRegistry::new();
+        registry.register::<Vec2>();
+        registry.register::<Vec<Vec2>>();
+        registry.register::<WallMount>();
+        registry.register::<WallSnap>();
+        registry.register::<SideSnap>();
+        registry.register::<Door>();
+
+        deserialize::<ObjectMetadata>(&registry)?;
+
+        Ok(())
+    }
+
+    fn deserialize<A: Metadata>(registry: &TypeRegistry) -> Result<()> {
+        let assets_dir = Path::new("../app/assets/base").join(A::DIR);
+        for entry in WalkDir::new(assets_dir)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
+        {
+            // Use `ends_with` because extension consists of 2 dots.
+            if entry
+                .path()
+                .to_str()
+                .is_some_and(|path| path.ends_with(METADATA_EXTENSION))
+            {
+                let data = fs::read_to_string(entry.path())?;
+                A::from_str(&data, ron::Options::default(), &registry)
+                    .with_context(|| format!("unable to parse {:?}", entry.path()))?;
+            }
+        }
+
+        Ok(())
+    }
 }
