@@ -105,7 +105,7 @@ impl DoorPlugin {
                     }
                 } else {
                     let animation_path =
-                        metadata::gltf_asset(&object_meta.0, GltfAssetLabel::Animation(0));
+                        metadata::gltf_path(&object_meta.0, GltfAssetLabel::Animation(0));
                     let (graph, animation_index) =
                         AnimationGraph::from_clip(asset_server.load(animation_path));
                     commands.entity(entity).insert(graphs.add(graph));

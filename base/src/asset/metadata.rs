@@ -127,7 +127,7 @@ trait Metadata: Sized {
 }
 
 /// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
-pub fn gltf_asset(metadata_path: &AssetPath, label: GltfAssetLabel) -> AssetPath<'static> {
+pub fn gltf_path(metadata_path: &AssetPath, label: GltfAssetLabel) -> AssetPath<'static> {
     label.from_asset(metadata_path.path().with_extension("gltf"))
 }
 
