@@ -83,9 +83,9 @@ struct MaterialData {
 }
 
 impl MaterialData {
-    /// Returns iterator over mutable references for all path that are [`Some`].
+    /// Returns iterator over mutable references of all paths that are [`Some`].
     ///
-    /// Needed to make paths relative.
+    /// Needed to convert from paths relative to the file into absolute paths.
     fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
         [
             self.base_color_texture.as_mut(),
@@ -116,7 +116,7 @@ impl Default for MaterialData {
 mod tests {
     use std::{fs, path::Path};
 
-    use anyhow::Result;
+    use anyhow::{Context, Result};
     use bevy::scene::ron;
     use walkdir::WalkDir;
 
@@ -134,7 +134,8 @@ mod tests {
                 if let Some(extension) = entry.path().extension() {
                     if extension == MATERIAL_EXTENSION {
                         let data = fs::read_to_string(entry.path())?;
-                        ron::from_str::<MaterialData>(&data)?;
+                        ron::from_str::<MaterialData>(&data)
+                            .with_context(|| format!("unable to parse {:?}", entry.path()))?;
                     }
                 }
             }
