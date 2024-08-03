@@ -5,7 +5,7 @@ use std::{env, fs, marker::PhantomData, path::Path};
 use anyhow::Result;
 use bevy::{
     app::PluginGroupBuilder,
-    asset::{io::Reader, AssetLoader, AssetPath, AsyncReadExt, LoadContext},
+    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     prelude::*,
     reflect::{TypeRegistry, TypeRegistryArc},
     scene::ron::{self, error::SpannedResult},
@@ -124,11 +124,6 @@ trait Metadata: Sized {
     const DIR: &'static str;
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self>;
-}
-
-/// Converts metadata path into the corresponding scene path loadable by [`AssetServer`].
-pub fn gltf_path(metadata_path: &AssetPath, label: GltfAssetLabel) -> AssetPath<'static> {
-    label.from_asset(metadata_path.path().with_extension("gltf"))
 }
 
 #[derive(Serialize, Deserialize)]

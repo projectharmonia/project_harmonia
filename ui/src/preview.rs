@@ -10,7 +10,7 @@ use bevy::{
     },
 };
 
-use project_harmonia_base::asset::metadata::{self, object_metadata::ObjectMetadata};
+use project_harmonia_base::asset::metadata::object_metadata::ObjectMetadata;
 
 pub(super) struct PreviewPlugin;
 
@@ -66,7 +66,8 @@ impl PreviewPlugin {
                     let metadata_path = asset_server
                         .get_path(id)
                         .expect("metadata should always come from file");
-                    let scene_path = metadata::gltf_path(&metadata_path, GltfAssetLabel::Scene(0));
+                    let scene_path = GltfAssetLabel::Scene(0)
+                        .from_asset(metadata_path.path().with_extension("gltf"));
                     debug!("generating preview for object '{scene_path:?}'");
 
                     let metadata = object_metadata.get(id).unwrap();

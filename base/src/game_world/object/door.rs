@@ -3,8 +3,7 @@ use itertools::Itertools;
 
 use super::ObjectMeta;
 use crate::{
-    asset::metadata, core::GameState, game_world::actor::Actor, math::segment::Segment,
-    navigation::NavPath,
+    core::GameState, game_world::actor::Actor, math::segment::Segment, navigation::NavPath,
 };
 
 pub(super) struct DoorPlugin;
@@ -104,8 +103,8 @@ impl DoorPlugin {
                         }
                     }
                 } else {
-                    let animation_path =
-                        metadata::gltf_path(&object_meta.0, GltfAssetLabel::Animation(0));
+                    let animation_path = GltfAssetLabel::Animation(0)
+                        .from_asset(object_meta.0.path().with_extension("gltf"));
                     let (graph, animation_index) =
                         AnimationGraph::from_clip(asset_server.load(animation_path));
                     commands.entity(entity).insert(graphs.add(graph));
