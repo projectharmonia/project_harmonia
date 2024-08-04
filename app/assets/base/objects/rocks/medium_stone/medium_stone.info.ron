@@ -1,10 +1,10 @@
 (
     general: (
         name: "Medium stone",
-        asset: "medium_stone.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "medium_stone.gltf",
     category: Rocks,
     preview_translation: (-0.20, -0.35, -2.1),
 )

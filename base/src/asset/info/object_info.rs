@@ -20,6 +20,7 @@ use super::{GeneralInfo, Info};
 #[derive(TypePath, Asset)]
 pub struct ObjectInfo {
     pub general: GeneralInfo,
+    pub scene: PathBuf,
     pub category: ObjectCategory,
     pub preview_translation: Vec3,
     pub components: Vec<Box<dyn Reflect>>,
@@ -35,7 +36,7 @@ impl Info for ObjectInfo {
     }
 
     fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        [&mut self.general.asset].into_iter()
+        [&mut self.scene].into_iter()
     }
 }
 
@@ -45,6 +46,7 @@ impl Info for ObjectInfo {
 #[serde(field_identifier, rename_all = "snake_case")]
 enum ObjectInfoField {
     General,
+    Scene,
     Category,
     PreviewTranslation,
     Components,
@@ -124,6 +126,7 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
 
     fn visit_map<V: MapAccess<'de>>(self, mut map: V) -> Result<Self::Value, V::Error> {
         let mut general = None;
+        let mut scene = None;
         let mut category = None;
         let mut preview_translation = None;
         let mut components = None;
@@ -136,6 +139,12 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
                         return Err(de::Error::duplicate_field(ObjectInfoField::General.into()));
                     }
                     general = Some(map.next_value()?);
+                }
+                ObjectInfoField::Scene => {
+                    if scene.is_some() {
+                        return Err(de::Error::duplicate_field(ObjectInfoField::General.into()));
+                    }
+                    scene = Some(map.next_value()?);
                 }
                 ObjectInfoField::Category => {
                     if category.is_some() {
@@ -183,6 +192,7 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
 
         let general =
             general.ok_or_else(|| de::Error::missing_field(ObjectInfoField::General.into()))?;
+        let scene = scene.ok_or_else(|| de::Error::missing_field(ObjectInfoField::Scene.into()))?;
         let category =
             category.ok_or_else(|| de::Error::missing_field(ObjectInfoField::Category.into()))?;
         let preview_translation = preview_translation
@@ -193,6 +203,7 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
 
         Ok(ObjectInfo {
             general,
+            scene,
             category,
             preview_translation,
             components,

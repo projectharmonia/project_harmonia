@@ -147,7 +147,6 @@ trait Info: Sized {
 #[derive(Serialize, Deserialize)]
 pub struct GeneralInfo {
     pub name: String,
-    pub asset: PathBuf,
     pub author: String,
     pub license: String,
 }

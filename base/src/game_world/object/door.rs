@@ -117,7 +117,7 @@ impl DoorPlugin {
                     let info = objects_info.get(&info_handle).unwrap();
 
                     let animation_path =
-                        GltfAssetLabel::Animation(0).from_asset(info.general.asset.clone());
+                        GltfAssetLabel::Animation(0).from_asset(info.scene.clone());
                     debug!("initializing open animation '{animation_path}' for `{object_entity}`");
 
                     let (graph, animation_index) =

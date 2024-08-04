@@ -75,7 +75,7 @@ impl ObjectPlugin {
                 .expect("info should be preloaded");
             let info = objects_info.get(&info_handle).unwrap();
 
-            let scene_path = GltfAssetLabel::Scene(0).from_asset(info.general.asset.clone());
+            let scene_path = GltfAssetLabel::Scene(0).from_asset(info.scene.clone());
             debug!("initializing object `{entity}` for '{scene_path}'");
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);

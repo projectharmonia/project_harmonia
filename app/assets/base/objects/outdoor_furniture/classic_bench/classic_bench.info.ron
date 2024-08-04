@@ -1,10 +1,10 @@
 (
     general: (
         name: "Classic bench",
-        asset: "classic_bench.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "classic_bench.gltf",
     category: OutdoorFurniture,
     preview_translation: (0.0, -0.4, -3.4),
 )

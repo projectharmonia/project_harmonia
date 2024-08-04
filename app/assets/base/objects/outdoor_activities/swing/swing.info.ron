@@ -1,10 +1,10 @@
 (
     general: (
         name: "Swing",
-        asset: "swing.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "swing.gltf",
     category: OutdoorActivities,
     preview_translation: (0.0, -0.9, -3.0),
 )

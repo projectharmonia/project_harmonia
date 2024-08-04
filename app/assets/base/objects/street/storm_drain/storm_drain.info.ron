@@ -1,10 +1,10 @@
 (
     general: (
         name: "Storm drain",
-        asset: "storm_drain.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "storm_drain.gltf",
     category: Street,
     preview_translation: (0.0, -0.5, -1.7),
 )

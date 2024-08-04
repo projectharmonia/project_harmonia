@@ -1,10 +1,10 @@
 (
     general: (
         name: "Retro TV",
-        asset: "retro_tv.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "retro_tv.gltf",
     category: Electronics,
     preview_translation: (0.0, -0.5, -1.9),
 )

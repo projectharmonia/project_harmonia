@@ -1,10 +1,10 @@
 (
     general: (
         name: "Crossing road sign",
-        asset: "crossing_road_sign.gltf",
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
+    scene: "crossing_road_sign.gltf",
     category: Street,
     preview_translation: (0.0, -1.4, -3.5),
 )
