@@ -105,7 +105,7 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        debug!("initializing placing object `{placing_entity}` for `{placing_object:?}`");
+        debug!("initializing placing object `{placing_object:?}` for `{placing_entity}`");
         let mut placing_entity = commands.entity(placing_entity);
         match placing_object {
             PlacingObject::Spawning(id) => {

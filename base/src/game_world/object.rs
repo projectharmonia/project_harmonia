@@ -76,7 +76,7 @@ impl ObjectPlugin {
             let info = objects_info.get(&info_handle).unwrap();
 
             let scene_path = GltfAssetLabel::Scene(0).from_asset(info.scene.clone());
-            debug!("initializing object `{entity}` for '{scene_path}'");
+            debug!("initializing object '{}' for `{entity}`", info_path.0);
 
             let scene_handle: Handle<Scene> = asset_server.load(scene_path);
             let mut entity = commands.entity(entity);
