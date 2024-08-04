@@ -165,4 +165,4 @@ impl CreatingWallPlugin {
 pub struct CreatingWall;
 
 #[derive(Component)]
-pub(crate) struct UnconfirmedWall;
+struct UnconfirmedWall;
