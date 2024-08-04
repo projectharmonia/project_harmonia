@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "vintage_counter_1.gltf",
+    scene: "vintage_counter_1.gltf#Scene0",
     category: Furniture,
     preview_translation: (0.0, -0.40, -1.5),
     components: [{ "SideSnap": (half_width: 0.4) }]

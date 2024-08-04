@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "vintage_table.gltf",
+    scene: "vintage_table.gltf#Scene0",
     category: Furniture,
     preview_translation: (0.0, -0.40, -1.5),
 )

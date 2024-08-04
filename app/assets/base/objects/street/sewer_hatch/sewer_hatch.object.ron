@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "sewer_hatch.gltf",
+    scene: "sewer_hatch.gltf#Scene0",
     category: Street,
     preview_translation: (0.0, -0.5, -1.6),
 )

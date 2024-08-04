@@ -65,10 +65,9 @@ impl PreviewPlugin {
                 Preview::Object(id) => {
                     let info = objects_info.get(id).expect("info should be preloaded");
 
-                    let scene_path = GltfAssetLabel::Scene(0).from_asset(info.scene.clone());
-                    debug!("generating preview for object '{scene_path:?}'");
+                    debug!("generating preview for object '{:?}'", info.scene);
 
-                    let scene_handle = asset_server.load(scene_path);
+                    let scene_handle = asset_server.load(info.scene.clone());
 
                     (info.preview_translation, scene_handle)
                 }

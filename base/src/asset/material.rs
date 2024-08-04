@@ -1,7 +1,5 @@
-use std::path::PathBuf;
-
 use bevy::{
-    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
+    asset::{io::Reader, AssetLoader, AssetPath, AsyncReadExt, LoadContext},
     prelude::*,
     scene::ron,
 };
@@ -36,8 +34,16 @@ impl AssetLoader for MaterialLoader {
 
         let mut material_data: MaterialData = ron::from_str(&data)?;
         if let Some(dir) = load_context.path().parent() {
-            for path in material_data.iter_paths_mut() {
-                *path = dir.join(&*path);
+            for asset_path in [
+                material_data.base_color_texture.as_mut(),
+                material_data.metallic_roughness_texture.as_mut(),
+                material_data.normal_map_texture.as_mut(),
+                material_data.occlusion_texture.as_mut(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                super::change_parent_dir(asset_path, dir);
             }
         }
 
@@ -74,28 +80,12 @@ impl AssetLoader for MaterialLoader {
 
 #[derive(Deserialize)]
 struct MaterialData {
-    base_color_texture: Option<PathBuf>,
-    metallic_roughness_texture: Option<PathBuf>,
-    normal_map_texture: Option<PathBuf>,
-    occlusion_texture: Option<PathBuf>,
+    base_color_texture: Option<AssetPath<'static>>,
+    metallic_roughness_texture: Option<AssetPath<'static>>,
+    normal_map_texture: Option<AssetPath<'static>>,
+    occlusion_texture: Option<AssetPath<'static>>,
     perceptual_roughness: f32,
     reflectance: f32,
-}
-
-impl MaterialData {
-    /// Returns iterator over mutable references of all paths that are [`Some`].
-    ///
-    /// Needed to convert from paths relative to the file into absolute paths.
-    fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        [
-            self.base_color_texture.as_mut(),
-            self.metallic_roughness_texture.as_mut(),
-            self.normal_map_texture.as_mut(),
-            self.occlusion_texture.as_mut(),
-        ]
-        .into_iter()
-        .flatten()
-    }
 }
 
 impl Default for MaterialData {

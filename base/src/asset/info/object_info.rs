@@ -1,10 +1,11 @@
 use std::{
     any,
     fmt::{self, Formatter},
-    path::PathBuf,
+    path::Path,
 };
 
 use bevy::{
+    asset::AssetPath,
     prelude::*,
     reflect::{serde::TypedReflectDeserializer, TypeRegistry},
     scene::ron::{self, error::SpannedResult},
@@ -15,12 +16,13 @@ use serde::{
 };
 use strum::{Display, IntoStaticStr, VariantNames};
 
-use super::{GeneralInfo, Info};
+use super::{GeneralInfo, Info, ReflectMapPaths};
+use crate::asset;
 
 #[derive(TypePath, Asset)]
 pub struct ObjectInfo {
     pub general: GeneralInfo,
-    pub scene: PathBuf,
+    pub scene: AssetPath<'static>,
     pub category: ObjectCategory,
     pub preview_translation: Vec3,
     pub components: Vec<Box<dyn Reflect>>,
@@ -31,12 +33,18 @@ pub struct ObjectInfo {
 impl Info for ObjectInfo {
     const EXTENSION: &'static str = "object.ron";
 
-    fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self> {
-        options.from_str_seed(data, ObjectInfoDeserializer { registry })
-    }
+    fn from_str(
+        data: &str,
+        options: ron::Options,
+        registry: &TypeRegistry,
+        dir: Option<&Path>,
+    ) -> SpannedResult<Self> {
+        let mut info = options.from_str_seed(data, ObjectInfoDeserializer { registry, dir })?;
+        if let Some(dir) = dir {
+            asset::change_parent_dir(&mut info.scene, dir);
+        }
 
-    fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        [&mut self.scene].into_iter()
+        Ok(info)
     }
 }
 
@@ -103,6 +111,7 @@ impl ObjectCategory {
 
 pub(super) struct ObjectInfoDeserializer<'a> {
     registry: &'a TypeRegistry,
+    dir: Option<&'a Path>,
 }
 
 impl<'de> DeserializeSeed<'de> for ObjectInfoDeserializer<'_> {
@@ -166,8 +175,9 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
                             ObjectInfoField::Components.into(),
                         ));
                     }
-                    components =
-                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
+                    components = Some(
+                        map.next_value_seed(ComponentsDeserializer::new(self.registry, self.dir))?,
+                    );
                 }
                 ObjectInfoField::PlaceComponents => {
                     if place_components.is_some() {
@@ -175,8 +185,9 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
                             ObjectInfoField::PlaceComponents.into(),
                         ));
                     }
-                    place_components =
-                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
+                    place_components = Some(
+                        map.next_value_seed(ComponentsDeserializer::new(self.registry, self.dir))?,
+                    );
                 }
                 ObjectInfoField::SpawnComponents => {
                     if spawn_components.is_some() {
@@ -184,8 +195,9 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
                             ObjectInfoField::SpawnComponents.into(),
                         ));
                     }
-                    spawn_components =
-                        Some(map.next_value_seed(ComponentsDeserializer::new(self.registry))?);
+                    spawn_components = Some(
+                        map.next_value_seed(ComponentsDeserializer::new(self.registry, self.dir))?,
+                    );
                 }
             }
         }
@@ -215,11 +227,12 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
 
 struct ComponentsDeserializer<'a> {
     registry: &'a TypeRegistry,
+    dir: Option<&'a Path>,
 }
 
 impl<'a> ComponentsDeserializer<'a> {
-    fn new(registry: &'a TypeRegistry) -> Self {
-        Self { registry }
+    fn new(registry: &'a TypeRegistry, dir: Option<&'a Path>) -> Self {
+        Self { registry, dir }
     }
 }
 
@@ -241,7 +254,7 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
         let mut components = Vec::with_capacity(seq.size_hint().unwrap_or_default());
         while let Some(component) =
-            seq.next_element_seed(ShortReflectDeserializer::new(self.registry))?
+            seq.next_element_seed(ShortReflectDeserializer::new(self.registry, self.dir))?
         {
             components.push(component);
         }
@@ -253,11 +266,12 @@ impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
 /// Like [`UntypedReflectDeserializer`], but searches for registration by short name.
 pub(super) struct ShortReflectDeserializer<'a> {
     registry: &'a TypeRegistry,
+    dir: Option<&'a Path>,
 }
 
 impl<'a> ShortReflectDeserializer<'a> {
-    fn new(registry: &'a TypeRegistry) -> Self {
-        Self { registry }
+    fn new(registry: &'a TypeRegistry, dir: Option<&'a Path>) -> Self {
+        Self { registry, dir }
     }
 }
 
@@ -283,9 +297,24 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
         let registration = self
             .registry
             .get_with_short_type_path(&type_path)
-            .ok_or_else(|| de::Error::custom(format!("{type_path} is not registered")))?;
-        let reflect =
+            .ok_or_else(|| de::Error::custom(format!("`{type_path}` is not registered")))?;
+        let mut reflect =
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
+
+        if let Some(dir) = self.dir {
+            if let Some(reflect_map) = self
+                .registry
+                .get_type_data::<ReflectMapPaths>(registration.type_id())
+            {
+                let from_reflect = self
+                    .registry
+                    .get_type_data::<ReflectFromReflect>(registration.type_id())
+                    .unwrap_or_else(|| panic!("`{type_path}` should have reflected `FromReflect`"));
+
+                reflect = from_reflect.from_reflect(&*reflect).unwrap();
+                reflect_map.get_mut(&mut *reflect).unwrap().map_paths(dir);
+            }
+        }
 
         Ok(reflect)
     }
@@ -294,10 +323,10 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
         let registration = self
             .registry
             .get_with_short_type_path(v)
-            .ok_or_else(|| de::Error::custom(format!("{v} is not registered")))?;
+            .ok_or_else(|| de::Error::custom(format!("`{v}` is not registered")))?;
         let reflect_default = registration
             .data::<ReflectDefault>()
-            .ok_or_else(|| de::Error::custom(format!("{v} doesn't have reflect(Default)")))?;
+            .ok_or_else(|| de::Error::custom(format!("`{v}` doesn't have reflect(Default)")))?;
 
         Ok(reflect_default.default())
     }

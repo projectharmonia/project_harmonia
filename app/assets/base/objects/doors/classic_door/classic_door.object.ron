@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "classic_door.gltf",
+    scene: "classic_door.gltf#Scene0",
     category: Doors,
     preview_translation: (0.0, -1.0, -2.9),
     components: [
@@ -21,5 +21,5 @@
         },
     ],
     place_components: [{ "WallSnap": Inside }],
-    spawn_components: [{ "Door": (half_width: 0.4, trigger_distance: 2.5) }]
+    spawn_components: [{ "Door": (half_width: 0.4, trigger_distance: 2.5, open_animation: "classic_door.gltf#Animation0") }]
 )

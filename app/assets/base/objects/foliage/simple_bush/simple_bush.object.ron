@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "simple_bush.gltf",
+    scene: "simple_bush.gltf#Scene0",
     category: Foliage,
     preview_translation: (0.0, -0.6, -1.9),
 )

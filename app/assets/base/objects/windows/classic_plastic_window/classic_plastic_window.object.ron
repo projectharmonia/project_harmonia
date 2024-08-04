@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "classic_plastic_window.gltf",
+    scene: "classic_plastic_window.gltf#Scene0",
     category: Windows,
     preview_translation: (0.0, -1.50, -2.9),
     components: [

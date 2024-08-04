@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "childrens_ladder.gltf",
+    scene: "childrens_ladder.gltf#Scene0",
     category: OutdoorActivities,
     preview_translation: (0.0, -0.5, -4.4),
 )

@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "small_stone.gltf",
+    scene: "small_stone.gltf#Scene0",
     category: Rocks,
     preview_translation: (0.0, -0.25, -1.3),
 )

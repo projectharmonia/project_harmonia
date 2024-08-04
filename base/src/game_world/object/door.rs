@@ -1,10 +1,17 @@
-use bevy::prelude::*;
+use std::path::Path;
+
+use bevy::{asset::AssetPath, prelude::*};
 use itertools::Itertools;
 
-use super::ObjectInfoPath;
 use crate::{
-    asset::info::object_info::ObjectInfo, core::GameState, game_world::actor::Actor,
-    math::segment::Segment, navigation::NavPath,
+    asset::{
+        self,
+        info::{MapPaths, ReflectMapPaths},
+    },
+    core::GameState,
+    game_world::actor::Actor,
+    math::segment::Segment,
+    navigation::NavPath,
 };
 
 pub(super) struct DoorPlugin;
@@ -68,19 +75,12 @@ impl DoorPlugin {
         mut commands: Commands,
         mut animation_players: Query<(Entity, &mut AnimationPlayer)>,
         asset_server: Res<AssetServer>,
-        objects_info: Res<Assets<ObjectInfo>>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
         actors: Query<&GlobalTransform>,
-        mut objects: Query<(
-            Entity,
-            &GlobalTransform,
-            &ObjectInfoPath,
-            &Door,
-            &mut DoorState,
-        )>,
+        mut objects: Query<(Entity, &GlobalTransform, &Door, &mut DoorState)>,
     ) {
-        for (object_entity, object_transform, info_path, door, mut door_state) in &mut objects {
+        for (object_entity, object_transform, door, mut door_state) in &mut objects {
             let object_translation = object_transform.translation().xz();
             let should_open = door_state
                 .passing_actors
@@ -111,17 +111,13 @@ impl DoorPlugin {
                         }
                     }
                 } else {
-                    let info_handle = asset_server
-                        .get_handle(&info_path.0)
-                        .expect("info should be preloaded");
-                    let info = objects_info.get(&info_handle).unwrap();
-
-                    let animation_path =
-                        GltfAssetLabel::Animation(0).from_asset(info.scene.clone());
-                    debug!("initializing open animation '{animation_path}' for `{object_entity}`");
+                    debug!(
+                        "initializing open animation '{}' for `{object_entity}`",
+                        door.open_animation
+                    );
 
                     let (graph, animation_index) =
-                        AnimationGraph::from_clip(asset_server.load(animation_path));
+                        AnimationGraph::from_clip(asset_server.load(door.open_animation.clone()));
                     commands.entity(entity).insert(graphs.add(graph));
                     door_state.animation_index = Some(animation_index);
                     animation_player.play(animation_index);
@@ -151,7 +147,7 @@ impl DoorPlugin {
 ///
 /// Will trigger open animation when an actor passes through.
 #[derive(Component, Reflect, Default)]
-#[reflect(Component)]
+#[reflect(Component, MapPaths)]
 pub(crate) struct Door {
     half_width: f32,
     /// Distance on which animation will be triggered.
@@ -159,6 +155,13 @@ pub(crate) struct Door {
     /// Triggered only be actors that going to pass through.
     /// See also [`DoorState`]
     trigger_distance: f32,
+    open_animation: AssetPath<'static>,
+}
+
+impl MapPaths for Door {
+    fn map_paths(&mut self, dir: &Path) {
+        asset::change_parent_dir(&mut self.open_animation, dir);
+    }
 }
 
 /// Stores calculated information about the door.

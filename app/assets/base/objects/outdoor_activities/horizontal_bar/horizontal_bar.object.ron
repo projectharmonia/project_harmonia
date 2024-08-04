@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "horizontal_bar.gltf",
+    scene: "horizontal_bar.gltf#Scene0",
     category: OutdoorActivities,
     preview_translation: (0.0, -1.0, -5.2),
 )

@@ -4,7 +4,7 @@
         license: "CC BY-SA 4.0",
         author: "Yara Gardaria",
     ),
-    scene: "retro_tv.gltf",
+    scene: "retro_tv.gltf#Scene0",
     category: Electronics,
     preview_translation: (0.0, -0.5, -1.9),
 )

@@ -1,10 +1,6 @@
 pub mod object_info;
 
-use std::{
-    env,
-    marker::PhantomData,
-    path::{Path, PathBuf},
-};
+use std::{env, marker::PhantomData, path::Path};
 
 use anyhow::Result;
 use bevy::{
@@ -71,12 +67,12 @@ impl<A: Asset + Info> AssetLoader for InfoLoader<A> {
         let mut data = String::new();
         reader.read_to_string(&mut data).await?;
 
-        let mut info = A::from_str(&data, ron::Options::default(), &self.registry.read())?;
-        if let Some(dir) = load_context.path().parent() {
-            for path in info.iter_paths_mut() {
-                *path = dir.join(&*path);
-            }
-        }
+        let info = A::from_str(
+            &data,
+            ron::Options::default(),
+            &self.registry.read(),
+            load_context.path().parent(),
+        )?;
 
         Ok(info)
     }
@@ -123,15 +119,20 @@ impl<A: Asset + Info> FromWorld for InfoHandles<A> {
 }
 
 trait Info: Sized {
-    /// Directory from which files should be preloaded.
+    /// Extension without the first dot.
+    ///
+    /// Example: `object.ron`.
     const EXTENSION: &'static str;
 
-    fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self>;
-
-    /// Returns iterator over mutable references of all paths.
+    /// Deserializes itself from a string.
     ///
-    /// Needed to convert from paths relative to the file into absolute paths.
-    fn iter_paths_mut(&mut self) -> impl Iterator<Item = &mut PathBuf>;
+    /// Having a dedicated method is needed to support reflection.
+    fn from_str(
+        data: &str,
+        options: ron::Options,
+        registry: &TypeRegistry,
+        dir: Option<&Path>,
+    ) -> SpannedResult<Self>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -139,6 +140,13 @@ pub struct GeneralInfo {
     pub name: String,
     pub author: String,
     pub license: String,
+}
+
+/// Maps paths inside reflected components.
+#[reflect_trait]
+pub(crate) trait MapPaths: Reflect {
+    /// Converts all paths relative to the file into absolute paths.
+    fn map_paths(&mut self, dir: &Path);
 }
 
 #[cfg(test)]
@@ -183,8 +191,13 @@ mod tests {
                 .is_some_and(|path| path.ends_with(A::EXTENSION))
             {
                 let data = fs::read_to_string(entry.path())?;
-                A::from_str(&data, ron::Options::default(), registry)
-                    .with_context(|| format!("unable to parse {:?}", entry.path()))?;
+                A::from_str(
+                    &data,
+                    ron::Options::default(),
+                    registry,
+                    entry.path().parent(),
+                )
+                .with_context(|| format!("unable to parse {:?}", entry.path()))?;
             }
         }
 
