@@ -99,15 +99,16 @@ impl DoorPlugin {
             {
                 let speed = if should_open { 1.0 } else { -1.0 };
                 if let Some(animation_index) = door_state.animation_index {
-                    if animation_player.is_playing_animation(animation_index) {
-                        // If the animation in a finished state, it should be manually triggered again.
-                        let active_animation = animation_player
-                            .animation_mut(animation_index)
-                            .expect("open animation should be always active");
-                        active_animation.replay();
+                    let animation = animation_player
+                        .animation_mut(animation_index)
+                        .expect("open animation should be added");
+                    animation.set_speed(speed);
+                    if animation.is_finished() {
+                        animation.replay();
                         if !should_open {
                             // HACK: seek to the end by passing a big value.
-                            active_animation.seek_to(20.0);
+                            // Necessary to play backwards.
+                            animation.seek_to(20.0);
                         }
                     }
                 } else {
@@ -120,11 +121,10 @@ impl DoorPlugin {
                         AnimationGraph::from_clip(asset_server.load(door.open_animation.clone()));
                     commands.entity(entity).insert(graphs.add(graph));
                     door_state.animation_index = Some(animation_index);
-                    animation_player.play(animation_index);
+                    animation_player.play(animation_index).set_speed(speed);
                 }
 
                 debug!("playing open animation with speed {speed}");
-                animation_player.adjust_speeds(speed);
                 door_state.opened = should_open;
             }
         }
