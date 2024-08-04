@@ -158,7 +158,7 @@ impl ObjectsNodePlugin {
     }
 }
 
-pub(super) fn setup_objects_node(
+pub(super) fn setup(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,

@@ -1,10 +1,13 @@
+mod lots_node;
+
 use bevy::prelude::*;
+use lots_node::LotsNodePlugin;
 use strum::IntoEnumIterator;
 
 use crate::hud::objects_node;
 use project_harmonia_base::{
     asset::info::object_info::{ObjectCategory, ObjectInfo},
-    game_world::{building::lot::LotTool, city::CityMode, WorldState},
+    game_world::{city::CityMode, WorldState},
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
@@ -15,10 +18,11 @@ pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(WorldState::City), Self::setup)
+        app.add_plugins(LotsNodePlugin)
+            .add_systems(OnEnter(WorldState::City), Self::setup)
             .add_systems(
                 Update,
-                (Self::set_city_mode, Self::set_lot_tool).run_if(in_state(WorldState::City)),
+                Self::set_city_mode.run_if(in_state(WorldState::City)),
             );
     }
 }
@@ -71,7 +75,7 @@ impl CityHudPlugin {
                         })
                         .with_children(|parent| match mode {
                             CityMode::Objects => {
-                                objects_node::setup_objects_node(
+                                objects_node::setup(
                                     parent,
                                     &mut tab_commands,
                                     &theme,
@@ -79,7 +83,7 @@ impl CityHudPlugin {
                                     ObjectCategory::CITY_CATEGORIES,
                                 );
                             }
-                            CityMode::Lots => setup_lots_node(parent, &theme),
+                            CityMode::Lots => lots_node::setup(parent, &theme),
                         })
                         .id();
 
@@ -107,37 +111,4 @@ impl CityHudPlugin {
             }
         }
     }
-
-    fn set_lot_tool(
-        mut lot_tool: ResMut<NextState<LotTool>>,
-        buttons: Query<(Ref<Toggled>, &LotTool), Changed<Toggled>>,
-    ) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 && !toggled.is_added() {
-                info!("changing lot tool to `{mode:?}`");
-                lot_tool.set(mode);
-            }
-        }
-    }
-}
-
-fn setup_lots_node(parent: &mut ChildBuilder, theme: &Theme) {
-    parent
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with_children(|parent| {
-            for tool in LotTool::iter() {
-                parent.spawn((
-                    tool,
-                    ExclusiveButton,
-                    Toggled(tool == Default::default()),
-                    TextButtonBundle::symbol(theme, tool.glyph()),
-                ));
-            }
-        });
 }
