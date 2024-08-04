@@ -1,7 +1,7 @@
 pub mod object_info;
 
 use std::{
-    env, fs,
+    env,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -27,9 +27,9 @@ impl PluginGroup for InfoPlugins {
     }
 }
 
-struct InfoPlugin<T>(PhantomData<T>);
+struct InfoPlugin<A>(PhantomData<A>);
 
-impl<T> Default for InfoPlugin<T> {
+impl<A> Default for InfoPlugin<A> {
     fn default() -> Self {
         Self(PhantomData)
     }
@@ -43,12 +43,12 @@ impl<T: Asset + Info> Plugin for InfoPlugin<T> {
     }
 }
 
-pub struct InfoLoader<T> {
+pub struct InfoLoader<A> {
     registry: TypeRegistryArc,
-    marker: PhantomData<T>,
+    marker: PhantomData<A>,
 }
 
-impl<T> FromWorld for InfoLoader<T> {
+impl<A> FromWorld for InfoLoader<A> {
     fn from_world(world: &mut World) -> Self {
         Self {
             registry: world.resource::<AppTypeRegistry>().0.clone(),
@@ -57,10 +57,8 @@ impl<T> FromWorld for InfoLoader<T> {
     }
 }
 
-const INFO_EXTENSION: &str = "info.ron";
-
-impl<T: Asset + Info> AssetLoader for InfoLoader<T> {
-    type Asset = T;
+impl<A: Asset + Info> AssetLoader for InfoLoader<A> {
+    type Asset = A;
     type Settings = ();
     type Error = anyhow::Error;
 
@@ -73,7 +71,7 @@ impl<T: Asset + Info> AssetLoader for InfoLoader<T> {
         let mut data = String::new();
         reader.read_to_string(&mut data).await?;
 
-        let mut info = T::from_str(&data, ron::Options::default(), &self.registry.read())?;
+        let mut info = A::from_str(&data, ron::Options::default(), &self.registry.read())?;
         if let Some(dir) = load_context.path().parent() {
             for path in info.iter_paths_mut() {
                 *path = dir.join(&*path);
@@ -84,47 +82,39 @@ impl<T: Asset + Info> AssetLoader for InfoLoader<T> {
     }
 
     fn extensions(&self) -> &[&str] {
-        &[INFO_EXTENSION]
+        &[A::EXTENSION]
     }
 }
 
 /// Preloads and stores info handles.
 #[derive(Resource)]
 #[allow(dead_code)]
-struct InfoHandles<T: Asset>(Vec<Handle<T>>);
+struct InfoHandles<A: Asset>(Vec<Handle<A>>);
 
-impl<T: Asset + Info> FromWorld for InfoHandles<T> {
+impl<A: Asset + Info> FromWorld for InfoHandles<A> {
     fn from_world(world: &mut World) -> Self {
         let assets_dir =
             Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_default()).join("assets");
 
         let mut handles = Vec::new();
         let asset_server = world.resource::<AssetServer>();
-        for mut dir in fs::read_dir(&assets_dir)
-            .expect("unable to read assets")
-            .flat_map(|entry| entry.ok())
-            .map(|entry| entry.path())
+        for entry in WalkDir::new(&assets_dir)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
         {
-            dir.push(T::DIR);
-
-            for entry in WalkDir::new(&dir)
-                .into_iter()
-                .filter_map(|entry| entry.ok())
+            // Use `ends_with` because extension consists of 2 dots.
+            if entry
+                .path()
+                .to_str()
+                .is_some_and(|path| path.ends_with(A::EXTENSION))
             {
-                // Use `ends_with` because extension consists of 2 dots.
-                if entry
+                let path = entry
                     .path()
-                    .to_str()
-                    .is_some_and(|path| path.ends_with(INFO_EXTENSION))
-                {
-                    let path = entry
-                        .path()
-                        .strip_prefix(&assets_dir)
-                        .unwrap_or_else(|e| panic!("entries should start with {dir:?}: {e}"));
+                    .strip_prefix(&assets_dir)
+                    .unwrap_or_else(|e| panic!("entries should start with {assets_dir:?}: {e}"));
 
-                    debug!("loading info for {path:?}");
-                    handles.push(asset_server.load(path.to_path_buf()));
-                }
+                debug!("loading info for {path:?}");
+                handles.push(asset_server.load(path.to_path_buf()));
             }
         }
 
@@ -134,7 +124,7 @@ impl<T: Asset + Info> FromWorld for InfoHandles<T> {
 
 trait Info: Sized {
     /// Directory from which files should be preloaded.
-    const DIR: &'static str;
+    const EXTENSION: &'static str;
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self>;
 
@@ -153,20 +143,17 @@ pub struct GeneralInfo {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::Path};
+    use std::fs;
 
     use anyhow::{Context, Result};
     use bevy::scene::ron;
     use walkdir::WalkDir;
 
     use super::*;
-    use crate::{
-        asset::info::INFO_EXTENSION,
-        game_world::object::{
-            door::Door,
-            placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
-            wall_mount::WallMount,
-        },
+    use crate::game_world::object::{
+        door::Door,
+        placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
+        wall_mount::WallMount,
     };
 
     #[test]
@@ -185,8 +172,7 @@ mod tests {
     }
 
     fn deserialize<A: Info>(registry: &TypeRegistry) -> Result<()> {
-        let assets_dir = Path::new("../app/assets/base").join(A::DIR);
-        for entry in WalkDir::new(assets_dir)
+        for entry in WalkDir::new("../app/assets/base")
             .into_iter()
             .filter_map(|entry| entry.ok())
         {
@@ -194,7 +180,7 @@ mod tests {
             if entry
                 .path()
                 .to_str()
-                .is_some_and(|path| path.ends_with(INFO_EXTENSION))
+                .is_some_and(|path| path.ends_with(A::EXTENSION))
             {
                 let data = fs::read_to_string(entry.path())?;
                 A::from_str(&data, ron::Options::default(), registry)

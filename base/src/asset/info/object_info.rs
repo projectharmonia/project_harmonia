@@ -29,7 +29,7 @@ pub struct ObjectInfo {
 }
 
 impl Info for ObjectInfo {
-    const DIR: &'static str = "objects";
+    const EXTENSION: &'static str = "object.ron";
 
     fn from_str(data: &str, options: ron::Options, registry: &TypeRegistry) -> SpannedResult<Self> {
         options.from_str_seed(data, ObjectInfoDeserializer { registry })
