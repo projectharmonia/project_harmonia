@@ -4,11 +4,14 @@ use bevy::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use project_harmonia_base::game_world::{
-    actor::SelectedActor,
-    city::{ActiveCity, City, CityBundle},
-    family::{Family, FamilyDelete, FamilyMembers},
-    GameWorld, WorldState,
+use project_harmonia_base::{
+    core::GameState,
+    game_world::{
+        actor::SelectedActor,
+        city::{ActiveCity, City, CityBundle},
+        family::{Family, FamilyDelete, FamilyMembers},
+        GameWorld, WorldState,
+    },
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
@@ -30,6 +33,7 @@ impl Plugin for WorldMenuPlugin {
                 (
                     Self::handle_family_clicks,
                     Self::handle_city_clicks,
+                    Self::handle_main_menu_clicks,
                     Self::handle_create_clicks,
                     Self::handle_city_dialog_clicks,
                 )
@@ -136,6 +140,17 @@ impl WorldMenuPlugin {
                         ..Default::default()
                     })
                     .with_children(|parent| {
+                        parent.spawn((
+                            MainMenuButton,
+                            TextButtonBundle::normal(&theme, "Main menu"),
+                        ));
+                        parent.spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        });
                         parent.spawn((
                             CreateEntityButton,
                             TextButtonBundle::normal(&theme, "Create new"),
@@ -247,6 +262,16 @@ impl WorldMenuPlugin {
                     commands.entity(world_entity.0).despawn();
                 }
             }
+        }
+    }
+
+    fn handle_main_menu_clicks(
+        mut click_events: EventReader<Click>,
+        mut game_state: ResMut<NextState<GameState>>,
+        buttons: Query<(), With<MainMenuButton>>,
+    ) {
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            game_state.set(GameState::Menu);
         }
     }
 
@@ -436,6 +461,9 @@ struct WorldEntityNode(Entity);
 /// Button that creates family or city depending on the selected [`WorldTab`].
 #[derive(Component)]
 struct CreateEntityButton;
+
+#[derive(Component)]
+struct MainMenuButton;
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum CityDialogButton {
