@@ -14,7 +14,7 @@ impl Plugin for CreatingLotPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            Self::end_creating
+            Self::end_creation
                 .after(ClientSet::Receive)
                 .run_if(in_state(LotTool::Create))
                 .run_if(on_event::<LotEventConfirmed>()),
@@ -22,12 +22,12 @@ impl Plugin for CreatingLotPlugin {
         .add_systems(
             Update,
             (
-                Self::start_creating
+                Self::start_creation
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<CreatingLot>)),
                 Self::set_vertex_position,
                 Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
+                Self::end_creation.run_if(action_just_pressed(Action::Cancel)),
             )
                 .run_if(in_state(LotTool::Create)),
         );
@@ -35,7 +35,7 @@ impl Plugin for CreatingLotPlugin {
 }
 
 impl CreatingLotPlugin {
-    fn start_creating(
+    fn start_creation(
         camera_caster: CameraCaster,
         mut commands: Commands,
         cities: Query<Entity, With<ActiveCity>>,
@@ -100,7 +100,7 @@ impl CreatingLotPlugin {
         }
     }
 
-    fn end_creating(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
+    fn end_creation(mut commands: Commands, creating_lots: Query<Entity, With<CreatingLot>>) {
         if let Ok(entity) = creating_lots.get_single() {
             info!("ending lot creation");
             commands.entity(entity).despawn();

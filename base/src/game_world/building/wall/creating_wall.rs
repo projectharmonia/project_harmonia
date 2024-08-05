@@ -24,7 +24,7 @@ impl Plugin for CreatingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            Self::end_creating
+            Self::end_creation
                 .after(ClientSet::Receive)
                 .run_if(in_state(BuildingMode::Walls))
                 .run_if(on_event::<WallCreateConfirmed>()),
@@ -32,13 +32,13 @@ impl Plugin for CreatingWallPlugin {
         .add_systems(
             Update,
             (
-                Self::start_creating
+                Self::start_creation
                     .run_if(action_just_pressed(Action::Confirm))
                     .run_if(not(any_with_component::<CreatingWall>)),
                 Self::update_end,
                 Self::update_material,
                 Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                Self::end_creating.run_if(action_just_pressed(Action::Cancel)),
+                Self::end_creation.run_if(action_just_pressed(Action::Cancel)),
             )
                 .run_if(in_state(BuildingMode::Walls)),
         );
@@ -48,7 +48,7 @@ impl Plugin for CreatingWallPlugin {
 const SNAP_DELTA: f32 = 0.5;
 
 impl CreatingWallPlugin {
-    fn start_creating(
+    fn start_creation(
         camera_caster: CameraCaster,
         mut commands: Commands,
         walls: Query<&SplineSegment, With<Wall>>,
@@ -153,7 +153,7 @@ impl CreatingWallPlugin {
         }
     }
 
-    fn end_creating(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
+    fn end_creation(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
         if let Ok(entity) = walls.get_single() {
             debug!("despawning confirmed wall");
             commands.entity(entity).despawn();
