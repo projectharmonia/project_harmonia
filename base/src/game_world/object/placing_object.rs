@@ -22,7 +22,7 @@ use crate::{
         city::CityMode,
         family::BuildingMode,
         hover::{HoverEnabled, Hovered},
-        object::{ObjectBuy, ObjectEventConfirmed, ObjectInfoPath, ObjectMove, ObjectSell},
+        object::{Object, ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectSell},
         player_camera::CameraCaster,
     },
     settings::Action,
@@ -80,7 +80,7 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn pick(
         mut commands: Commands,
-        hovered: Query<(Entity, &Parent), (With<ObjectInfoPath>, With<Hovered>)>,
+        hovered: Query<(Entity, &Parent), (With<Object>, With<Hovered>)>,
     ) {
         if let Ok((object_entity, parent)) = hovered.get_single() {
             info!("picking object `{object_entity}`");
@@ -98,8 +98,8 @@ impl PlacingObjectPlugin {
         asset_server: Res<AssetServer>,
         city_mode: Option<Res<State<CityMode>>>,
         building_mode: Option<Res<State<BuildingMode>>>,
-        placing_objects: Query<(Entity, &PlacingObject), Without<ObjectInfoPath>>,
-        objects: Query<(&Position, &Rotation, &ObjectInfoPath)>,
+        placing_objects: Query<(Entity, &PlacingObject), Without<Object>>,
+        objects: Query<(&Position, &Rotation, &Object)>,
     ) {
         let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
             return;
@@ -135,7 +135,7 @@ impl PlacingObjectPlugin {
                     .unwrap_or(*position);
 
                 placing_entity.insert(PlacingInitBundle::moving(
-                    info_path.clone(),
+                    info_path.0.clone(),
                     CursorOffset(offset),
                     position,
                     rotation,
@@ -332,7 +332,7 @@ pub enum PlacingObject {
 /// Additional components that needed for [`PlacingObject`].
 #[derive(Bundle)]
 struct PlacingInitBundle {
-    info_path: ObjectInfoPath,
+    object: Object,
     cursor_offset: CursorOffset,
     position: Position,
     rotation: Rotation,
@@ -343,7 +343,7 @@ struct PlacingInitBundle {
 impl PlacingInitBundle {
     fn spawning(info_path: AssetPath<'static>, angle: f32) -> Self {
         Self {
-            info_path: ObjectInfoPath(info_path.into_owned()),
+            object: Object(info_path),
             cursor_offset: Default::default(),
             position: Default::default(),
             rotation: Rotation(Quat::from_rotation_y(angle)),
@@ -353,13 +353,13 @@ impl PlacingInitBundle {
     }
 
     fn moving(
-        info_path: ObjectInfoPath,
+        info_path: AssetPath<'static>,
         cursor_offset: CursorOffset,
         position: Position,
         rotation: Rotation,
     ) -> Self {
         Self {
-            info_path,
+            object: Object(info_path),
             cursor_offset,
             position,
             rotation,

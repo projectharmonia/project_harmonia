@@ -29,8 +29,8 @@ pub(super) struct ObjectPlugin;
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
-            .register_type::<ObjectInfoPath>()
-            .replicate::<ObjectInfoPath>()
+            .register_type::<Object>()
+            .replicate::<Object>()
             .add_client_event::<ObjectBuy>(ChannelKind::Unordered)
             .add_mapped_client_event::<ObjectMove>(ChannelKind::Ordered)
             .add_mapped_client_event::<ObjectSell>(ChannelKind::Unordered)
@@ -64,18 +64,15 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         objects_info: Res<Assets<ObjectInfo>>,
-        spawned_objects: Query<
-            (Entity, &ObjectInfoPath, Has<PlacingObject>),
-            Without<Handle<Scene>>,
-        >,
+        spawned_objects: Query<(Entity, &Object, Has<PlacingObject>), Without<Handle<Scene>>>,
     ) {
-        for (entity, info_path, placing_object) in &spawned_objects {
+        for (entity, object, placing_object) in &spawned_objects {
             let info_handle = asset_server
-                .get_handle(&info_path.0)
+                .get_handle(&object.0)
                 .expect("info should be preloaded");
             let info = objects_info.get(&info_handle).unwrap();
 
-            debug!("initializing object '{}' for `{entity}`", info_path.0);
+            debug!("initializing object '{}' for `{entity}`", object.0);
 
             let scene_handle: Handle<Scene> = asset_server.load(info.scene.clone());
             let mut entity = commands.entity(entity);
@@ -108,7 +105,7 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        objects: Query<Entity, With<ObjectInfoPath>>,
+        objects: Query<Entity, With<Object>>,
         chidlren: Query<&Children>,
         child_meshes: Query<(&Transform, &Handle<Mesh>)>,
     ) {
@@ -226,7 +223,7 @@ impl ObjectPlugin {
 
 #[derive(Bundle)]
 struct ObjectBundle {
-    info_path: ObjectInfoPath,
+    object: Object,
     position: Position,
     rotation: Rotation,
     parent_sync: ParentSync,
@@ -236,7 +233,7 @@ struct ObjectBundle {
 impl ObjectBundle {
     fn new(info_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
         Self {
-            info_path: ObjectInfoPath(info_path),
+            object: Object(info_path),
             position: Position(translation),
             rotation: Rotation(rotation),
             parent_sync: Default::default(),
@@ -245,10 +242,10 @@ impl ObjectBundle {
     }
 }
 
-/// Contains path to the object info file.
+/// Contains path to the object info.
 #[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(crate) struct ObjectInfoPath(AssetPath<'static>);
+pub(crate) struct Object(AssetPath<'static>);
 
 #[derive(Clone, Debug, Deserialize, Event, Serialize)]
 struct ObjectBuy {
