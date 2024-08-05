@@ -1,24 +1,29 @@
 mod lots_node;
+mod roads_node;
 
 use bevy::prelude::*;
-use lots_node::LotsNodePlugin;
-use strum::IntoEnumIterator;
-
-use crate::hud::objects_node;
 use project_harmonia_base::{
-    asset::info::object_info::{ObjectCategory, ObjectInfo},
+    asset::info::{
+        object_info::{ObjectCategory, ObjectInfo},
+        road_info::RoadInfo,
+    },
     game_world::{city::CityMode, WorldState},
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
     theme::Theme,
 };
+use strum::IntoEnumIterator;
+
+use crate::hud::objects_node;
+use lots_node::LotsNodePlugin;
+use roads_node::RoadsNodePlugin;
 
 pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(LotsNodePlugin)
+        app.add_plugins((LotsNodePlugin, RoadsNodePlugin))
             .add_systems(OnEnter(WorldState::City), Self::setup)
             .add_systems(
                 Update,
@@ -32,7 +37,9 @@ impl CityHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
+        asset_server: Res<AssetServer>,
         objects_info: Res<Assets<ObjectInfo>>,
+        roads_info: Res<Assets<RoadInfo>>,
     ) {
         debug!("showing city HUD");
         commands
@@ -84,6 +91,13 @@ impl CityHudPlugin {
                                 );
                             }
                             CityMode::Lots => lots_node::setup(parent, &theme),
+                            CityMode::Roads => roads_node::setup(
+                                parent,
+                                &mut tab_commands,
+                                &asset_server,
+                                &theme,
+                                &roads_info,
+                            ),
                         })
                         .id();
 

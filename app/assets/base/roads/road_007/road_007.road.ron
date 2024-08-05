@@ -1,0 +1,10 @@
+(
+    general: (
+        name: "Road 007",
+        license: "CC-0",
+        author: "ambientCG",
+    ),
+    material: "road_007.ron",
+    preview: "road_007_base_color.png",
+    half_width: 4.25,
+)

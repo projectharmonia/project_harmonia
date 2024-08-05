@@ -9,6 +9,7 @@ use project_harmonia_base::{
     game_world::{
         building::{
             lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
+            road::creating_road::CreatingRoad,
             wall::creating_wall::CreatingWall,
         },
         object::placing_object::PlacingObject,
@@ -36,6 +37,7 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<MovingLot>))
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<CreatingWall>))
+                    .run_if(not(any_with_component::<CreatingRoad>))
                     .run_if(in_state(WorldState::Family).or_else(in_state(WorldState::City))),
                 (
                     Self::handle_menu_clicks,

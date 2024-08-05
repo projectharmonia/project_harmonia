@@ -1,0 +1,7 @@
+(
+    base_color_texture: Some("road_007_base_color.png"),
+    metallic_roughness_texture: Some("road_007_metallic_roughness.png"),
+    normal_map_texture: Some("road_007_normal.png"),
+    perceptual_roughness: 0.0,
+    reflectance: 0.0,
+)

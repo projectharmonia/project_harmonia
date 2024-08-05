@@ -1,4 +1,5 @@
 pub mod object_info;
+pub mod road_info;
 
 use std::{env, marker::PhantomData, path::Path};
 
@@ -14,12 +15,15 @@ use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use object_info::ObjectInfo;
+use road_info::RoadInfo;
 
 pub(super) struct InfoPlugins;
 
 impl PluginGroup for InfoPlugins {
     fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>().add(InfoPlugin::<ObjectInfo>::default())
+        PluginGroupBuilder::start::<Self>()
+            .add(InfoPlugin::<ObjectInfo>::default())
+            .add(InfoPlugin::<RoadInfo>::default())
     }
 }
 
@@ -175,6 +179,7 @@ mod tests {
         registry.register::<Door>();
 
         deserialize::<ObjectInfo>(&registry)?;
+        deserialize::<RoadInfo>(&registry)?;
 
         Ok(())
     }

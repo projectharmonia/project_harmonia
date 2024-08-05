@@ -169,13 +169,15 @@ pub enum CityMode {
     #[default]
     Objects,
     Lots,
+    Roads,
 }
 
 impl CityMode {
     pub fn glyph(self) -> &'static str {
         match self {
             Self::Objects => "🌳",
-            Self::Lots => "🚧",
+            Self::Lots => "⬛",
+            Self::Roads => "🚧",
         }
     }
 }
