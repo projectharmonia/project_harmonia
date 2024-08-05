@@ -41,7 +41,7 @@ impl Plugin for CityPlugin {
 }
 
 /// City square side size.
-const CITY_SIZE: f32 = 100.0;
+const CITY_SIZE: f32 = 500.0;
 pub const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
 impl CityPlugin {
