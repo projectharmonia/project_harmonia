@@ -14,7 +14,7 @@ use super::MenuState;
 use project_harmonia_base::{
     core::GameState,
     game_paths::GamePaths,
-    game_world::{GameLoad, GameWorld},
+    game_world::{GameLoad, WorldName},
     message::error_message,
     network::{self, DEFAULT_PORT},
 };
@@ -126,9 +126,7 @@ impl WorldBrowserPlugin {
                 .expect("world label should contain text");
             match world_button {
                 WorldButton::Play => {
-                    commands.insert_resource(GameWorld {
-                        name: world_name.sections[0].value.clone(),
-                    });
+                    commands.insert_resource(WorldName(world_name.sections[0].value.clone()));
                     load_events.send_default();
                 }
                 WorldButton::Host => setup_host_world_dialog(
@@ -180,9 +178,8 @@ impl WorldBrowserPlugin {
                     let mut world_name = labels
                         .get_mut(world_node.label_entity)
                         .expect("world label should contain text");
-                    commands.insert_resource(GameWorld {
-                        name: mem::take(&mut world_name.sections[0].value),
-                    });
+                    commands
+                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
 
                     load_events.send_default();
                 }
@@ -253,9 +250,7 @@ impl WorldBrowserPlugin {
             match button {
                 CreateDialogButton::Create => {
                     let mut world_name = text_edits.single_mut();
-                    commands.insert_resource(GameWorld {
-                        name: mem::take(&mut world_name.0),
-                    });
+                    commands.insert_resource(WorldName(mem::take(&mut world_name.0)));
                     game_state.set(GameState::InGame);
                 }
                 CreateDialogButton::Cancel => info!("cancelling creation"),

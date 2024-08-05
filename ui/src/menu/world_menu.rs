@@ -10,7 +10,7 @@ use project_harmonia_base::{
         actor::SelectedActor,
         city::{ActiveCity, City, CityBundle},
         family::{Family, FamilyDelete, FamilyMembers},
-        GameWorld, WorldState,
+        WorldName, WorldState,
     },
 };
 use project_harmonia_widgets::{
@@ -56,7 +56,7 @@ impl WorldMenuPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        game_world: Res<GameWorld>,
+        world_name: Res<WorldName>,
         families: Query<(Entity, &Name), With<Family>>,
         cities: Query<(Entity, &Name), With<City>>,
     ) {
@@ -78,7 +78,7 @@ impl WorldMenuPlugin {
                 },
             ))
             .with_children(|parent| {
-                parent.spawn(LabelBundle::large(&theme, game_world.name.clone()));
+                parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));
 
                 let tabs_entity = parent
                     .spawn(NodeBundle {

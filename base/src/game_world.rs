@@ -65,11 +65,11 @@ impl GameWorldPlugin {
     /// Saves world to disk with the name from [`GameWorld`] resource.
     fn save(
         world: &World,
-        game_world: Res<GameWorld>,
+        world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&game_world.name);
+        let world_path = game_paths.world_path(&world_name.0);
         info!("saving world to {world_path:?}");
 
         fs::create_dir_all(&game_paths.worlds)
@@ -91,11 +91,11 @@ impl GameWorldPlugin {
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
         mut game_state: ResMut<NextState<GameState>>,
-        game_world: Res<GameWorld>,
+        world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
     ) -> Result<()> {
-        let world_path = game_paths.world_path(&game_world.name);
+        let world_path = game_paths.world_path(&world_name.0);
         info!("loading world from {world_path:?}");
 
         let bytes =
@@ -122,12 +122,12 @@ impl GameWorldPlugin {
 
     fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
         info!("joining replicated world");
-        commands.insert_resource(GameWorld::default());
+        commands.insert_resource(WorldName::default());
         game_state.set(GameState::InGame);
     }
 
     fn cleanup(mut commands: Commands) {
-        commands.remove_resource::<GameWorld>();
+        commands.remove_resource::<WorldName>();
     }
 }
 
@@ -143,9 +143,7 @@ pub struct GameLoad;
 
 /// Contains metadata of the currently loaded world.
 #[derive(Default, Resource)]
-pub struct GameWorld {
-    pub name: String,
-}
+pub struct WorldName(pub String);
 
 #[derive(SubStates, Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 #[source(GameState = GameState::InGame)]

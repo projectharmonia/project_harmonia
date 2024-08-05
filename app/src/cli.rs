@@ -14,7 +14,7 @@ use project_harmonia_base::{
         actor::SelectedActor,
         city::{ActiveCity, City},
         family::FamilyMembers,
-        GameLoad, GameWorld, WorldState,
+        GameLoad, WorldName, WorldState,
     },
     message::error_message,
     network::{self, DEFAULT_PORT},
@@ -54,9 +54,7 @@ impl CliPlugin {
             match subcommand {
                 GameCommand::Play(world_load) => {
                     load_events.send_default();
-                    commands.insert_resource(GameWorld {
-                        name: world_load.world_name.clone(),
-                    });
+                    commands.insert_resource(WorldName(world_load.world_name.clone()));
                 }
                 GameCommand::Host { world_load, port } => {
                     let server = RenetServer::new(ConnectionConfig {
@@ -69,9 +67,7 @@ impl CliPlugin {
 
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
-                    commands.insert_resource(GameWorld {
-                        name: world_load.world_name.clone(),
-                    });
+                    commands.insert_resource(WorldName(world_load.world_name.clone()));
 
                     load_events.send_default();
                 }
