@@ -35,8 +35,11 @@ impl Plugin for PlayerCameraPlugin {
                 (
                     (
                         Self::update_rotation,
-                        Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
-                        Self::update_spring_arm,
+                        (
+                            Self::update_spring_arm,
+                            Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
+                        )
+                            .chain(),
                     ),
                     Self::apply_transform,
                 )
@@ -70,14 +73,11 @@ impl PlayerCameraPlugin {
     fn update_origin(
         time: Res<Time>,
         action_state: Res<ActionState<Action>>,
-        mut cameras: Query<(&mut OrbitOrigin, &Transform), With<PlayerCamera>>,
+        mut cameras: Query<(&mut OrbitOrigin, &Transform, &SpringArm), With<PlayerCamera>>,
     ) {
-        let (mut orbit_origin, transform) = cameras.single_mut();
-
-        const MOVEMENT_SPEED: f32 = 10.0;
+        let (mut orbit_origin, transform, spring_arm) = cameras.single_mut();
         let direction = movement_direction(&action_state, transform.rotation);
-        trace!("camera movement direction is `{direction:?}`");
-        orbit_origin.dest += direction * time.delta_seconds() * MOVEMENT_SPEED;
+        orbit_origin.dest += direction * time.delta_seconds() * spring_arm.dest;
         orbit_origin.smooth(time.delta_seconds());
     }
 
