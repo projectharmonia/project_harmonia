@@ -7,12 +7,11 @@ use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{WallCreate, WallCreateConfirmed};
+use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::{
     game_world::{
-        building::{lot::LotVertices, spline::SplineSegment, wall::Wall},
-        family::BuildingMode,
-        player_camera::CameraCaster,
+        city::lot::LotVertices, family::BuildingMode, player_camera::CameraCaster,
+        spline::SplineSegment,
     },
     math::segment::Segment,
     settings::Action,

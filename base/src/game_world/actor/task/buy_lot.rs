@@ -8,8 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::game_world::{
     actor::task::{Task, TaskList, TaskListSet, TaskState},
-    building::lot::{LotFamily, LotVertices},
-    city::Ground,
+    city::{
+        lot::{LotFamily, LotVertices},
+        Ground,
+    },
     family::ActorFamily,
     hover::Hovered,
 };

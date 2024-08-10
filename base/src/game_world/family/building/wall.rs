@@ -11,8 +11,14 @@ use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 
-use super::spline::{SplineConnections, SplinePlugin, SplineSegment};
-use crate::{core::GameState, game_world::Layer, math::triangulator::Triangulator};
+use crate::{
+    core::GameState,
+    game_world::{
+        spline::{SplineConnections, SplinePlugin, SplineSegment},
+        Layer,
+    },
+    math::triangulator::Triangulator,
+};
 use creating_wall::{CreatingWall, CreatingWallPlugin};
 use wall_mesh::WallMesh;
 

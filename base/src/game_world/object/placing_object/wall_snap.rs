@@ -5,12 +5,12 @@ use bevy_xpbd_3d::prelude::*;
 
 use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
 use crate::game_world::{
-    building::{
-        spline::SplineSegment,
-        wall::{wall_mesh::HALF_WIDTH, Wall},
-    },
     city::CityMode,
-    family::BuildingMode,
+    family::{
+        building::wall::{wall_mesh::HALF_WIDTH, Wall},
+        BuildingMode,
+    },
+    spline::SplineSegment,
 };
 
 pub(super) struct WallSnapPlugin;

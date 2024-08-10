@@ -1,3 +1,6 @@
+pub mod lot;
+pub mod road;
+
 use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
@@ -13,12 +16,15 @@ use super::{
     WorldState,
 };
 use crate::{asset::collection::Collection, core::GameState, game_world::Layer};
+use lot::LotPlugin;
+use road::RoadPlugin;
 
 pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.add_sub_state::<CityMode>()
+        app.add_plugins((LotPlugin, RoadPlugin))
+            .add_sub_state::<CityMode>()
             .enable_state_scoped_entities::<CityMode>()
             .register_type::<City>()
             .replicate_group::<(City, Name)>()

@@ -9,7 +9,7 @@ use itertools::MinMaxResult;
 
 use super::{Aperture, Apertures};
 use crate::{
-    game_world::building::spline::{PointKind, SplineConnections, SplineSegment},
+    game_world::spline::{PointKind, SplineConnections, SplineSegment},
     math::{segment::Segment, triangulator::Triangulator},
 };
 

@@ -7,11 +7,11 @@ use crate::hud::task_menu::TaskMenu;
 use project_harmonia_base::{
     core::GameState,
     game_world::{
-        building::{
+        city::{
             lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
             road::creating_road::CreatingRoad,
-            wall::creating_wall::CreatingWall,
         },
+        family::building::wall::creating_wall::CreatingWall,
         object::placing_object::PlacingObject,
         GameSave, WorldState,
     },

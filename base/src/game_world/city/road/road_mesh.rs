@@ -7,7 +7,7 @@ use bevy::{
 use itertools::MinMaxResult;
 
 use crate::{
-    game_world::building::spline::{PointKind, SplineConnections, SplineSegment},
+    game_world::spline::{PointKind, SplineConnections, SplineSegment},
     math::segment::Segment,
 };
 

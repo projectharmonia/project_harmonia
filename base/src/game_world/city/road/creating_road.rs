@@ -11,9 +11,9 @@ use super::{Road, RoadCreate, RoadCreateConfirmed};
 use crate::{
     asset::info::road_info::RoadInfo,
     game_world::{
-        building::{lot::LotVertices, spline::SplineSegment},
-        city::{ActiveCity, CityMode},
+        city::{lot::LotVertices, ActiveCity, CityMode},
         player_camera::CameraCaster,
+        spline::SplineSegment,
     },
     math::segment::Segment,
     settings::Action,

@@ -15,7 +15,7 @@ use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    building::lot::LotVertices,
+    city::lot::LotVertices,
     city::{City, HALF_CITY_SIZE},
     hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };

@@ -12,8 +12,14 @@ use road_mesh::RoadMesh;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::spline::{SplineConnections, SplinePlugin, SplineSegment};
-use crate::{asset::info::road_info::RoadInfo, core::GameState, game_world::city::CityMode};
+use crate::{
+    asset::info::road_info::RoadInfo,
+    core::GameState,
+    game_world::{
+        city::CityMode,
+        spline::{SplineConnections, SplinePlugin, SplineSegment},
+    },
+};
 use creating_road::CreatingRoadPlugin;
 
 pub(crate) struct RoadPlugin;

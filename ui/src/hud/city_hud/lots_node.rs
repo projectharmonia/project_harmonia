@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
-use project_harmonia_base::game_world::{building::lot::LotTool, WorldState};
+use project_harmonia_base::game_world::{city::lot::LotTool, WorldState};
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TextButtonBundle, Toggled},
     theme::Theme,

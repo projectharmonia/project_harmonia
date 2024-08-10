@@ -1,10 +1,10 @@
 pub mod actor;
-pub mod building;
 pub mod city;
 pub mod family;
 pub mod hover;
 pub mod object;
 mod player_camera;
+mod spline;
 
 use std::fs;
 
@@ -16,10 +16,10 @@ use bevy::{
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
+use spline::SplinePlugin;
 
 use super::{core::GameState, game_paths::GamePaths, message::error_message};
 use actor::ActorPlugin;
-use building::BuildingPlugins;
 use city::CityPlugin;
 use family::FamilyPlugin;
 use hover::HoverPlugin;
@@ -32,8 +32,8 @@ impl Plugin for GameWorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             ActorPlugin,
-            BuildingPlugins,
             CityPlugin,
+            SplinePlugin,
             HoverPlugin,
             FamilyPlugin,
             ObjectPlugin,

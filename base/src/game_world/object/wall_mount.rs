@@ -5,10 +5,8 @@ use super::placing_object::PlacingObject;
 use crate::{
     core::GameState,
     game_world::{
-        building::{
-            spline::SplineSegment,
-            wall::{Aperture, Apertures, WallPlugin},
-        },
+        family::building::wall::{Aperture, Apertures, WallPlugin},
+        spline::SplineSegment,
         Layer,
     },
 };

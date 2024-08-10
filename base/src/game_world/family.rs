@@ -1,3 +1,4 @@
+pub mod building;
 pub mod editor;
 
 use std::io::Cursor;
@@ -27,13 +28,14 @@ use super::{
 use crate::{
     component_commands::ComponentCommandsExt, core::GameState, navigation::NavigationBundle,
 };
+use building::BuildingPlugins;
 use editor::EditorPlugin;
 
 pub struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EditorPlugin)
+        app.add_plugins((EditorPlugin, BuildingPlugins))
             .add_sub_state::<FamilyMode>()
             .enable_state_scoped_entities::<FamilyMode>()
             .add_sub_state::<BuildingMode>()
