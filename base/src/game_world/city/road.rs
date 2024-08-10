@@ -8,7 +8,6 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
 };
 use bevy_replicon::prelude::*;
-use road_mesh::RoadMesh;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -17,7 +16,7 @@ use crate::{
     core::GameState,
     game_world::{
         city::CityMode,
-        spline::{SplineConnections, SplinePlugin, SplineSegment},
+        spline::{dynamic_mesh::DynamicMesh, SplineConnections, SplinePlugin, SplineSegment},
     },
 };
 use creating_road::CreatingRoadPlugin;
@@ -103,9 +102,9 @@ impl RoadPlugin {
             let info = roads_info.get(&info_handle).unwrap();
 
             trace!("regenerating road mesh");
-            let mut road_mesh = RoadMesh::take(mesh);
-            road_mesh.generate(*segment, connections, info.half_width);
-            road_mesh.apply(mesh);
+            let mut dyn_mesh = DynamicMesh::take(mesh);
+            road_mesh::generate(&mut dyn_mesh, *segment, connections, info.half_width);
+            dyn_mesh.apply(mesh);
         }
     }
 

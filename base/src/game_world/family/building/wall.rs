@@ -14,13 +14,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core::GameState,
     game_world::{
-        spline::{SplineConnections, SplinePlugin, SplineSegment},
+        spline::{dynamic_mesh::DynamicMesh, SplineConnections, SplinePlugin, SplineSegment},
         Layer,
     },
     math::triangulator::Triangulator,
 };
 use creating_wall::{CreatingWall, CreatingWallPlugin};
-use wall_mesh::WallMesh;
 
 pub(crate) struct WallPlugin;
 
@@ -104,9 +103,15 @@ impl WallPlugin {
                 .expect("wall handles should be valid");
 
             trace!("regenerating wall mesh");
-            let mut wall_mesh = WallMesh::take(mesh);
-            wall_mesh.generate(*segment, connections, &apertures, &mut triangulator);
-            wall_mesh.apply(mesh);
+            let mut dyn_mesh = DynamicMesh::take(mesh);
+            wall_mesh::generate(
+                &mut dyn_mesh,
+                *segment,
+                connections,
+                &apertures,
+                &mut triangulator,
+            );
+            dyn_mesh.apply(mesh);
 
             // Creating walls shouldn't affect navigation.
             if apertures.collision_outdated || segment.is_changed() || collider.is_added() {
