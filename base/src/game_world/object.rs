@@ -31,10 +31,8 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<Object>()
             .replicate::<Object>()
-            .add_client_event::<ObjectBuy>(ChannelKind::Unordered)
-            .add_mapped_client_event::<ObjectMove>(ChannelKind::Ordered)
-            .add_mapped_client_event::<ObjectSell>(ChannelKind::Unordered)
-            .add_server_event::<ObjectEventConfirmed>(ChannelKind::Unordered)
+            .add_mapped_client_event::<ObjectCommand>(ChannelKind::Unordered)
+            .add_server_event::<ObjectCommandConfirmed>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
                 Self::init
@@ -49,11 +47,8 @@ impl Plugin for ObjectPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::buy.before(ServerSet::StoreHierarchy),
-                    Self::apply_movement,
-                    Self::sell,
-                )
+                Self::apply_command
+                    .before(ServerSet::StoreHierarchy)
                     .run_if(has_authority),
             );
     }
@@ -137,85 +132,68 @@ impl ObjectPlugin {
         }
     }
 
-    fn buy(
+    fn apply_command(
         mut commands: Commands,
-        mut buy_events: EventReader<FromClient<ObjectBuy>>,
-        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
+        mut command_events: EventReader<FromClient<ObjectCommand>>,
+        mut confirm_events: EventWriter<ToClients<ObjectCommandConfirmed>>,
+        mut objects: Query<(&mut Position, &mut Rotation)>,
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
-        for FromClient { client_id, event } in buy_events.read().cloned() {
-            if event.position.y.abs() > HALF_CITY_SIZE {
-                error!(
-                    "received position {} with 'y' outside of city size",
-                    event.position
-                );
-                continue;
-            }
+        for FromClient { client_id, event } in command_events.read().cloned() {
+            match event {
+                ObjectCommand::Buy {
+                    info_path,
+                    position,
+                    rotation,
+                } => {
+                    if position.y.abs() > HALF_CITY_SIZE {
+                        error!("received position {position} with 'y' outside of city size");
+                        continue;
+                    }
 
-            let Some((city_entity, _)) = cities
-                .iter()
-                .map(|(entity, transform)| (entity, transform.translation.x - event.position.x))
-                .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
-            else {
-                error!("unable to find a city for position {}", event.position);
-                continue;
-            };
+                    let Some((city_entity, _)) = cities
+                        .iter()
+                        .map(|(entity, transform)| (entity, transform.translation.x - position.x))
+                        .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
+                    else {
+                        error!("unable to find a city for position {position}");
+                        continue;
+                    };
 
-            // TODO: Add a check if user can spawn an object on the lot.
-            let parent_entity = lots
-                .iter()
-                .find(|(_, vertices)| vertices.contains_point(event.position.xz()))
-                .map(|(lot_entity, _)| lot_entity)
-                .unwrap_or(city_entity);
+                    // TODO: Add a check if user can spawn an object on the lot.
+                    let parent_entity = lots
+                        .iter()
+                        .find(|(_, vertices)| vertices.contains_point(position.xz()))
+                        .map(|(lot_entity, _)| lot_entity)
+                        .unwrap_or(city_entity);
 
-            info!("`{client_id:?}` buys object {:?}", event.info_path);
-            commands.entity(parent_entity).with_children(|parent| {
-                parent.spawn(ObjectBundle::new(
-                    event.info_path,
-                    event.position,
-                    event.rotation,
-                ));
-            });
-            confirm_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: ObjectEventConfirmed,
-            });
-        }
-    }
-
-    fn apply_movement(
-        mut move_events: EventReader<FromClient<ObjectMove>>,
-        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
-        mut objects: Query<(&mut Position, &mut Rotation)>,
-    ) {
-        for FromClient { client_id, event } in move_events.read().copied() {
-            match objects.get_mut(event.entity) {
-                Ok((mut position, mut rotation)) => {
-                    info!("`{client_id:?}` moves object `{:?}`", event.entity);
-                    **position = event.position;
-                    **rotation = event.rotation;
-                    confirm_events.send(ToClients {
-                        mode: SendMode::Direct(client_id),
-                        event: ObjectEventConfirmed,
+                    info!("`{client_id:?}` buys object {info_path:?}");
+                    commands.entity(parent_entity).with_children(|parent| {
+                        parent.spawn(ObjectBundle::new(info_path, position, rotation));
                     });
                 }
-                Err(e) => error!("unable to move: {e}",),
+                ObjectCommand::Move {
+                    entity,
+                    position,
+                    rotation,
+                } => match objects.get_mut(entity) {
+                    Ok((mut object_position, mut object_rotation)) => {
+                        info!("`{client_id:?}` moves object `{entity:?}`");
+                        **object_position = position;
+                        **object_rotation = rotation;
+                    }
+                    Err(e) => error!("unable to move object `{entity:?}`: {e}"),
+                },
+                ObjectCommand::Sell { entity } => {
+                    info!("`{client_id:?}` sells object `{entity:?}`");
+                    commands.entity(entity).despawn_recursive();
+                }
             }
-        }
-    }
 
-    fn sell(
-        mut commands: Commands,
-        mut sell_events: EventReader<FromClient<ObjectSell>>,
-        mut confirm_events: EventWriter<ToClients<ObjectEventConfirmed>>,
-    ) {
-        for FromClient { client_id, event } in sell_events.read().copied() {
-            info!("`{client_id:?}` sells object `{:?}`", event.0);
-            commands.entity(event.0).despawn_recursive();
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
-                event: ObjectEventConfirmed,
+                event: ObjectCommandConfirmed,
             });
         }
     }
@@ -248,34 +226,32 @@ impl ObjectBundle {
 pub(crate) struct Object(AssetPath<'static>);
 
 #[derive(Clone, Debug, Deserialize, Event, Serialize)]
-struct ObjectBuy {
-    info_path: AssetPath<'static>,
-    position: Vec3,
-    rotation: Quat,
+enum ObjectCommand {
+    Buy {
+        info_path: AssetPath<'static>,
+        position: Vec3,
+        rotation: Quat,
+    },
+    Move {
+        entity: Entity,
+        position: Vec3,
+        rotation: Quat,
+    },
+    Sell {
+        entity: Entity,
+    },
 }
 
-#[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct ObjectMove {
-    entity: Entity,
-    position: Vec3,
-    rotation: Quat,
-}
-
-impl MapEntities for ObjectMove {
+impl MapEntities for ObjectCommand {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.entity = entity_mapper.map_entity(self.entity);
-    }
-}
-
-#[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct ObjectSell(Entity);
-
-impl MapEntities for ObjectSell {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.0 = entity_mapper.map_entity(self.0);
+        match self {
+            ObjectCommand::Buy { .. } => (),
+            ObjectCommand::Move { entity, .. } => *entity = entity_mapper.map_entity(*entity),
+            ObjectCommand::Sell { entity } => *entity = entity_mapper.map_entity(*entity),
+        };
     }
 }
 
 /// An event from server which indicates action confirmation.
 #[derive(Deserialize, Event, Serialize, Default)]
-struct ObjectEventConfirmed;
+struct ObjectCommandConfirmed;

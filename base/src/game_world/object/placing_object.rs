@@ -22,7 +22,7 @@ use crate::{
         city::CityMode,
         family::BuildingMode,
         hover::{HoverEnabled, Hovered},
-        object::{Object, ObjectBuy, ObjectEventConfirmed, ObjectMove, ObjectSell},
+        object::{Object, ObjectCommand, ObjectCommandConfirmed},
         player_camera::CameraCaster,
     },
     settings::Action,
@@ -40,7 +40,7 @@ impl Plugin for PlacingObjectPlugin {
                 PreUpdate,
                 Self::end_placing
                     .after(ClientSet::Receive)
-                    .run_if(on_event::<ObjectEventConfirmed>())
+                    .run_if(on_event::<ObjectCommandConfirmed>())
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
@@ -241,8 +241,7 @@ impl PlacingObjectPlugin {
 
     fn confirm(
         mut commands: Commands,
-        mut move_events: EventWriter<ObjectMove>,
-        mut buy_events: EventWriter<ObjectBuy>,
+        mut command_events: EventWriter<ObjectCommand>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<
             (Entity, &Position, &Rotation, &PlacingObject, &PlaceState),
@@ -260,14 +259,14 @@ impl PlacingObjectPlugin {
                         let info_path = asset_server
                             .get_path(id)
                             .expect("info should always come from file");
-                        buy_events.send(ObjectBuy {
+                        command_events.send(ObjectCommand::Buy {
                             info_path: info_path.into_owned(),
                             position: **position,
                             rotation: **rotation,
                         });
                     }
                     PlacingObject::Moving(entity) => {
-                        move_events.send(ObjectMove {
+                        command_events.send(ObjectCommand::Move {
                             entity,
                             position: **position,
                             rotation: **rotation,
@@ -282,13 +281,13 @@ impl PlacingObjectPlugin {
 
     fn delete(
         mut commands: Commands,
-        mut sell_events: EventWriter<ObjectSell>,
+        mut command_events: EventWriter<ObjectCommand>,
         placing_objects: Query<(Entity, &PlacingObject), Without<UnconfirmedObject>>,
     ) {
         if let Ok((entity, &placing_object)) = placing_objects.get_single() {
             info!("deleting placing object");
             if let PlacingObject::Moving(entity) = placing_object {
-                sell_events.send(ObjectSell(entity));
+                command_events.send(ObjectCommand::Sell { entity });
             }
             commands.entity(entity).despawn_recursive();
         }
