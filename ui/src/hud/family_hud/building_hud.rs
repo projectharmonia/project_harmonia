@@ -11,7 +11,7 @@ use project_harmonia_widgets::{
 };
 use strum::IntoEnumIterator;
 
-use crate::hud::objects_node;
+use crate::hud::{objects_node, tools_node};
 
 pub(super) struct BuildingHudPlugin;
 
@@ -44,6 +44,8 @@ pub(super) fn setup(
     theme: &Theme,
     objects_info: &Assets<ObjectInfo>,
 ) {
+    tools_node::setup(parent, theme);
+
     let tabs_entity = parent
         .spawn(NodeBundle {
             style: Style {

@@ -12,7 +12,6 @@ use bevy::{
     prelude::*,
     scene,
 };
-use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
@@ -20,9 +19,10 @@ use crate::{
     asset::info::object_info::ObjectInfo,
     game_world::{
         city::CityMode,
+        commands_history::{CommandsHistory, DespawnOnConfirm},
         family::BuildingMode,
         hover::{HoverEnabled, Hovered},
-        object::{Object, ObjectCommand, ObjectCommandConfirmed},
+        object::{Object, ObjectCommand},
         player_camera::CameraCaster,
     },
     settings::Action,
@@ -36,13 +36,6 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
-            .add_systems(
-                PreUpdate,
-                Self::end_placing
-                    .after(ClientSet::Receive)
-                    .run_if(on_event::<ObjectCommandConfirmed>())
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
-            )
             .add_systems(
                 Update,
                 (
@@ -96,8 +89,6 @@ impl PlacingObjectPlugin {
         camera_caster: CameraCaster,
         mut hover_enabled: ResMut<HoverEnabled>,
         asset_server: Res<AssetServer>,
-        city_mode: Option<Res<State<CityMode>>>,
-        building_mode: Option<Res<State<BuildingMode>>>,
         placing_objects: Query<(Entity, &PlacingObject), Without<Object>>,
         objects: Query<(&Position, &Rotation, &Object)>,
     ) {
@@ -106,7 +97,6 @@ impl PlacingObjectPlugin {
         };
 
         debug!("initializing placing object `{placing_object:?}` for `{placing_entity}`");
-        let mut placing_entity = commands.entity(placing_entity);
         match placing_object {
             PlacingObject::Spawning(id) => {
                 let info_path = asset_server
@@ -119,10 +109,12 @@ impl PlacingObjectPlugin {
                 let (y, ..) = rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
 
-                placing_entity.insert(PlacingInitBundle::spawning(
-                    info_path.into_owned(),
-                    rounded_angle,
-                ));
+                commands
+                    .entity(placing_entity)
+                    .insert(PlacingInitBundle::spawning(
+                        info_path.into_owned(),
+                        rounded_angle,
+                    ));
             }
             PlacingObject::Moving(object_entity) => {
                 let (&position, &rotation, info_path) = objects
@@ -134,27 +126,21 @@ impl PlacingObjectPlugin {
                     .map(|point| *position - point)
                     .unwrap_or(*position);
 
-                placing_entity.insert(PlacingInitBundle::moving(
-                    info_path.0.clone(),
-                    CursorOffset(offset),
-                    position,
-                    rotation,
-                ));
+                commands
+                    .entity(placing_entity)
+                    .insert(PlacingInitBundle::moving(
+                        info_path.0.clone(),
+                        CursorOffset(offset),
+                        position,
+                        rotation,
+                    ));
             }
-        }
-
-        if let Some(city_mode) = city_mode {
-            placing_entity.insert(StateScoped(**city_mode));
-        } else if let Some(building_mode) = building_mode {
-            placing_entity.insert(StateScoped(**building_mode));
         }
 
         hover_enabled.0 = false;
     }
 
-    fn rotate(
-        mut placing_objects: Query<(&mut Rotation, &RotationLimit), Without<UnconfirmedObject>>,
-    ) {
+    fn rotate(mut placing_objects: Query<(&mut Rotation, &RotationLimit)>) {
         if let Ok((mut rotation, limit)) = placing_objects.get_single_mut() {
             **rotation *= Quat::from_axis_angle(Vec3::Y, limit.unwrap_or(FRAC_PI_4));
 
@@ -167,7 +153,7 @@ impl PlacingObjectPlugin {
 
     fn apply_position(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Position, &CursorOffset), Without<UnconfirmedObject>>,
+        mut placing_objects: Query<(&mut Position, &CursorOffset)>,
     ) {
         if let Ok((mut position, cursor_offset)) = placing_objects.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
@@ -177,10 +163,7 @@ impl PlacingObjectPlugin {
     }
 
     fn check_collision(
-        mut placing_objects: Query<
-            (&mut PlaceState, &PlacingObject, &CollidingEntities),
-            Without<UnconfirmedObject>,
-        >,
+        mut placing_objects: Query<(&mut PlaceState, &PlacingObject, &CollidingEntities)>,
     ) {
         if let Ok((mut state, &placing_object, colliding_entities)) =
             placing_objects.get_single_mut()
@@ -202,13 +185,7 @@ impl PlacingObjectPlugin {
 
     fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
-        placing_objects: Query<
-            (Entity, &PlaceState),
-            (
-                Or<(Added<Children>, Changed<PlaceState>)>,
-                Without<UnconfirmedObject>,
-            ),
-        >,
+        placing_objects: Query<(Entity, &PlaceState), Or<(Added<Children>, Changed<PlaceState>)>>,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
@@ -241,38 +218,38 @@ impl PlacingObjectPlugin {
 
     fn confirm(
         mut commands: Commands,
-        mut command_events: EventWriter<ObjectCommand>,
+        mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        placing_objects: Query<
-            (Entity, &Position, &Rotation, &PlacingObject, &PlaceState),
-            Without<UnconfirmedObject>,
-        >,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        placing_objects: Query<(Entity, &Position, &Rotation, &PlacingObject, &PlaceState)>,
     ) {
         if let Ok((entity, position, rotation, &placing_object, state)) =
             placing_objects.get_single()
         {
             if state.placeable() {
-                commands.entity(entity).insert(UnconfirmedObject);
-
-                match placing_object {
+                let id = match placing_object {
                     PlacingObject::Spawning(id) => {
                         let info_path = asset_server
                             .get_path(id)
                             .expect("info should always come from file");
-                        command_events.send(ObjectCommand::Buy {
+                        history.push_pending(ObjectCommand::Buy {
                             info_path: info_path.into_owned(),
                             position: **position,
                             rotation: **rotation,
-                        });
+                        })
                     }
-                    PlacingObject::Moving(entity) => {
-                        command_events.send(ObjectCommand::Move {
-                            entity,
-                            position: **position,
-                            rotation: **rotation,
-                        });
-                    }
-                }
+                    PlacingObject::Moving(entity) => history.push_pending(ObjectCommand::Move {
+                        entity,
+                        position: **position,
+                        rotation: **rotation,
+                    }),
+                };
+                hover_enabled.0 = true;
+
+                commands
+                    .entity(entity)
+                    .insert(DespawnOnConfirm(id))
+                    .remove::<(PlacingObject, PlacingInitBundle)>();
 
                 info!("confirming `{placing_object:?}`");
             }
@@ -281,15 +258,17 @@ impl PlacingObjectPlugin {
 
     fn delete(
         mut commands: Commands,
-        mut command_events: EventWriter<ObjectCommand>,
-        placing_objects: Query<(Entity, &PlacingObject), Without<UnconfirmedObject>>,
+        mut history: CommandsHistory,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        placing_objects: Query<(Entity, &PlacingObject)>,
     ) {
         if let Ok((entity, &placing_object)) = placing_objects.get_single() {
             info!("deleting placing object");
             if let PlacingObject::Moving(entity) = placing_object {
-                command_events.send(ObjectCommand::Sell { entity });
+                history.push_pending(ObjectCommand::Sell { entity });
             }
             commands.entity(entity).despawn_recursive();
+            hover_enabled.0 = true;
         }
     }
 
@@ -404,6 +383,3 @@ impl Default for PlaceState {
 /// Limits object rotation to the specified angle if set.
 #[derive(Component, Default, Deref)]
 struct RotationLimit(Option<f32>);
-
-#[derive(Component)]
-struct UnconfirmedObject;

@@ -15,8 +15,11 @@ use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    city::lot::LotVertices,
-    city::{City, HALF_CITY_SIZE},
+    city::{lot::LotVertices, City, HALF_CITY_SIZE},
+    commands_history::{
+        CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
+        PendingCommand,
+    },
     hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };
 use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
@@ -31,8 +34,7 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<Object>()
             .replicate::<Object>()
-            .add_mapped_client_event::<ObjectCommand>(ChannelKind::Unordered)
-            .add_server_event::<ObjectCommandConfirmed>(ChannelKind::Unordered)
+            .add_mapped_client_event::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
                 Self::init
@@ -134,14 +136,15 @@ impl ObjectPlugin {
 
     fn apply_command(
         mut commands: Commands,
-        mut command_events: EventReader<FromClient<ObjectCommand>>,
-        mut confirm_events: EventWriter<ToClients<ObjectCommandConfirmed>>,
+        mut request_events: EventReader<FromClient<CommandRequest<ObjectCommand>>>,
+        mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
         mut objects: Query<(&mut Position, &mut Rotation)>,
         cities: Query<(Entity, &Transform), With<City>>,
         lots: Query<(Entity, &LotVertices)>,
     ) {
-        for FromClient { client_id, event } in command_events.read().cloned() {
-            match event {
+        for FromClient { client_id, event } in request_events.read().cloned() {
+            let mut confirmation = CommandConfirmation::new(event.id);
+            match event.command {
                 ObjectCommand::Buy {
                     info_path,
                     position,
@@ -170,7 +173,10 @@ impl ObjectPlugin {
 
                     info!("`{client_id:?}` buys object {info_path:?}");
                     commands.entity(parent_entity).with_children(|parent| {
-                        parent.spawn(ObjectBundle::new(info_path, position, rotation));
+                        let entity = parent
+                            .spawn(ObjectBundle::new(info_path, position, rotation))
+                            .id();
+                        confirmation.entity = Some(entity);
                     });
                 }
                 ObjectCommand::Move {
@@ -179,21 +185,21 @@ impl ObjectPlugin {
                     rotation,
                 } => match objects.get_mut(entity) {
                     Ok((mut object_position, mut object_rotation)) => {
-                        info!("`{client_id:?}` moves object `{entity:?}`");
+                        info!("`{client_id:?}` moves object `{entity}`");
                         **object_position = position;
                         **object_rotation = rotation;
                     }
-                    Err(e) => error!("unable to move object `{entity:?}`: {e}"),
+                    Err(e) => error!("unable to move object `{entity}`: {e}"),
                 },
                 ObjectCommand::Sell { entity } => {
-                    info!("`{client_id:?}` sells object `{entity:?}`");
+                    info!("`{client_id:?}` sells object `{entity}`");
                     commands.entity(entity).despawn_recursive();
                 }
             }
 
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
-                event: ObjectCommandConfirmed,
+                event: confirmation,
             });
         }
     }
@@ -225,7 +231,7 @@ impl ObjectBundle {
 #[reflect(Component)]
 pub(crate) struct Object(AssetPath<'static>);
 
-#[derive(Clone, Debug, Deserialize, Event, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 enum ObjectCommand {
     Buy {
         info_path: AssetPath<'static>,
@@ -242,6 +248,65 @@ enum ObjectCommand {
     },
 }
 
+impl PendingCommand for ObjectCommand {
+    fn apply(
+        self: Box<Self>,
+        id: CommandId,
+        mut recorder: EntityRecorder,
+        world: &mut World,
+    ) -> Box<dyn ConfirmableCommand> {
+        let reverse_command = match &*self {
+            Self::Buy { .. } => Self::Sell {
+                // Correct entity will be set after the server confirmation.
+                entity: Entity::PLACEHOLDER,
+            },
+            Self::Move { entity, .. } => {
+                let entity = world.entity(*entity);
+                let position = **entity.get::<Position>().unwrap();
+                let rotation = **entity.get::<Rotation>().unwrap();
+                Self::Move {
+                    entity: entity.id(),
+                    position,
+                    rotation,
+                }
+            }
+            Self::Sell { entity } => {
+                recorder.record(*entity);
+                let entity = world.entity(*entity);
+                let info_path = entity.get::<Object>().unwrap().0.clone();
+                let position = **entity.get::<Position>().unwrap();
+                let rotation = **entity.get::<Rotation>().unwrap();
+                Self::Buy {
+                    info_path,
+                    position,
+                    rotation,
+                }
+            }
+        };
+
+        world.send_event(CommandRequest { id, command: *self });
+
+        Box::new(reverse_command)
+    }
+}
+
+impl ConfirmableCommand for ObjectCommand {
+    fn confirm(
+        mut self: Box<Self>,
+        mut recorder: EntityRecorder,
+        confirmation: CommandConfirmation,
+    ) -> Box<dyn PendingCommand> {
+        if let ObjectCommand::Sell { entity } = &mut *self {
+            *entity = confirmation
+                .entity
+                .expect("confirmation for buying should contain an entity");
+            recorder.record(*entity);
+        }
+
+        self
+    }
+}
+
 impl MapEntities for ObjectCommand {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         match self {
@@ -251,7 +316,3 @@ impl MapEntities for ObjectCommand {
         };
     }
 }
-
-/// An event from server which indicates action confirmation.
-#[derive(Deserialize, Event, Serialize, Default)]
-struct ObjectCommandConfirmed;

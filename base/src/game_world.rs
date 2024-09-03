@@ -1,10 +1,12 @@
 pub mod actor;
 pub mod city;
+pub mod commands_history;
 pub mod family;
 pub mod hover;
 pub mod object;
 mod player_camera;
 mod spline;
+// pub mod test;
 
 use std::fs;
 
@@ -16,15 +18,16 @@ use bevy::{
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
-use spline::SplinePlugin;
 
 use super::{core::GameState, game_paths::GamePaths, message::error_message};
 use actor::ActorPlugin;
 use city::CityPlugin;
+use commands_history::CommandHistoryPlugin;
 use family::FamilyPlugin;
 use hover::HoverPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
+use spline::SplinePlugin;
 
 pub(super) struct GameWorldPlugin;
 
@@ -38,6 +41,7 @@ impl Plugin for GameWorldPlugin {
             FamilyPlugin,
             ObjectPlugin,
             PlayerCameraPlugin,
+            CommandHistoryPlugin,
         ))
         .add_sub_state::<WorldState>()
         .enable_state_scoped_entities::<WorldState>()
