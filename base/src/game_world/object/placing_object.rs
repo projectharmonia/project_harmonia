@@ -7,8 +7,8 @@ use std::{
 };
 
 use bevy::{
-    asset::AssetPath,
     color::palettes::css::{RED, WHITE},
+    ecs::reflect::ReflectCommandExt,
     prelude::*,
     scene,
 };
@@ -24,6 +24,7 @@ use crate::{
         hover::{HoverEnabled, Hovered},
         object::{Object, ObjectCommand},
         player_camera::CameraCaster,
+        Layer,
     },
     settings::Action,
 };
@@ -88,9 +89,10 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         camera_caster: CameraCaster,
         mut hover_enabled: ResMut<HoverEnabled>,
+        objects_info: Res<Assets<ObjectInfo>>,
         asset_server: Res<AssetServer>,
-        placing_objects: Query<(Entity, &PlacingObject), Without<Object>>,
-        objects: Query<(&Position, &Rotation, &Object)>,
+        placing_objects: Query<(Entity, &PlacingObject), Without<PlacingObjectState>>,
+        objects: Query<(&Object, &Position, &Rotation)>,
     ) {
         let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
             return;
@@ -100,44 +102,57 @@ impl PlacingObjectPlugin {
             "initializing placing object `{:?}` for `{placing_entity}`",
             placing_object.kind
         );
-        match placing_object.kind {
+
+        let (info, cursor_offset, rotation, position) = match placing_object.kind {
             PlacingObjectKind::Spawning(id) => {
-                let info_path = asset_server
-                    .get_path(id)
-                    .expect("info should always come from file");
+                let info = objects_info.get(id).expect("info should be preloaded");
 
                 // Rotate towards camera and round to the nearest cardinal direction.
                 let (transform, _) = camera_caster.cameras.single();
                 let (_, rotation, _) = transform.to_scale_rotation_translation();
                 let (y, ..) = rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
+                let rotation = Rotation(Quat::from_rotation_y(rounded_angle));
 
-                commands
-                    .entity(placing_entity)
-                    .insert(PlacingInitBundle::spawning(
-                        info_path.into_owned(),
-                        rounded_angle,
-                    ));
+                (info, Vec3::ZERO, rotation, Default::default())
             }
             PlacingObjectKind::Moving(object_entity) => {
-                let (&position, &rotation, info_path) = objects
+                let (object, &position, &rotation) = objects
                     .get(object_entity)
                     .expect("moving object should have scene and path");
 
-                let offset = camera_caster
+                let info_handle = asset_server
+                    .get_handle(&object.0)
+                    .expect("info should be preloaded");
+                let info = objects_info.get(&info_handle).unwrap();
+
+                let cursor_offset = camera_caster
                     .intersect_ground()
                     .map(|point| *position - point)
                     .unwrap_or(*position);
 
-                commands
-                    .entity(placing_entity)
-                    .insert(PlacingInitBundle::moving(
-                        info_path.0.clone(),
-                        CursorOffset(offset),
-                        position,
-                        rotation,
-                    ));
+                (info, cursor_offset, rotation, position)
             }
+        };
+
+        let scene_handle: Handle<Scene> = asset_server.load(info.scene.clone());
+        let mut entity = commands.entity(placing_entity);
+        entity.insert((
+            Name::new("Placing object"),
+            scene_handle,
+            PlacingObjectState::new(cursor_offset),
+            rotation,
+            position,
+            RigidBody::Kinematic,
+            SpatialBundle::default(),
+            CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
+        ));
+
+        for component in &info.components {
+            entity.insert_reflect(component.clone_value());
+        }
+        for component in &info.place_components {
+            entity.insert_reflect(component.clone_value());
         }
 
         hover_enabled.0 = false;
@@ -157,17 +172,17 @@ impl PlacingObjectPlugin {
 
     fn apply_position(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Position, &CursorOffset)>,
+        mut placing_objects: Query<(&mut Position, &PlacingObjectState)>,
     ) {
-        if let Ok((mut position, cursor_offset)) = placing_objects.get_single_mut() {
+        if let Ok((mut position, state)) = placing_objects.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
-                **position = point + cursor_offset.0;
+                **position = point + state.cursor_offset;
             }
         }
     }
 
     fn check_collision(
-        mut placing_objects: Query<(&mut PlaceState, &PlacingObject, &CollidingEntities)>,
+        mut placing_objects: Query<(&mut PlacingObjectState, &PlacingObject, &CollidingEntities)>,
     ) {
         if let Ok((mut state, &placing_object, colliding_entities)) =
             placing_objects.get_single_mut()
@@ -189,7 +204,10 @@ impl PlacingObjectPlugin {
 
     fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
-        placing_objects: Query<(Entity, &PlaceState), Or<(Added<Children>, Changed<PlaceState>)>>,
+        placing_objects: Query<
+            (Entity, &PlacingObjectState),
+            Or<(Added<Children>, Changed<PlacingObjectState>)>,
+        >,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
@@ -225,7 +243,13 @@ impl PlacingObjectPlugin {
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
         mut hover_enabled: ResMut<HoverEnabled>,
-        placing_objects: Query<(Entity, &Position, &Rotation, &PlacingObject, &PlaceState)>,
+        placing_objects: Query<(
+            Entity,
+            &Position,
+            &Rotation,
+            &PlacingObject,
+            &PlacingObjectState,
+        )>,
     ) {
         if let Ok((entity, position, rotation, &placing_object, state)) =
             placing_objects.get_single()
@@ -255,7 +279,7 @@ impl PlacingObjectPlugin {
                 commands
                     .entity(entity)
                     .insert(DespawnOnConfirm(id))
-                    .remove::<(PlacingObject, PlacingInitBundle)>();
+                    .remove::<(PlacingObject, PlacingObjectState)>();
 
                 info!("confirming `{:?}`", placing_object.kind);
             }
@@ -335,52 +359,14 @@ pub enum PlacingObjectKind {
     Moving(Entity),
 }
 
-/// Additional components that needed for [`PlacingObject`].
-#[derive(Bundle)]
-struct PlacingInitBundle {
-    object: Object,
-    cursor_offset: CursorOffset,
-    position: Position,
-    rotation: Rotation,
-    state: PlaceState,
-}
-
-impl PlacingInitBundle {
-    fn spawning(info_path: AssetPath<'static>, angle: f32) -> Self {
-        Self {
-            object: Object(info_path),
-            cursor_offset: Default::default(),
-            position: Default::default(),
-            rotation: Rotation(Quat::from_rotation_y(angle)),
-            state: Default::default(),
-        }
-    }
-
-    fn moving(
-        info_path: AssetPath<'static>,
-        cursor_offset: CursorOffset,
-        position: Position,
-        rotation: Rotation,
-    ) -> Self {
-        Self {
-            object: Object(info_path),
-            cursor_offset,
-            position,
-            rotation,
-            state: PlaceState::default(),
-        }
-    }
-}
-
-/// Contains an offset between cursor position on first creation and object origin.
-#[derive(Clone, Component, Copy, Default, Deref)]
-struct CursorOffset(Vec3);
-
 /// Controls if an object can be placed.
 ///
 /// Stored as a separate component to avoid triggering change detection to update the object material.
 #[derive(Component)]
-struct PlaceState {
+struct PlacingObjectState {
+    /// An offset between cursor position on first creation and object origin.
+    cursor_offset: Vec3,
+
     /// Can be placed without colliding with any other entities.
     collides: bool,
 
@@ -390,17 +376,16 @@ struct PlaceState {
     allowed_place: bool,
 }
 
-impl PlaceState {
-    fn placeable(&self) -> bool {
-        !self.collides && self.allowed_place
-    }
-}
-
-impl Default for PlaceState {
-    fn default() -> Self {
+impl PlacingObjectState {
+    fn new(cursor_offset: Vec3) -> Self {
         Self {
+            cursor_offset,
             allowed_place: true,
             collides: false,
         }
+    }
+
+    fn placeable(&self) -> bool {
+        !self.collides && self.allowed_place
     }
 }

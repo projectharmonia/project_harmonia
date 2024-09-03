@@ -24,7 +24,7 @@ use super::{
 };
 use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
 use door::DoorPlugin;
-use placing_object::{PlacingObject, PlacingObjectPlugin};
+use placing_object::PlacingObjectPlugin;
 use wall_mount::WallMountPlugin;
 
 pub(super) struct ObjectPlugin;
@@ -61,9 +61,9 @@ impl ObjectPlugin {
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         objects_info: Res<Assets<ObjectInfo>>,
-        spawned_objects: Query<(Entity, &Object, Has<PlacingObject>), Without<Handle<Scene>>>,
+        spawned_objects: Query<(Entity, &Object), Without<Handle<Scene>>>,
     ) {
-        for (entity, object, placing_object) in &spawned_objects {
+        for (entity, object) in &spawned_objects {
             let info_handle = asset_server
                 .get_handle(&object.0)
                 .expect("info should be preloaded");
@@ -86,14 +86,8 @@ impl ObjectPlugin {
             for component in &info.components {
                 entity.insert_reflect(component.clone_value());
             }
-            if placing_object {
-                for component in &info.place_components {
-                    entity.insert_reflect(component.clone_value());
-                }
-            } else {
-                for component in &info.spawn_components {
-                    entity.insert_reflect(component.clone_value());
-                }
+            for component in &info.spawn_components {
+                entity.insert_reflect(component.clone_value());
             }
         }
     }

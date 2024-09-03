@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{PlaceState, PlacingObject, PlacingObjectPlugin};
+use super::{PlacingObject, PlacingObjectPlugin, PlacingObjectState};
 use crate::game_world::{
     city::CityMode,
     family::{
@@ -32,7 +32,9 @@ impl Plugin for WallSnapPlugin {
 }
 
 impl WallSnapPlugin {
-    fn init_placing(mut placing_objects: Query<(&mut PlaceState, &WallSnap), Added<WallSnap>>) {
+    fn init_placing(
+        mut placing_objects: Query<(&mut PlacingObjectState, &WallSnap), Added<WallSnap>>,
+    ) {
         if let Ok((mut placing_object, snap)) = placing_objects.get_single_mut() {
             if snap.required() {
                 debug!("disabling placing until snapped");
@@ -46,7 +48,7 @@ impl WallSnapPlugin {
         mut placing_objects: Query<(
             &mut Position,
             &mut Rotation,
-            &mut PlaceState,
+            &mut PlacingObjectState,
             &mut PlacingObject,
             &WallSnap,
         )>,
