@@ -78,7 +78,7 @@ impl PlacingObjectPlugin {
         if let Ok((object_entity, parent)) = hovered.get_single() {
             info!("picking object `{object_entity}`");
             commands.entity(**parent).with_children(|parent| {
-                parent.spawn(PlacingObject::Moving(object_entity));
+                parent.spawn(PlacingObject::moving(object_entity));
             });
         }
     }
@@ -96,9 +96,12 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        debug!("initializing placing object `{placing_object:?}` for `{placing_entity}`");
-        match placing_object {
-            PlacingObject::Spawning(id) => {
+        debug!(
+            "initializing placing object `{:?}` for `{placing_entity}`",
+            placing_object.kind
+        );
+        match placing_object.kind {
+            PlacingObjectKind::Spawning(id) => {
                 let info_path = asset_server
                     .get_path(id)
                     .expect("info should always come from file");
@@ -116,7 +119,7 @@ impl PlacingObjectPlugin {
                         rounded_angle,
                     ));
             }
-            PlacingObject::Moving(object_entity) => {
+            PlacingObjectKind::Moving(object_entity) => {
                 let (&position, &rotation, info_path) = objects
                     .get(object_entity)
                     .expect("moving object should have scene and path");
@@ -140,9 +143,10 @@ impl PlacingObjectPlugin {
         hover_enabled.0 = false;
     }
 
-    fn rotate(mut placing_objects: Query<(&mut Rotation, &RotationLimit)>) {
-        if let Ok((mut rotation, limit)) = placing_objects.get_single_mut() {
-            **rotation *= Quat::from_axis_angle(Vec3::Y, limit.unwrap_or(FRAC_PI_4));
+    fn rotate(mut placing_objects: Query<(&mut Rotation, &PlacingObject)>) {
+        if let Ok((mut rotation, object)) = placing_objects.get_single_mut() {
+            **rotation *=
+                Quat::from_axis_angle(Vec3::Y, object.rotation_limit.unwrap_or(FRAC_PI_4));
 
             debug!(
                 "rotating placing object to '{}'",
@@ -169,7 +173,7 @@ impl PlacingObjectPlugin {
             placing_objects.get_single_mut()
         {
             let mut collides = !colliding_entities.is_empty();
-            if let PlacingObject::Moving(entity) = placing_object {
+            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
                 if colliding_entities.len() == 1 && colliding_entities.contains(&entity) {
                     // Ignore collision with the moving object.
                     collides = false;
@@ -227,8 +231,8 @@ impl PlacingObjectPlugin {
             placing_objects.get_single()
         {
             if state.placeable() {
-                let id = match placing_object {
-                    PlacingObject::Spawning(id) => {
+                let id = match placing_object.kind {
+                    PlacingObjectKind::Spawning(id) => {
                         let info_path = asset_server
                             .get_path(id)
                             .expect("info should always come from file");
@@ -238,11 +242,13 @@ impl PlacingObjectPlugin {
                             rotation: **rotation,
                         })
                     }
-                    PlacingObject::Moving(entity) => history.push_pending(ObjectCommand::Move {
-                        entity,
-                        position: **position,
-                        rotation: **rotation,
-                    }),
+                    PlacingObjectKind::Moving(entity) => {
+                        history.push_pending(ObjectCommand::Move {
+                            entity,
+                            position: **position,
+                            rotation: **rotation,
+                        })
+                    }
                 };
                 hover_enabled.0 = true;
 
@@ -251,7 +257,7 @@ impl PlacingObjectPlugin {
                     .insert(DespawnOnConfirm(id))
                     .remove::<(PlacingObject, PlacingInitBundle)>();
 
-                info!("confirming `{placing_object:?}`");
+                info!("confirming `{:?}`", placing_object.kind);
             }
         }
     }
@@ -264,7 +270,7 @@ impl PlacingObjectPlugin {
     ) {
         if let Ok((entity, &placing_object)) = placing_objects.get_single() {
             info!("deleting placing object");
-            if let PlacingObject::Moving(entity) = placing_object {
+            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
                 history.push_pending(ObjectCommand::Sell { entity });
             }
             commands.entity(entity).despawn_recursive();
@@ -301,8 +307,30 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Component, Debug, Clone, Copy)]
-pub enum PlacingObject {
+#[derive(Component, Clone, Copy)]
+pub struct PlacingObject {
+    kind: PlacingObjectKind,
+    rotation_limit: Option<f32>,
+}
+
+impl PlacingObject {
+    pub fn spawning(id: AssetId<ObjectInfo>) -> Self {
+        Self {
+            kind: PlacingObjectKind::Spawning(id),
+            rotation_limit: None,
+        }
+    }
+
+    fn moving(entity: Entity) -> Self {
+        Self {
+            kind: PlacingObjectKind::Moving(entity),
+            rotation_limit: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PlacingObjectKind {
     Spawning(AssetId<ObjectInfo>),
     Moving(Entity),
 }
@@ -315,7 +343,6 @@ struct PlacingInitBundle {
     position: Position,
     rotation: Rotation,
     state: PlaceState,
-    snapped: RotationLimit,
 }
 
 impl PlacingInitBundle {
@@ -326,7 +353,6 @@ impl PlacingInitBundle {
             position: Default::default(),
             rotation: Rotation(Quat::from_rotation_y(angle)),
             state: Default::default(),
-            snapped: Default::default(),
         }
     }
 
@@ -342,7 +368,6 @@ impl PlacingInitBundle {
             position,
             rotation,
             state: PlaceState::default(),
-            snapped: Default::default(),
         }
     }
 }
@@ -379,7 +404,3 @@ impl Default for PlaceState {
         }
     }
 }
-
-/// Limits object rotation to the specified angle if set.
-#[derive(Component, Default, Deref)]
-struct RotationLimit(Option<f32>);

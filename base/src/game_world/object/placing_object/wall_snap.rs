@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
-use super::{PlaceState, PlacingObjectPlugin, RotationLimit};
+use super::{PlaceState, PlacingObject, PlacingObjectPlugin};
 use crate::game_world::{
     city::CityMode,
     family::{
@@ -47,11 +47,11 @@ impl WallSnapPlugin {
             &mut Position,
             &mut Rotation,
             &mut PlaceState,
-            &mut RotationLimit,
+            &mut PlacingObject,
             &WallSnap,
         )>,
     ) {
-        let Ok((mut position, mut rotation, mut state, mut limit, snap)) =
+        let Ok((mut position, mut rotation, mut state, mut object, snap)) =
             placing_objects.get_single_mut()
         else {
             return;
@@ -76,18 +76,18 @@ impl WallSnapPlugin {
             let angle = disp.angle_between(Vec2::X * sign);
             position.x = snap_point.x;
             position.z = snap_point.y;
-            if limit.is_none() {
+            if object.rotation_limit.is_none() {
                 // Apply rotation only for newly snapped objects.
                 debug!("applying rotation {angle}");
                 **rotation = Quat::from_rotation_y(angle);
-                limit.0 = Some(PI);
+                object.rotation_limit = Some(PI);
                 if snap.required() {
                     debug!("allowing placing");
                     state.allowed_place = true;
                 }
             }
-        } else if limit.is_some() {
-            limit.0 = None;
+        } else if object.rotation_limit.is_some() {
+            object.rotation_limit = None;
             if snap.required() {
                 debug!("disallowing placing");
                 state.allowed_place = false;

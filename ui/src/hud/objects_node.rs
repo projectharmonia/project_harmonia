@@ -48,7 +48,7 @@ impl ObjectsNodePlugin {
                 commands
                     .entity(active_cities.single())
                     .with_children(|parent| {
-                        parent.spawn(PlacingObject::Spawning(id));
+                        parent.spawn(PlacingObject::spawning(id));
                     });
             }
         }
