@@ -18,8 +18,8 @@ project_harmonia_ui = { path = "ui" }
 project_harmonia_widgets = { path = "widgets" }
 bevy = { version = "0.14", default-features = false }
 bevy_atmosphere = "0.10"
-bevy_replicon = "0.27"
-bevy_replicon_renet = "0.4"
+bevy_replicon = "0.28"
+bevy_replicon_renet = "0.5"
 bevy_xpbd_3d = { version = "0.5", features = ["serialize"] }
 bevy_mod_outline = { version = "0.8" }
 bevy_simple_text_input = "0.8"
