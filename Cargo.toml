@@ -22,7 +22,7 @@ bevy_replicon = "0.28"
 bevy_replicon_renet = "0.5"
 bevy_xpbd_3d = { version = "0.5", features = ["serialize"] }
 bevy_mod_outline = { version = "0.8" }
-bevy_simple_text_input = "0.8"
+bevy_simple_text_input = "0.9"
 oxidized_navigation = { version = "0.11", default-features = false, features = [
   "xpbd",
   "debug_draw",
