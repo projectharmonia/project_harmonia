@@ -1,11 +1,7 @@
 pub mod creating_wall;
 pub(crate) mod wall_mesh;
 
-use bevy::{
-    ecs::entity::MapEntities,
-    prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
-};
+use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use oxidized_navigation::NavMeshAffector;
@@ -58,11 +54,6 @@ impl WallPlugin {
     ) {
         for (entity, creating_wall) in &walls {
             debug!("initializing wall `{entity}`");
-            let mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_inserted_indices(Indices::U32(Vec::new()));
 
             let mut entity = commands.entity(entity);
             entity.insert((
@@ -72,7 +63,7 @@ impl WallPlugin {
                 NoFrustumCulling,
                 PbrBundle {
                     material: asset_server.load("base/walls/brick/brick.ron"),
-                    mesh: meshes.add(mesh),
+                    mesh: meshes.add(DynamicMesh::create_empty()),
                     ..Default::default()
                 },
             ));

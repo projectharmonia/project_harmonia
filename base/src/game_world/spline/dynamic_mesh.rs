@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    render::mesh::{Indices, VertexAttributeValues},
+    render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues},
 };
 
 #[derive(Default)]
@@ -59,5 +59,14 @@ impl DynamicMesh {
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.insert_indices(Indices::U32(self.indices))
+    }
+
+    /// Returns a mesh with attributes required by [`DynamicMesh`].
+    pub(crate) fn create_empty() -> Mesh {
+        Mesh::new(PrimitiveTopology::TriangleList, Default::default())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
+            .with_inserted_indices(Indices::U32(Vec::new()))
     }
 }

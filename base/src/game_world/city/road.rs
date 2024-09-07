@@ -2,10 +2,7 @@ pub mod creating_road;
 pub(crate) mod road_mesh;
 
 use bevy::{
-    asset::AssetPath,
-    ecs::entity::MapEntities,
-    prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology, view::NoFrustumCulling},
+    asset::AssetPath, ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling,
 };
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -64,18 +61,12 @@ impl RoadPlugin {
             let info = roads_info.get(&info_handle).unwrap();
             debug!("initializing road '{}' for `{entity}`", road.0);
 
-            let mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<Vec3>::new())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<Vec2>::new())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_inserted_indices(Indices::U32(Vec::new()));
-
             let mut entity = commands.entity(entity);
             entity.insert((
                 NoFrustumCulling,
                 PbrBundle {
                     material: asset_server.load(info.material.clone()),
-                    mesh: meshes.add(mesh),
+                    mesh: meshes.add(DynamicMesh::create_empty()),
                     ..Default::default()
                 },
             ));
