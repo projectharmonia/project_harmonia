@@ -1,4 +1,5 @@
 pub mod asset;
+mod combined_scene_collider;
 mod component_commands;
 pub mod core;
 pub mod game_paths;
@@ -13,6 +14,7 @@ pub mod settings;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use asset::AssetPlugin;
+use combined_scene_collider::CombinedSceneColliderPlugin;
 use core::CorePlugin;
 use game_paths::GamePathsPlugin;
 use game_world::GameWorldPlugin;
@@ -28,6 +30,7 @@ impl PluginGroup for CorePlugins {
         PluginGroupBuilder::start::<Self>()
             .add(MathPlugin)
             .add(CorePlugin)
+            .add(CombinedSceneColliderPlugin)
             .add(GameWorldPlugin)
             .add(NavigationPlugin)
             .add(ErrorReportPlugin)

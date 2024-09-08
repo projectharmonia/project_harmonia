@@ -6,10 +6,8 @@ use bevy::{
     asset::AssetPath,
     ecs::{entity::MapEntities, reflect::ReflectCommandExt},
     prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
-    scene::{self, SceneInstanceReady},
 };
-use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
+use bevy_mod_outline::OutlineBundle;
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -22,7 +20,10 @@ use super::{
     },
     hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };
-use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
+use crate::{
+    asset::info::object_info::ObjectInfo, combined_scene_collider::CombinedSceneCollider,
+    core::GameState, game_world::Layer,
+};
 use door::DoorPlugin;
 use placing_object::PlacingObjectPlugin;
 use wall_mount::WallMountPlugin;
@@ -40,12 +41,6 @@ impl Plugin for ObjectPlugin {
                 Self::init
                     .run_if(in_state(GameState::InGame))
                     .after(ClientSet::Receive),
-            )
-            .add_systems(
-                SpawnScene,
-                Self::init_children
-                    .run_if(in_state(GameState::InGame))
-                    .after(scene::scene_spawner_system),
             )
             .add_systems(
                 PostUpdate,
@@ -78,6 +73,7 @@ impl ObjectPlugin {
                 Name::new(info.general.name.clone()),
                 Hoverable,
                 RigidBody::Kinematic,
+                CombinedSceneCollider,
                 OutlineBundle::highlighting(),
                 SpatialBundle::default(),
                 CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
@@ -89,42 +85,6 @@ impl ObjectPlugin {
             for component in &info.spawn_components {
                 entity.insert_reflect(component.clone_value());
             }
-        }
-    }
-
-    fn init_children(
-        mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
-        meshes: Res<Assets<Mesh>>,
-        objects: Query<Entity, With<Object>>,
-        chidlren: Query<&Children>,
-        child_meshes: Query<(&Transform, &Handle<Mesh>)>,
-    ) {
-        for object_entity in objects.iter_many(ready_events.read().map(|event| event.parent)) {
-            let mut merged_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_inserted_indices(Indices::U32(Vec::new()));
-
-            for child_entity in chidlren.iter_descendants(object_entity) {
-                commands
-                    .entity(child_entity)
-                    .insert(InheritOutlineBundle::default());
-
-                if let Ok((&transform, mesh_handle)) = child_meshes.get(child_entity) {
-                    let mut mesh = meshes
-                        .get(mesh_handle)
-                        .cloned()
-                        .expect("scene mesh should always be valid");
-                    mesh.transform_by(transform);
-                    merged_mesh.merge(&mesh);
-                }
-            }
-
-            let collider = Collider::convex_hull_from_mesh(&merged_mesh)
-                .expect("object mesh should be in compatible format");
-
-            debug!("inserting collider for `{object_entity}`");
-            commands.entity(object_entity).insert(collider);
         }
     }
 
