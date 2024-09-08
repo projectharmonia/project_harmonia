@@ -103,7 +103,7 @@ impl PlacingObjectPlugin {
             placing_object.kind
         );
 
-        let (info, cursor_offset, rotation, position) = match placing_object.kind {
+        let (info, cursor_offset, rotation) = match placing_object.kind {
             PlacingObjectKind::Spawning(id) => {
                 let info = objects_info.get(id).expect("info should be preloaded");
 
@@ -114,12 +114,12 @@ impl PlacingObjectPlugin {
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
                 let rotation = Rotation(Quat::from_rotation_y(rounded_angle));
 
-                (info, Vec3::ZERO, rotation, Default::default())
+                (info, Vec3::ZERO, rotation)
             }
             PlacingObjectKind::Moving(object_entity) => {
                 let (object, &position, &rotation) = objects
                     .get(object_entity)
-                    .expect("moving object should have scene and path");
+                    .expect("moving object should referece a valid object");
 
                 let info_handle = asset_server
                     .get_handle(&object.0)
@@ -131,7 +131,7 @@ impl PlacingObjectPlugin {
                     .map(|point| *position - point)
                     .unwrap_or(*position);
 
-                (info, cursor_offset, rotation, position)
+                (info, cursor_offset, rotation)
             }
         };
 
@@ -142,7 +142,7 @@ impl PlacingObjectPlugin {
             scene_handle,
             PlacingObjectState::new(cursor_offset),
             rotation,
-            position,
+            Position::default(),
             RigidBody::Kinematic,
             SpatialBundle::default(),
             CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
