@@ -1,4 +1,4 @@
-pub mod creating_wall;
+pub mod placing_wall;
 pub(crate) mod wall_mesh;
 
 use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
@@ -15,13 +15,13 @@ use crate::{
     },
     math::triangulator::Triangulator,
 };
-use creating_wall::{CreatingWall, CreatingWallPlugin};
+use placing_wall::{CreatingWall, PlacingWallPlugin};
 
 pub(crate) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(CreatingWallPlugin)
+        app.add_plugins(PlacingWallPlugin)
             .init_resource::<WallMaterial>()
             .register_type::<Wall>()
             .replicate::<Wall>()

@@ -11,7 +11,7 @@ use project_harmonia_base::{
             lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
             road::creating_road::CreatingRoad,
         },
-        family::building::wall::creating_wall::CreatingWall,
+        family::building::wall::placing_wall::CreatingWall,
         object::placing_object::PlacingObject,
         GameSave, WorldState,
     },

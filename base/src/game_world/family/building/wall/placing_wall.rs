@@ -17,9 +17,9 @@ use crate::{
     settings::Action,
 };
 
-pub(super) struct CreatingWallPlugin;
+pub(super) struct PlacingWallPlugin;
 
-impl Plugin for CreatingWallPlugin {
+impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
@@ -46,7 +46,7 @@ impl Plugin for CreatingWallPlugin {
 
 const SNAP_DELTA: f32 = 0.5;
 
-impl CreatingWallPlugin {
+impl PlacingWallPlugin {
     fn start_creation(
         camera_caster: CameraCaster,
         mut commands: Commands,
