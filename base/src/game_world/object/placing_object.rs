@@ -42,6 +42,11 @@ impl Plugin for PlacingObjectPlugin {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
             .add_systems(
+                PreUpdate,
+                Self::init
+                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
+            )
+            .add_systems(
                 Update,
                 (
                     (
@@ -68,7 +73,7 @@ impl Plugin for PlacingObjectPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (Self::init, Self::ensure_single)
+                Self::ensure_single
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             );
     }
