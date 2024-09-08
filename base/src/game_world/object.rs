@@ -290,10 +290,10 @@ impl ConfirmableCommand for ObjectCommand {
         mut recorder: EntityRecorder,
         confirmation: CommandConfirmation,
     ) -> Box<dyn PendingCommand> {
-        if let ObjectCommand::Sell { entity } = &mut *self {
+        if let Self::Sell { entity } = &mut *self {
             *entity = confirmation
                 .entity
-                .expect("confirmation for buying should contain an entity");
+                .expect("confirmation for object buying should contain an entity");
             recorder.record(*entity);
         }
 
@@ -304,9 +304,9 @@ impl ConfirmableCommand for ObjectCommand {
 impl MapEntities for ObjectCommand {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         match self {
-            ObjectCommand::Buy { .. } => (),
-            ObjectCommand::Move { entity, .. } => *entity = entity_mapper.map_entity(*entity),
-            ObjectCommand::Sell { entity } => *entity = entity_mapper.map_entity(*entity),
+            Self::Buy { .. } => (),
+            Self::Move { entity, .. } => *entity = entity_mapper.map_entity(*entity),
+            Self::Sell { entity } => *entity = entity_mapper.map_entity(*entity),
         };
     }
 }
