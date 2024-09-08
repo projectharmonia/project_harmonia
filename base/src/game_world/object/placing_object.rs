@@ -8,7 +8,10 @@ use std::{
 
 use bevy::{
     color::palettes::css::{RED, WHITE},
-    ecs::reflect::ReflectCommandExt,
+    ecs::{
+        component::{ComponentHooks, StorageType},
+        reflect::ReflectCommandExt,
+    },
     prelude::*,
     scene,
 };
@@ -51,7 +54,6 @@ impl Plugin for PlacingObjectPlugin {
                     (
                         Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
                         Self::apply_position,
-                        Self::check_collision,
                         Self::confirm.run_if(action_just_pressed(Action::Confirm)),
                     )
                         .chain(),
@@ -147,7 +149,10 @@ impl PlacingObjectPlugin {
             RigidBody::Kinematic,
             CombinedSceneCollider,
             SpatialBundle::default(),
-            CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
+            CollisionLayers::new(
+                Layer::PlacingObject,
+                [Layer::Object, Layer::PlacingObject, Layer::Wall],
+            ),
         ));
 
         for component in &info.components {
@@ -183,42 +188,22 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn check_collision(
-        mut placing_objects: Query<(&mut PlacingObjectState, &PlacingObject, &CollidingEntities)>,
-    ) {
-        if let Ok((mut state, &placing_object, colliding_entities)) =
-            placing_objects.get_single_mut()
-        {
-            let mut collides = !colliding_entities.is_empty();
-            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                if colliding_entities.len() == 1 && colliding_entities.contains(&entity) {
-                    // Ignore collision with the moving object.
-                    collides = false;
-                }
-            }
-
-            if state.collides != collides {
-                debug!("setting collides to `{collides:?}`");
-                state.collides = collides;
-            }
-        }
-    }
-
     fn update_materials(
         mut materials: ResMut<Assets<StandardMaterial>>,
         placing_objects: Query<
-            (Entity, &PlacingObjectState),
-            Or<(Added<Children>, Changed<PlacingObjectState>)>,
+            (Entity, &PlacingObjectState, &CollidingEntities),
+            Or<(Changed<CollidingEntities>, Changed<PlacingObjectState>)>,
         >,
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
-        if let Ok((placing_entity, state)) = placing_objects.get_single() {
-            let color = if state.placeable() {
+        if let Ok((placing_entity, state, colliding_entities)) = placing_objects.get_single() {
+            let color = if state.allowed_place && colliding_entities.is_empty() {
                 WHITE.into()
             } else {
                 RED.into()
             };
+            debug!("changing materials to `{color:?}`");
 
             let mut iter =
                 material_handles.iter_many_mut(children.iter_descendants(placing_entity));
@@ -251,40 +236,41 @@ impl PlacingObjectPlugin {
             &Rotation,
             &PlacingObject,
             &PlacingObjectState,
+            &CollidingEntities,
         )>,
     ) {
-        if let Ok((entity, position, rotation, &placing_object, state)) =
+        if let Ok((entity, position, rotation, &placing_object, state, colliding_entities)) =
             placing_objects.get_single()
         {
-            if state.placeable() {
-                let id = match placing_object.kind {
-                    PlacingObjectKind::Spawning(id) => {
-                        let info_path = asset_server
-                            .get_path(id)
-                            .expect("info should always come from file");
-                        history.push_pending(ObjectCommand::Buy {
-                            info_path: info_path.into_owned(),
-                            position: **position,
-                            rotation: **rotation,
-                        })
-                    }
-                    PlacingObjectKind::Moving(entity) => {
-                        history.push_pending(ObjectCommand::Move {
-                            entity,
-                            position: **position,
-                            rotation: **rotation,
-                        })
-                    }
-                };
-                hover_enabled.0 = true;
-
-                commands
-                    .entity(entity)
-                    .insert(DespawnOnConfirm(id))
-                    .remove::<(PlacingObject, PlacingObjectState)>();
-
-                info!("confirming `{:?}`", placing_object.kind);
+            if !state.allowed_place || !colliding_entities.is_empty() {
+                return;
             }
+
+            let id = match placing_object.kind {
+                PlacingObjectKind::Spawning(id) => {
+                    let info_path = asset_server
+                        .get_path(id)
+                        .expect("info should always come from file");
+                    history.push_pending(ObjectCommand::Buy {
+                        info_path: info_path.into_owned(),
+                        position: **position,
+                        rotation: **rotation,
+                    })
+                }
+                PlacingObjectKind::Moving(entity) => history.push_pending(ObjectCommand::Move {
+                    entity,
+                    position: **position,
+                    rotation: **rotation,
+                }),
+            };
+            hover_enabled.0 = true;
+
+            commands
+                .entity(entity)
+                .insert(DespawnOnConfirm(id))
+                .remove::<(PlacingObject, PlacingObjectState)>();
+
+            info!("confirming `{:?}`", placing_object.kind);
         }
     }
 
@@ -333,7 +319,7 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Component, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct PlacingObject {
     kind: PlacingObjectKind,
     rotation_limit: Option<f32>,
@@ -355,6 +341,31 @@ impl PlacingObject {
     }
 }
 
+impl Component for PlacingObject {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks
+            .on_add(|mut world, targeted_entity, _component_id| {
+                let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
+                if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+                    // Avoid collision with the original object.
+                    if let Some(mut layers) = world.get_mut::<CollisionLayers>(entity) {
+                        layers.filters.remove(Layer::PlacingObject);
+                    }
+                }
+            })
+            .on_remove(|mut world, targeted_entity, _component_id| {
+                let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
+                if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+                    if let Some(mut layers) = world.get_mut::<CollisionLayers>(entity) {
+                        layers.filters.add(Layer::PlacingObject);
+                    }
+                }
+            });
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum PlacingObjectKind {
     Spawning(AssetId<ObjectInfo>),
@@ -369,9 +380,6 @@ struct PlacingObjectState {
     /// An offset between cursor position on first creation and object origin.
     cursor_offset: Vec3,
 
-    /// Can be placed without colliding with any other entities.
-    collides: bool,
-
     /// Additional object condition for placing.
     ///
     /// For example, a door can be placed only on a wall. Controlled by other plugins.
@@ -383,11 +391,6 @@ impl PlacingObjectState {
         Self {
             cursor_offset,
             allowed_place: true,
-            collides: false,
         }
-    }
-
-    fn placeable(&self) -> bool {
-        !self.collides && self.allowed_place
     }
 }

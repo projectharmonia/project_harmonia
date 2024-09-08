@@ -76,7 +76,10 @@ impl ObjectPlugin {
                 CombinedSceneCollider,
                 OutlineBundle::highlighting(),
                 SpatialBundle::default(),
-                CollisionLayers::new(Layer::Object, [Layer::Object, Layer::Wall]),
+                CollisionLayers::new(
+                    Layer::Object,
+                    [Layer::Object, Layer::PlacingObject, Layer::Wall],
+                ),
             ));
 
             for component in &info.components {

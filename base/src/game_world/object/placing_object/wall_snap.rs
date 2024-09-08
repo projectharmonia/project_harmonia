@@ -22,8 +22,8 @@ impl Plugin for WallSnapPlugin {
             (
                 Self::init_placing,
                 Self::snap
-                    .before(PlacingObjectPlugin::check_collision)
-                    .after(PlacingObjectPlugin::apply_position),
+                    .after(PlacingObjectPlugin::apply_position)
+                    .before(PlacingObjectPlugin::confirm),
             )
                 .chain()
                 .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),

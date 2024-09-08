@@ -14,8 +14,8 @@ impl Plugin for SideSnapPlugin {
                 (
                     Self::init,
                     Self::snap
-                        .before(PlacingObjectPlugin::check_collision)
-                        .after(PlacingObjectPlugin::apply_position),
+                        .after(PlacingObjectPlugin::apply_position)
+                        .before(PlacingObjectPlugin::confirm),
                 )
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )

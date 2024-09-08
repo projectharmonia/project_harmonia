@@ -163,5 +163,6 @@ pub enum WorldState {
 pub(super) enum Layer {
     Ground,
     Object,
+    PlacingObject,
     Wall,
 }

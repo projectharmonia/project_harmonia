@@ -59,7 +59,7 @@ impl WallPlugin {
             entity.insert((
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::new(Layer::Wall, Layer::Object),
+                CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
                 NoFrustumCulling,
                 PbrBundle {
                     material: asset_server.load("base/walls/brick/brick.ron"),
