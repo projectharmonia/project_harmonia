@@ -49,7 +49,7 @@ impl Plugin for PlacingObjectPlugin {
                             .run_if(action_just_pressed(Action::Confirm))
                             .run_if(not(any_with_component::<PlacingObject>)),
                         Self::delete.run_if(action_just_pressed(Action::Delete)),
-                        Self::end_placing.run_if(action_just_pressed(Action::Cancel)),
+                        Self::cancel.run_if(action_just_pressed(Action::Cancel)),
                     ),
                     (
                         Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
@@ -203,7 +203,7 @@ impl PlacingObjectPlugin {
             } else {
                 RED.into()
             };
-            debug!("changing materials to `{color:?}`");
+            debug!("changing base color to `{color:?}`");
 
             let mut iter =
                 material_handles.iter_many_mut(children.iter_descendants(placing_entity));
@@ -290,13 +290,13 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn end_placing(
+    fn cancel(
         mut commands: Commands,
         mut hover_enabled: ResMut<HoverEnabled>,
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
         if let Ok(placing_entity) = placing_objects.get_single() {
-            info!("ending placing");
+            info!("cancelling placing");
             hover_enabled.0 = true;
             commands.entity(placing_entity).despawn_recursive();
         }
