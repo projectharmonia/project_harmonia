@@ -19,14 +19,9 @@ pub(super) struct ObjectsNodePlugin;
 
 impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.observe(Self::untoggle).add_systems(
             Update,
-            (
-                Self::start_placing,
-                Self::show_popup,
-                Self::untoggle_spawned,
-                Self::reload_buttons,
-            )
+            (Self::start_placing, Self::show_popup, Self::reload_buttons)
                 .run_if(in_state(CityMode::Objects).or_else(in_state(FamilyMode::Building))),
         );
     }
@@ -36,20 +31,23 @@ impl ObjectsNodePlugin {
     fn start_placing(
         mut commands: Commands,
         active_cities: Query<Entity, With<ActiveCity>>,
-        buttons: Query<(&Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
+        buttons: Query<(Entity, &Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
     ) {
-        for (toggled, &preview) in &buttons {
+        for (button_entity, toggled, &preview) in &buttons {
             let Preview::Object(id) = preview else {
                 panic!("buttons should contain only object previews");
             };
 
             if toggled.0 {
                 debug!("starting spawning object `{id:?}`");
+                let placing_entity = commands
+                    .spawn(PlacingObject::spawning(id))
+                    .set_parent(active_cities.single())
+                    .id();
+
                 commands
-                    .entity(active_cities.single())
-                    .with_children(|parent| {
-                        parent.spawn(PlacingObject::spawning(id));
-                    });
+                    .entity(button_entity)
+                    .insert(ButtonPlacingObject(placing_entity));
             }
         }
     }
@@ -99,22 +97,6 @@ impl ObjectsNodePlugin {
         }
     }
 
-    fn untoggle_spawned(
-        mut removed_objects: RemovedComponents<PlacingObject>,
-        placing_objects: Query<(), With<PlacingObject>>,
-        mut buttons: Query<&mut Toggled, With<ObjectButton>>,
-    ) {
-        if removed_objects.read().count() != 0 {
-            // If there is no button, then the object was moved.
-            if let Some(mut toggled) = buttons.iter_mut().find(|toggled| toggled.0) {
-                if placing_objects.is_empty() {
-                    debug!("untoggling button for placed object");
-                    toggled.0 = false;
-                }
-            }
-        }
-    }
-
     fn reload_buttons(
         mut commands: Commands,
         mut change_events: EventReader<AssetEvent<ObjectInfo>>,
@@ -154,6 +136,27 @@ impl ObjectsNodePlugin {
                     });
                 }
             }
+        }
+    }
+
+    fn untoggle(
+        trigger: Trigger<OnRemove, PlacingObject>,
+        mut commands: Commands,
+        mut buttons: Query<(Entity, &mut Toggled, &ButtonPlacingObject)>,
+    ) {
+        if let Some((button_entity, mut toggled, _)) = buttons
+            .iter_mut()
+            .find(|(.., placing_entity)| placing_entity.0 == trigger.entity())
+        {
+            debug!(
+                "untoggling button `{button_entity}` for placing object `{}`",
+                trigger.entity()
+            );
+
+            toggled.0 = false;
+            commands
+                .entity(button_entity)
+                .remove::<ButtonPlacingObject>();
         }
     }
 }
@@ -218,7 +221,6 @@ struct ObjectButtonBundle {
     object_button: ObjectButton,
     preview: Preview,
     toggled: Toggled,
-    exclusive_button: ExclusiveButton,
     image_button_bundle: ImageButtonBundle,
 }
 
@@ -228,8 +230,10 @@ impl ObjectButtonBundle {
             object_button: ObjectButton,
             preview: Preview::Object(id),
             toggled: Toggled(false),
-            exclusive_button: ExclusiveButton,
             image_button_bundle: ImageButtonBundle::placeholder(theme),
         }
     }
 }
+
+#[derive(Component)]
+struct ButtonPlacingObject(Entity);
