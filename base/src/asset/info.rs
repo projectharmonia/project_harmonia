@@ -37,9 +37,12 @@ impl<A> Default for InfoPlugin<A> {
 
 impl<T: Asset + Info> Plugin for InfoPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_asset::<T>()
-            .init_asset_loader::<InfoLoader<T>>()
-            .init_resource::<InfoHandles<T>>();
+        app.init_asset::<T>().init_asset_loader::<InfoLoader<T>>();
+    }
+
+    fn finish(&self, app: &mut App) {
+        // Registered in the end to load all handles after all reflection registrations.
+        app.init_resource::<InfoHandles<T>>();
     }
 }
 

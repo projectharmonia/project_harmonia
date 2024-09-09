@@ -28,6 +28,7 @@ pub struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
+            .add(AssetPlugin)
             .add(MathPlugin)
             .add(CorePlugin)
             .add(CombinedSceneColliderPlugin)
@@ -36,6 +37,5 @@ impl PluginGroup for CorePlugins {
             .add(ErrorReportPlugin)
             .add(GamePathsPlugin)
             .add(SettingsPlugin)
-            .add(AssetPlugin) // Should run after registering components.
     }
 }
