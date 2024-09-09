@@ -39,6 +39,7 @@ impl Component for Ghost {
                 let ghost = *world.get::<Self>(targeted_entity).unwrap();
                 if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
                     *visibility = Visibility::Hidden;
+                    debug!("applying {visibility:?} to `{}`", ghost.original_entity);
                 }
                 if ghost.remove_filters != LayerMask::NONE {
                     if let Some(mut collision_layers) =
@@ -51,6 +52,7 @@ impl Component for Ghost {
             .on_remove(|mut world, targeted_entity, _component_id| {
                 let ghost = *world.get::<Self>(targeted_entity).unwrap();
                 if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
+                    debug!("applying {visibility:?} to `{}`", ghost.original_entity);
                     *visibility = Visibility::Inherited;
                 }
                 if ghost.remove_filters != LayerMask::NONE {
