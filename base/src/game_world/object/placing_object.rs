@@ -8,10 +8,7 @@ use std::{
 
 use bevy::{
     color::palettes::css::{RED, WHITE},
-    ecs::{
-        component::{ComponentHooks, StorageType},
-        reflect::ReflectCommandExt,
-    },
+    ecs::reflect::ReflectCommandExt,
     prelude::*,
     scene,
 };
@@ -30,6 +27,7 @@ use crate::{
         player_camera::CameraCaster,
         Layer,
     },
+    ghost::Ghost,
     settings::Action,
 };
 use side_snap::SideSnapPlugin;
@@ -53,7 +51,7 @@ impl Plugin for PlacingObjectPlugin {
                         Self::pick
                             .run_if(action_just_pressed(Action::Confirm))
                             .run_if(not(any_with_component::<PlacingObject>)),
-                        Self::delete.run_if(action_just_pressed(Action::Delete)),
+                        Self::sell.run_if(action_just_pressed(Action::Delete)),
                         Self::cancel.run_if(action_just_pressed(Action::Cancel)),
                     ),
                     (
@@ -144,8 +142,8 @@ impl PlacingObjectPlugin {
         };
 
         let scene_handle: Handle<Scene> = asset_server.load(info.scene.clone());
-        let mut entity = commands.entity(placing_entity);
-        entity.insert((
+        let mut placing_entity = commands.entity(placing_entity);
+        placing_entity.insert((
             Name::new("Placing object"),
             StateScoped(BuildingMode::Objects),
             StateScoped(CityMode::Objects),
@@ -162,11 +160,16 @@ impl PlacingObjectPlugin {
             ),
         ));
 
+        if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
+            placing_entity
+                .insert(Ghost::new(object_entity).with_remove_filters(Layer::PlacingObject));
+        }
+
         for component in &info.components {
-            entity.insert_reflect(component.clone_value());
+            placing_entity.insert_reflect(component.clone_value());
         }
         for component in &info.place_components {
-            entity.insert_reflect(component.clone_value());
+            placing_entity.insert_reflect(component.clone_value());
         }
 
         hover_enabled.0 = false;
@@ -281,18 +284,33 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn delete(
+    fn sell(
         mut commands: Commands,
         mut history: CommandsHistory,
         mut hover_enabled: ResMut<HoverEnabled>,
-        placing_objects: Query<(Entity, &PlacingObject)>,
+        mut placing_objects: Query<(Entity, &PlacingObject, &mut Position, &mut Rotation)>,
+        objects: Query<(&Position, &Rotation), Without<PlacingObject>>,
     ) {
-        if let Ok((entity, &placing_object)) = placing_objects.get_single() {
-            info!("deleting placing object");
+        if let Ok((placing_entity, &placing_object, mut position, mut rotation)) =
+            placing_objects.get_single_mut()
+        {
+            info!("selling object");
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                history.push_pending(ObjectCommand::Sell { entity });
+                let id = history.push_pending(ObjectCommand::Sell { entity });
+
+                let (original_position, original_rotation) =
+                    objects.get(entity).expect("moving object should exist");
+                *position = *original_position;
+                *rotation = *original_rotation;
+
+                commands
+                    .entity(placing_entity)
+                    .insert(PendingDespawn(id))
+                    .remove::<(PlacingObject, PlacingObjectState)>();
+            } else {
+                commands.entity(placing_entity).despawn_recursive();
             }
-            commands.entity(entity).despawn_recursive();
+
             hover_enabled.0 = true;
         }
     }
@@ -326,7 +344,7 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Component)]
 pub struct PlacingObject {
     kind: PlacingObjectKind,
     rotation_limit: Option<f32>,
@@ -345,31 +363,6 @@ impl PlacingObject {
             kind: PlacingObjectKind::Moving(entity),
             rotation_limit: None,
         }
-    }
-}
-
-impl Component for PlacingObject {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, targeted_entity, _component_id| {
-                let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
-                if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                    // Avoid collision with the original object.
-                    if let Some(mut collision_layers) = world.get_mut::<CollisionLayers>(entity) {
-                        collision_layers.filters.remove(Layer::PlacingObject);
-                    }
-                }
-            })
-            .on_remove(|mut world, targeted_entity, _component_id| {
-                let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
-                if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                    if let Some(mut collision_layers) = world.get_mut::<CollisionLayers>(entity) {
-                        collision_layers.filters.add(Layer::PlacingObject);
-                    }
-                }
-            });
     }
 }
 
