@@ -147,6 +147,8 @@ impl PlacingObjectPlugin {
         let mut entity = commands.entity(placing_entity);
         entity.insert((
             Name::new("Placing object"),
+            StateScoped(BuildingMode::Objects),
+            StateScoped(CityMode::Objects),
             scene_handle,
             PlacingObjectState::new(cursor_offset),
             rotation,
