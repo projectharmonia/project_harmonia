@@ -22,6 +22,7 @@ pub(crate) struct WallPlugin;
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(PlacingWallPlugin)
+            .init_resource::<WallMaterial>()
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<WallCreate>(ChannelKind::Unordered)
@@ -48,7 +49,7 @@ impl Plugin for WallPlugin {
 impl WallPlugin {
     fn init(
         mut commands: Commands,
-        asset_server: Res<AssetServer>,
+        wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<(Entity, Has<CreatingWall>), (With<Wall>, Without<Handle<Mesh>>)>,
     ) {
@@ -62,7 +63,7 @@ impl WallPlugin {
                 CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
                 NoFrustumCulling,
                 PbrBundle {
-                    material: asset_server.load("base/walls/brick/brick.ron"),
+                    material: wall_material.0.clone(),
                     mesh: meshes.add(DynamicMesh::create_empty()),
                     ..Default::default()
                 },
@@ -129,6 +130,16 @@ impl WallPlugin {
                 parent.spawn(WallBundle::new(event.segment));
             });
         }
+    }
+}
+
+#[derive(Resource)]
+struct WallMaterial(Handle<StandardMaterial>);
+
+impl FromWorld for WallMaterial {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        Self(asset_server.load("base/walls/brick/brick.ron"))
     }
 }
 
