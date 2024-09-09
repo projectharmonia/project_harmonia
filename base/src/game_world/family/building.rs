@@ -1,12 +1,36 @@
 pub mod wall;
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::prelude::*;
+use strum::{Display, EnumIter};
 use wall::WallPlugin;
 
-pub(super) struct BuildingPlugins;
+use super::FamilyMode;
 
-impl PluginGroup for BuildingPlugins {
-    fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>().add(WallPlugin)
+pub(super) struct BuildingPlugin;
+
+impl Plugin for BuildingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_sub_state::<BuildingMode>()
+            .enable_state_scoped_entities::<BuildingMode>()
+            .add_plugins(WallPlugin);
+    }
+}
+
+#[derive(
+    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
+)]
+#[source(FamilyMode = FamilyMode::Building)]
+pub enum BuildingMode {
+    #[default]
+    Objects,
+    Walls,
+}
+
+impl BuildingMode {
+    pub fn glyph(self) -> &'static str {
+        match self {
+            Self::Objects => "💺",
+            Self::Walls => "🔰",
+        }
     }
 }

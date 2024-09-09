@@ -24,7 +24,7 @@ use crate::{
     game_world::{
         city::CityMode,
         commands_history::{CommandsHistory, DespawnOnConfirm},
-        family::BuildingMode,
+        family::building::BuildingMode,
         hover::{HoverEnabled, Hovered},
         object::{Object, ObjectCommand},
         player_camera::CameraCaster,

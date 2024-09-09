@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 
 use super::{PlacingObject, PlacingObjectPlugin};
-use crate::game_world::{city::CityMode, family::BuildingMode};
+use crate::game_world::{city::CityMode, family::building::BuildingMode};
 
 pub(super) struct SideSnapPlugin;
 

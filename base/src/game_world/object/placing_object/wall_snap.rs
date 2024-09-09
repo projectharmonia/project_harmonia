@@ -6,8 +6,8 @@ use bevy_xpbd_3d::prelude::*;
 use super::{PlacingObject, PlacingObjectPlugin, PlacingObjectState};
 use crate::game_world::{
     city::CityMode,
-    family::{
-        building::wall::{wall_mesh::HALF_WIDTH, Wall},
+    family::building::{
+        wall::{wall_mesh::HALF_WIDTH, Wall},
         BuildingMode,
     },
     spline::SplineSegment,

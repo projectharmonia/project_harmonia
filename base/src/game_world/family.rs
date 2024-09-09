@@ -28,18 +28,16 @@ use super::{
 use crate::{
     component_commands::ComponentCommandsExt, core::GameState, navigation::NavigationBundle,
 };
-use building::BuildingPlugins;
+use building::BuildingPlugin;
 use editor::EditorPlugin;
 
 pub struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((EditorPlugin, BuildingPlugins))
+        app.add_plugins((EditorPlugin, BuildingPlugin))
             .add_sub_state::<FamilyMode>()
             .enable_state_scoped_entities::<FamilyMode>()
-            .add_sub_state::<BuildingMode>()
-            .enable_state_scoped_entities::<BuildingMode>()
             .register_type::<ActorFamily>()
             .register_type::<Family>()
             .register_type::<Budget>()
@@ -253,25 +251,6 @@ impl FamilyMode {
         match self {
             Self::Life => "👪",
             Self::Building => "🏠",
-        }
-    }
-}
-
-#[derive(
-    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
-)]
-#[source(FamilyMode = FamilyMode::Building)]
-pub enum BuildingMode {
-    #[default]
-    Objects,
-    Walls,
-}
-
-impl BuildingMode {
-    pub fn glyph(self) -> &'static str {
-        match self {
-            Self::Objects => "💺",
-            Self::Walls => "🔰",
         }
     }
 }

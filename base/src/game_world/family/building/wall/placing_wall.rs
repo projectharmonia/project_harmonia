@@ -10,7 +10,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{Wall, WallCreate, WallCreateConfirmed};
 use crate::{
     game_world::{
-        city::lot::LotVertices, family::BuildingMode, player_camera::CameraCaster,
+        city::lot::LotVertices, family::building::BuildingMode, player_camera::CameraCaster,
         spline::SplineSegment,
     },
     math::segment::Segment,

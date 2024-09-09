@@ -3,7 +3,7 @@ mod walls_node;
 use bevy::prelude::*;
 use project_harmonia_base::{
     asset::info::object_info::{ObjectCategory, ObjectInfo},
-    game_world::family::{BuildingMode, FamilyMode},
+    game_world::family::{building::BuildingMode, FamilyMode},
 };
 use project_harmonia_widgets::{
     button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
