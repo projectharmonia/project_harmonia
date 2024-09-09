@@ -357,16 +357,16 @@ impl Component for PlacingObject {
                 let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
                 if let PlacingObjectKind::Moving(entity) = placing_object.kind {
                     // Avoid collision with the original object.
-                    if let Some(mut layers) = world.get_mut::<CollisionLayers>(entity) {
-                        layers.filters.remove(Layer::PlacingObject);
+                    if let Some(mut collision_layers) = world.get_mut::<CollisionLayers>(entity) {
+                        collision_layers.filters.remove(Layer::PlacingObject);
                     }
                 }
             })
             .on_remove(|mut world, targeted_entity, _component_id| {
                 let placing_object = world.get::<PlacingObject>(targeted_entity).unwrap();
                 if let PlacingObjectKind::Moving(entity) = placing_object.kind {
-                    if let Some(mut layers) = world.get_mut::<CollisionLayers>(entity) {
-                        layers.filters.add(Layer::PlacingObject);
+                    if let Some(mut collision_layers) = world.get_mut::<CollisionLayers>(entity) {
+                        collision_layers.filters.add(Layer::PlacingObject);
                     }
                 }
             });
