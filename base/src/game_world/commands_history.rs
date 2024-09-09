@@ -35,7 +35,7 @@ impl CommandHistoryPlugin {
         mut commands: Commands,
         mut confirmation_events: EventReader<CommandConfirmation>,
         mut buffer: ResMut<HistoryBuffer>,
-        despawn_entities: Query<(Entity, &DespawnOnConfirm)>,
+        despawn_entities: Query<(Entity, &PendingDespawn)>,
     ) {
         for &confirmation in confirmation_events.read() {
             buffer.confirm(confirmation);
@@ -57,7 +57,7 @@ impl CommandHistoryPlugin {
 
 /// Entities marked with this component will be despawned when the command with this ID will be confirmed.
 #[derive(Component)]
-pub(super) struct DespawnOnConfirm(pub(super) CommandId);
+pub(super) struct PendingDespawn(pub(super) CommandId);
 
 #[derive(SystemParam)]
 pub struct CommandsHistory<'w, 's> {

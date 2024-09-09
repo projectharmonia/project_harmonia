@@ -23,7 +23,7 @@ use crate::{
     combined_scene_collider::CombinedSceneCollider,
     game_world::{
         city::CityMode,
-        commands_history::{CommandsHistory, DespawnOnConfirm},
+        commands_history::{CommandsHistory, PendingDespawn},
         family::building::BuildingMode,
         hover::{HoverEnabled, Hovered},
         object::{Object, ObjectCommand},
@@ -274,7 +274,7 @@ impl PlacingObjectPlugin {
 
             commands
                 .entity(entity)
-                .insert(DespawnOnConfirm(id))
+                .insert(PendingDespawn(id))
                 .remove::<(PlacingObject, PlacingObjectState)>();
 
             info!("confirming `{:?}`", placing_object.kind);
