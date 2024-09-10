@@ -8,7 +8,10 @@ use std::{
 
 use bevy::{
     color::palettes::css::{RED, WHITE},
-    ecs::reflect::ReflectCommandExt,
+    ecs::{
+        component::{ComponentHooks, StorageType},
+        reflect::ReflectCommandExt,
+    },
     prelude::*,
     scene,
 };
@@ -94,7 +97,6 @@ impl PlacingObjectPlugin {
     fn init(
         mut commands: Commands,
         camera_caster: CameraCaster,
-        mut hover_enabled: ResMut<HoverEnabled>,
         objects_info: Res<Assets<ObjectInfo>>,
         asset_server: Res<AssetServer>,
         placing_objects: Query<(Entity, &PlacingObject), Without<PlacingObjectState>>,
@@ -170,8 +172,6 @@ impl PlacingObjectPlugin {
         for component in &info.place_components {
             placing_entity.insert_reflect(component.clone_value());
         }
-
-        hover_enabled.0 = false;
     }
 
     fn rotate(mut placing_objects: Query<(&mut Rotation, &PlacingObject)>) {
@@ -238,7 +238,6 @@ impl PlacingObjectPlugin {
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        mut hover_enabled: ResMut<HoverEnabled>,
         placing_objects: Query<(
             Entity,
             &Position,
@@ -272,7 +271,6 @@ impl PlacingObjectPlugin {
                     rotation: **rotation,
                 }),
             };
-            hover_enabled.0 = true;
 
             commands
                 .entity(entity)
@@ -286,7 +284,6 @@ impl PlacingObjectPlugin {
     fn sell(
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut hover_enabled: ResMut<HoverEnabled>,
         mut placing_objects: Query<(Entity, &PlacingObject, &mut Position, &mut Rotation)>,
         objects: Query<(&Position, &Rotation), Without<PlacingObject>>,
     ) {
@@ -309,19 +306,12 @@ impl PlacingObjectPlugin {
             } else {
                 commands.entity(placing_entity).despawn_recursive();
             }
-
-            hover_enabled.0 = true;
         }
     }
 
-    fn cancel(
-        mut commands: Commands,
-        mut hover_enabled: ResMut<HoverEnabled>,
-        placing_objects: Query<Entity, With<PlacingObject>>,
-    ) {
+    fn cancel(mut commands: Commands, placing_objects: Query<Entity, With<PlacingObject>>) {
         if let Ok(placing_entity) = placing_objects.get_single() {
             info!("cancelling placing");
-            hover_enabled.0 = true;
             commands.entity(placing_entity).despawn_recursive();
         }
     }
@@ -343,7 +333,7 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Clone, Copy, Component)]
+#[derive(Clone, Copy)]
 pub struct PlacingObject {
     kind: PlacingObjectKind,
     rotation_limit: Option<f32>,
@@ -362,6 +352,20 @@ impl PlacingObject {
             kind: PlacingObjectKind::Moving(entity),
             rotation_limit: None,
         }
+    }
+}
+
+impl Component for PlacingObject {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks
+            .on_add(|mut world, _targeted_entity, _component_id| {
+                **world.resource_mut::<HoverEnabled>() = false;
+            })
+            .on_remove(|mut world, _targeted_entity, _component_id| {
+                **world.resource_mut::<HoverEnabled>() = true;
+            });
     }
 }
 

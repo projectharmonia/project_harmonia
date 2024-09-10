@@ -1,5 +1,6 @@
 use bevy::{
     color::palettes::css::{RED, WHITE},
+    ecs::component::{ComponentHooks, StorageType},
     math::Vec3Swizzles,
     prelude::*,
     render::view::NoFrustumCulling,
@@ -54,7 +55,6 @@ const SNAP_DELTA: f32 = 0.5;
 impl PlacingWallPlugin {
     fn pick(
         mut commands: Commands,
-        mut hover_enabled: ResMut<HoverEnabled>,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<(Entity, &Parent, &SplineSegment, &Hovered)>,
@@ -85,14 +85,11 @@ impl PlacingWallPlugin {
                 ),
             ));
         });
-
-        hover_enabled.0 = false;
     }
 
     fn spawn(
         camera_caster: CameraCaster,
         mut commands: Commands,
-        mut hover_enabled: ResMut<HoverEnabled>,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<&SplineSegment, With<Wall>>,
@@ -119,8 +116,6 @@ impl PlacingWallPlugin {
                         meshes.add(DynamicMesh::create_empty()),
                     ));
                 });
-
-                hover_enabled.0 = false;
             }
         }
     }
@@ -183,7 +178,6 @@ impl PlacingWallPlugin {
     fn confirm(
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut hover_enabled: ResMut<HoverEnabled>,
         mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &SplineSegment)>,
     ) {
         if let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() {
@@ -211,14 +205,12 @@ impl PlacingWallPlugin {
                 .entity(entity)
                 .insert(PendingDespawn(id))
                 .remove::<PlacingWall>();
-            hover_enabled.0 = true;
         }
     }
 
     fn delete(
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut hover_enabled: ResMut<HoverEnabled>,
         mut placing_walls: Query<(Entity, &PlacingWall, &mut Position, &mut Rotation)>,
         walls: Query<(&Position, &Rotation), Without<PlacingWall>>,
     ) {
@@ -241,19 +233,12 @@ impl PlacingWallPlugin {
             } else {
                 commands.entity(placing_entity).despawn_recursive();
             }
-
-            hover_enabled.0 = true;
         }
     }
 
-    fn cancel(
-        mut commands: Commands,
-        mut hover_enabled: ResMut<HoverEnabled>,
-        placing_walls: Query<Entity, With<PlacingWall>>,
-    ) {
+    fn cancel(mut commands: Commands, placing_walls: Query<Entity, With<PlacingWall>>) {
         if let Ok(entity) = placing_walls.get_single() {
             debug!("cancelling placing");
-            hover_enabled.0 = true;
             commands.entity(entity).despawn();
         }
     }
@@ -304,10 +289,24 @@ impl PlacingWallBundle {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum PlacingWall {
     Spawning,
     MovingPoint { entity: Entity, kind: PointKind },
+}
+
+impl Component for PlacingWall {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks
+            .on_add(|mut world, _targeted_entity, _component_id| {
+                **world.resource_mut::<HoverEnabled>() = false;
+            })
+            .on_remove(|mut world, _targeted_entity, _component_id| {
+                **world.resource_mut::<HoverEnabled>() = true;
+            });
+    }
 }
 
 impl PlacingWall {

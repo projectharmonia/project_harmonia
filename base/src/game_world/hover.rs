@@ -88,7 +88,7 @@ fn hover_enabled(hover_enabled: Res<HoverEnabled>) -> bool {
     hover_enabled.0
 }
 
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 pub(super) struct HoverEnabled(pub(super) bool);
 
 impl Default for HoverEnabled {
