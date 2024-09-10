@@ -4,29 +4,39 @@ pub(crate) mod wall_mesh;
 use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
 use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
-use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter};
 
 use crate::{
     core::GameState,
     game_world::{
-        spline::{dynamic_mesh::DynamicMesh, SplineConnections, SplinePlugin, SplineSegment},
+        commands_history::{
+            CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
+            PendingCommand,
+        },
+        hover::Hoverable,
+        spline::{
+            dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
+        },
         Layer,
     },
     math::triangulator::Triangulator,
 };
-use placing_wall::{CreatingWall, PlacingWallPlugin};
+use placing_wall::PlacingWallPlugin;
+
+use super::BuildingMode;
 
 pub(crate) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(PlacingWallPlugin)
+            .add_sub_state::<WallTool>()
+            .enable_state_scoped_entities::<WallTool>()
             .init_resource::<WallMaterial>()
             .register_type::<Wall>()
             .replicate::<Wall>()
-            .add_mapped_client_event::<WallCreate>(ChannelKind::Unordered)
-            .add_server_event::<WallCreateConfirmed>(ChannelKind::Unordered)
+            .add_mapped_client_event::<CommandRequest<WallCommand>>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
                 Self::init
@@ -36,7 +46,7 @@ impl Plugin for WallPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    Self::create
+                    Self::apply_command
                         .run_if(has_authority)
                         .before(ServerSet::StoreHierarchy),
                     Self::update_meshes.after(SplinePlugin::update_connections),
@@ -51,16 +61,21 @@ impl WallPlugin {
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, Has<CreatingWall>), (With<Wall>, Without<Handle<Mesh>>)>,
+        walls: Query<Entity, (With<Wall>, Without<Handle<Mesh>>)>,
     ) {
-        for (entity, creating_wall) in &walls {
+        for entity in &walls {
             debug!("initializing wall `{entity}`");
 
             let mut entity = commands.entity(entity);
             entity.insert((
+                Name::new("Wall"),
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
+                CollisionLayers::new(
+                    Layer::Wall,
+                    [Layer::Object, Layer::PlacingObject, Layer::PlacingWall],
+                ),
+                Hoverable,
                 NoFrustumCulling,
                 PbrBundle {
                     material: wall_material.0.clone(),
@@ -68,10 +83,6 @@ impl WallPlugin {
                     ..Default::default()
                 },
             ));
-
-            if !creating_wall {
-                entity.insert(NavMeshAffector);
-            }
         }
     }
 
@@ -105,7 +116,6 @@ impl WallPlugin {
             );
             dyn_mesh.apply(mesh);
 
-            // Creating walls shouldn't affect navigation.
             if apertures.collision_outdated || segment.is_changed() || collider.is_added() {
                 trace!("regenerating wall collision");
                 *collider = wall_mesh::generate_collider(*segment, &apertures);
@@ -114,20 +124,49 @@ impl WallPlugin {
         }
     }
 
-    fn create(
+    fn apply_command(
         mut commands: Commands,
-        mut create_events: EventReader<FromClient<WallCreate>>,
-        mut confirm_events: EventWriter<ToClients<WallCreateConfirmed>>,
+        mut request_events: EventReader<FromClient<CommandRequest<WallCommand>>>,
+        mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
+        mut walls: Query<&mut SplineSegment, With<Wall>>,
     ) {
-        for FromClient { client_id, event } in create_events.read().copied() {
-            info!("`{client_id:?}` spawns wall");
-            // TODO: validate if wall can be spawned.
+        for FromClient { client_id, event } in request_events.read().cloned() {
+            // TODO: validate if command can be applied.
+            let mut confirmation = CommandConfirmation::new(event.id);
+            match event.command {
+                WallCommand::Create {
+                    lot_entity,
+                    segment,
+                } => {
+                    info!("`{client_id:?}` creates wall");
+                    commands.entity(lot_entity).with_children(|parent| {
+                        let entity = parent.spawn(WallBundle::new(segment)).id();
+                        confirmation.entity = Some(entity);
+                    });
+                }
+                WallCommand::MovePoint {
+                    entity,
+                    kind,
+                    point,
+                } => match walls.get_mut(entity) {
+                    Ok(mut segment) => {
+                        info!("`{client_id:?}` moves `{kind:?}` for wall `{entity}`");
+                        match kind {
+                            PointKind::Start => segment.start = point,
+                            PointKind::End => segment.end = point,
+                        }
+                    }
+                    Err(e) => error!("unable to move wall `{entity}`: {e}"),
+                },
+                WallCommand::Delete { entity } => {
+                    info!("`{client_id:?}` removes wall `{entity}`");
+                    commands.entity(entity).despawn();
+                }
+            }
+
             confirm_events.send(ToClients {
                 mode: SendMode::Direct(client_id),
-                event: WallCreateConfirmed,
-            });
-            commands.entity(event.lot_entity).with_children(|parent| {
-                parent.spawn(WallBundle::new(event.segment));
+                event: confirmation,
             });
         }
     }
@@ -140,6 +179,25 @@ impl FromWorld for WallMaterial {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
         Self(asset_server.load("base/walls/brick/brick.ron"))
+    }
+}
+
+#[derive(
+    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
+)]
+#[source(BuildingMode = BuildingMode::Walls)]
+pub enum WallTool {
+    #[default]
+    Create,
+    Move,
+}
+
+impl WallTool {
+    pub fn glyph(self) -> &'static str {
+        match self {
+            Self::Create => "✏",
+            Self::Move => "↔",
+        }
     }
 }
 
@@ -232,18 +290,87 @@ pub(crate) struct Aperture {
     pub(crate) placing_object: bool,
 }
 
-/// Client event to request a wall creation.
-#[derive(Clone, Copy, Deserialize, Event, Serialize)]
-struct WallCreate {
-    lot_entity: Entity,
-    segment: SplineSegment,
+#[derive(Serialize, Deserialize, Clone, Copy)]
+enum WallCommand {
+    Create {
+        lot_entity: Entity,
+        segment: SplineSegment,
+    },
+    MovePoint {
+        entity: Entity,
+        kind: PointKind,
+        point: Vec2,
+    },
+    Delete {
+        entity: Entity,
+    },
 }
 
-impl MapEntities for WallCreate {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.lot_entity = entity_mapper.map_entity(self.lot_entity);
+impl PendingCommand for WallCommand {
+    fn apply(
+        self: Box<Self>,
+        id: CommandId,
+        mut recorder: EntityRecorder,
+        world: &mut World,
+    ) -> Box<dyn ConfirmableCommand> {
+        let reverse_command = match *self {
+            Self::Create { .. } => Self::Delete {
+                // Correct entity will be set after the server confirmation.
+                entity: Entity::PLACEHOLDER,
+            },
+            Self::MovePoint { entity, kind, .. } => {
+                let segment = world.get::<SplineSegment>(entity).unwrap();
+                let point = match kind {
+                    PointKind::Start => segment.start,
+                    PointKind::End => segment.end,
+                };
+                Self::MovePoint {
+                    entity,
+                    kind,
+                    point,
+                }
+            }
+            Self::Delete { entity } => {
+                recorder.record(entity);
+                let entity = world.entity(entity);
+                let segment = *entity.get::<SplineSegment>().unwrap();
+                let parent = entity.get::<Parent>().unwrap();
+                Self::Create {
+                    lot_entity: **parent,
+                    segment,
+                }
+            }
+        };
+
+        world.send_event(CommandRequest { id, command: *self });
+
+        Box::new(reverse_command)
     }
 }
 
-#[derive(Deserialize, Event, Serialize)]
-struct WallCreateConfirmed;
+impl ConfirmableCommand for WallCommand {
+    fn confirm(
+        mut self: Box<Self>,
+        mut recorder: EntityRecorder,
+        confirmation: CommandConfirmation,
+    ) -> Box<dyn PendingCommand> {
+        if let Self::Delete { entity } = &mut *self {
+            *entity = confirmation
+                .entity
+                .expect("confirmation for wall creation should contain an entity");
+            recorder.record(*entity);
+        }
+
+        self
+    }
+}
+
+impl MapEntities for WallCommand {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        match self {
+            Self::Create { .. } => (),
+            Self::MovePoint { entity, .. } => *entity = entity_mapper.map_entity(*entity),
+            Self::Delete { entity } => *entity = entity_mapper.map_entity(*entity),
+        };
+    }
+}

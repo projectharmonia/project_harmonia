@@ -47,22 +47,25 @@ impl SplinePlugin {
 
     /// Updates [`SplineConnections`] between segments.
     pub(super) fn update_connections(
-        mut segments: Query<(Entity, &SplineSegment, &mut SplineConnections)>,
+        mut segments: Query<(Entity, &Visibility, &SplineSegment, &mut SplineConnections)>,
         children: Query<&Children>,
         changed_segments: Query<
-            (Entity, &Parent, &SplineSegment),
-            (Changed<SplineSegment>, With<SplineConnections>),
+            (Entity, &Parent, &Visibility, &SplineSegment),
+            (
+                Or<(Changed<SplineSegment>, Changed<Visibility>)>,
+                With<SplineConnections>,
+            ),
         >,
     ) {
-        for (segment_entity, parent, &segment) in &changed_segments {
+        for (segment_entity, parent, visibility, &segment) in &changed_segments {
             // Take changed connections to avoid mutability issues.
             let (.., mut connections) = segments
                 .get_mut(segment_entity)
                 .expect("query is a subset of the changed query");
-            let mut connections = mem::take(&mut *connections);
+            let mut taken_connections = mem::take(&mut *connections);
 
             // Cleanup old connections.
-            for connection in connections.0.drain(..) {
+            for connection in taken_connections.0.drain(..) {
                 let (.., mut other_connections) = segments
                     .get_mut(connection.entity)
                     .expect("connected segment should also have connections");
@@ -71,14 +74,19 @@ impl SplinePlugin {
                 }
             }
 
-            // If segment have zero length, exclude it from connections.
-            if segment.start != segment.end {
+            // If segment have zero length or hidden, exclude it from connections.
+            if segment.start != segment.end && visibility != Visibility::Hidden {
                 // Scan all segments from this lot for possible connections.
                 let mut iter = segments.iter_many_mut(children.get(**parent).unwrap());
-                while let Some((other_entity, &other_segment, mut other_connections)) = iter
-                    .fetch_next()
-                    .filter(|&(entity, ..)| entity != segment_entity)
+                while let Some((other_entity, visibility, &other_segment, mut other_connections)) =
+                    iter.fetch_next()
+                        .filter(|&(entity, ..)| entity != segment_entity)
                 {
+                    if visibility == Visibility::Hidden {
+                        // Don't connect to hidden segments.
+                        continue;
+                    }
+
                     let kind = if segment.start == other_segment.start {
                         (PointKind::Start, PointKind::Start)
                     } else if segment.start == other_segment.end {
@@ -94,7 +102,7 @@ impl SplinePlugin {
                     trace!(
                         "connecting segments `{segment_entity}` and `{other_entity}` as `{kind:?}`"
                     );
-                    connections.0.push(SplineConnection {
+                    taken_connections.0.push(SplineConnection {
                         entity: other_entity,
                         segment: *other_segment,
                         kind,
@@ -108,7 +116,8 @@ impl SplinePlugin {
             }
 
             // Reinsert updated connections back.
-            *segments.get_mut(segment_entity).unwrap().2 = connections;
+            let (.., mut connections) = segments.get_mut(segment_entity).unwrap();
+            *connections = taken_connections;
         }
     }
 }
@@ -176,8 +185,8 @@ pub(crate) struct SplineConnection {
     kind: (PointKind, PointKind),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) enum PointKind {
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub enum PointKind {
     Start,
     End,
 }

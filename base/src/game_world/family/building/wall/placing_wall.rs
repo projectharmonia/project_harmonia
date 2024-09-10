@@ -2,17 +2,23 @@ use bevy::{
     color::palettes::css::{RED, WHITE},
     math::Vec3Swizzles,
     prelude::*,
+    render::view::NoFrustumCulling,
 };
-use bevy_replicon::prelude::*;
 use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
-use super::{Wall, WallCreate, WallCreateConfirmed};
+use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
     game_world::{
-        city::lot::LotVertices, family::building::BuildingMode, player_camera::CameraCaster,
-        spline::SplineSegment,
+        city::lot::LotVertices,
+        commands_history::{CommandsHistory, PendingDespawn},
+        family::building::{wall::Apertures, BuildingMode},
+        hover::{HoverEnabled, Hovered},
+        player_camera::CameraCaster,
+        spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
+        Layer,
     },
+    ghost::Ghost,
     math::segment::Segment,
     settings::Action,
 };
@@ -22,24 +28,23 @@ pub(super) struct PlacingWallPlugin;
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            PreUpdate,
-            Self::end_creation
-                .after(ClientSet::Receive)
-                .run_if(in_state(BuildingMode::Walls))
-                .run_if(on_event::<WallCreateConfirmed>()),
-        )
-        .add_systems(
             Update,
             (
-                Self::start_creation
+                (
+                    Self::spawn.run_if(in_state(WallTool::Create)),
+                    Self::pick.run_if(in_state(WallTool::Move)),
+                )
                     .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<CreatingWall>)),
-                Self::update_end,
-                Self::update_material,
-                Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                Self::end_creation.run_if(action_just_pressed(Action::Cancel)),
-            )
-                .run_if(in_state(BuildingMode::Walls)),
+                    .run_if(not(any_with_component::<PlacingWall>)),
+                (
+                    Self::update_end,
+                    Self::update_material,
+                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                    Self::delete.run_if(action_just_pressed(Action::Delete)),
+                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
+                )
+                    .run_if(in_state(BuildingMode::Walls)),
+            ),
         );
     }
 }
@@ -47,9 +52,49 @@ impl Plugin for PlacingWallPlugin {
 const SNAP_DELTA: f32 = 0.5;
 
 impl PlacingWallPlugin {
-    fn start_creation(
+    fn pick(
+        mut commands: Commands,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        wall_material: Res<WallMaterial>,
+        mut meshes: ResMut<Assets<Mesh>>,
+        walls: Query<(Entity, &Parent, &SplineSegment, &Hovered)>,
+    ) {
+        let Ok((entity, parent, &segment, hovered)) = walls.get_single() else {
+            return;
+        };
+
+        const PICK_DELTA: f32 = 0.4;
+        let point = hovered.xz();
+        let kind = if segment.start.distance(point) < PICK_DELTA {
+            PointKind::Start
+        } else if segment.end.distance(point) < PICK_DELTA {
+            PointKind::End
+        } else {
+            return;
+        };
+
+        info!("picking `{kind:?}` for `{entity}`");
+        commands.entity(**parent).with_children(|parent| {
+            parent.spawn((
+                Ghost::new(entity, Layer::PlacingWall),
+                PlacingWallBundle::new(
+                    PlacingWall::MovingPoint { entity, kind },
+                    segment,
+                    wall_material.0.clone(),
+                    meshes.add(DynamicMesh::create_empty()),
+                ),
+            ));
+        });
+
+        hover_enabled.0 = false;
+    }
+
+    fn spawn(
         camera_caster: CameraCaster,
         mut commands: Commands,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        wall_material: Res<WallMaterial>,
+        mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<&SplineSegment, With<Wall>>,
         lots: Query<(Entity, Option<&Children>, &LotVertices)>,
     ) {
@@ -67,41 +112,41 @@ impl PlacingWallPlugin {
 
                 info!("spawning new wall");
                 commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        StateScoped(BuildingMode::Walls),
-                        CreatingWall,
-                        Wall,
+                    parent.spawn(PlacingWallBundle::new(
+                        PlacingWall::Spawning,
                         SplineSegment(Segment::splat(point)),
+                        wall_material.0.clone(),
+                        meshes.add(DynamicMesh::create_empty()),
                     ));
                 });
+
+                hover_enabled.0 = false;
             }
         }
     }
 
     fn update_material(
         mut materials: ResMut<Assets<StandardMaterial>>,
-        mut walls: Query<
+        mut placing_walls: Query<
             (&mut Handle<StandardMaterial>, &CollidingEntities),
-            (
-                Changed<CollidingEntities>,
-                With<CreatingWall>,
-                Without<UnconfirmedWall>,
-            ),
+            (Changed<CollidingEntities>, With<PlacingWall>),
         >,
     ) {
-        if let Ok((mut material_handle, colliding_entities)) = walls.get_single_mut() {
+        if let Ok((mut material_handle, colliding_entities)) = placing_walls.get_single_mut() {
             let mut material = materials
                 .get(&*material_handle)
                 .cloned()
-                .expect("material handle should be valid");
+                .expect("material should be preloaded");
 
-            material.alpha_mode = AlphaMode::Add;
-            material.base_color = if colliding_entities.is_empty() {
+            let color = if colliding_entities.is_empty() {
                 WHITE.into()
             } else {
                 RED.into()
             };
-            debug!("setting base color to `{:?}`", material.base_color);
+            debug!("changing base color to `{color:?}`");
+
+            material.alpha_mode = AlphaMode::Add;
+            material.base_color = color;
 
             *material_handle = materials.add(material);
         }
@@ -109,14 +154,11 @@ impl PlacingWallPlugin {
 
     fn update_end(
         camera_caster: CameraCaster,
-        mut creating_walls: Query<
-            (&mut SplineSegment, &Parent),
-            (With<CreatingWall>, Without<UnconfirmedWall>),
-        >,
-        walls: Query<&SplineSegment, (With<Wall>, Without<CreatingWall>)>,
+        mut placing_walls: Query<(&mut SplineSegment, &Parent, &PlacingWall)>,
+        walls: Query<&SplineSegment, (With<Wall>, Without<PlacingWall>)>,
         children: Query<&Children>,
     ) {
-        if let Ok((mut segment, parent)) = creating_walls.get_single_mut() {
+        if let Ok((mut segment, parent, &placing_wall)) = placing_walls.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) {
                 let children = children.get(**parent).unwrap();
 
@@ -127,41 +169,153 @@ impl PlacingWallPlugin {
                     .find(|vertex| vertex.distance(point) < SNAP_DELTA)
                     .unwrap_or(point);
 
-                trace!("updating wall end to `{vertex:?}`");
-                segment.end = vertex;
+                let point_kind = placing_wall.point_kind();
+
+                trace!("updating `{point_kind:?}` to `{vertex:?}`");
+                match point_kind {
+                    PointKind::Start => segment.start = vertex,
+                    PointKind::End => segment.end = vertex,
+                }
             }
         }
     }
 
     fn confirm(
         mut commands: Commands,
-        mut create_events: EventWriter<WallCreate>,
-        mut walls: Query<
-            (Entity, &Parent, &SplineSegment),
-            (With<CreatingWall>, Without<UnconfirmedWall>),
-        >,
+        mut history: CommandsHistory,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &SplineSegment)>,
     ) {
-        if let Ok((wall_entity, parent, &segment)) = walls.get_single_mut() {
-            info!("configrming wall");
-            commands.entity(wall_entity).insert(UnconfirmedWall);
+        if let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() {
+            info!("configrming {placing_wall:?}");
 
-            create_events.send(WallCreate {
-                lot_entity: **parent,
-                segment,
-            });
+            let id = match placing_wall {
+                PlacingWall::Spawning => history.push_pending(WallCommand::Create {
+                    lot_entity: **parent,
+                    segment,
+                }),
+                PlacingWall::MovingPoint { entity, kind } => {
+                    let point = match kind {
+                        PointKind::Start => segment.start,
+                        PointKind::End => segment.end,
+                    };
+                    history.push_pending(WallCommand::MovePoint {
+                        entity,
+                        kind,
+                        point,
+                    })
+                }
+            };
+
+            commands
+                .entity(entity)
+                .insert(PendingDespawn(id))
+                .remove::<PlacingWall>();
+            hover_enabled.0 = true;
         }
     }
 
-    fn end_creation(mut commands: Commands, walls: Query<Entity, With<CreatingWall>>) {
-        if let Ok(entity) = walls.get_single() {
-            debug!("despawning confirmed wall");
+    fn delete(
+        mut commands: Commands,
+        mut history: CommandsHistory,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        mut placing_walls: Query<(Entity, &PlacingWall, &mut Position, &mut Rotation)>,
+        walls: Query<(&Position, &Rotation), Without<PlacingWall>>,
+    ) {
+        if let Ok((placing_entity, &placing_wall, mut position, mut rotation)) =
+            placing_walls.get_single_mut()
+        {
+            info!("deleting wall");
+            if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
+                let id = history.push_pending(WallCommand::Delete { entity });
+
+                let (original_position, original_rotation) =
+                    walls.get(entity).expect("moving object should exist");
+                *position = *original_position;
+                *rotation = *original_rotation;
+
+                commands
+                    .entity(placing_entity)
+                    .insert(PendingDespawn(id))
+                    .remove::<PlacingWall>();
+            } else {
+                commands.entity(placing_entity).despawn_recursive();
+            }
+
+            hover_enabled.0 = true;
+        }
+    }
+
+    fn cancel(
+        mut commands: Commands,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        placing_walls: Query<Entity, With<PlacingWall>>,
+    ) {
+        if let Ok(entity) = placing_walls.get_single() {
+            debug!("cancelling placing");
+            hover_enabled.0 = true;
             commands.entity(entity).despawn();
         }
     }
 }
 
-#[derive(Component, Default)]
-pub struct CreatingWall;
+#[derive(Bundle)]
+struct PlacingWallBundle {
+    name: Name,
+    placing_wall: PlacingWall,
+    segment: SplineSegment,
+    state_scoped: StateScoped<WallTool>,
+    apertures: Apertures,
+    collider: Collider,
+    collision_layers: CollisionLayers,
+    no_culling: NoFrustumCulling,
+    pbr_bundle: PbrBundle,
+}
 
-#[derive(Component)]
-struct UnconfirmedWall;
+impl PlacingWallBundle {
+    fn new(
+        placing_wall: PlacingWall,
+        segment: SplineSegment,
+        material: Handle<StandardMaterial>,
+        mesh: Handle<Mesh>,
+    ) -> Self {
+        let tool = match placing_wall {
+            PlacingWall::Spawning => WallTool::Create,
+            PlacingWall::MovingPoint { .. } => WallTool::Move,
+        };
+        Self {
+            name: Name::new("Placing wall"),
+            placing_wall,
+            segment,
+            state_scoped: StateScoped(tool),
+            apertures: Default::default(),
+            collider: Default::default(),
+            collision_layers: CollisionLayers::new(
+                Layer::PlacingWall,
+                [Layer::Object, Layer::Wall],
+            ),
+            no_culling: NoFrustumCulling,
+            pbr_bundle: PbrBundle {
+                material,
+                mesh,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub enum PlacingWall {
+    Spawning,
+    MovingPoint { entity: Entity, kind: PointKind },
+}
+
+impl PlacingWall {
+    /// Returns point kind that should be edited for this wall.
+    fn point_kind(self) -> PointKind {
+        match self {
+            PlacingWall::Spawning => PointKind::End,
+            PlacingWall::MovingPoint { entity: _, kind } => kind,
+        }
+    }
+}

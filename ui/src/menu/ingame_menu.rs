@@ -11,7 +11,7 @@ use project_harmonia_base::{
             lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
             road::creating_road::CreatingRoad,
         },
-        family::building::wall::placing_wall::CreatingWall,
+        family::building::wall::placing_wall::PlacingWall,
         object::placing_object::PlacingObject,
         GameSave, WorldState,
     },
@@ -35,7 +35,7 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<PlacingObject>))
                     .run_if(not(any_with_component::<MovingLot>))
                     .run_if(not(any_with_component::<CreatingLot>))
-                    .run_if(not(any_with_component::<CreatingWall>))
+                    .run_if(not(any_with_component::<PlacingWall>))
                     .run_if(not(any_with_component::<CreatingRoad>))
                     .run_if(in_state(WorldState::Family).or_else(in_state(WorldState::City))),
                 (

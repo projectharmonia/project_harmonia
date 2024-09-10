@@ -165,4 +165,5 @@ pub(super) enum Layer {
     Object,
     PlacingObject,
     Wall,
+    PlacingWall,
 }

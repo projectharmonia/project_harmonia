@@ -12,12 +12,13 @@ use project_harmonia_widgets::{
 use strum::IntoEnumIterator;
 
 use crate::hud::{objects_node, tools_node};
+use walls_node::WallsNodePlugin;
 
 pub(super) struct BuildingHudPlugin;
 
 impl Plugin for BuildingHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_plugins(WallsNodePlugin).add_systems(
             Update,
             Self::set_building_mode.run_if(in_state(FamilyMode::Building)),
         );
