@@ -33,7 +33,6 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<IngameMenu>))
                     .run_if(not(any_with_component::<TaskMenu>))
                     .run_if(not(any_with_component::<PlacingObject>))
-                    .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<MovingLot>))
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<CreatingWall>))
