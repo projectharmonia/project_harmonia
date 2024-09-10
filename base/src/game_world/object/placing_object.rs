@@ -80,9 +80,9 @@ impl Plugin for PlacingObjectPlugin {
 impl PlacingObjectPlugin {
     fn pick(
         mut commands: Commands,
-        hovered: Query<(Entity, &Parent), (With<Object>, With<Hovered>)>,
+        objects: Query<(Entity, &Parent), (With<Object>, With<Hovered>)>,
     ) {
-        if let Ok((object_entity, parent)) = hovered.get_single() {
+        if let Ok((object_entity, parent)) = objects.get_single() {
             info!("picking object `{object_entity}`");
             commands.entity(**parent).with_children(|parent| {
                 parent.spawn(PlacingObject::moving(object_entity));
