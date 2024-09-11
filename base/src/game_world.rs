@@ -6,7 +6,6 @@ pub mod hover;
 pub mod object;
 mod player_camera;
 mod spline;
-// pub mod test;
 
 use std::fs;
 
