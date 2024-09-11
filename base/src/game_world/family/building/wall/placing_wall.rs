@@ -1,6 +1,5 @@
 use bevy::{
     color::palettes::css::{RED, WHITE},
-    ecs::component::{ComponentHooks, StorageType},
     math::Vec3Swizzles,
     prelude::*,
     render::view::NoFrustumCulling,
@@ -14,7 +13,7 @@ use crate::{
         city::lot::LotVertices,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
-        hover::{HoverEnabled, Hovered},
+        hover::{HoverPlugin, Hovered},
         player_camera::CameraCaster,
         spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
         Layer,
@@ -28,25 +27,27 @@ pub(super) struct PlacingWallPlugin;
 
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
+        app.observe(HoverPlugin::enable_on_remove::<PlacingWall>)
+            .observe(HoverPlugin::disable_on_add::<PlacingWall>)
+            .add_systems(
+                Update,
                 (
-                    Self::spawn.run_if(in_state(WallTool::Create)),
-                    Self::pick.run_if(in_state(WallTool::Move)),
-                )
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<PlacingWall>)),
-                (
-                    Self::update_end,
-                    Self::update_material,
-                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    Self::delete.run_if(action_just_pressed(Action::Delete)),
-                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                )
-                    .run_if(in_state(BuildingMode::Walls)),
-            ),
-        );
+                    (
+                        Self::spawn.run_if(in_state(WallTool::Create)),
+                        Self::pick.run_if(in_state(WallTool::Move)),
+                    )
+                        .run_if(action_just_pressed(Action::Confirm))
+                        .run_if(not(any_with_component::<PlacingWall>)),
+                    (
+                        Self::update_end,
+                        Self::update_material,
+                        Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                        Self::delete.run_if(action_just_pressed(Action::Delete)),
+                        Self::cancel.run_if(action_just_pressed(Action::Cancel)),
+                    )
+                        .run_if(in_state(BuildingMode::Walls)),
+                ),
+            );
     }
 }
 
@@ -289,24 +290,10 @@ impl PlacingWallBundle {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Component)]
 pub enum PlacingWall {
     Spawning,
     MovingPoint { entity: Entity, kind: PointKind },
-}
-
-impl Component for PlacingWall {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, _targeted_entity, _component_id| {
-                **world.resource_mut::<HoverEnabled>() = false;
-            })
-            .on_remove(|mut world, _targeted_entity, _component_id| {
-                **world.resource_mut::<HoverEnabled>() = true;
-            });
-    }
 }
 
 impl PlacingWall {

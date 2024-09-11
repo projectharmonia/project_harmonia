@@ -82,6 +82,26 @@ impl HoverPlugin {
             commands.entity(hovered_entity).remove::<Hovered>();
         }
     }
+
+    pub(super) fn enable_on_remove<C: Component>(
+        trigger: Trigger<OnRemove, C>,
+        mut hover_enabled: ResMut<HoverEnabled>,
+        other_compoents: Query<Entity, With<C>>,
+    ) {
+        if other_compoents
+            .iter()
+            .all(|entity| entity == trigger.entity())
+        {
+            hover_enabled.0 = true
+        }
+    }
+
+    pub(super) fn disable_on_add<C: Component>(
+        _trigger: Trigger<OnAdd, C>,
+        mut hover_enabled: ResMut<HoverEnabled>,
+    ) {
+        hover_enabled.0 = false
+    }
 }
 
 fn hover_enabled(hover_enabled: Res<HoverEnabled>) -> bool {
@@ -89,7 +109,7 @@ fn hover_enabled(hover_enabled: Res<HoverEnabled>) -> bool {
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub(super) struct HoverEnabled(pub(super) bool);
+pub(super) struct HoverEnabled(bool);
 
 impl Default for HoverEnabled {
     fn default() -> Self {

@@ -8,10 +8,7 @@ use std::{
 
 use bevy::{
     color::palettes::css::{RED, WHITE},
-    ecs::{
-        component::{ComponentHooks, StorageType},
-        reflect::ReflectCommandExt,
-    },
+    ecs::reflect::ReflectCommandExt,
     prelude::*,
     scene,
 };
@@ -25,7 +22,7 @@ use crate::{
         city::CityMode,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::BuildingMode,
-        hover::{HoverEnabled, Hovered},
+        hover::{HoverPlugin, Hovered},
         object::{Object, ObjectCommand},
         player_camera::CameraCaster,
         Layer,
@@ -42,6 +39,8 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
+            .observe(HoverPlugin::enable_on_remove::<PlacingObject>)
+            .observe(HoverPlugin::disable_on_add::<PlacingObject>)
             .add_systems(
                 PreUpdate,
                 Self::init
@@ -333,7 +332,7 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Component)]
 pub struct PlacingObject {
     kind: PlacingObjectKind,
     rotation_limit: Option<f32>,
@@ -352,20 +351,6 @@ impl PlacingObject {
             kind: PlacingObjectKind::Moving(entity),
             rotation_limit: None,
         }
-    }
-}
-
-impl Component for PlacingObject {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, _targeted_entity, _component_id| {
-                **world.resource_mut::<HoverEnabled>() = false;
-            })
-            .on_remove(|mut world, _targeted_entity, _component_id| {
-                **world.resource_mut::<HoverEnabled>() = true;
-            });
     }
 }
 
