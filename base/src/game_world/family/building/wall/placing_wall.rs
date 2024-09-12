@@ -77,7 +77,7 @@ impl PlacingWallPlugin {
         info!("picking `{kind:?}` for `{entity}`");
         commands.entity(**parent).with_children(|parent| {
             parent.spawn((
-                Ghost::new(entity, Layer::PlacingWall),
+                Ghost::new(entity, 0),
                 PlacingWallBundle::new(
                     PlacingWall::MovingPoint { entity, kind },
                     segment,
@@ -276,10 +276,8 @@ impl PlacingWallBundle {
             state_scoped: StateScoped(tool),
             apertures: Default::default(),
             collider: Default::default(),
-            collision_layers: CollisionLayers::new(
-                Layer::PlacingWall,
-                [Layer::Object, Layer::Wall],
-            ),
+            // TODO: collide with regular walls.
+            collision_layers: CollisionLayers::new(Layer::PlacingWall, [Layer::Object]),
             no_culling: NoFrustumCulling,
             pbr_bundle: PbrBundle {
                 material,

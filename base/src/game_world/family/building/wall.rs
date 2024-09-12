@@ -71,10 +71,7 @@ impl WallPlugin {
                 Name::new("Wall"),
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::new(
-                    Layer::Wall,
-                    [Layer::Object, Layer::PlacingObject, Layer::PlacingWall],
-                ),
+                CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
                 Hoverable,
                 NoFrustumCulling,
                 PbrBundle {
