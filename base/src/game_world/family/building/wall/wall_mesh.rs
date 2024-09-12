@@ -295,6 +295,10 @@ fn generate_end_connection(mesh: &mut DynamicMesh, segment: Segment, rotation_ma
 /// Clippings split the collider into separate cuboids.
 /// We generate a trimesh since navigation doesn't support compound shapes.
 pub(super) fn generate_collider(segment: SplineSegment, apertures: &Apertures) -> Collider {
+    if segment.start == segment.end {
+        return Default::default();
+    }
+
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     let mut start = segment.start;
