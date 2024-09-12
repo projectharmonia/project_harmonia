@@ -73,14 +73,21 @@ impl SideSnapPlugin {
     }
 
     fn snap(
-        objects: Query<(&SideSnap, &Position, &Rotation, &SideSnapNodes), Without<PlacingObject>>,
+        objects: Query<
+            (&SideSnap, &Position, &Rotation, &SideSnapNodes, &Visibility),
+            Without<PlacingObject>,
+        >,
         mut placing_objects: Query<(&mut Position, &mut Rotation, &SideSnap), With<PlacingObject>>,
     ) {
         let Ok((mut position, mut rotation, snap)) = placing_objects.get_single_mut() else {
             return;
         };
 
-        for (&object_snap, &object_position, &object_rotation, &nodes) in &objects {
+        for (&object_snap, &object_position, &object_rotation, &nodes, visibility) in &objects {
+            if visibility == Visibility::Hidden {
+                continue;
+            }
+
             let disp = **position - *object_position;
             let distance = snap.distance(object_snap);
             if disp.length() <= distance {
