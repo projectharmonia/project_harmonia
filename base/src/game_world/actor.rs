@@ -3,6 +3,7 @@ pub(super) mod human;
 pub mod needs;
 pub mod task;
 
+use avian3d::prelude::*;
 use bevy::{
     asset::AssetPath,
     prelude::*,
@@ -10,7 +11,6 @@ use bevy::{
 };
 use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
 use bevy_replicon::prelude::*;
-use avian3d::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};

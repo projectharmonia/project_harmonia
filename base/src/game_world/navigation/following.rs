@@ -18,7 +18,10 @@ impl Plugin for FollowingPlugin {
             )
                 .run_if(server_or_singleplayer),
         )
-        .add_systems(PostUpdate, Self::stop_following.run_if(server_or_singleplayer));
+        .add_systems(
+            PostUpdate,
+            Self::stop_following.run_if(server_or_singleplayer),
+        );
     }
 }
 
