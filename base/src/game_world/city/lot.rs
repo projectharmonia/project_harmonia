@@ -51,7 +51,7 @@ impl LotPlugin {
         spawned_lots: Query<Entity, (With<LotVertices>, Without<Transform>)>,
     ) {
         for entity in &spawned_lots {
-            debug!("initializing log `{entity}`");
+            debug!("initializing lot `{entity}`");
             commands.entity(entity).insert(SpatialBundle::default());
         }
     }
