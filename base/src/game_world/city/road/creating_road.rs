@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_replicon::prelude::*;
-use bevy_xpbd_3d::prelude::*;
+use avian3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{Road, RoadCreate, RoadCreateConfirmed};

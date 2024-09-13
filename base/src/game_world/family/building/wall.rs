@@ -1,9 +1,9 @@
 pub mod placing_wall;
 pub(crate) mod wall_mesh;
 
+use avian3d::prelude::*;
 use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
 use bevy_replicon::prelude::*;
-use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -15,6 +15,7 @@ use crate::{
             PendingCommand,
         },
         hover::Hoverable,
+        navigation::Obstacle,
         spline::{
             dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
         },
@@ -47,7 +48,7 @@ impl Plugin for WallPlugin {
                 PostUpdate,
                 (
                     Self::apply_command
-                        .run_if(has_authority)
+                        .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
                     Self::update_meshes.after(SplinePlugin::update_connections),
                 )
@@ -74,6 +75,7 @@ impl WallPlugin {
                 CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
                 Hoverable,
                 NoFrustumCulling,
+                Obstacle,
                 PbrBundle {
                     material: wall_material.0.clone(),
                     mesh: meshes.add(DynamicMesh::create_empty()),

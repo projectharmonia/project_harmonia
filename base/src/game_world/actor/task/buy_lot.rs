@@ -26,7 +26,7 @@ impl Plugin for BuyLotPlugin {
                 Update,
                 (
                     Self::add_to_list.in_set(TaskListSet),
-                    Self::buy.run_if(has_authority),
+                    Self::buy.run_if(server_or_singleplayer),
                 ),
             );
     }

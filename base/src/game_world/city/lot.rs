@@ -39,7 +39,7 @@ impl Plugin for LotPlugin {
                         Self::apply_movement,
                         Self::delete,
                     )
-                        .run_if(has_authority),
+                        .run_if(server_or_singleplayer),
                 ),
             );
     }

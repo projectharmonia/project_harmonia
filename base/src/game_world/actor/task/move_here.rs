@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use oxidized_navigation::{NavMesh, NavMeshSettings};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,8 +11,8 @@ use crate::{
         },
         city::Ground,
         hover::Hovered,
+        navigation::{NavDestination, NavSettings},
     },
-    navigation::{ComputePath, NavPath, Navigation},
 };
 
 pub(super) struct MoveHerePlugin;
@@ -28,7 +27,10 @@ impl Plugin for MoveHerePlugin {
                     .run_if(in_state(GameState::InGame)),
             )
             // Should run in `PostUpdate` to let tiles initialize.
-            .add_systems(PostUpdate, Self::start_navigation.run_if(has_authority));
+            .add_systems(
+                PostUpdate,
+                Self::start_navigation.run_if(server_or_singleplayer),
+            );
     }
 }
 
@@ -56,35 +58,27 @@ impl MoveHerePlugin {
     }
 
     fn start_navigation(
-        mut commands: Commands,
-        mut actors: Query<(&Transform, &mut Navigation)>,
-        nav_settings: Res<NavMeshSettings>,
-        nav_mesh: Res<NavMesh>,
+        mut actors: Query<(&mut NavSettings, &mut NavDestination)>,
         tasks: Query<(&Parent, &MoveHere, &TaskState), Changed<TaskState>>,
     ) {
         for (parent, move_here, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                let (transform, mut navigation) = actors
+                let (mut nav_settings, mut dest) = actors
                     .get_mut(**parent)
                     .expect("actors should have navigation component");
-                *navigation = Navigation::new(move_here.movement.speed());
-                commands.entity(**parent).insert(ComputePath::new(
-                    nav_mesh.get(),
-                    nav_settings.clone(),
-                    transform.translation,
-                    move_here.endpoint,
-                ));
+                *nav_settings = NavSettings::new(move_here.movement.speed());
+                **dest = Some(move_here.endpoint);
             }
         }
     }
 
     fn finish(
         mut commands: Commands,
-        actors: Query<(&Children, &NavPath), Changed<NavPath>>,
+        actors: Query<(&Children, &NavDestination), Changed<NavDestination>>,
         tasks: Query<(Entity, &TaskState), With<MoveHere>>,
     ) {
-        for (children, nav_path) in &actors {
-            if nav_path.is_empty() {
+        for (children, dest) in &actors {
+            if dest.is_none() {
                 if let Some((entity, _)) = tasks
                     .iter_many(children)
                     .find(|(_, &task_state)| task_state == TaskState::Active)

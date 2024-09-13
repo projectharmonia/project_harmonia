@@ -1,5 +1,6 @@
 mod cli;
 
+use avian3d::prelude::*;
 use bevy::{
     core_pipeline::experimental::taa::TemporalAntiAliasPlugin,
     pbr::wireframe::WireframePlugin,
@@ -16,31 +17,17 @@ use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetPlugins;
 use bevy_simple_text_input::TextInputPlugin;
-use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
-use oxidized_navigation::{
-    debug_draw::OxidizedNavigationDebugDrawPlugin, NavMeshSettings, OxidizedNavigationPlugin,
-};
-
-use cli::{Cli, CliPlugin};
-use project_harmonia_base::{
-    game_world::{
-        actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
-        city::HALF_CITY_SIZE,
-    },
-    settings::Action,
-    CorePlugins,
-};
+use project_harmonia_base::{game_world::navigation::Obstacle, settings::Action, CorePlugins};
 use project_harmonia_ui::UiPlugins;
 use project_harmonia_widgets::WidgetsPlugin;
+use vleue_navigator::prelude::*;
+
+use cli::{Cli, CliPlugin};
 
 fn main() {
     let mut app = App::new();
     app.init_resource::<Cli>()
-        // TODO: workaround to place objects close together, remove after the next release.
-        .insert_resource(NarrowPhaseConfig {
-            prediction_distance: 0.0,
-        })
         .add_plugins((
             DefaultPlugins.set(RenderPlugin {
                 render_creation: RenderCreation::Automatic(WgpuSettings {
@@ -55,21 +42,9 @@ fn main() {
             WireframePlugin,
             AtmospherePlugin,
             InputManagerPlugin::<Action>::default(),
-            OxidizedNavigationPlugin::<Collider>::new(
-                NavMeshSettings::from_agent_and_bounds(
-                    ACTOR_RADIUS,
-                    ACTOR_HEIGHT,
-                    HALF_CITY_SIZE,
-                    0.0,
-                )
-                .with_walkable_radius(1),
-            ),
-            OxidizedNavigationDebugDrawPlugin,
-            PhysicsPlugins::default()
-                .build()
-                .disable::<IntegratorPlugin>()
-                .disable::<SolverPlugin>()
-                .disable::<SleepingPlugin>(),
+            VleueNavigatorPlugin,
+            NavmeshUpdaterPlugin::<Collider, Obstacle>::default(),
+            PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
             TextInputPlugin,
             OutlinePlugin,

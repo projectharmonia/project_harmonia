@@ -6,13 +6,13 @@ use std::{
     fmt::Debug,
 };
 
+use avian3d::prelude::*;
 use bevy::{
     color::palettes::css::{RED, WHITE},
     ecs::reflect::ReflectCommandExt,
     prelude::*,
     scene,
 };
-use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{

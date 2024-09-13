@@ -1,8 +1,8 @@
+use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
     prelude::*,
 };
-use bevy_xpbd_3d::prelude::*;
 
 /// Entity that displayed instead of the original.
 #[derive(Clone, Copy)]

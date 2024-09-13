@@ -1,5 +1,5 @@
+use avian3d::prelude::*;
 use bevy::{prelude::*, transform::TransformSystem};
-use bevy_xpbd_3d::prelude::*;
 
 use super::placing_object::PlacingObject;
 use crate::{

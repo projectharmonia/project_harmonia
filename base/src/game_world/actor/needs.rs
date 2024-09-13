@@ -41,7 +41,7 @@ impl Plugin for NeedsPlugin {
                 Update,
                 Self::update_values
                     .run_if(on_timer(Duration::from_secs(1)))
-                    .run_if(has_authority),
+                    .run_if(server_or_singleplayer),
             );
     }
 }

@@ -18,15 +18,14 @@ project_harmonia_ui = { path = "ui" }
 project_harmonia_widgets = { path = "widgets" }
 bevy = { version = "0.14", default-features = false }
 bevy_atmosphere = "0.10"
-bevy_replicon = "0.28"
+bevy_replicon = "0.28.3"
 bevy_replicon_renet = "0.5"
-bevy_xpbd_3d = { version = "0.5", features = ["serialize"] }
 bevy_mod_outline = { version = "0.8" }
 bevy_simple_text_input = "0.9"
-oxidized_navigation = { version = "0.11", default-features = false, features = [
-  "xpbd",
-  "debug_draw",
+vleue_navigator = { git = "https://github.com/vleue/vleue_navigator", features = [
+  "avian3d",
 ] }
+avian3d = { version = "0.1", features = ["serialize"] }
 leafwing-input-manager = { version = "0.14", default-features = false, features = [
   "ui",
 ] }

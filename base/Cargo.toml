@@ -7,13 +7,13 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy = { workspace = true, features = ["animation", "bevy_state"] }
+bevy = { workspace = true, features = ["animation", "bevy_state", "bevy_gltf"] }
 bevy_atmosphere.workspace = true
 bevy_replicon.workspace = true
 bevy_replicon_renet.workspace = true
-bevy_xpbd_3d.workspace = true
 bevy_mod_outline.workspace = true
-oxidized_navigation.workspace = true
+avian3d.workspace = true
+vleue_navigator.workspace = true
 leafwing-input-manager.workspace = true
 serde.workspace = true
 anyhow.workspace = true

@@ -2,6 +2,7 @@ pub(crate) mod door;
 pub mod placing_object;
 pub(crate) mod wall_mount;
 
+use avian3d::prelude::*;
 use bevy::{
     asset::AssetPath,
     ecs::{entity::MapEntities, reflect::ReflectCommandExt},
@@ -9,7 +10,6 @@ use bevy::{
 };
 use bevy_mod_outline::OutlineBundle;
 use bevy_replicon::prelude::*;
-use bevy_xpbd_3d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -46,7 +46,7 @@ impl Plugin for ObjectPlugin {
                 PostUpdate,
                 Self::apply_command
                     .before(ServerSet::StoreHierarchy)
-                    .run_if(has_authority),
+                    .run_if(server_or_singleplayer),
             );
     }
 }

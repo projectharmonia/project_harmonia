@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use bevy_xpbd_3d::prelude::*;
+use avian3d::prelude::*;
 
 use super::{PlacingObject, PlacingObjectPlugin, PlacingObjectState};
 use crate::game_world::{

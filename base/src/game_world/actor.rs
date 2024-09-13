@@ -10,7 +10,7 @@ use bevy::{
 };
 use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
 use bevy_replicon::prelude::*;
-use bevy_xpbd_3d::prelude::*;
+use avian3d::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -63,9 +63,6 @@ impl Plugin for ActorPlugin {
             .add_systems(PostUpdate, Self::ensure_single_selection);
     }
 }
-
-pub const ACTOR_HEIGHT: f32 = 1.2;
-pub const ACTOR_RADIUS: f32 = 0.3;
 
 impl ActorPlugin {
     fn init(mut commands: Commands, actors: Query<Entity, (With<Actor>, Without<RigidBody>)>) {

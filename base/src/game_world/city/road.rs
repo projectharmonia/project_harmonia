@@ -37,7 +37,7 @@ impl Plugin for RoadPlugin {
                 PostUpdate,
                 (
                     Self::create
-                        .run_if(has_authority)
+                        .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
                     Self::update_meshes.after(SplinePlugin::update_connections),
                 )

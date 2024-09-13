@@ -3,6 +3,7 @@ pub mod city;
 pub mod commands_history;
 pub mod family;
 pub mod hover;
+pub mod navigation;
 pub mod object;
 mod player_camera;
 mod spline;
@@ -10,12 +11,12 @@ mod spline;
 use std::fs;
 
 use anyhow::{Context, Result};
+use avian3d::prelude::*;
 use bevy::{
     prelude::*,
     scene::{ron, serde::SceneDeserializer},
 };
 use bevy_replicon::prelude::*;
-use bevy_xpbd_3d::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{core::GameState, game_paths::GamePaths, message::error_message};
@@ -24,6 +25,7 @@ use city::CityPlugin;
 use commands_history::CommandHistoryPlugin;
 use family::FamilyPlugin;
 use hover::HoverPlugin;
+use navigation::NavigationPlugin;
 use object::ObjectPlugin;
 use player_camera::PlayerCameraPlugin;
 use spline::SplinePlugin;
@@ -38,6 +40,7 @@ impl Plugin for GameWorldPlugin {
             SplinePlugin,
             HoverPlugin,
             FamilyPlugin,
+            NavigationPlugin,
             ObjectPlugin,
             PlayerCameraPlugin,
             CommandHistoryPlugin,

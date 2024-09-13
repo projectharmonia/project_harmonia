@@ -8,7 +8,6 @@ mod ghost;
 pub mod input_events;
 mod math;
 pub mod message;
-mod navigation;
 pub mod network;
 pub mod settings;
 
@@ -21,7 +20,6 @@ use game_paths::GamePathsPlugin;
 use game_world::GameWorldPlugin;
 use math::MathPlugin;
 use message::ErrorReportPlugin;
-use navigation::NavigationPlugin;
 use settings::SettingsPlugin;
 
 pub struct CorePlugins;
@@ -34,7 +32,6 @@ impl PluginGroup for CorePlugins {
             .add(CorePlugin)
             .add(CombinedSceneColliderPlugin)
             .add(GameWorldPlugin)
-            .add(NavigationPlugin)
             .add(ErrorReportPlugin)
             .add(GamePathsPlugin)
             .add(SettingsPlugin)

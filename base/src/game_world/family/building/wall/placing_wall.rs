@@ -1,10 +1,10 @@
+use avian3d::prelude::*;
 use bevy::{
     color::palettes::css::{RED, WHITE},
     math::Vec3Swizzles,
     prelude::*,
     render::view::NoFrustumCulling,
 };
-use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{Wall, WallCommand, WallMaterial, WallTool};

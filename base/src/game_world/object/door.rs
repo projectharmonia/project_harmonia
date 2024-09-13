@@ -9,9 +9,8 @@ use crate::{
         info::{MapPaths, ReflectMapPaths},
     },
     core::GameState,
-    game_world::actor::Actor,
+    game_world::{actor::Actor, navigation::NavPath},
     math::segment::Segment,
-    navigation::NavPath,
 };
 
 pub(super) struct DoorPlugin;
@@ -47,13 +46,13 @@ impl DoorPlugin {
         mut objects: Query<(&mut DoorState, &GlobalTransform, &Door)>,
         actors: Query<(Entity, &NavPath), Changed<NavPath>>,
     ) {
-        for (actor_entity, nav_path) in &actors {
+        for (actor_entity, path) in &actors {
             // Remove from old passing actors.
             for (mut door_state, ..) in &mut objects {
                 door_state.remove_passing(actor_entity);
             }
 
-            for (nav_start, nav_end) in nav_path.iter().map(|point| point.xz()).tuple_windows() {
+            for (nav_start, nav_end) in path.iter().map(|point| point.xz()).tuple_windows() {
                 let nav_segment = Segment::new(nav_start, nav_end);
 
                 for (mut door_state, door_transform, door) in &mut objects {

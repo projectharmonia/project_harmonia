@@ -2,9 +2,8 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
-use oxidized_navigation::{NavMesh, NavMeshSettings};
 
-use super::{ComputePath, NavPath};
+use super::NavDestination;
 
 pub(super) struct FollowingPlugin;
 
@@ -17,61 +16,45 @@ impl Plugin for FollowingPlugin {
                 Self::init,
                 Self::update_path.run_if(on_timer(Duration::from_secs(1))),
             )
-                .run_if(has_authority),
+                .run_if(server_or_singleplayer),
         )
-        .add_systems(PostUpdate, Self::stop_following.run_if(has_authority));
+        .add_systems(PostUpdate, Self::stop_following.run_if(server_or_singleplayer));
     }
 }
 
 impl FollowingPlugin {
     fn init(
-        mut commands: Commands,
-        nav_settings: Res<NavMeshSettings>,
-        nav_mesh: Res<NavMesh>,
-        followers: Query<(Entity, &Transform, &Following), Changed<Following>>,
+        mut followers: Query<(Entity, &Following, &mut NavDestination), Changed<Following>>,
         transforms: Query<&Transform>,
     ) {
-        for (entity, transform, following) in &followers {
+        for (entity, following, mut dest) in &mut followers {
             let target_transform = transforms
                 .get(following.0)
                 .expect("target entity should have transform");
 
             debug!("setting path to target `{entity}`");
-            commands.entity(entity).insert(ComputePath::new(
-                nav_mesh.get(),
-                nav_settings.clone(),
-                transform.translation,
-                target_transform.translation,
-            ));
+            **dest = Some(target_transform.translation);
         }
     }
 
     fn update_path(
-        mut commands: Commands,
-        nav_settings: Res<NavMeshSettings>,
-        nav_mesh: Res<NavMesh>,
-        followers: Query<(Entity, &Transform, &Following)>,
+        mut followers: Query<(Entity, &Following, &mut NavDestination)>,
         transforms: Query<&Transform, Changed<Transform>>,
     ) {
-        for (entity, transform, following) in &followers {
+        for (entity, following, mut dest) in &mut followers {
             if let Ok(target_transform) = transforms.get(following.0) {
                 debug!("updating path to target `{entity}`");
-                commands.entity(entity).insert(ComputePath::new(
-                    nav_mesh.get(),
-                    nav_settings.clone(),
-                    transform.translation,
-                    target_transform.translation,
-                ));
+                **dest = Some(target_transform.translation);
             }
         }
     }
 
     fn stop_following(
         mut commands: Commands,
-        followers: Query<(Entity, &NavPath), (Changed<NavPath>, With<Following>)>,
+        followers: Query<(Entity, &NavDestination), (Changed<NavDestination>, With<Following>)>,
     ) {
-        for (entity, nav_path) in &followers {
-            if nav_path.is_empty() {
+        for (entity, dest) in &followers {
+            if dest.is_none() {
                 if let Some(mut commands) = commands.get_entity(entity) {
                     commands.remove::<Following>();
                 }

@@ -1,10 +1,10 @@
+use avian3d::prelude::*;
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     scene::{self, SceneInstanceReady},
 };
 use bevy_mod_outline::InheritOutlineBundle;
-use bevy_xpbd_3d::prelude::*;
 
 use crate::core::GameState;
 

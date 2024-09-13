@@ -16,8 +16,8 @@ use crate::{
             Actor, ActorAnimation, Movement,
         },
         hover::Hovered,
+        navigation::{following::Following, NavDestination, NavSettings},
     },
-    navigation::{following::Following, NavPath, Navigation},
 };
 
 pub(super) struct TellSecretPlugin;
@@ -32,7 +32,7 @@ impl Plugin for TellSecretPlugin {
                 Update,
                 (
                     Self::add_to_list.in_set(TaskListSet),
-                    Self::start_following.run_if(has_authority),
+                    Self::start_following.run_if(server_or_singleplayer),
                     Self::start_telling,
                     Self::start_listening,
                     Self::finish,
@@ -54,15 +54,15 @@ impl TellSecretPlugin {
 
     fn start_following(
         mut commands: Commands,
-        mut actors: Query<&mut Navigation>,
+        mut actors: Query<&mut NavSettings>,
         tasks: Query<(&TellSecret, &Parent, &TaskState), Changed<TaskState>>,
     ) {
         for (tell_secret, parent, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                let mut navigation = actors
+                let mut nav_settings = actors
                     .get_mut(**parent)
                     .expect("actors should have navigation component");
-                *navigation = Navigation::new(Movement::Walk.speed()).with_offset(0.5);
+                *nav_settings = NavSettings::new(Movement::Walk.speed()).with_offset(0.5);
 
                 commands.entity(**parent).insert(Following(tell_secret.0));
             }
@@ -72,11 +72,14 @@ impl TellSecretPlugin {
     fn start_telling(
         mut commands: Commands,
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut actors: Query<(Entity, &Children, &NavPath, &mut AnimationState), Changed<NavPath>>,
+        mut actors: Query<
+            (Entity, &Children, &NavDestination, &mut AnimationState),
+            Changed<NavDestination>,
+        >,
         tasks: Query<(Entity, &TellSecret, &TaskState)>,
     ) {
-        for (actor_entity, children, nav_path, mut animator) in &mut actors {
-            if !nav_path.is_empty() {
+        for (actor_entity, children, dest, mut animator) in &mut actors {
+            if !dest.is_none() {
                 continue;
             }
 

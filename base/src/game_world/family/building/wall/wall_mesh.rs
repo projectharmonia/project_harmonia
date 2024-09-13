@@ -1,7 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
+use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_xpbd_3d::prelude::*;
 use itertools::MinMaxResult;
 
 use super::{Aperture, Apertures};

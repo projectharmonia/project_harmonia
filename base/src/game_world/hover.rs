@@ -3,7 +3,7 @@ pub(super) mod highlighting;
 use std::iter;
 
 use bevy::prelude::*;
-use bevy_xpbd_3d::prelude::*;
+use avian3d::prelude::*;
 
 use super::{player_camera::CameraCaster, WorldState};
 use highlighting::HighlightingPlugin;

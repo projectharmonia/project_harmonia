@@ -3,6 +3,7 @@ pub mod editor;
 
 use std::io::Cursor;
 
+use avian3d::prelude::*;
 use bevy::{
     ecs::{
         entity::{EntityMapper, MapEntities},
@@ -16,18 +17,16 @@ use bevy_replicon::{
     core::ctx::{ClientSendCtx, ServerReceiveCtx},
     prelude::*,
 };
-use bevy_xpbd_3d::prelude::*;
 use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use super::{
     actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
+    navigation::NavigationBundle,
     WorldState,
 };
-use crate::{
-    component_commands::ComponentCommandsExt, core::GameState, navigation::NavigationBundle,
-};
+use crate::{component_commands::ComponentCommandsExt, core::GameState};
 use building::BuildingPlugin;
 use editor::EditorPlugin;
 
@@ -58,7 +57,7 @@ impl Plugin for FamilyPlugin {
                 (
                     Self::update_members,
                     Self::init,
-                    (Self::create, Self::delete).run_if(has_authority),
+                    (Self::create, Self::delete).run_if(server_or_singleplayer),
                 )
                     .after(ClientSet::Receive)
                     .run_if(in_state(GameState::InGame)),

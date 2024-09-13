@@ -23,8 +23,8 @@ use crate::{
     game_world::{
         actor::{animation_state::AnimationState, Actor},
         family::FamilyMode,
+        navigation::NavDestination,
     },
-    navigation::{ComputePath, NavPath},
     settings::Action,
 };
 use buy_lot::BuyLotPlugin;
@@ -61,11 +61,11 @@ impl Plugin for TaskPlugin {
             PreUpdate,
             (Self::request, Self::cancel)
                 .after(ClientSet::Receive)
-                .run_if(has_authority),
+                .run_if(server_or_singleplayer),
         )
         .add_systems(
             PostUpdate,
-            (Self::despawn_cancelled, Self::activate_queued).run_if(has_authority),
+            (Self::despawn_cancelled, Self::activate_queued).run_if(server_or_singleplayer),
         );
     }
 }
@@ -135,19 +135,18 @@ impl TaskPlugin {
     fn despawn_cancelled(
         mut commands: Commands,
         tasks: Query<(Entity, &Parent, &TaskGroups, &TaskState), Changed<TaskState>>,
-        mut actors: Query<(&mut NavPath, &mut AnimationState)>,
+        mut actors: Query<(&mut NavDestination, &mut AnimationState)>,
     ) {
         for (entity, parent, groups, &task_state) in &tasks {
             if task_state == TaskState::Cancelled {
                 debug!("despawning cancelled task `{entity}`");
-                let (mut nav_path, mut animation_state) = actors
+                let (mut dest, mut animation_state) = actors
                     .get_mut(**parent)
                     .expect("actor should have animaition state");
 
                 if groups.contains(TaskGroups::LEGS) {
                     debug!("cancelling task navigation");
-                    nav_path.clear();
-                    commands.entity(**parent).remove::<ComputePath>();
+                    **dest = None;
                 }
 
                 animation_state.stop_montage();
