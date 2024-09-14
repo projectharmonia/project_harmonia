@@ -229,7 +229,7 @@ pub(crate) struct Wall;
 #[derive(Component, Default)]
 pub(crate) struct Apertures {
     apertures: Vec<Aperture>,
-    pub(super) collision_outdated: bool,
+    collision_outdated: bool,
 }
 
 impl Apertures {
