@@ -47,10 +47,11 @@ impl WallMountPlugin {
 
     /// Updates [`Apertures`] based on spawned objects.
     fn update_apertures(
-        mut walls: Query<(Entity, &SplineSegment, &mut Apertures)>,
+        mut walls: Query<(Entity, &Parent, &SplineSegment, &mut Apertures)>,
         mut objects: Query<
             (
                 Entity,
+                &Parent,
                 &Visibility,
                 &Transform,
                 &WallMount,
@@ -60,8 +61,15 @@ impl WallMountPlugin {
             Or<(Changed<Transform>, Changed<Visibility>)>,
         >,
     ) {
-        for (object_entity, visibility, transform, wall_mount, mut object_wall, placing_object) in
-            &mut objects
+        for (
+            object_entity,
+            object_parent,
+            visibility,
+            transform,
+            wall_mount,
+            mut object_wall,
+            placing_object,
+        ) in &mut objects
         {
             if visibility == Visibility::Hidden {
                 if let Some(wall_entity) = object_wall.0.take() {
@@ -75,11 +83,12 @@ impl WallMountPlugin {
             }
 
             let translation = transform.translation;
-            if let Some((wall_entity, wall, mut apertures)) = walls
+            if let Some((wall_entity, _, sement, mut apertures)) = walls
                 .iter_mut()
-                .find(|(_, segment, _)| segment.contains(translation.xz()))
+                .filter(|&(_, parent, ..)| parent == object_parent)
+                .find(|(.., segment, _)| segment.contains(translation.xz()))
             {
-                let distance = translation.xz().distance(wall.start);
+                let distance = translation.xz().distance(sement.start);
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
                         trace!("updating apreture of `{wall_entity}` for `{object_entity}`");
