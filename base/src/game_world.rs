@@ -68,7 +68,7 @@ impl Plugin for GameWorldPlugin {
 }
 
 impl GameWorldPlugin {
-    /// Saves world to disk with the name from [`GameWorld`] resource.
+    /// Saves world to disk with the name from [`WorldName`] resource.
     fn save(
         world: &World,
         world_name: Res<WorldName>,
@@ -92,7 +92,7 @@ impl GameWorldPlugin {
             .with_context(|| format!("unable to save game to {world_path:?}"))
     }
 
-    /// Loads world from disk with the name from [`GameWorld`] resource.
+    /// Loads world from disk with the name from [`WorldName`] resource.
     fn load(
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
@@ -137,11 +137,11 @@ impl GameWorldPlugin {
     }
 }
 
-/// Event that indicates that game is about to be saved to the file name based on [`GameWorld`] resource.
+/// Event that indicates that game is about to be saved to the file name based on [`WorldName`] resource.
 #[derive(Default, Event)]
 pub struct GameSave;
 
-/// Event that indicates that game is about to be loaded from the file name based on [`GameWorld`] resource.
+/// Event that indicates that game is about to be loaded from the file name based on [`WorldName`] resource.
 ///
 /// Sets game state to [`GameState::World`].
 #[derive(Default, Event)]
