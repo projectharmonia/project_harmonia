@@ -47,24 +47,37 @@ impl WallMountPlugin {
 
     /// Updates [`Apertures`] based on spawned objects.
     fn update_apertures(
-        mut walls: Query<(Entity, &mut Apertures, &SplineSegment)>,
+        mut walls: Query<(Entity, &SplineSegment, &mut Apertures)>,
         mut objects: Query<
             (
                 Entity,
+                &Visibility,
                 &Transform,
                 &WallMount,
                 &mut ObjectWall,
                 Has<PlacingObject>,
             ),
-            Changed<Transform>,
+            Or<(Changed<Transform>, Changed<Visibility>)>,
         >,
     ) {
-        for (object_entity, transform, wall_mount, mut object_wall, placing_object) in &mut objects
+        for (object_entity, visibility, transform, wall_mount, mut object_wall, placing_object) in
+            &mut objects
         {
+            if visibility == Visibility::Hidden {
+                if let Some(wall_entity) = object_wall.0.take() {
+                    trace!(
+                        "removing hidden `{object_entity}` from the apreture of `{wall_entity}`"
+                    );
+                    let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
+                    apertures.remove(object_entity);
+                }
+                continue;
+            }
+
             let translation = transform.translation;
-            if let Some((wall_entity, mut apertures, wall)) = walls
+            if let Some((wall_entity, wall, mut apertures)) = walls
                 .iter_mut()
-                .find(|(.., wall)| wall.contains(translation.xz()))
+                .find(|(_, segment, _)| segment.contains(translation.xz()))
             {
                 let distance = translation.xz().distance(wall.start);
                 if let Some(current_entity) = object_wall.0 {
@@ -93,9 +106,7 @@ impl WallMountPlugin {
                         trace!(
                             "removing `{object_entity}` from the apreture of `{current_entity}`"
                         );
-                        let (_, mut current_apertures, _) = walls
-                            .get_mut(current_entity)
-                            .expect("all doors should have apertures");
+                        let (.., mut current_apertures) = walls.get_mut(current_entity).unwrap();
                         current_apertures.remove(object_entity);
                     }
                 } else {
@@ -113,10 +124,8 @@ impl WallMountPlugin {
                 }
             } else if let Some(wall_entity) = object_wall.0.take() {
                 trace!("removing `{object_entity}` from the apreture of `{wall_entity}`");
-                let (_, mut current_apertures, _) = walls
-                    .get_mut(wall_entity)
-                    .expect("all doors should have apertures");
-                current_apertures.remove(object_entity);
+                let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
+                apertures.remove(object_entity);
             }
         }
     }
