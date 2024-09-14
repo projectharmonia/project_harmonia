@@ -251,14 +251,13 @@ impl Apertures {
         self.apertures.insert(index, aperture);
     }
 
-    /// Returns index of an aperture on the corresponding object entity.
-    pub(crate) fn position(&self, entity: Entity) -> Option<usize> {
-        self.iter()
-            .position(|aperture| aperture.object_entity == entity)
-    }
-
     /// Returns aperture by its index.
-    pub(crate) fn remove(&mut self, index: usize) -> Aperture {
+    pub(crate) fn remove(&mut self, entity: Entity) -> Aperture {
+        let index = self
+            .iter()
+            .position(|aperture| aperture.object_entity == entity)
+            .unwrap_or_else(|| panic!("entity `{entity}` should be present in apertures"));
+
         let aperture = self.apertures.remove(index);
         if !aperture.placing_object && !aperture.hole {
             self.collision_outdated = true;

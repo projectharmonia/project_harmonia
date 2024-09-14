@@ -1,5 +1,8 @@
 use avian3d::prelude::*;
-use bevy::prelude::*;
+use bevy::{
+    ecs::component::{ComponentHooks, StorageType},
+    prelude::*,
+};
 
 use super::placing_object::PlacingObject;
 use crate::{
@@ -21,7 +24,7 @@ impl Plugin for WallMountPlugin {
             .add_systems(Update, Self::init.run_if(in_state(GameState::InGame)))
             .add_systems(
                 PostUpdate,
-                (Self::cleanup_apertures, Self::update_apertures)
+                Self::update_apertures
                     .chain()
                     .before(WallPlugin::update_meshes)
                     .run_if(in_state(GameState::InGame)),
@@ -39,19 +42,6 @@ impl WallMountPlugin {
             debug!("initializing wall mount for `{entity}`");
             collision_layers.filters.remove(Layer::Wall);
             commands.entity(entity).insert(ObjectWall::default());
-        }
-    }
-
-    fn cleanup_apertures(
-        mut removed_objects: RemovedComponents<ObjectWall>,
-        mut walls: Query<&mut Apertures>,
-    ) {
-        for entity in removed_objects.read() {
-            for mut apertures in &mut walls {
-                if let Some(index) = apertures.position(entity) {
-                    apertures.remove(index);
-                }
-            }
         }
     }
 
@@ -81,10 +71,7 @@ impl WallMountPlugin {
                     if current_entity == wall_entity {
                         trace!("updating apreture of `{wall_entity}` for `{object_entity}`");
                         // Remove to update distance.
-                        let index = apertures
-                            .position(object_entity)
-                            .expect("aperture should have been added earlier");
-                        let mut aperture = apertures.remove(index);
+                        let mut aperture = apertures.remove(object_entity);
 
                         aperture.distance = distance;
                         aperture.translation = translation;
@@ -109,10 +96,7 @@ impl WallMountPlugin {
                         let (_, mut current_apertures, _) = walls
                             .get_mut(current_entity)
                             .expect("all doors should have apertures");
-                        let index = current_apertures
-                            .position(object_entity)
-                            .expect("entity should have been added before");
-                        current_apertures.remove(index);
+                        current_apertures.remove(object_entity);
                     }
                 } else {
                     trace!("adding `{object_entity}` to the apreture of `{wall_entity}`");
@@ -132,10 +116,7 @@ impl WallMountPlugin {
                 let (_, mut current_apertures, _) = walls
                     .get_mut(wall_entity)
                     .expect("all doors should have apertures");
-                let index = current_apertures
-                    .position(object_entity)
-                    .expect("entity should have been added before");
-                current_apertures.remove(index);
+                current_apertures.remove(object_entity);
             }
         }
     }
@@ -155,5 +136,20 @@ pub(crate) struct WallMount {
     hole: bool,
 }
 
-#[derive(Component, Default)]
+#[derive(Default)]
 struct ObjectWall(Option<Entity>);
+
+impl Component for ObjectWall {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_remove(|mut world, entity, _| {
+            let object_wall = world.get::<Self>(entity).unwrap();
+            if let Some(wall_entity) = object_wall.0 {
+                if let Some(mut apertures) = world.get_mut::<Apertures>(wall_entity) {
+                    apertures.remove(entity);
+                }
+            }
+        });
+    }
+}
