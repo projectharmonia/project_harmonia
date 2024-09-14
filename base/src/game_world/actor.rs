@@ -79,6 +79,8 @@ impl ActorPlugin {
                     VisibilityBundle::default(),
                     OutlineBundle::highlighting(),
                     Hoverable,
+                    // HACK: Required to mark it as rigid body, otherwise the mesh will be screwed.
+                    RigidBody::Kinematic,
                 ))
                 .with_children(|parent| {
                     pub const ACTOR_HEIGHT: f32 = 1.2;
