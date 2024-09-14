@@ -1,4 +1,3 @@
-use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::{PlacingObject, PlacingObjectPlugin};
@@ -40,29 +39,29 @@ impl SideSnapPlugin {
 
     fn update_nodes(
         mut nodes: Query<&mut SideSnapNodes>,
-        objects: Query<(Entity, &SideSnap, Ref<Position>, Ref<Rotation>), Without<PlacingObject>>,
+        objects: Query<(Entity, &SideSnap, Ref<Transform>), Without<PlacingObject>>,
     ) {
-        for (entity_a, snap_a, position_a, rotation_a) in &objects {
-            if !position_a.is_changed() && !rotation_a.is_changed() {
+        for (entity_a, snap_a, transform_a) in &objects {
+            if !transform_a.is_changed() {
                 continue;
             }
 
-            for (entity_b, &snap_b, position_b, rotation_b) in &objects {
+            for (entity_b, &snap_b, transform_b) in &objects {
                 if entity_a == entity_b {
                     continue;
                 }
 
-                if *rotation_a != *rotation_b {
+                if transform_a.rotation != transform_b.rotation {
                     continue;
                 }
 
-                let disp = **position_b - **position_a;
+                let disp = transform_b.translation - transform_a.translation;
                 if disp.length() - snap_a.distance(snap_b) >= SideSnap::GAP {
                     continue;
                 }
 
-                let rotated = **rotation_a * **position_a;
-                let other_rotated = **rotation_b * **position_b;
+                let rotated = transform_a.rotation * transform_a.translation;
+                let other_rotated = transform_b.rotation * transform_b.translation;
                 if rotated.cross(other_rotated).x.is_sign_positive() {
                     connect_nodes(&mut nodes, entity_b, entity_a);
                 } else {
@@ -74,26 +73,26 @@ impl SideSnapPlugin {
 
     fn snap(
         objects: Query<
-            (&SideSnap, &Position, &Rotation, &SideSnapNodes, &Visibility),
+            (&SideSnap, &Transform, &SideSnapNodes, &Visibility),
             Without<PlacingObject>,
         >,
-        mut placing_objects: Query<(&mut Position, &mut Rotation, &SideSnap), With<PlacingObject>>,
+        mut placing_objects: Query<(&mut Transform, &SideSnap), With<PlacingObject>>,
     ) {
-        let Ok((mut position, mut rotation, snap)) = placing_objects.get_single_mut() else {
+        let Ok((mut transform, snap)) = placing_objects.get_single_mut() else {
             return;
         };
 
-        for (&object_snap, &object_position, &object_rotation, &nodes, visibility) in &objects {
+        for (&object_snap, &object_transform, &nodes, visibility) in &objects {
             if visibility == Visibility::Hidden {
                 continue;
             }
 
-            let disp = **position - *object_position;
+            let disp = transform.translation - object_transform.translation;
             let distance = snap.distance(object_snap);
             if disp.length() <= distance {
                 let dir = disp.normalize();
-                let right_dir = *object_rotation * Vec3::X;
-                let projection = dir.dot(right_dir);
+                let right_dir = object_transform.right();
+                let projection = dir.dot(*right_dir);
 
                 if projection.is_sign_positive() {
                     if nodes.left_entity.is_some() {
@@ -106,8 +105,9 @@ impl SideSnapPlugin {
                 }
 
                 trace!("applying snapping");
-                **position = *object_position + projection.signum() * right_dir * distance;
-                *rotation = object_rotation;
+                transform.translation =
+                    object_transform.translation + projection.signum() * right_dir * distance;
+                transform.rotation = object_transform.rotation;
                 return;
             }
         }

@@ -24,7 +24,7 @@ use crate::{
         family::building::BuildingMode,
         hover::{HoverPlugin, Hovered},
         object::{Object, ObjectCommand},
-        player_camera::CameraCaster,
+        player_camera::{CameraCaster, PlayerCamera},
         Layer,
     },
     ghost::Ghost,
@@ -98,8 +98,9 @@ impl PlacingObjectPlugin {
         camera_caster: CameraCaster,
         objects_info: Res<Assets<ObjectInfo>>,
         asset_server: Res<AssetServer>,
+        cameras: Query<&Transform, With<PlayerCamera>>,
         placing_objects: Query<(Entity, &PlacingObject), Without<PlacingObjectState>>,
-        objects: Query<(&Object, &Position, &Rotation)>,
+        objects: Query<(&Object, &Transform)>,
     ) {
         let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
             return;
@@ -115,16 +116,15 @@ impl PlacingObjectPlugin {
                 let info = objects_info.get(id).expect("info should be preloaded");
 
                 // Rotate towards camera and round to the nearest cardinal direction.
-                let (transform, _) = camera_caster.cameras.single();
-                let (_, rotation, _) = transform.to_scale_rotation_translation();
-                let (y, ..) = rotation.to_euler(EulerRot::YXZ);
+                let transform = cameras.single();
+                let (y, ..) = transform.rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
-                let rotation = Rotation(Quat::from_rotation_y(rounded_angle));
+                let rotation = Quat::from_rotation_y(rounded_angle);
 
                 (info, Vec3::ZERO, rotation)
             }
             PlacingObjectKind::Moving(object_entity) => {
-                let (object, &position, &rotation) = objects
+                let (object, &transform) = objects
                     .get(object_entity)
                     .expect("moving object should referece a valid object");
 
@@ -135,10 +135,10 @@ impl PlacingObjectPlugin {
 
                 let cursor_offset = camera_caster
                     .intersect_ground()
-                    .map(|point| *position - point)
-                    .unwrap_or(*position);
+                    .map(|point| transform.translation - point)
+                    .unwrap_or(transform.translation);
 
-                (info, cursor_offset, rotation)
+                (info, cursor_offset, transform.rotation)
             }
         };
 
@@ -150,11 +150,9 @@ impl PlacingObjectPlugin {
             StateScoped(CityMode::Objects),
             scene_handle,
             PlacingObjectState::new(cursor_offset),
-            rotation,
-            Position::default(),
+            SpatialBundle::from_transform(Transform::from_rotation(rotation)),
             RigidBody::Kinematic,
             CombinedSceneCollider,
-            SpatialBundle::default(),
             CollisionLayers::new(
                 Layer::PlacingObject,
                 [Layer::Object, Layer::PlacingObject, Layer::Wall],
@@ -173,25 +171,25 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn rotate(mut placing_objects: Query<(&mut Rotation, &PlacingObject)>) {
-        if let Ok((mut rotation, object)) = placing_objects.get_single_mut() {
-            **rotation *=
+    fn rotate(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
+        if let Ok((mut transform, object)) = placing_objects.get_single_mut() {
+            transform.rotation *=
                 Quat::from_axis_angle(Vec3::Y, object.rotation_limit.unwrap_or(FRAC_PI_4));
 
             debug!(
                 "rotating placing object to '{}'",
-                rotation.to_euler(EulerRot::YXZ).0.to_degrees()
+                transform.rotation.to_euler(EulerRot::YXZ).0.to_degrees()
             );
         }
     }
 
     fn apply_position(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Position, &PlacingObjectState)>,
+        mut placing_objects: Query<(&mut Transform, &PlacingObjectState)>,
     ) {
-        if let Ok((mut position, state)) = placing_objects.get_single_mut() {
+        if let Ok((mut transform, state)) = placing_objects.get_single_mut() {
             if let Some(point) = camera_caster.intersect_ground() {
-                **position = point + state.cursor_offset;
+                transform.translation = point + state.cursor_offset;
             }
         }
     }
@@ -239,14 +237,14 @@ impl PlacingObjectPlugin {
         asset_server: Res<AssetServer>,
         placing_objects: Query<(
             Entity,
-            &Position,
-            &Rotation,
+            &Parent,
+            &Transform,
             &PlacingObject,
             &PlacingObjectState,
             &CollidingEntities,
         )>,
     ) {
-        if let Ok((entity, position, rotation, &placing_object, state, colliding_entities)) =
+        if let Ok((entity, parent, translation, &placing_object, state, colliding_entities)) =
             placing_objects.get_single()
         {
             if !state.allowed_place || !colliding_entities.is_empty() {
@@ -260,14 +258,15 @@ impl PlacingObjectPlugin {
                         .expect("info should always come from file");
                     history.push_pending(ObjectCommand::Buy {
                         info_path: info_path.into_owned(),
-                        position: **position,
-                        rotation: **rotation,
+                        city_entity: **parent,
+                        translation: translation.translation,
+                        rotation: translation.rotation,
                     })
                 }
                 PlacingObjectKind::Moving(entity) => history.push_pending(ObjectCommand::Move {
                     entity,
-                    position: **position,
-                    rotation: **rotation,
+                    translation: translation.translation,
+                    rotation: translation.rotation,
                 }),
             };
 
@@ -283,21 +282,18 @@ impl PlacingObjectPlugin {
     fn sell(
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_objects: Query<(Entity, &PlacingObject, &mut Position, &mut Rotation)>,
-        objects: Query<(&Position, &Rotation), Without<PlacingObject>>,
+        mut placing_objects: Query<(Entity, &PlacingObject, &mut Transform)>,
+        objects: Query<&Transform, Without<PlacingObject>>,
     ) {
-        if let Ok((placing_entity, &placing_object, mut position, mut rotation)) =
+        if let Ok((placing_entity, &placing_object, mut transform)) =
             placing_objects.get_single_mut()
         {
             info!("selling object");
             if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+                // Set original position until the deletion is confirmed.
+                *transform = *objects.get(entity).expect("moving object should exist");
+
                 let id = history.push_pending(ObjectCommand::Sell { entity });
-
-                let (original_position, original_rotation) =
-                    objects.get(entity).expect("moving object should exist");
-                *position = *original_position;
-                *rotation = *original_rotation;
-
                 commands
                     .entity(placing_entity)
                     .insert(PendingDespawn(id))

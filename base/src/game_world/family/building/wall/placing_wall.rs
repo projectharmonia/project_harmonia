@@ -10,7 +10,7 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
     game_world::{
-        city::lot::LotVertices,
+        city::ActiveCity,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         hover::{HoverPlugin, Hovered},
@@ -94,30 +94,25 @@ impl PlacingWallPlugin {
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<&SplineSegment, With<Wall>>,
-        lots: Query<(Entity, Option<&Children>, &LotVertices)>,
+        cities: Query<Entity, With<ActiveCity>>,
     ) {
         if let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) {
-            if let Some((entity, children, _)) = lots
+            // Use an existing point if it is within the `SNAP_DELTA` distance.
+            let point = walls
                 .iter()
-                .find(|(.., vertices)| vertices.contains_point(point))
-            {
-                // Use an existing point if it is within the `SNAP_DELTA` distance.
-                let point = walls
-                    .iter_many(children.into_iter().flatten())
-                    .flat_map(|segment| segment.points())
-                    .find(|vertex| vertex.distance(point) < SNAP_DELTA)
-                    .unwrap_or(point);
+                .flat_map(|segment| segment.points())
+                .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+                .unwrap_or(point);
 
-                info!("spawning new wall");
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn(PlacingWallBundle::new(
-                        PlacingWall::Spawning,
-                        SplineSegment(Segment::splat(point)),
-                        wall_material.0.clone(),
-                        meshes.add(DynamicMesh::create_empty()),
-                    ));
-                });
-            }
+            info!("spawning new wall");
+            commands.entity(cities.single()).with_children(|parent| {
+                parent.spawn(PlacingWallBundle::new(
+                    PlacingWall::Spawning,
+                    SplineSegment(Segment::splat(point)),
+                    wall_material.0.clone(),
+                    meshes.add(DynamicMesh::create_empty()),
+                ));
+            });
         }
     }
 
@@ -186,7 +181,7 @@ impl PlacingWallPlugin {
 
             let id = match placing_wall {
                 PlacingWall::Spawning => history.push_pending(WallCommand::Create {
-                    lot_entity: **parent,
+                    city_entity: **parent,
                     segment,
                 }),
                 PlacingWall::MovingPoint { entity, kind } => {
@@ -212,21 +207,16 @@ impl PlacingWallPlugin {
     fn delete(
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &PlacingWall, &mut Position, &mut Rotation)>,
-        walls: Query<(&Position, &Rotation), Without<PlacingWall>>,
+        mut placing_walls: Query<(Entity, &PlacingWall, &mut SplineSegment)>,
+        walls: Query<&SplineSegment, Without<PlacingWall>>,
     ) {
-        if let Ok((placing_entity, &placing_wall, mut position, mut rotation)) =
-            placing_walls.get_single_mut()
-        {
+        if let Ok((placing_entity, &placing_wall, mut segment)) = placing_walls.get_single_mut() {
             info!("deleting wall");
             if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
+                // Set original segment until the deletion is confirmed.
+                *segment = *walls.get(entity).expect("moving wall should exist");
+
                 let id = history.push_pending(WallCommand::Delete { entity });
-
-                let (original_position, original_rotation) =
-                    walls.get(entity).expect("moving object should exist");
-                *position = *original_position;
-                *rotation = *original_rotation;
-
                 commands
                     .entity(placing_entity)
                     .insert(PendingDespawn(id))

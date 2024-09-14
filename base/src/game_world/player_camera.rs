@@ -226,20 +226,36 @@ pub(super) struct PlayerCamera;
 #[derive(SystemParam)]
 pub(super) struct CameraCaster<'w, 's> {
     windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
-    pub(super) cameras:
-        Query<'w, 's, (&'static GlobalTransform, &'static Camera), With<PlayerCamera>>,
+    cities: Query<'w, 's, &'static GlobalTransform>,
+    cameras: Query<
+        'w,
+        's,
+        (&'static Parent, &'static GlobalTransform, &'static Camera),
+        With<PlayerCamera>,
+    >,
 }
 
 impl CameraCaster<'_, '_> {
     pub(super) fn ray(&self) -> Option<Ray3d> {
-        let cursor_pos = self.windows.single().cursor_position()?;
-        let (&transform, camera) = self.cameras.get_single().ok()?;
-        camera.viewport_to_world(&transform, cursor_pos)
+        let (_, &transform, camera) = self.cameras.get_single().ok()?;
+        self.ray_from(transform, camera)
     }
 
     pub(super) fn intersect_ground(&self) -> Option<Vec3> {
-        let ray = self.ray()?;
+        let (parent, &transform, camera) = self.cameras.get_single().ok()?;
+        let ray = self.ray_from(transform, camera)?;
         let distance = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))?;
-        Some(ray.get_point(distance))
+        let global_point = ray.get_point(distance);
+        let city_transform = self.cities.get(**parent).unwrap();
+        let local_point = city_transform
+            .affine()
+            .inverse()
+            .transform_point3(global_point);
+        Some(local_point)
+    }
+
+    fn ray_from(&self, transform: GlobalTransform, camera: &Camera) -> Option<Ray3d> {
+        let cursor_pos = self.windows.single().cursor_position()?;
+        camera.viewport_to_world(&transform, cursor_pos)
     }
 }

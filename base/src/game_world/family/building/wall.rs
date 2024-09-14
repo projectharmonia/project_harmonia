@@ -134,11 +134,11 @@ impl WallPlugin {
             let mut confirmation = CommandConfirmation::new(event.id);
             match event.command {
                 WallCommand::Create {
-                    lot_entity,
+                    city_entity,
                     segment,
                 } => {
                     info!("`{client_id:?}` creates wall");
-                    commands.entity(lot_entity).with_children(|parent| {
+                    commands.entity(city_entity).with_children(|parent| {
                         let entity = parent.spawn(WallBundle::new(segment)).id();
                         confirmation.entity = Some(entity);
                     });
@@ -292,7 +292,7 @@ pub(crate) struct Aperture {
 #[derive(Serialize, Deserialize, Clone, Copy)]
 enum WallCommand {
     Create {
-        lot_entity: Entity,
+        city_entity: Entity,
         segment: SplineSegment,
     },
     MovePoint {
@@ -335,7 +335,7 @@ impl PendingCommand for WallCommand {
                 let segment = *entity.get::<SplineSegment>().unwrap();
                 let parent = entity.get::<Parent>().unwrap();
                 Self::Create {
-                    lot_entity: **parent,
+                    city_entity: **parent,
                     segment,
                 }
             }

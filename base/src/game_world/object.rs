@@ -13,7 +13,7 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    city::{lot::LotVertices, City, HALF_CITY_SIZE},
+    city::{City, HALF_CITY_SIZE},
     commands_history::{
         CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
         PendingCommand,
@@ -34,7 +34,7 @@ impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<Object>()
-            .replicate::<Object>()
+            .replicate_group::<(Object, Transform)>()
             .add_mapped_client_event::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
@@ -75,7 +75,8 @@ impl ObjectPlugin {
                 RigidBody::Kinematic,
                 CombinedSceneCollider,
                 OutlineBundle::highlighting(),
-                SpatialBundle::default(),
+                GlobalTransform::default(),
+                VisibilityBundle::default(),
                 CollisionLayers::new(
                     Layer::Object,
                     [Layer::Object, Layer::PlacingObject, Layer::Wall],
@@ -95,56 +96,40 @@ impl ObjectPlugin {
         mut commands: Commands,
         mut request_events: EventReader<FromClient<CommandRequest<ObjectCommand>>>,
         mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
-        mut objects: Query<(&mut Position, &mut Rotation)>,
-        cities: Query<(Entity, &Transform), With<City>>,
-        lots: Query<(Entity, &LotVertices)>,
+        mut objects: Query<&mut Transform, Without<City>>,
     ) {
         for FromClient { client_id, event } in request_events.read().cloned() {
+            // TODO: validate if command can be applied.
             let mut confirmation = CommandConfirmation::new(event.id);
             match event.command {
                 ObjectCommand::Buy {
                     info_path,
-                    position,
+                    city_entity,
+                    translation,
                     rotation,
                 } => {
-                    if position.y.abs() > HALF_CITY_SIZE {
-                        error!("received position {position} with 'y' outside of city size");
+                    if translation.y.abs() > HALF_CITY_SIZE {
+                        error!("received translation {translation} with 'y' outside of city size");
                         continue;
                     }
 
-                    let Some((city_entity, _)) = cities
-                        .iter()
-                        .map(|(entity, transform)| (entity, transform.translation.x - position.x))
-                        .find(|(_, x)| x.abs() < HALF_CITY_SIZE)
-                    else {
-                        error!("unable to find a city for position {position}");
-                        continue;
-                    };
-
-                    // TODO: Add a check if user can spawn an object on the lot.
-                    let parent_entity = lots
-                        .iter()
-                        .find(|(_, vertices)| vertices.contains_point(position.xz()))
-                        .map(|(lot_entity, _)| lot_entity)
-                        .unwrap_or(city_entity);
-
                     info!("`{client_id:?}` buys object {info_path:?}");
-                    commands.entity(parent_entity).with_children(|parent| {
-                        let entity = parent
-                            .spawn(ObjectBundle::new(info_path, position, rotation))
-                            .id();
+                    commands.entity(city_entity).with_children(|parent| {
+                        let transform =
+                            Transform::from_translation(translation).with_rotation(rotation);
+                        let entity = parent.spawn(ObjectBundle::new(info_path, transform)).id();
                         confirmation.entity = Some(entity);
                     });
                 }
                 ObjectCommand::Move {
                     entity,
-                    position,
+                    translation,
                     rotation,
                 } => match objects.get_mut(entity) {
-                    Ok((mut object_position, mut object_rotation)) => {
+                    Ok(mut transform) => {
                         info!("`{client_id:?}` moves object `{entity}`");
-                        **object_position = position;
-                        **object_rotation = rotation;
+                        transform.translation = translation;
+                        transform.rotation = rotation;
                     }
                     Err(e) => error!("unable to move object `{entity}`: {e}"),
                 },
@@ -165,18 +150,16 @@ impl ObjectPlugin {
 #[derive(Bundle)]
 struct ObjectBundle {
     object: Object,
-    position: Position,
-    rotation: Rotation,
+    transform: Transform,
     parent_sync: ParentSync,
     replication: Replicated,
 }
 
 impl ObjectBundle {
-    fn new(info_path: AssetPath<'static>, translation: Vec3, rotation: Quat) -> Self {
+    fn new(info_path: AssetPath<'static>, transform: Transform) -> Self {
         Self {
             object: Object(info_path),
-            position: Position(translation),
-            rotation: Rotation(rotation),
+            transform,
             parent_sync: Default::default(),
             replication: Replicated,
         }
@@ -192,12 +175,13 @@ pub(crate) struct Object(AssetPath<'static>);
 enum ObjectCommand {
     Buy {
         info_path: AssetPath<'static>,
-        position: Vec3,
+        city_entity: Entity,
+        translation: Vec3,
         rotation: Quat,
     },
     Move {
         entity: Entity,
-        position: Vec3,
+        translation: Vec3,
         rotation: Quat,
     },
     Sell {
@@ -212,31 +196,30 @@ impl PendingCommand for ObjectCommand {
         mut recorder: EntityRecorder,
         world: &mut World,
     ) -> Box<dyn ConfirmableCommand> {
-        let reverse_command = match &*self {
+        let reverse_command = match *self {
             Self::Buy { .. } => Self::Sell {
                 // Correct entity will be set after the server confirmation.
                 entity: Entity::PLACEHOLDER,
             },
             Self::Move { entity, .. } => {
-                let entity = world.entity(*entity);
-                let position = **entity.get::<Position>().unwrap();
-                let rotation = **entity.get::<Rotation>().unwrap();
+                let transform = world.get::<Transform>(entity).unwrap();
                 Self::Move {
-                    entity: entity.id(),
-                    position,
-                    rotation,
+                    entity,
+                    translation: transform.translation,
+                    rotation: transform.rotation,
                 }
             }
             Self::Sell { entity } => {
-                recorder.record(*entity);
-                let entity = world.entity(*entity);
+                recorder.record(entity);
+                let entity = world.entity(entity);
                 let info_path = entity.get::<Object>().unwrap().0.clone();
-                let position = **entity.get::<Position>().unwrap();
-                let rotation = **entity.get::<Rotation>().unwrap();
+                let parent = entity.get::<Parent>().unwrap();
+                let transform = entity.get::<Transform>().unwrap();
                 Self::Buy {
                     info_path,
-                    position,
-                    rotation,
+                    city_entity: **parent,
+                    translation: transform.translation,
+                    rotation: transform.rotation,
                 }
             }
         };

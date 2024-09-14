@@ -43,19 +43,25 @@ impl DoorPlugin {
 
     /// Updates which actors going to intersect door via navigation paths.
     fn update_passing_actors(
-        mut objects: Query<(&mut DoorState, &GlobalTransform, &Door)>,
-        actors: Query<(Entity, &NavPath), Changed<NavPath>>,
+        mut doors: Query<(&Parent, &mut DoorState, &Transform, &Door)>,
+        actors: Query<(Entity, &Parent, &NavPath), Changed<NavPath>>,
     ) {
-        for (actor_entity, path) in &actors {
+        for (actor_entity, actor_parent, path) in &actors {
             // Remove from old passing actors.
-            for (mut door_state, ..) in &mut objects {
-                door_state.remove_passing(actor_entity);
+            for (door_parent, mut door_state, ..) in &mut doors {
+                if actor_parent == door_parent {
+                    door_state.remove_passing(actor_entity);
+                }
             }
 
             for (nav_start, nav_end) in path.iter().map(|point| point.xz()).tuple_windows() {
                 let nav_segment = Segment::new(nav_start, nav_end);
 
-                for (mut door_state, door_transform, door) in &mut objects {
+                for (door_parent, mut door_state, door_transform, door) in &mut doors {
+                    if actor_parent != door_parent {
+                        continue;
+                    }
+
                     let door_point = Vec3::X * door.half_width;
                     let door_start = door_transform.transform_point(door_point).xz();
                     let door_end = door_transform.transform_point(-door_point).xz();
@@ -76,16 +82,17 @@ impl DoorPlugin {
         asset_server: Res<AssetServer>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
         children: Query<&Children>,
-        actors: Query<&GlobalTransform>,
-        mut objects: Query<(Entity, &GlobalTransform, &Door, &mut DoorState)>,
+        actors: Query<(&Parent, &Transform)>,
+        mut objects: Query<(Entity, &Parent, &Transform, &Door, &mut DoorState)>,
     ) {
-        for (object_entity, object_transform, door, mut door_state) in &mut objects {
-            let object_translation = object_transform.translation().xz();
+        for (object_entity, object_parent, object_transform, door, mut door_state) in &mut objects {
+            let object_translation = object_transform.translation.xz();
             let should_open = door_state
                 .passing_actors
                 .iter()
                 .filter_map(|&entity| actors.get(entity).ok())
-                .map(|transform| transform.translation().xz().distance(object_translation))
+                .filter(|(parent, _)| *parent == object_parent)
+                .map(|(_, transform)| transform.translation.xz().distance(object_translation))
                 .any(|distance| distance < door.trigger_distance);
 
             if door_state.opened == should_open {

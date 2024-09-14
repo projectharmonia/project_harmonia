@@ -6,7 +6,10 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use crate::{core::GameState, game_world::city::CityMode, math::polygon::Polygon};
+use crate::{
+    game_world::{city::CityMode, WorldState},
+    math::polygon::Polygon,
+};
 use creating_lot::CreatingLotPlugin;
 use moving_lot::MovingLotPlugin;
 
@@ -25,15 +28,10 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotDelete>(ChannelKind::Unordered)
             .add_server_event::<LotEventConfirmed>(ChannelKind::Unordered)
             .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            )
-            .add_systems(
                 PostUpdate,
                 (
-                    Self::draw_lines.run_if(in_state(GameState::InGame)),
+                    Self::draw_lines
+                        .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
                     (
                         Self::create.before(ServerSet::StoreHierarchy),
                         Self::apply_movement,
@@ -46,18 +44,13 @@ impl Plugin for LotPlugin {
 }
 
 impl LotPlugin {
-    fn init(
-        mut commands: Commands,
-        spawned_lots: Query<Entity, (With<LotVertices>, Without<Transform>)>,
+    fn draw_lines(
+        mut gizmos: Gizmos,
+        lots: Query<(&Parent, &LotVertices)>,
+        cities: Query<&GlobalTransform>,
     ) {
-        for entity in &spawned_lots {
-            debug!("initializing lot `{entity}`");
-            commands.entity(entity).insert(SpatialBundle::default());
-        }
-    }
-
-    fn draw_lines(mut gizmos: Gizmos, lots: Query<(&GlobalTransform, &LotVertices)>) {
-        for (transform, vertices) in &lots {
+        for (parent, vertices) in &lots {
+            let transform = cities.get(**parent).unwrap();
             let points_iter = vertices
                 .iter()
                 .map(|vertex| Vec3::new(vertex.x, 0.0, vertex.y))

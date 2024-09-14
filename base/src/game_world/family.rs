@@ -3,7 +3,6 @@ pub mod editor;
 
 use std::io::Cursor;
 
-use avian3d::prelude::*;
 use bevy::{
     ecs::{
         entity::{EntityMapper, MapEntities},
@@ -126,8 +125,6 @@ impl FamilyPlugin {
                         .spawn((
                             ActorFamily(family_entity),
                             ParentSync::default(),
-                            Position::default(),
-                            Rotation::default(),
                             NavigationBundle::default(),
                             Actor,
                             Replicated,

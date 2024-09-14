@@ -1,6 +1,6 @@
 mod cli;
 
-use avian3d::prelude::*;
+use avian3d::{prelude::*, sync::SyncConfig};
 use bevy::{
     core_pipeline::experimental::taa::TemporalAntiAliasPlugin,
     pbr::wireframe::WireframePlugin,
@@ -28,6 +28,10 @@ use cli::{Cli, CliPlugin};
 fn main() {
     let mut app = App::new();
     app.init_resource::<Cli>()
+        .insert_resource(SyncConfig {
+            position_to_transform: false,
+            ..Default::default()
+        })
         .add_plugins((
             DefaultPlugins.set(RenderPlugin {
                 render_creation: RenderCreation::Automatic(WgpuSettings {

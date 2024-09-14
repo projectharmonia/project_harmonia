@@ -1,6 +1,5 @@
 use std::f32::consts::PI;
 
-use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::{PlacingObject, PlacingObjectPlugin, PlacingObjectState};
@@ -46,21 +45,19 @@ impl WallSnapPlugin {
     fn snap(
         walls: Query<&SplineSegment, With<Wall>>,
         mut placing_objects: Query<(
-            &mut Position,
-            &mut Rotation,
+            &mut Transform,
             &mut PlacingObjectState,
             &mut PlacingObject,
             &WallSnap,
         )>,
     ) {
-        let Ok((mut position, mut rotation, mut state, mut object, snap)) =
-            placing_objects.get_single_mut()
+        let Ok((mut transform, mut state, mut object, snap)) = placing_objects.get_single_mut()
         else {
             return;
         };
 
         const SNAP_DELTA: f32 = 1.0;
-        let object_point = position.xz();
+        let object_point = transform.translation.xz();
         if let Some((wall, wall_point)) = walls
             .iter()
             .map(|wall| (wall, wall.closest_point(object_point)))
@@ -76,12 +73,12 @@ impl WallSnapPlugin {
             };
             let snap_point = wall_point + offset;
             let angle = disp.angle_between(Vec2::X * sign);
-            position.x = snap_point.x;
-            position.z = snap_point.y;
+            transform.translation.x = snap_point.x;
+            transform.translation.z = snap_point.y;
             if object.rotation_limit.is_none() {
                 // Apply rotation only for newly snapped objects.
                 debug!("applying rotation {angle}");
-                **rotation = Quat::from_rotation_y(angle);
+                transform.rotation = Quat::from_rotation_y(angle);
                 object.rotation_limit = Some(PI);
                 if snap.required() {
                     debug!("allowing placing");

@@ -32,7 +32,8 @@ impl HoverPlugin {
         spatial_query: SpatialQuery,
         camera_caster: CameraCaster,
         parents: Query<&Parent>,
-        hoverable: Query<Entity, With<Hoverable>>,
+        hoverable: Query<(Entity, &Parent), With<Hoverable>>,
+        transforms: Query<&GlobalTransform>,
     ) -> Option<(Entity, Vec3)> {
         let ray = camera_caster.ray()?;
         let hit = spatial_query.cast_ray(
@@ -43,12 +44,14 @@ impl HoverPlugin {
             Default::default(),
         )?;
 
-        let hovered_entity = hoverable
+        let (hovered_entity, parent) = hoverable
             .iter_many(iter::once(hit.entity).chain(parents.iter_ancestors(hit.entity)))
             .next()?;
-        let point = ray.origin + ray.direction * hit.time_of_impact;
+        let global_point = ray.origin + ray.direction * hit.time_of_impact;
+        let transform = transforms.get(**parent).unwrap();
+        let local_point = transform.affine().inverse().transform_point3(global_point);
 
-        Some((hovered_entity, point))
+        Some((hovered_entity, local_point))
     }
 
     fn update(

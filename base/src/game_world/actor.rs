@@ -39,7 +39,7 @@ impl Plugin for ActorPlugin {
             .register_type::<Sex>()
             .register_type::<LastName>()
             .register_type::<Movement>()
-            .replicate::<Actor>()
+            .replicate_group::<(Actor, Transform)>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
@@ -70,7 +70,8 @@ impl ActorPlugin {
             debug!("initializing actor `{entity}`");
             commands.entity(entity).insert((
                 AnimationState::default(),
-                SpatialBundle::default(),
+                GlobalTransform::default(),
+                VisibilityBundle::default(),
                 OutlineBundle::highlighting(),
                 RigidBody::Kinematic,
                 Hoverable,

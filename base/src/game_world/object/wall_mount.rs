@@ -1,5 +1,5 @@
 use avian3d::prelude::*;
-use bevy::{prelude::*, transform::TransformSystem};
+use bevy::prelude::*;
 
 use super::placing_object::PlacingObject;
 use crate::{
@@ -24,7 +24,6 @@ impl Plugin for WallMountPlugin {
                 (Self::cleanup_apertures, Self::update_apertures)
                     .chain()
                     .before(WallPlugin::update_meshes)
-                    .after(TransformSystem::TransformPropagate)
                     .run_if(in_state(GameState::InGame)),
             );
     }
@@ -57,24 +56,22 @@ impl WallMountPlugin {
     }
 
     /// Updates [`Apertures`] based on spawned objects.
-    ///
-    /// Should run in [`PostUpdate`] to avoid 1 frame delay after [`GlobalTransform`] changes.
     fn update_apertures(
         mut walls: Query<(Entity, &mut Apertures, &SplineSegment)>,
         mut objects: Query<
             (
                 Entity,
-                &GlobalTransform,
+                &Transform,
                 &WallMount,
                 &mut ObjectWall,
                 Has<PlacingObject>,
             ),
-            Changed<GlobalTransform>,
+            Changed<Transform>,
         >,
     ) {
         for (object_entity, transform, wall_mount, mut object_wall, placing_object) in &mut objects
         {
-            let translation = transform.translation();
+            let translation = transform.translation;
             if let Some((wall_entity, mut apertures, wall)) = walls
                 .iter_mut()
                 .find(|(.., wall)| wall.contains(translation.xz()))

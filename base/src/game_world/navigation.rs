@@ -1,7 +1,6 @@
 pub(super) mod following;
 pub(super) mod path_debug;
 
-use avian3d::prelude::*;
 use bevy::{
     ecs::component::{ComponentHooks, StorageType},
     prelude::*,
@@ -11,7 +10,7 @@ use path_debug::PathDebugPlugin;
 use serde::{Deserialize, Serialize};
 use vleue_navigator::prelude::*;
 
-use crate::{game_world::city::CityNavMesh, math};
+use crate::game_world::city::CityNavMesh;
 use following::FollowingPlugin;
 
 pub(super) struct NavigationPlugin;
@@ -24,8 +23,6 @@ impl Plugin for NavigationPlugin {
             .replicate::<NavSettings>()
             .replicate::<NavDestination>()
             .replicate::<NavPath>()
-            .replicate::<Position>()
-            .replicate::<Rotation>()
             .add_systems(
                 PreUpdate,
                 (Self::update_paths, Self::generate_paths)
@@ -150,7 +147,7 @@ impl NavigationPlugin {
             let next_waypoint = path[next_index];
             let disp = next_waypoint - transform.translation;
             let delta_secs = time.delta_seconds();
-            let target_rotation = math::looking_to(disp);
+            let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
 
             const ROTATION_SPEED: f32 = 10.0;
             transform.translation += disp.normalize() * nav_settings.speed * delta_secs;

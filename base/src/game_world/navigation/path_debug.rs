@@ -17,9 +17,17 @@ impl Plugin for PathDebugPlugin {
 }
 
 impl PathDebugPlugin {
-    fn draw_lines(mut gizmos: Gizmos, actors: Query<&NavPath>) {
-        for path in &actors {
-            gizmos.linestrip(path.iter().copied(), BLUE_VIOLET);
+    fn draw_lines(
+        mut gizmos: Gizmos,
+        actors: Query<(&NavPath, &Parent)>,
+        cities: Query<&GlobalTransform>,
+    ) {
+        for (path, parent) in &actors {
+            let transform = cities.get(**parent).unwrap();
+            gizmos.linestrip(
+                path.iter().map(|&point| transform.transform_point(point)),
+                BLUE_VIOLET,
+            );
         }
     }
 }
