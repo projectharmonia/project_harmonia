@@ -65,17 +65,32 @@ impl Plugin for ActorPlugin {
 }
 
 impl ActorPlugin {
-    fn init(mut commands: Commands, actors: Query<Entity, (With<Actor>, Without<RigidBody>)>) {
+    fn init(
+        mut commands: Commands,
+        actors: Query<Entity, (With<Actor>, Without<GlobalTransform>)>,
+    ) {
         for entity in &actors {
             debug!("initializing actor `{entity}`");
-            commands.entity(entity).insert((
-                AnimationState::default(),
-                GlobalTransform::default(),
-                VisibilityBundle::default(),
-                OutlineBundle::highlighting(),
-                RigidBody::Kinematic,
-                Hoverable,
-            ));
+            commands
+                .entity(entity)
+                .insert((
+                    AnimationState::default(),
+                    GlobalTransform::default(),
+                    VisibilityBundle::default(),
+                    OutlineBundle::highlighting(),
+                    Hoverable,
+                ))
+                .with_children(|parent| {
+                    pub const ACTOR_HEIGHT: f32 = 1.2;
+                    pub const ACTOR_RADIUS: f32 = 0.3;
+                    parent.spawn((
+                        RigidBody::Kinematic,
+                        SpatialBundle::from_transform(Transform::from_translation(
+                            Vec3::Y * (ACTOR_HEIGHT / 2.0 + ACTOR_RADIUS),
+                        )),
+                        Collider::capsule(ACTOR_RADIUS, ACTOR_HEIGHT),
+                    ));
+                });
         }
     }
 
