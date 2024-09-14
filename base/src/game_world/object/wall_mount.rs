@@ -18,9 +18,7 @@ pub(super) struct WallMountPlugin;
 
 impl Plugin for WallMountPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Vec2>()
-            .register_type::<Vec<Vec2>>()
-            .register_type::<WallMount>()
+        app.register_type::<WallMount>()
             .add_systems(Update, Self::init.run_if(in_state(GameState::InGame)))
             .add_systems(
                 PostUpdate,

@@ -20,7 +20,6 @@ impl Plugin for LotPlugin {
         app.add_sub_state::<LotTool>()
             .enable_state_scoped_entities::<LotTool>()
             .add_plugins((CreatingLotPlugin, MovingLotPlugin))
-            .register_type::<Vec<Vec2>>()
             .register_type::<LotVertices>()
             .replicate::<LotVertices>()
             .add_mapped_client_event::<LotCreate>(ChannelKind::Unordered)
