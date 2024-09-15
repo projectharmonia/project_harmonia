@@ -84,19 +84,10 @@ impl EditorPlugin {
     }
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 struct EditableFamilyBundle {
     editable_family: EditableFamily,
     spatial_bundle: SpatialBundle,
-}
-
-impl Default for EditableFamilyBundle {
-    fn default() -> Self {
-        Self {
-            editable_family: EditableFamily,
-            spatial_bundle: Default::default(),
-        }
-    }
 }
 
 /// A root family editor component.
