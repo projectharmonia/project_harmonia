@@ -4,10 +4,7 @@ pub mod editor;
 use std::io::Cursor;
 
 use bevy::{
-    ecs::{
-        entity::{EntityMapper, MapEntities},
-        reflect::ReflectMapEntities,
-    },
+    ecs::entity::{EntityMapper, MapEntities},
     prelude::*,
     reflect::serde::{ReflectDeserializer, ReflectSerializer},
     utils::HashMap,
@@ -36,10 +33,8 @@ impl Plugin for FamilyPlugin {
         app.add_plugins((EditorPlugin, BuildingPlugin))
             .add_sub_state::<FamilyMode>()
             .enable_state_scoped_entities::<FamilyMode>()
-            .register_type::<ActorFamily>()
             .register_type::<Family>()
             .register_type::<Budget>()
-            .replicate::<ActorFamily>()
             .replicate::<Budget>()
             .replicate_group::<(Family, Name)>()
             .add_client_event_with(
@@ -78,11 +73,11 @@ impl FamilyPlugin {
 
     fn update_members(
         mut commands: Commands,
-        actors: Query<(Entity, &ActorFamily), Changed<ActorFamily>>,
+        actors: Query<(Entity, &Actor), Changed<Actor>>,
         mut families: Query<&mut FamilyMembers>,
     ) {
         let mut new_families = HashMap::<_, Vec<_>>::new();
-        for (actor_entity, family) in &actors {
+        for (actor_entity, actor) in &actors {
             debug!("updating family for actor `{actor_entity}`");
 
             // Remove previous.
@@ -93,10 +88,13 @@ impl FamilyPlugin {
                 }
             }
 
-            if let Ok(mut family) = families.get_mut(family.0) {
+            if let Ok(mut family) = families.get_mut(actor.family_entity) {
                 family.0.push(actor_entity);
             } else {
-                new_families.entry(family.0).or_default().push(actor_entity);
+                new_families
+                    .entry(actor.family_entity)
+                    .or_default()
+                    .push(actor_entity);
             }
         }
 
@@ -123,10 +121,10 @@ impl FamilyPlugin {
                 commands.entity(event.city_entity).with_children(|parent| {
                     parent
                         .spawn((
-                            ActorFamily(family_entity),
                             ParentSync::default(),
+                            Transform::default(),
                             NavigationBundle::default(),
-                            Actor,
+                            Actor { family_entity },
                             Replicated,
                         ))
                         .insert_reflect_bundle(actor.into_reflect());
@@ -160,16 +158,18 @@ impl FamilyPlugin {
         }
     }
 
-    pub fn select(mut commands: Commands, actors: Query<&ActorFamily, With<SelectedActor>>) {
-        let family = actors.single();
-        info!("selecting `{family:?}`");
-        commands.entity(family.0).insert(SelectedFamily);
+    pub fn select(mut commands: Commands, actors: Query<&Actor, With<SelectedActor>>) {
+        let actor = actors.single();
+        info!("selecting `{}`", actor.family_entity);
+        commands.entity(actor.family_entity).insert(SelectedFamily);
     }
 
-    fn deselect(mut commands: Commands, families: Query<&ActorFamily, With<SelectedActor>>) {
-        if let Ok(family) = families.get_single() {
-            info!("deselecting `{family:?}`");
-            commands.entity(family.0).remove::<SelectedFamily>();
+    fn deselect(mut commands: Commands, families: Query<&Actor, With<SelectedActor>>) {
+        if let Ok(actor) = families.get_single() {
+            info!("deselecting `{}`", actor.family_entity);
+            commands
+                .entity(actor.family_entity)
+                .remove::<SelectedFamily>();
         }
     }
 }
@@ -289,25 +289,6 @@ pub struct Budget(u32);
 /// Automatically created and updated based on [`ActorFamily`].
 #[derive(Component, Default, Deref)]
 pub struct FamilyMembers(Vec<Entity>);
-
-/// Contains the family entity to which the actor belongs.
-#[derive(Component, Debug, Reflect, Serialize, Deserialize)]
-#[reflect(Component, MapEntities)]
-pub struct ActorFamily(pub Entity);
-
-impl MapEntities for ActorFamily {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.0 = entity_mapper.map_entity(self.0);
-    }
-}
-
-// We need to impl either [`FromWorld`] or [`Default`] so [`ActorFamily`] can be registered as [`Reflect`].
-// Same technique is used in Bevy for [`Parent`]
-impl FromWorld for ActorFamily {
-    fn from_world(_world: &mut World) -> Self {
-        Self(Entity::PLACEHOLDER)
-    }
-}
 
 #[derive(Event)]
 pub struct FamilyCreate {

@@ -20,7 +20,7 @@ use bevy_replicon::prelude::*;
 use serde::de::DeserializeSeed;
 
 use super::{core::GameState, game_paths::GamePaths, message::error_message};
-use actor::ActorPlugin;
+use actor::{Actor, ActorPlugin};
 use city::CityPlugin;
 use commands_history::CommandHistoryPlugin;
 use family::FamilyPlugin;
@@ -79,6 +79,7 @@ impl GameWorldPlugin {
         world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
+        actors: Query<Entity, With<Actor>>,
     ) -> Result<()> {
         let world_path = game_paths.world_path(&world_name.0);
         info!("saving world to {world_path:?}");
@@ -86,7 +87,14 @@ impl GameWorldPlugin {
         fs::create_dir_all(&game_paths.worlds)
             .with_context(|| format!("unable to create {world_path:?}"))?;
 
-        let mut scene = DynamicScene::default();
+        // Extract components that we don't replicate, but serialize.
+        let mut scene = DynamicSceneBuilder::from_world(world)
+            .deny_all()
+            .allow::<Transform>()
+            .extract_entities(actors.iter())
+            .build();
+
+        // Extract all replicated components that are reflected.
         let registry = registry.read();
         bevy_replicon::scene::replicate_into(&mut scene, world);
         let bytes = scene

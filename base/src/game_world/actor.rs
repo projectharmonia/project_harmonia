@@ -6,6 +6,7 @@ pub mod task;
 use avian3d::prelude::*;
 use bevy::{
     asset::AssetPath,
+    ecs::{entity::MapEntities, reflect::ReflectMapEntities},
     prelude::*,
     scene::{self, SceneInstanceReady},
 };
@@ -34,12 +35,13 @@ impl Plugin for ActorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<ActorAnimation>>()
             .add_plugins((AnimationStatePlugin, NeedsPlugin, HumanPlugin, TaskPlugin))
+            .register_type::<Transform>()
             .register_type::<Actor>()
             .register_type::<FirstName>()
             .register_type::<Sex>()
             .register_type::<LastName>()
             .register_type::<Movement>()
-            .replicate_group::<(Actor, Transform)>()
+            .replicate_mapped::<Actor>()
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
@@ -79,8 +81,6 @@ impl ActorPlugin {
                     VisibilityBundle::default(),
                     OutlineBundle::highlighting(),
                     Hoverable,
-                    // HACK: Required to mark it as rigid body, otherwise the mesh will be screwed.
-                    RigidBody::Kinematic,
                 ))
                 .with_children(|parent| {
                     pub const ACTOR_HEIGHT: f32 = 1.2;
@@ -168,9 +168,25 @@ pub enum Sex {
 pub struct SelectedActor;
 
 /// Marks entity as an actor.
-#[derive(Component, Default, Deserialize, Reflect, Serialize)]
-#[reflect(Component)]
-pub struct Actor;
+#[derive(Component, Deserialize, Reflect, Serialize)]
+#[reflect(Component, MapEntities)]
+pub struct Actor {
+    pub family_entity: Entity,
+}
+
+impl FromWorld for Actor {
+    fn from_world(_world: &mut World) -> Self {
+        Self {
+            family_entity: Entity::PLACEHOLDER,
+        }
+    }
+}
+
+impl MapEntities for Actor {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.family_entity = entity_mapper.map_entity(self.family_entity);
+    }
+}
 
 #[reflect_trait]
 pub trait ActorBundle: Reflect {

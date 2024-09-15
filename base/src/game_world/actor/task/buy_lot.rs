@@ -7,12 +7,14 @@ use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::game_world::{
-    actor::task::{Task, TaskList, TaskListSet, TaskState},
+    actor::{
+        task::{Task, TaskList, TaskListSet, TaskState},
+        Actor,
+    },
     city::{
         lot::{LotFamily, LotVertices},
         Ground,
     },
-    family::ActorFamily,
     hover::Hovered,
 };
 
@@ -51,16 +53,18 @@ impl BuyLotPlugin {
     fn buy(
         mut commands: Commands,
         lots: Query<(), Without<LotFamily>>,
-        actors: Query<&ActorFamily>,
+        actors: Query<&Actor>,
         tasks: Query<(Entity, &Parent, &BuyLot, &TaskState), Changed<TaskState>>,
     ) {
         for (entity, parent, buy, &task_state) in &tasks {
             if task_state == TaskState::Active {
-                let family = actors
+                let actor = actors
                     .get(**parent)
-                    .expect("actors should have assigned family");
+                    .expect("task should have assigned actors");
                 if lots.get(buy.0).is_ok() {
-                    commands.entity(buy.0).insert(LotFamily(family.0));
+                    commands
+                        .entity(buy.0)
+                        .insert(LotFamily(actor.family_entity));
                 } else {
                     error!("`{buy:?}` from actor `{entity}` points to not a lot");
                 }
