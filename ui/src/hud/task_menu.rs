@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use project_harmonia_base::{
@@ -39,7 +39,7 @@ impl TaskMenuPlugin {
         mut list_events: ResMut<Events<TaskList>>,
         theme: Res<Theme>,
         hovered: Query<&Name, With<Hovered>>,
-        windows: Query<&Window, With<PrimaryWindow>>,
+        windows: Query<&Window>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         let tasks = list_events.drain().map(|event| event.0).collect::<Vec<_>>();

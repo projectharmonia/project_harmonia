@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
 use project_harmonia_base::{
@@ -43,7 +43,7 @@ impl RoadsNodePlugin {
             (Entity, &RoadButton, &Interaction, &Style, &GlobalTransform),
             Changed<Interaction>,
         >,
-        windows: Query<&Window, With<PrimaryWindow>>,
+        windows: Query<&Window>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for (entity, road_button, &interaction, style, transform) in &buttons {

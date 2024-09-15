@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::prelude::*;
 
 use crate::preview::Preview;
 use project_harmonia_base::{
@@ -60,7 +60,7 @@ impl ObjectsNodePlugin {
             (Entity, &Interaction, &Style, &GlobalTransform, &Preview),
             (Changed<Interaction>, With<ObjectButton>),
         >,
-        windows: Query<&Window, With<PrimaryWindow>>,
+        windows: Query<&Window>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for (entity, &interaction, style, transform, &preview) in &buttons {

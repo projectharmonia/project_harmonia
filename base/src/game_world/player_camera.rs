@@ -12,7 +12,6 @@ use bevy::{
     input::mouse::MouseMotion,
     pbr::ScreenSpaceAmbientOcclusionSettings,
     prelude::*,
-    window::PrimaryWindow,
 };
 use leafwing_input_manager::prelude::ActionState;
 use num_enum::IntoPrimitive;
@@ -226,7 +225,7 @@ pub(super) struct PlayerCamera;
 /// A helper to cast rays from [`PlayerCamera`].
 #[derive(SystemParam)]
 pub(super) struct CameraCaster<'w, 's> {
-    windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    windows: Query<'w, 's, &'static Window>,
     cities: Query<'w, 's, &'static GlobalTransform>,
     cameras: Query<
         'w,
