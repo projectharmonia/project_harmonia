@@ -1,34 +1,28 @@
 use bevy::prelude::*;
 use bevy_mod_outline::{OutlineBundle, OutlineVolume};
 
-use crate::game_world::{hover::Hovered, WorldState};
+use crate::game_world::hover::Hovered;
 
 pub(super) struct HighlightingPlugin;
 
 impl Plugin for HighlightingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (Self::enable, Self::disable)
-                .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
-        );
+        app.observe(Self::enable).observe(Self::disable);
     }
 }
 
 impl HighlightingPlugin {
-    fn enable(mut hovered: Query<&mut OutlineVolume, Added<Hovered>>) {
-        if let Ok(mut outline) = hovered.get_single_mut() {
+    fn enable(trigger: Trigger<OnAdd, Hovered>, mut hovered: Query<&mut OutlineVolume>) {
+        if let Ok(mut outline) = hovered.get_mut(trigger.entity()) {
             debug!("highlighting enabled");
             outline.visible = true;
         }
     }
 
-    fn disable(mut unhovered: RemovedComponents<Hovered>, mut hovered: Query<&mut OutlineVolume>) {
-        for entity in unhovered.read() {
-            if let Ok(mut outline) = hovered.get_mut(entity) {
-                debug!("highlighting disabled");
-                outline.visible = false;
-            }
+    fn disable(trigger: Trigger<OnRemove, Hovered>, mut hovered: Query<&mut OutlineVolume>) {
+        if let Ok(mut outline) = hovered.get_mut(trigger.entity()) {
+            debug!("highlighting disabled");
+            outline.visible = false;
         }
     }
 }

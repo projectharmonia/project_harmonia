@@ -39,8 +39,8 @@ impl Plugin for ObjectPlugin {
             .add_systems(
                 PreUpdate,
                 Self::init
-                    .run_if(in_state(GameState::InGame))
-                    .after(ClientSet::Receive),
+                    .after(ClientSet::Receive)
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 PostUpdate,

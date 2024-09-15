@@ -23,7 +23,6 @@ impl Plugin for WallMountPlugin {
             .add_systems(
                 PostUpdate,
                 Self::update_apertures
-                    .chain()
                     .before(WallPlugin::update_meshes)
                     .run_if(in_state(GameState::InGame)),
             );

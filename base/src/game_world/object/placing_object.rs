@@ -41,6 +41,7 @@ impl Plugin for PlacingObjectPlugin {
             .add_plugins(SideSnapPlugin)
             .observe(HoverPlugin::enable_on_remove::<PlacingObject>)
             .observe(HoverPlugin::disable_on_add::<PlacingObject>)
+            .observe(Self::ensure_single)
             .add_systems(
                 PreUpdate,
                 Self::init
@@ -69,11 +70,6 @@ impl Plugin for PlacingObjectPlugin {
                 SpawnScene,
                 Self::update_materials
                     .after(scene::scene_spawner_system)
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::ensure_single
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             );
     }
@@ -312,17 +308,16 @@ impl PlacingObjectPlugin {
     }
 
     fn ensure_single(
+        trigger: Trigger<OnAdd, PlacingObject>,
         mut commands: Commands,
-        new_placing_objects: Query<Entity, Added<PlacingObject>>,
         placing_objects: Query<Entity, With<PlacingObject>>,
     ) {
-        if let Some(new_entity) = new_placing_objects.iter().last() {
-            for placing_entity in &placing_objects {
-                if placing_entity != new_entity {
-                    debug!("removing previous placing object `{placing_entity}`");
-                    commands.entity(placing_entity).despawn_recursive();
-                }
-            }
+        for entity in placing_objects
+            .iter()
+            .filter(|&entity| entity != trigger.entity())
+        {
+            debug!("removing previous placing object `{entity}`");
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

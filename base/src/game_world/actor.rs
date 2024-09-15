@@ -43,6 +43,7 @@ impl Plugin for ActorPlugin {
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
+            .observe(Self::ensure_single_selection)
             .add_systems(OnExit(WorldState::Family), Self::remove_selection)
             .add_systems(
                 PreUpdate,
@@ -51,16 +52,15 @@ impl Plugin for ActorPlugin {
                     .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
-                Update,
-                Self::update_names.run_if(in_state(GameState::InGame)),
-            )
-            .add_systems(
                 SpawnScene,
                 Self::init_children
                     .run_if(in_state(GameState::InGame))
                     .after(scene::scene_spawner_system),
             )
-            .add_systems(PostUpdate, Self::ensure_single_selection);
+            .add_systems(
+                PostUpdate,
+                Self::update_names.run_if(in_state(GameState::InGame)),
+            );
     }
 }
 
@@ -134,15 +134,13 @@ impl ActorPlugin {
     }
 
     fn ensure_single_selection(
+        trigger: Trigger<OnAdd, SelectedActor>,
         mut commands: Commands,
-        just_selected_actors: Query<Entity, Added<SelectedActor>>,
         actors: Query<Entity, With<SelectedActor>>,
     ) {
-        if let Some(activated_entity) = just_selected_actors.iter().last() {
-            for actor_entity in actors.iter().filter(|&entity| entity != activated_entity) {
-                debug!("deselecting previous actor `{actor_entity}`");
-                commands.entity(actor_entity).remove::<SelectedActor>();
-            }
+        for actor_entity in actors.iter().filter(|&entity| entity != trigger.entity()) {
+            debug!("deselecting previous actor `{actor_entity}`");
+            commands.entity(actor_entity).remove::<SelectedActor>();
         }
     }
 }

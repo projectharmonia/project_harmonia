@@ -27,17 +27,15 @@ impl Plugin for LotPlugin {
             .add_mapped_client_event::<LotDelete>(ChannelKind::Unordered)
             .add_server_event::<LotEventConfirmed>(ChannelKind::Unordered)
             .add_systems(
+                PreUpdate,
+                (Self::create, Self::apply_movement, Self::delete)
+                    .after(ServerSet::Receive)
+                    .run_if(server_or_singleplayer),
+            )
+            .add_systems(
                 PostUpdate,
-                (
-                    Self::draw_lines
-                        .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
-                    (
-                        Self::create.before(ServerSet::StoreHierarchy),
-                        Self::apply_movement,
-                        Self::delete,
-                    )
-                        .run_if(server_or_singleplayer),
-                ),
+                Self::draw_lines
+                    .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
             );
     }
 }

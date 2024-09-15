@@ -18,6 +18,7 @@ pub(super) struct DoorPlugin;
 impl Plugin for DoorPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Door>()
+            .observe(Self::cleanup_passing_actors)
             .add_systems(
                 Update,
                 (
@@ -25,10 +26,6 @@ impl Plugin for DoorPlugin {
                     (Self::update_passing_actors, Self::play_animation).chain(),
                 )
                     .run_if(in_state(GameState::InGame)),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::cleanup_passing_actors.run_if(in_state(GameState::InGame)),
             );
     }
 }
@@ -137,14 +134,12 @@ impl DoorPlugin {
     }
 
     fn cleanup_passing_actors(
-        mut removed_actors: RemovedComponents<Actor>,
+        trigger: Trigger<OnRemove, Actor>,
         mut objects: Query<&mut DoorState>,
     ) {
-        for entity in removed_actors.read() {
-            for mut door_state in &mut objects {
-                debug!("removing path of deleted actor `{entity}`");
-                door_state.remove_passing(entity);
-            }
+        for mut door_state in &mut objects {
+            debug!("removing path of deleted actor `{}`", trigger.entity());
+            door_state.remove_passing(trigger.entity());
         }
     }
 }

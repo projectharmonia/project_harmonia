@@ -21,30 +21,15 @@ impl Plugin for SplinePlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<SplineSegment>()
             .replicate::<SplineSegment>()
+            .observe(Self::cleanup_connections)
             .add_systems(
                 PostUpdate,
-                (Self::cleanup_connections, Self::update_connections)
-                    .chain()
-                    .run_if(in_state(GameState::InGame)),
+                Self::update_connections.run_if(in_state(GameState::InGame)),
             );
     }
 }
 
 impl SplinePlugin {
-    fn cleanup_connections(
-        mut removed_segments: RemovedComponents<SplineSegment>,
-        mut segments: Query<&mut SplineConnections>,
-    ) {
-        for entity in removed_segments.read() {
-            debug!("removing connections for despawned segment `{entity}`");
-            for mut connections in &mut segments {
-                if let Some(index) = connections.position(entity) {
-                    connections.0.remove(index);
-                }
-            }
-        }
-    }
-
     /// Updates [`SplineConnections`] between segments.
     pub(super) fn update_connections(
         mut segments: Query<(Entity, &Visibility, &SplineSegment, &mut SplineConnections)>,
@@ -118,6 +103,26 @@ impl SplinePlugin {
             // Reinsert updated connections back.
             let (.., mut connections) = segments.get_mut(segment_entity).unwrap();
             *connections = taken_connections;
+        }
+    }
+
+    fn cleanup_connections(
+        trigger: Trigger<OnRemove, SplineSegment>,
+        mut entities_buffer: Local<Vec<Entity>>,
+        mut segments: Query<&mut SplineConnections>,
+    ) {
+        let connections = segments.get(trigger.entity()).unwrap();
+        entities_buffer.extend(connections.iter().map(|connection| connection.entity));
+
+        debug!("removing connections for segment `{}`", trigger.entity());
+        for entity in entities_buffer.drain(..) {
+            if let Ok(mut connections) = segments.get_mut(entity) {
+                let index = connections
+                    .position(trigger.entity())
+                    .expect("segment connection should be done both ways");
+
+                connections.0.remove(index);
+            }
         }
     }
 }

@@ -49,7 +49,12 @@ impl Plugin for GameWorldPlugin {
         .enable_state_scoped_entities::<WorldState>()
         .add_event::<GameSave>()
         .add_event::<GameLoad>()
-        .add_systems(Update, Self::start_game.run_if(client_just_connected))
+        .add_systems(
+            PreUpdate,
+            Self::start_game
+                .after(ClientSet::Receive)
+                .run_if(client_just_connected),
+        )
         .add_systems(
             SpawnScene,
             Self::load
