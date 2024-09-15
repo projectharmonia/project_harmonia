@@ -33,13 +33,21 @@ fn main() {
             ..Default::default()
         })
         .add_plugins((
-            DefaultPlugins.set(RenderPlugin {
-                render_creation: RenderCreation::Automatic(WgpuSettings {
-                    features: WgpuFeatures::POLYGON_MODE_LINE,
+            DefaultPlugins
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..Default::default()
+                    }),
+                    synchronous_pipeline_compilation: true,
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Project Harmonia".to_string(),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
-                synchronous_pipeline_compilation: true,
-            }),
             TemporalAntiAliasPlugin,
             RepliconPlugins,
             RepliconRenetPlugins,
