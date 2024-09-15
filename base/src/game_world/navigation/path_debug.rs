@@ -1,7 +1,7 @@
 use bevy::{color::palettes::css::BLUE_VIOLET, prelude::*};
 
 use super::NavPath;
-use crate::{game_world::WorldState, settings::Settings};
+use crate::{common_conditions::in_any_state, game_world::WorldState, settings::Settings};
 
 pub(super) struct PathDebugPlugin;
 
@@ -10,7 +10,7 @@ impl Plugin for PathDebugPlugin {
         app.add_systems(
             Update,
             Self::draw_lines
-                .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family)))
+                .run_if(in_any_state([WorldState::City, WorldState::Family]))
                 .run_if(|settings: Res<Settings>| settings.developer.debug_paths),
         );
     }

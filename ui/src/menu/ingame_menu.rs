@@ -1,10 +1,7 @@
 use bevy::{app::AppExit, prelude::*};
 use leafwing_input_manager::common_conditions::action_just_pressed;
-use strum::{Display, EnumIter, IntoEnumIterator};
-
-use super::settings_menu::SettingsMenuOpen;
-use crate::hud::task_menu::TaskMenu;
 use project_harmonia_base::{
+    common_conditions::in_any_state,
     core::GameState,
     game_world::{
         city::{
@@ -20,6 +17,10 @@ use project_harmonia_base::{
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
 };
+use strum::{Display, EnumIter, IntoEnumIterator};
+
+use super::settings_menu::SettingsMenuOpen;
+use crate::hud::task_menu::TaskMenu;
 
 pub(super) struct InGameMenuPlugin;
 
@@ -37,7 +38,7 @@ impl Plugin for InGameMenuPlugin {
                     .run_if(not(any_with_component::<CreatingLot>))
                     .run_if(not(any_with_component::<PlacingWall>))
                     .run_if(not(any_with_component::<CreatingRoad>))
-                    .run_if(in_state(WorldState::Family).or_else(in_state(WorldState::City))),
+                    .run_if(in_any_state([WorldState::Family, WorldState::City])),
                 (
                     Self::handle_menu_clicks,
                     Self::handle_exit_dialog_clicks,

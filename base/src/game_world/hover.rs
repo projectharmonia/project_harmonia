@@ -6,6 +6,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::{player_camera::CameraCaster, WorldState};
+use crate::common_conditions::in_any_state;
 use highlighting::HighlightingPlugin;
 
 pub(super) struct HoverPlugin;
@@ -22,7 +23,7 @@ impl Plugin for HoverPlugin {
                         .run_if(resource_changed::<HoverEnabled>)
                         .run_if(not(hover_enabled)),
                 )
-                    .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
+                    .run_if(in_any_state([WorldState::City, WorldState::Family])),
             );
     }
 }

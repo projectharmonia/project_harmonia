@@ -1,5 +1,6 @@
 pub mod asset;
 mod combined_scene_collider;
+pub mod common_conditions;
 mod component_commands;
 pub mod core;
 pub mod game_paths;

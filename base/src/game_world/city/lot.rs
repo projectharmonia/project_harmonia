@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
 use crate::{
+    common_conditions::in_any_state,
     game_world::{city::CityMode, WorldState},
     math::polygon::Polygon,
 };
@@ -34,8 +35,7 @@ impl Plugin for LotPlugin {
             )
             .add_systems(
                 PostUpdate,
-                Self::draw_lines
-                    .run_if(in_state(WorldState::City).or_else(in_state(WorldState::Family))),
+                Self::draw_lines.run_if(in_any_state([WorldState::City, WorldState::Family])),
             );
     }
 }

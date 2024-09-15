@@ -21,6 +21,7 @@ use strum::EnumIter;
 use self::exp_smoothed::ExpSmoothed;
 use crate::{
     asset::collection::{AssetCollection, Collection},
+    common_conditions::in_any_state,
     game_world::WorldState,
     settings::Action,
 };
@@ -44,11 +45,11 @@ impl Plugin for PlayerCameraPlugin {
                     Self::apply_transform,
                 )
                     .chain()
-                    .run_if(
-                        in_state(WorldState::FamilyEditor)
-                            .or_else(in_state(WorldState::City))
-                            .or_else(in_state(WorldState::Family)),
-                    ),
+                    .run_if(in_any_state([
+                        WorldState::FamilyEditor,
+                        WorldState::City,
+                        WorldState::Family,
+                    ])),
             );
     }
 }
