@@ -18,11 +18,10 @@ pub(super) struct InfoNodePlugin;
 
 impl Plugin for InfoNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.observe(Self::cleanup_need_bars).add_systems(
             Update,
             Self::update_need_bars.run_if(in_state(WorldState::Family)),
-        )
-        .add_systems(PostUpdate, Self::cleanup_need_bars);
+        );
     }
 }
 
@@ -66,18 +65,16 @@ impl InfoNodePlugin {
     }
 
     fn cleanup_need_bars(
+        trigger: Trigger<OnRemove, Need>,
         mut commands: Commands,
-        mut removed_needs: RemovedComponents<Need>,
         progress_bars: Query<(Entity, &BarNeed)>,
     ) {
-        for need_entity in removed_needs.read() {
-            if let Some((bar_entity, _)) = progress_bars
-                .iter()
-                .find(|(_, bar_need)| bar_need.0 == need_entity)
-            {
-                debug!("despawning bar for need `{need_entity}`");
-                commands.entity(bar_entity).despawn_recursive();
-            }
+        if let Some((entity, _)) = progress_bars
+            .iter()
+            .find(|(_, bar_need)| bar_need.0 == trigger.entity())
+        {
+            debug!("despawning bar `{entity}` for need `{}`", trigger.entity());
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

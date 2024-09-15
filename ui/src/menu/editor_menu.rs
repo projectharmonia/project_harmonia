@@ -32,7 +32,8 @@ pub(super) struct EditorMenuPlugin;
 
 impl Plugin for EditorMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
+        app.observe(Self::remove_actor_buttons)
+            .add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
             .add_systems(
                 Update,
                 (
@@ -56,8 +57,7 @@ impl Plugin for EditorMenuPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (Self::create_actor_buttons, Self::remove_actor_buttons)
-                    .run_if(in_state(WorldState::FamilyEditor)),
+                Self::create_actor_buttons.run_if(in_state(WorldState::FamilyEditor)),
             );
     }
 }
@@ -139,17 +139,19 @@ impl EditorMenuPlugin {
     }
 
     fn remove_actor_buttons(
+        trigger: Trigger<OnRemove, EditableActor>,
         mut commands: Commands,
-        mut removed_actors: RemovedComponents<EditableActor>,
         buttons: Query<(Entity, &EditActor)>,
     ) {
-        for actor_entity in removed_actors.read() {
-            let (button_entity, _) = buttons
-                .iter()
-                .find(|(_, edit_actor)| edit_actor.0 == actor_entity)
-                .expect("each actor should have a corresponding button");
-            debug!("removing button for despawned actor `{actor_entity}`");
-            commands.entity(button_entity).despawn_recursive();
+        if let Some((entity, _)) = buttons
+            .iter()
+            .find(|(_, edit_actor)| edit_actor.0 == trigger.entity())
+        {
+            debug!(
+                "removing button `{entity}` for despawned actor `{}`",
+                trigger.entity()
+            );
+            commands.entity(entity).despawn_recursive();
         }
     }
 

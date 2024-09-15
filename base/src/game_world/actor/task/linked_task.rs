@@ -7,10 +7,8 @@ pub(super) struct LinkedTaskPlugin;
 
 impl Plugin for LinkedTaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            (Self::insert_links, Self::sync_states, Self::finish),
-        );
+        app.observe(Self::finish)
+            .add_systems(PostUpdate, (Self::insert_links, Self::sync_states));
     }
 }
 
@@ -47,24 +45,19 @@ impl LinkedTaskPlugin {
     }
 
     fn finish(
+        trigger: Trigger<OnRemove, LinkedTask>,
         mut commands: Commands,
-        mut removed_tasks: RemovedComponents<LinkedTask>,
-        tasks: Query<(Entity, &Parent, &TaskState, &LinkedTask)>,
+        tasks: Query<(Entity, &Parent, &TaskState)>,
         mut actors: Query<&mut AnimationState>,
     ) {
-        for removed_entity in removed_tasks.read() {
-            if let Some((linked_entity, parent, &task_state, _)) = tasks
-                .iter()
-                .find(|(.., linked_task)| linked_task.0 == removed_entity)
-            {
-                if task_state == TaskState::Active {
-                    let mut animation_state = actors
-                        .get_mut(**parent)
-                        .expect("actor should have animator");
-                    animation_state.stop_montage();
+        if let Ok((entity, parent, &task_state)) = tasks.get(trigger.entity()) {
+            if task_state == TaskState::Active {
+                let mut animation_state = actors
+                    .get_mut(**parent)
+                    .expect("actor should have animator");
+                animation_state.stop_montage();
 
-                    commands.entity(linked_entity).despawn();
-                }
+                commands.entity(entity).despawn();
             }
         }
     }

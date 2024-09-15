@@ -14,15 +14,14 @@ pub(super) struct TasksNodePlugin;
 
 impl Plugin for TasksNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.observe(Self::cleanup).add_systems(
             Update,
             (
                 Self::update_nodes,
                 Self::cancel.run_if(in_state(FamilyMode::Life)),
             )
                 .run_if(in_state(WorldState::Family)),
-        )
-        .add_systems(PostUpdate, Self::cleanup);
+        );
     }
 }
 
@@ -102,18 +101,16 @@ impl TasksNodePlugin {
     }
 
     fn cleanup(
+        trigger: Trigger<OnRemove, TaskState>,
         mut commands: Commands,
-        mut removed_tasks: RemovedComponents<TaskState>,
         buttons: Query<(Entity, &ButtonTask)>,
     ) {
-        for task_entity in removed_tasks.read() {
-            if let Some((button_entity, _)) = buttons
-                .iter()
-                .find(|(_, button_task)| button_task.0 == task_entity)
-            {
-                debug!("removing task button for `{task_entity}`");
-                commands.entity(button_entity).despawn_recursive();
-            }
+        if let Some((entity, _)) = buttons
+            .iter()
+            .find(|(_, button_task)| button_task.0 == trigger.entity())
+        {
+            debug!("removing task button `{entity}` for `{}`", trigger.entity());
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

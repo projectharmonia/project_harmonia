@@ -27,7 +27,9 @@ pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(WorldState::World), Self::setup)
+        app.observe(Self::remove_entity_nodes::<Family>)
+            .observe(Self::remove_entity_nodes::<City>)
+            .add_systems(OnEnter(WorldState::World), Self::setup)
             .add_systems(
                 Update,
                 (
@@ -41,11 +43,7 @@ impl Plugin for WorldMenuPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (
-                    Self::create_family_nodes,
-                    Self::create_city_nodes,
-                    Self::remove_entity_nodes,
-                )
+                (Self::create_family_nodes, Self::create_city_nodes)
                     .run_if(in_state(WorldState::World)),
             );
     }
@@ -316,18 +314,20 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn remove_entity_nodes(
+    fn remove_entity_nodes<C: Component>(
+        trigger: Trigger<OnRemove, C>,
         mut commands: Commands,
-        mut removed_cities: RemovedComponents<City>,
-        mut removed_families: RemovedComponents<Family>,
         nodes: Query<(Entity, &WorldEntity)>,
     ) {
-        for removed_entity in removed_cities.read().chain(removed_families.read()) {
-            let (node_entity, _) = nodes
-                .iter()
-                .find(|(_, world_entity)| world_entity.0 == removed_entity)
-                .expect("each city and family should have corresponding node");
-            commands.entity(node_entity).despawn_recursive();
+        if let Some((entity, _)) = nodes
+            .iter()
+            .find(|(_, world_entity)| world_entity.0 == trigger.entity())
+        {
+            debug!(
+                "removing node `{entity}` for despawned entity `{}`",
+                trigger.entity()
+            );
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
