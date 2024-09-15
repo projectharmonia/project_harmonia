@@ -361,12 +361,8 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
         })
         .with_children(|parent| {
             parent.spawn((
-                CheckboxBundle::new(
-                    theme,
-                    settings.video.perf_stats,
-                    "Display performance stats",
-                ),
-                setting_field!(settings.video.perf_stats),
+                CheckboxBundle::new(theme, settings.video.fullscreen, "Fullscreen"),
+                setting_field!(settings.video.fullscreen),
             ));
         });
 }

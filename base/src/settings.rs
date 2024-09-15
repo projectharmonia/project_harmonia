@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use avian3d::prelude::*;
 use bevy::{
     color::palettes::css::DARK_RED, pbr::wireframe::WireframeConfig, prelude::*, scene::ron,
-    utils::HashMap,
+    utils::HashMap, window::WindowMode,
 };
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
 use serde::{Deserialize, Serialize};
@@ -42,8 +42,16 @@ impl SettingsPlugin {
         mut wireframe_config: ResMut<WireframeConfig>,
         mut input_map: ResMut<InputMap<Action>>,
         settings: Res<Settings>,
+        mut windows: Query<&mut Window>,
     ) {
         info!("applying settings");
+
+        let mut window = windows.single_mut();
+        if settings.video.fullscreen {
+            window.mode = WindowMode::Fullscreen;
+        } else {
+            window.mode = WindowMode::Windowed;
+        }
 
         config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
         wireframe_config.global = settings.developer.wireframe;
@@ -110,8 +118,8 @@ impl Settings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct VideoSettings {
-    // TODO: implement.
-    pub perf_stats: bool,
+    /// TODO: Replace with combobox for all window modes.
+    pub fullscreen: bool,
 }
 
 #[derive(Clone, Deserialize, PartialEq, Serialize)]
