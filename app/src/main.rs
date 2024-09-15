@@ -56,7 +56,10 @@ fn main() {
             InputManagerPlugin::<Action>::default(),
             VleueNavigatorPlugin,
             NavmeshUpdaterPlugin::<Collider, Obstacle>::default(),
-            PhysicsPlugins::default(),
+            PhysicsPlugins::default()
+                .build()
+                .disable::<CcdPlugin>()
+                .disable::<SleepingPlugin>(),
             PhysicsDebugPlugin::default(),
             TextInputPlugin,
             OutlinePlugin,
