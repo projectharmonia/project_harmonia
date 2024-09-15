@@ -4,5 +4,8 @@ target
 # Neovim
 neovim.json
 
+# VSCode
+.vscode
+
 # Code coverage
 html
