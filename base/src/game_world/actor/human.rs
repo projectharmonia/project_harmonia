@@ -36,8 +36,10 @@ impl Plugin for HumanPlugin {
                     .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
-                Update,
-                Self::fill_scene.run_if(in_state(WorldState::FamilyEditor)),
+                PostUpdate,
+                Self::fill_scene
+                    .run_if(resource_added::<FamilyScene>)
+                    .run_if(in_state(WorldState::FamilyEditor)),
             );
     }
 }
@@ -82,21 +84,19 @@ impl HumanPlugin {
 
     /// Fills [`FamilyScene`] with editing human actors.
     fn fill_scene(
-        mut family_scenes: Query<&mut FamilyScene, Added<FamilyScene>>,
+        mut family_scene: ResMut<FamilyScene>,
         mut actors: Query<(&mut FirstName, &mut LastName, &Sex), With<EditableActor>>,
     ) {
-        if let Ok(mut family_scene) = family_scenes.get_single_mut() {
-            for (mut first_name, mut last_name, &sex) in &mut actors {
-                debug!(
-                    "adding human '{} {}' to family scene '{}'",
-                    first_name.0, last_name.0, family_scene.name
-                );
-                family_scene.actors.push(Box::new(HumanBundle::new(
-                    mem::take(&mut first_name),
-                    mem::take(&mut last_name),
-                    sex,
-                )));
-            }
+        for (mut first_name, mut last_name, &sex) in &mut actors {
+            debug!(
+                "adding human '{} {}' to family scene '{}'",
+                first_name.0, last_name.0, family_scene.name
+            );
+            family_scene.actors.push(Box::new(HumanBundle::new(
+                mem::take(&mut first_name),
+                mem::take(&mut last_name),
+                sex,
+            )));
         }
     }
 }

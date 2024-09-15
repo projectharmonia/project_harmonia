@@ -303,7 +303,7 @@ impl MapEntities for FamilyCreate {
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Default, Resource)]
 pub struct FamilyScene {
     pub name: String,
     pub budget: Budget,
@@ -319,6 +319,7 @@ impl FamilyScene {
         }
     }
 }
+
 #[derive(Clone, Copy, Deserialize, Event, Serialize)]
 pub struct FamilyDelete(pub Entity);
 

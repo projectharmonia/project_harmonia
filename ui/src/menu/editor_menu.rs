@@ -51,7 +51,7 @@ impl Plugin for EditorMenuPlugin {
                     Self::handle_family_menu_clicks,
                     Self::handle_save_family_clicks.pipe(error_message),
                     Self::handle_place_dialog_clicks,
-                    Self::handle_city_place_clicks,
+                    Self::handle_city_place_clicks.run_if(resource_exists::<FamilyScene>),
                 )
                     .run_if(in_state(WorldState::FamilyEditor)),
             )
@@ -275,15 +275,8 @@ impl EditorMenuPlugin {
             match button {
                 SaveDialogButton::Save => {
                     let mut family_name = text_edits.single_mut();
-                    let family_scene = FamilyScene::new(mem::take(&mut family_name.0));
-
-                    setup_place_family_dialog(
-                        &mut commands,
-                        roots.single(),
-                        family_scene,
-                        &theme,
-                        &cities,
-                    );
+                    commands.insert_resource(FamilyScene::new(mem::take(&mut family_name.0)));
+                    setup_place_family_dialog(&mut commands, roots.single(), &theme, &cities);
                 }
                 SaveDialogButton::Cancel => info!("cancelling saving"),
             }
@@ -317,17 +310,17 @@ impl EditorMenuPlugin {
         mut spawn_events: EventWriter<FamilyCreate>,
         mut reset_events: EventWriter<FamilyReset>,
         mut click_events: EventReader<Click>,
+        mut family_scene: ResMut<FamilyScene>,
         buttons: Query<(&CityPlaceButton, &PlaceCity)>,
-        mut dialogs: Query<(Entity, &mut FamilyScene)>,
+        dialogs: Query<Entity, With<Dialog>>,
     ) {
         for (button, place_city) in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            let (dialog_entity, mut scene) = dialogs.single_mut();
             match button {
                 CityPlaceButton::PlaceAndPlay => {
                     info!("placing family with select");
                     spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
-                        scene: mem::take(&mut scene),
+                        scene: mem::take(&mut family_scene),
                         select: true,
                     });
                 }
@@ -335,10 +328,10 @@ impl EditorMenuPlugin {
                     info!("placing family");
                     spawn_events.send(FamilyCreate {
                         city_entity: place_city.0,
-                        scene: mem::take(&mut scene),
+                        scene: mem::take(&mut family_scene),
                         select: false,
                     });
-                    commands.entity(dialog_entity).despawn_recursive();
+                    commands.entity(dialogs.single()).despawn_recursive();
                     reset_events.send_default();
                 }
             }
@@ -486,14 +479,13 @@ fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme:
 fn setup_place_family_dialog(
     commands: &mut Commands,
     root_entity: Entity,
-    family_scene: FamilyScene,
     theme: &Theme,
     cities: &Query<(Entity, &Name), With<City>>,
 ) {
     info!("showing placing dialog");
     commands.entity(root_entity).with_children(|parent| {
         parent
-            .spawn((family_scene, DialogBundle::new(theme)))
+            .spawn(DialogBundle::new(theme))
             .with_children(|parent| {
                 parent
                     .spawn(NodeBundle {
