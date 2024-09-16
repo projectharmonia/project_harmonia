@@ -18,10 +18,12 @@ pub(super) struct BuildingHudPlugin;
 
 impl Plugin for BuildingHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(WallsNodePlugin).add_systems(
-            Update,
-            Self::set_building_mode.run_if(in_state(FamilyMode::Building)),
-        );
+        app.add_plugins(WallsNodePlugin)
+            .add_systems(OnEnter(FamilyMode::Building), Self::sync_building_mode)
+            .add_systems(
+                Update,
+                Self::set_building_mode.run_if(in_state(FamilyMode::Building)),
+            );
     }
 }
 
@@ -33,6 +35,21 @@ impl BuildingHudPlugin {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
                 info!("changing building mode to `{mode:?}`");
+                building_mode.set(mode);
+            }
+        }
+    }
+
+    /// Sets building mode to the last selected.
+    ///
+    /// Needed because on swithicng tab the mode resets, but selected button doesn't.
+    fn sync_building_mode(
+        mut building_mode: ResMut<NextState<BuildingMode>>,
+        buttons: Query<(&Toggled, &BuildingMode)>,
+    ) {
+        for (toggled, &mode) in &buttons {
+            if toggled.0 {
+                debug!("syncing building mode to `{mode:?}`");
                 building_mode.set(mode);
             }
         }
