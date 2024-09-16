@@ -22,8 +22,9 @@ bevy_replicon = "0.28.3"
 bevy_replicon_renet = "0.5"
 bevy_mod_outline = { version = "0.8" }
 bevy_simple_text_input = "0.9"
-vleue_navigator = { git = "https://github.com/vleue/vleue_navigator", features = [
-  "avian3d",
+oxidized_navigation = { git = "https://github.com/TheGrimsey/oxidized_navigation", default-features = false, features = [
+  "avian",
+  "debug_draw",
 ] }
 avian3d = { version = "0.1", features = ["serialize"] }
 leafwing-input-manager = { version = "0.14", default-features = false, features = [

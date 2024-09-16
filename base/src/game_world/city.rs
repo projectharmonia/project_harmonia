@@ -1,15 +1,13 @@
 pub mod lot;
 pub mod road;
 
-use std::f32::consts::FRAC_PI_2;
-
 use avian3d::prelude::*;
 use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
+use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
-use vleue_navigator::prelude::*;
 
 use super::{
     actor::SelectedActor,
@@ -49,8 +47,8 @@ impl Plugin for CityPlugin {
 }
 
 /// City square side size.
-const CITY_SIZE: f32 = 50.0;
-pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
+const CITY_SIZE: f32 = 500.0;
+pub const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
@@ -64,37 +62,18 @@ impl CityPlugin {
         for entity in &added_cities {
             debug!("initializing city `{entity}`");
 
-            let navmesh_entity = commands
-                .spawn(NavMeshBundle {
-                    settings: NavMeshSettings {
-                        fixed: Triangulation::from_outer_edges(&[
-                            Vec2::new(-HALF_CITY_SIZE, -HALF_CITY_SIZE),
-                            Vec2::new(HALF_CITY_SIZE, -HALF_CITY_SIZE),
-                            Vec2::new(HALF_CITY_SIZE, HALF_CITY_SIZE),
-                            Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
-                        ]),
-                        ..Default::default()
-                    },
-                    transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
-                    update_mode: NavMeshUpdateMode::Direct,
-                    ..NavMeshBundle::with_unique_id(placed_citites.0 as u128)
-                })
-                .id();
-
             let transform =
                 Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
             commands
                 .entity(entity)
                 .insert((
                     StateScoped(GameState::InGame),
-                    CityNavMesh(navmesh_entity),
                     TransformBundle::from_transform(transform),
                     VisibilityBundle {
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
                 ))
-                .add_child(navmesh_entity)
                 .with_children(|parent| {
                     parent.spawn(GroundBundle {
                         pbr_bundle: PbrBundle {
@@ -233,10 +212,6 @@ pub struct City;
 #[derive(Component)]
 pub struct ActiveCity;
 
-/// Points to assigned navmesh for a city.
-#[derive(Component, Deref)]
-pub(super) struct CityNavMesh(Entity);
-
 /// Number of placed cities.
 ///
 /// The number increases when a city is placed, but does not decrease
@@ -251,6 +226,7 @@ struct GroundBundle {
     collision_layers: CollisionLayers,
     ground: Ground,
     cursor_hoverable: Hoverable,
+    nav_affector: NavMeshAffector,
     pbr_bundle: PbrBundle,
 }
 
@@ -262,6 +238,7 @@ impl Default for GroundBundle {
             collision_layers: CollisionLayers::new(LayerMask::ALL, Layer::Ground),
             ground: Ground,
             cursor_hoverable: Hoverable,
+            nav_affector: NavMeshAffector,
             pbr_bundle: Default::default(),
         }
     }

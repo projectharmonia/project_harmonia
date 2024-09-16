@@ -66,6 +66,9 @@ impl Plugin for ActorPlugin {
     }
 }
 
+pub const ACTOR_HEIGHT: f32 = 1.2;
+pub const ACTOR_RADIUS: f32 = 0.3;
+
 impl ActorPlugin {
     fn init(
         mut commands: Commands,
@@ -83,8 +86,6 @@ impl ActorPlugin {
                     Hoverable,
                 ))
                 .with_children(|parent| {
-                    pub const ACTOR_HEIGHT: f32 = 1.2;
-                    pub const ACTOR_RADIUS: f32 = 0.3;
                     parent.spawn((
                         RigidBody::Kinematic,
                         SpatialBundle::from_transform(Transform::from_translation(

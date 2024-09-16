@@ -6,11 +6,14 @@ use bevy::{
     prelude::*,
 };
 use bevy_replicon::prelude::*;
+use oxidized_navigation::{
+    query::{self, FindPathError},
+    tiles::NavMeshTiles,
+    NavMesh, NavMeshSettings,
+};
 use path_debug::PathDebugPlugin;
 use serde::{Deserialize, Serialize};
-use vleue_navigator::prelude::*;
 
-use crate::game_world::city::CityNavMesh;
 use following::FollowingPlugin;
 
 pub(super) struct NavigationPlugin;
@@ -25,8 +28,7 @@ impl Plugin for NavigationPlugin {
             .replicate::<NavPath>()
             .add_systems(
                 PreUpdate,
-                (Self::update_paths, Self::generate_paths)
-                    .chain()
+                Self::generate_paths
                     .after(ClientSet::Receive)
                     .run_if(server_or_singleplayer),
             )
@@ -35,93 +37,63 @@ impl Plugin for NavigationPlugin {
 }
 
 impl NavigationPlugin {
-    /// Updates path on navmesh changes.
-    fn update_paths(
-        mut navmeshes: ResMut<Assets<NavMesh>>,
-        city_navmeshes: Query<(&Handle<NavMesh>, &Parent, &NavMeshStatus), Changed<NavMeshStatus>>,
-        children: Query<&Children>,
+    // TODO: Regenerate paths when tiles update: https://github.com/TheGrimsey/oxidized_navigation/issues/31
+    fn generate_paths(
+        nav_mesh_settings: Res<NavMeshSettings>,
+        nav_mesh: Res<NavMesh>,
+        cities: Query<&GlobalTransform>,
         mut agents: Query<(
             Entity,
+            &Parent,
             &Transform,
             &mut NavDestination,
             &mut NavPath,
             &mut WaypointIndex,
         )>,
     ) {
-        for (navmesh_handle, parent, status) in &city_navmeshes {
-            if !matches!(status, NavMeshStatus::Built) {
-                continue;
-            }
-
-            let Some(navmesh) = navmeshes.get_mut(navmesh_handle) else {
-                continue;
-            };
-
-            let children = children.get(**parent).unwrap();
-            let mut iter = agents.iter_many_mut(children);
-            while let Some((entity, transform, mut dest, mut path, mut waypoint_index)) =
-                iter.fetch_next()
-            {
-                let Some(endpoint) = **dest else {
-                    continue;
-                };
-
-                if let Some(transformed) = navmesh.transformed_path(transform.translation, endpoint)
-                {
-                    debug!("recalculating path for `{entity}`");
-                    path.0.push(transform.translation);
-                    path.0.extend(transformed.path);
-                    waypoint_index.0 = 0;
-                } else {
-                    debug!("cancelling destination for `{entity}`");
-                    **dest = None;
-                }
-            }
-        }
-    }
-
-    fn generate_paths(
-        mut navmeshes: ResMut<Assets<NavMesh>>,
-        cities: Query<&CityNavMesh>,
-        city_navmeshes: Query<&Handle<NavMesh>>,
-        mut agents: Query<
-            (
-                Entity,
-                &Parent,
-                &Transform,
-                &mut NavDestination,
-                &mut NavPath,
-                &mut WaypointIndex,
-            ),
-            Changed<NavDestination>,
-        >,
-    ) {
         for (entity, parent, transform, mut dest, mut path, mut waypoint_index) in &mut agents {
-            path.0.clear();
-            waypoint_index.0 = 0;
+            if dest.is_changed() {
+                debug!("resetting old path for `{entity}`");
+                path.0.clear();
+                waypoint_index.0 = 0;
+            }
 
             let Some(endpoint) = **dest else {
                 continue;
             };
 
-            let navmesh_entity = cities
-                .get(**parent)
-                .expect("all agents should have city as parents");
-            let navmesh_handle = city_navmeshes
-                .get(**navmesh_entity)
-                .expect("city navmesh should always be valid");
+            if !path.is_empty() {
+                // The path has already been generated and
+                // the destination has not been changed.
+                continue;
+            }
 
-            let Some(navmesh) = navmeshes.get_mut(navmesh_handle) else {
+            let tiles = nav_mesh.get();
+            let Ok(tiles) = tiles.read() else {
                 continue;
             };
 
-            if let Some(transformed) = navmesh.transformed_path(transform.translation, endpoint) {
-                debug!("calculating path for `{entity}`");
-                path.0.push(transform.translation);
-                path.0.extend(transformed.path);
-            } else {
-                debug!("refusing destination for `{entity}`");
-                **dest = None;
+            let city_transform = *cities.get(**parent).unwrap();
+
+            match transformed_path(
+                &tiles,
+                &nav_mesh_settings,
+                city_transform,
+                transform.translation,
+                endpoint,
+            ) {
+                Ok(new_path) => {
+                    debug!("updating path for `{entity}`");
+                    path.0 = new_path
+                }
+                Err(FindPathError::PolygonPath(e)) => {
+                    // A tile or mesh is not generated yet.
+                    trace!("delaying pathfinding for `{entity}` due to `{e:?}`")
+                }
+                Err(FindPathError::StringPulling(e)) => {
+                    debug!("denying destination for `{entity}` due to `{e:?}`");
+                    **dest = None;
+                }
             }
         }
     }
@@ -173,9 +145,28 @@ impl NavigationPlugin {
     }
 }
 
-/// Marks an entity with [`Collider`] as a navigation mesh affector.
-#[derive(Component)]
-pub struct Obstacle;
+fn transformed_path(
+    tiles: &NavMeshTiles,
+    nav_mesh_settings: &NavMeshSettings,
+    city_transform: GlobalTransform,
+    start: Vec3,
+    end: Vec3,
+) -> Result<Vec<Vec3>, FindPathError> {
+    let mut path = query::find_path(
+        tiles,
+        nav_mesh_settings,
+        city_transform.transform_point(start),
+        city_transform.transform_point(end),
+        None,
+        None,
+    )?;
+    let inversed_affine = city_transform.affine().inverse();
+    for point in &mut path {
+        *point = inversed_affine.transform_vector3(*point);
+    }
+
+    Ok(path)
+}
 
 #[derive(Bundle, Default)]
 pub(super) struct NavigationBundle {

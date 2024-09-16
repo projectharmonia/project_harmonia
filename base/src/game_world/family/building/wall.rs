@@ -4,6 +4,7 @@ pub(crate) mod wall_mesh;
 use avian3d::prelude::*;
 use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
 use bevy_replicon::prelude::*;
+use oxidized_navigation::NavMeshAffector;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
@@ -15,7 +16,6 @@ use crate::{
             PendingCommand,
         },
         hover::Hoverable,
-        navigation::Obstacle,
         spline::{
             dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
         },
@@ -75,7 +75,7 @@ impl WallPlugin {
                 CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
                 Hoverable,
                 NoFrustumCulling,
-                Obstacle,
+                NavMeshAffector,
                 PbrBundle {
                     material: wall_material.0.clone(),
                     mesh: meshes.add(DynamicMesh::create_empty()),

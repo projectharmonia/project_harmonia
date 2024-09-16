@@ -3,13 +3,12 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use avian3d::prelude::*;
 use bevy::{
-    color::palettes::css::DARK_RED, pbr::wireframe::WireframeConfig, prelude::*, scene::ron,
-    utils::HashMap, window::WindowMode,
+    pbr::wireframe::WireframeConfig, prelude::*, scene::ron, utils::HashMap, window::WindowMode,
 };
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
+use oxidized_navigation::debug_draw::DrawNavMesh;
 use serde::{Deserialize, Serialize};
 use strum::Display;
-use vleue_navigator::prelude::*;
 
 use super::{game_paths::GamePaths, message::error_message};
 
@@ -37,9 +36,9 @@ impl SettingsPlugin {
     }
 
     fn apply(
-        mut commands: Commands,
         mut config_store: ResMut<GizmoConfigStore>,
         mut wireframe_config: ResMut<WireframeConfig>,
+        mut draw_nav_mesh: ResMut<DrawNavMesh>,
         mut input_map: ResMut<InputMap<Action>>,
         settings: Res<Settings>,
         mut windows: Query<&mut Window>,
@@ -55,11 +54,7 @@ impl SettingsPlugin {
 
         config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
         wireframe_config.global = settings.developer.wireframe;
-        if settings.developer.debug_paths {
-            commands.insert_resource(NavMeshesDebug(DARK_RED.into()))
-        } else {
-            commands.remove_resource::<NavMeshesDebug>();
-        }
+        draw_nav_mesh.0 = settings.developer.debug_paths;
 
         input_map.clear();
         for (&action, inputs) in &settings.controls.mappings {
