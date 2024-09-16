@@ -10,11 +10,11 @@ pub(super) struct WallsNodePlugin;
 
 impl Plugin for WallsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            Self::set_wall_tool.run_if(in_state(BuildingMode::Walls)),
-        )
-        .add_systems(OnEnter(BuildingMode::Walls), Self::update_wall_tool);
+        app.add_systems(OnEnter(BuildingMode::Walls), Self::sync_wall_tool)
+            .add_systems(
+                Update,
+                Self::set_wall_tool.run_if(in_state(BuildingMode::Walls)),
+            );
     }
 }
 
@@ -34,13 +34,13 @@ impl WallsNodePlugin {
     /// Sets tool to the last selected.
     ///
     /// Needed because on swithicng tab the tool resets, but selected button doesn't.
-    fn update_wall_tool(
+    fn sync_wall_tool(
         mut wall_tool: ResMut<NextState<WallTool>>,
         buttons: Query<(&Toggled, &WallTool)>,
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 {
-                debug!("restoring wall tool to `{mode:?}`");
+                debug!("syncing wall tool to `{mode:?}`");
                 wall_tool.set(mode);
             }
         }
