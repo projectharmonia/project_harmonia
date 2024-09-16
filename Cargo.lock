@@ -4799,7 +4799,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vleue_navigator"
 version = "0.8.0"
-source = "git+https://github.com/vleue/vleue_navigator#efabdedff49ec3114a6d9bc9f221936543bcb7b8"
+source = "git+https://github.com/vleue/vleue_navigator#f2435456cd100b68e7d95bcc3d16642e94d2e2e5"
 dependencies = [
  "avian3d",
  "bevy",
