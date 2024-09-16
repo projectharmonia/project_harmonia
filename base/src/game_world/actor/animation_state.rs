@@ -10,7 +10,7 @@ use super::{ActorAnimation, Movement, Sex};
 use crate::{
     asset::collection::Collection,
     core::GameState,
-    game_world::navigation::{NavDestination, NavSettings},
+    game_world::navigation::{NavPath, NavSettings},
 };
 
 pub(super) struct AnimationStatePlugin;
@@ -85,12 +85,7 @@ impl AnimationStatePlugin {
 
     fn update(
         mut finish_events: EventWriter<MontageFinished>,
-        mut actors: Query<(
-            Entity,
-            &mut AnimationState,
-            &NavSettings,
-            Ref<NavDestination>,
-        )>,
+        mut actors: Query<(Entity, &mut AnimationState, &NavSettings, Ref<NavPath>)>,
         mut players: Query<(
             &mut AnimationPlayer,
             &mut AnimationTransitions,
@@ -98,7 +93,7 @@ impl AnimationStatePlugin {
         )>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
     ) {
-        for (actor_entity, mut state, navigation, dest) in &mut actors {
+        for (actor_entity, mut state, navigation, path) in &mut actors {
             let Some(player_entity) = state.player_entity else {
                 continue;
             };
@@ -138,7 +133,7 @@ impl AnimationStatePlugin {
                 }
             }
 
-            let node = if dest.is_none() {
+            let node = if path.is_empty() {
                 AnimationNode::Idle
             } else if navigation.speed() <= Movement::Walk.speed() {
                 AnimationNode::Walk
