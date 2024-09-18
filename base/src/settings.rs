@@ -52,9 +52,9 @@ impl SettingsPlugin {
             window.mode = WindowMode::Windowed;
         }
 
-        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.debug_collisions;
+        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.colliders;
         wireframe_config.global = settings.developer.wireframe;
-        draw_nav_mesh.0 = settings.developer.debug_paths;
+        draw_nav_mesh.0 = settings.developer.nav_mesh;
 
         input_map.clear();
         for (&action, inputs) in &settings.controls.mappings {
@@ -158,8 +158,9 @@ impl Default for ControlsSettings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
-    pub debug_collisions: bool,
-    pub debug_paths: bool,
+    pub colliders: bool,
+    pub paths: bool,
+    pub nav_mesh: bool,
     pub wireframe: bool,
 }
 

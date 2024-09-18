@@ -11,7 +11,7 @@ impl Plugin for PathDebugPlugin {
             Update,
             Self::draw_lines
                 .run_if(in_any_state([WorldState::City, WorldState::Family]))
-                .run_if(|settings: Res<Settings>| settings.developer.debug_paths),
+                .run_if(|settings: Res<Settings>| settings.developer.paths),
         );
     }
 }

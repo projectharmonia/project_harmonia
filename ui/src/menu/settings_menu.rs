@@ -412,24 +412,24 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
         })
         .with_children(|parent| {
             parent.spawn((
-                CheckboxBundle::new(
-                    theme,
-                    settings.developer.debug_collisions,
-                    "Debug collisions",
-                ),
-                setting_field!(settings.developer.debug_collisions),
+                CheckboxBundle::new(theme, settings.developer.colliders, "Display colliders"),
+                setting_field!(settings.developer.colliders),
             ));
             parent.spawn((
-                CheckboxBundle::new(theme, settings.developer.wireframe, "Wireframe"),
+                CheckboxBundle::new(theme, settings.developer.wireframe, "Display wireframe"),
                 setting_field!(settings.developer.wireframe),
             ));
             parent.spawn((
+                CheckboxBundle::new(theme, settings.developer.paths, "Display navigation paths"),
+                setting_field!(settings.developer.paths),
+            ));
+            parent.spawn((
                 CheckboxBundle::new(
                     theme,
-                    settings.developer.debug_paths,
-                    "Debug navigation paths",
+                    settings.developer.nav_mesh,
+                    "Display navigation mesh",
                 ),
-                setting_field!(settings.developer.debug_paths),
+                setting_field!(settings.developer.nav_mesh),
             ));
         });
 }
