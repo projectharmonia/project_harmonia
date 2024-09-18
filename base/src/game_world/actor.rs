@@ -67,7 +67,7 @@ impl Plugin for ActorPlugin {
 }
 
 pub const ACTOR_HEIGHT: f32 = 1.2;
-pub const ACTOR_RADIUS: f32 = 0.3;
+pub const ACTOR_RADIUS: f32 = 0.4;
 
 impl ActorPlugin {
     fn init(
