@@ -13,15 +13,20 @@ pub(super) struct Ghost {
     original_entity: Entity,
 
     /// Collision layer filters that will be temporarely removed until this component is present.
-    remove_filters: LayerMask,
+    filters: LayerMask,
 }
 
 impl Ghost {
-    pub(super) fn new(original_entity: Entity, remove_filters: impl Into<LayerMask>) -> Self {
+    pub(super) fn new(original_entity: Entity) -> Self {
         Self {
             original_entity,
-            remove_filters: remove_filters.into(),
+            filters: LayerMask::NONE,
         }
+    }
+
+    pub(super) fn with_filters(mut self, remove_filters: impl Into<LayerMask>) -> Self {
+        self.filters = remove_filters.into();
+        self
     }
 }
 
@@ -34,13 +39,16 @@ impl Component for Ghost {
                 let ghost = *world.get::<Self>(targeted_entity).unwrap();
                 if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
                     *visibility = Visibility::Hidden;
-                    debug!("applying {:?} to `{}`", *visibility, ghost.original_entity);
+                    debug!(
+                        "changing visibility to `{:?}` for `{}`",
+                        *visibility, ghost.original_entity
+                    );
                 }
-                if ghost.remove_filters != LayerMask::NONE {
+                if ghost.filters != LayerMask::NONE {
                     if let Some(mut collision_layers) =
                         world.get_mut::<CollisionLayers>(ghost.original_entity)
                     {
-                        collision_layers.filters.remove(ghost.remove_filters);
+                        collision_layers.filters.remove(ghost.filters);
                     }
                 }
             })
@@ -48,13 +56,16 @@ impl Component for Ghost {
                 let ghost = *world.get::<Self>(targeted_entity).unwrap();
                 if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
                     *visibility = Visibility::Inherited;
-                    debug!("applying {:?} to `{}`", *visibility, ghost.original_entity);
+                    debug!(
+                        "changing visibility to `{:?}` for `{}`",
+                        *visibility, ghost.original_entity
+                    );
                 }
-                if ghost.remove_filters != LayerMask::NONE {
+                if ghost.filters != LayerMask::NONE {
                     if let Some(mut collision_layers) =
                         world.get_mut::<CollisionLayers>(ghost.original_entity)
                     {
-                        collision_layers.filters.add(ghost.remove_filters);
+                        collision_layers.filters.add(ghost.filters);
                     }
                 }
             });

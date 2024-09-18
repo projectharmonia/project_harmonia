@@ -156,7 +156,7 @@ impl PlacingObjectPlugin {
         ));
 
         if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
-            placing_entity.insert(Ghost::new(object_entity, Layer::PlacingObject));
+            placing_entity.insert(Ghost::new(object_entity).with_filters(Layer::PlacingObject));
         }
 
         for component in &info.components {

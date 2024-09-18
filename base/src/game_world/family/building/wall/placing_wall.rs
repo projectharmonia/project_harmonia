@@ -77,7 +77,7 @@ impl PlacingWallPlugin {
         info!("picking `{kind:?}` for `{entity}`");
         commands.entity(**parent).with_children(|parent| {
             parent.spawn((
-                Ghost::new(entity, 0),
+                Ghost::new(entity),
                 PlacingWallBundle::new(
                     PlacingWall::MovingPoint { entity, kind },
                     segment,
