@@ -12,6 +12,7 @@ project_harmonia_widgets.workspace = true
 project_harmonia_ui.workspace = true
 bevy = { workspace = true, features = [
   "file_watcher",
+  "multi_threaded",
   "tonemapping_luts",
   "png",
   "x11",
@@ -22,7 +23,7 @@ bevy_replicon_renet.workspace = true
 bevy_mod_outline.workspace = true
 bevy_simple_text_input.workspace = true
 avian3d.workspace = true
-oxidized_navigation.workspace = true
+vleue_navigator.workspace = true
 leafwing-input-manager.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 app_dirs2.workspace = true

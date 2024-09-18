@@ -30,6 +30,7 @@ skip = [
   { name = "heck", version = "0.4" },
   { name = "image", version = "0.24" },
   { name = "inotify", version = "0.9" },
+  { name = "itertools", version = "0.11" },
   { name = "libloading", version = "0.7" },
   { name = "nalgebra", version = "0.32" },
   { name = "ndk-sys", version = "0.5" },

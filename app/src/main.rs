@@ -13,19 +13,10 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetPlugins;
 use bevy_simple_text_input::TextInputPlugin;
 use leafwing_input_manager::prelude::*;
-use oxidized_navigation::{
-    debug_draw::OxidizedNavigationDebugDrawPlugin, NavMeshSettings, OxidizedNavigationPlugin,
-};
-use project_harmonia_base::{
-    game_world::{
-        actor::{ACTOR_HEIGHT, ACTOR_RADIUS},
-        city::HALF_CITY_SIZE,
-    },
-    settings::Action,
-    CorePlugins,
-};
+use project_harmonia_base::{game_world::navigation::Obstacle, settings::Action, CorePlugins};
 use project_harmonia_ui::UiPlugins;
 use project_harmonia_widgets::WidgetsPlugin;
+use vleue_navigator::prelude::*;
 
 use cli::{Cli, CliPlugin};
 
@@ -55,16 +46,8 @@ fn main() {
             WireframePlugin,
             AtmospherePlugin,
             InputManagerPlugin::<Action>::default(),
-            OxidizedNavigationPlugin::<Collider>::new(
-                NavMeshSettings::from_agent_and_bounds(
-                    ACTOR_RADIUS,
-                    ACTOR_HEIGHT,
-                    HALF_CITY_SIZE,
-                    0.0,
-                )
-                .with_walkable_radius(1),
-            ),
-            OxidizedNavigationDebugDrawPlugin,
+            VleueNavigatorPlugin,
+            NavmeshUpdaterPlugin::<Collider, Obstacle>::default(),
             PhysicsPlugins::default()
                 .build()
                 .disable::<CcdPlugin>()
