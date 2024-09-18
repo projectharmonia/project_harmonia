@@ -65,10 +65,9 @@ impl SplinePlugin {
                 let mut iter = segments.iter_many_mut(children.get(**parent).unwrap());
                 while let Some((other_entity, visibility, &other_segment, mut other_connections)) =
                     iter.fetch_next()
-                        .filter(|&(entity, ..)| entity != segment_entity)
                 {
-                    if visibility == Visibility::Hidden {
-                        // Don't connect to hidden segments.
+                    if visibility == Visibility::Hidden || segment_entity == other_entity {
+                        // Don't connect to hidden segments or self.
                         continue;
                     }
 
