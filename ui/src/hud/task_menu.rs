@@ -22,14 +22,17 @@ impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
+            Self::request_task.run_if(in_state(FamilyMode::Life)),
+        )
+        .add_systems(
+            PostUpdate,
             (
-                Self::request_task,
+                Self::open,
                 Self::close
                     .run_if(action_just_pressed(Action::Cancel).or_else(on_event::<TaskList>())),
             )
                 .run_if(in_state(FamilyMode::Life)),
-        )
-        .add_systems(PostUpdate, Self::open.run_if(in_state(FamilyMode::Life)));
+        );
     }
 }
 
