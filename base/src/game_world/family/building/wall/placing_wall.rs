@@ -96,24 +96,26 @@ impl PlacingWallPlugin {
         walls: Query<&SplineSegment, With<Wall>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
-        if let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) {
-            // Use an existing point if it is within the `SNAP_DELTA` distance.
-            let point = walls
-                .iter()
-                .flat_map(|segment| segment.points())
-                .find(|vertex| vertex.distance(point) < SNAP_DELTA)
-                .unwrap_or(point);
+        let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) else {
+            return;
+        };
 
-            info!("spawning new wall");
-            commands.entity(cities.single()).with_children(|parent| {
-                parent.spawn(PlacingWallBundle::new(
-                    PlacingWall::Spawning,
-                    SplineSegment(Segment::splat(point)),
-                    wall_material.0.clone(),
-                    meshes.add(DynamicMesh::create_empty()),
-                ));
-            });
-        }
+        // Use an existing point if it is within the `SNAP_DELTA` distance.
+        let point = walls
+            .iter()
+            .flat_map(|segment| segment.points())
+            .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+            .unwrap_or(point);
+
+        info!("spawning new wall");
+        commands.entity(cities.single()).with_children(|parent| {
+            parent.spawn(PlacingWallBundle::new(
+                PlacingWall::Spawning,
+                SplineSegment(Segment::splat(point)),
+                wall_material.0.clone(),
+                meshes.add(DynamicMesh::create_empty()),
+            ));
+        });
     }
 
     fn update_material(
@@ -123,24 +125,26 @@ impl PlacingWallPlugin {
             (Changed<CollidingEntities>, With<PlacingWall>),
         >,
     ) {
-        if let Ok((mut material_handle, colliding_entities)) = placing_walls.get_single_mut() {
-            let mut material = materials
-                .get(&*material_handle)
-                .cloned()
-                .expect("material should be preloaded");
+        let Ok((mut material_handle, colliding_entities)) = placing_walls.get_single_mut() else {
+            return;
+        };
 
-            let color = if colliding_entities.is_empty() {
-                WHITE.into()
-            } else {
-                RED.into()
-            };
-            debug!("changing base color to `{color:?}`");
+        let mut material = materials
+            .get(&*material_handle)
+            .cloned()
+            .expect("material should be preloaded");
 
-            material.alpha_mode = AlphaMode::Add;
-            material.base_color = color;
+        let color = if colliding_entities.is_empty() {
+            WHITE.into()
+        } else {
+            RED.into()
+        };
+        debug!("changing base color to `{color:?}`");
 
-            *material_handle = materials.add(material);
-        }
+        material.alpha_mode = AlphaMode::Add;
+        material.base_color = color;
+
+        *material_handle = materials.add(material);
     }
 
     fn update_end(
@@ -149,25 +153,29 @@ impl PlacingWallPlugin {
         walls: Query<&SplineSegment, (With<Wall>, Without<PlacingWall>)>,
         children: Query<&Children>,
     ) {
-        if let Ok((mut segment, parent, &placing_wall)) = placing_walls.get_single_mut() {
-            if let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) {
-                let children = children.get(**parent).unwrap();
+        let Ok((mut segment, parent, &placing_wall)) = placing_walls.get_single_mut() else {
+            return;
+        };
 
-                // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
-                let vertex = walls
-                    .iter_many(children)
-                    .flat_map(|segment| segment.points())
-                    .find(|vertex| vertex.distance(point) < SNAP_DELTA)
-                    .unwrap_or(point);
+        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
+            return;
+        };
 
-                let point_kind = placing_wall.point_kind();
+        let children = children.get(**parent).unwrap();
 
-                trace!("updating `{point_kind:?}` to `{vertex:?}`");
-                match point_kind {
-                    PointKind::Start => segment.start = vertex,
-                    PointKind::End => segment.end = vertex,
-                }
-            }
+        // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
+        let vertex = walls
+            .iter_many(children)
+            .flat_map(|segment| segment.points())
+            .find(|vertex| vertex.distance(point) < SNAP_DELTA)
+            .unwrap_or(point);
+
+        let point_kind = placing_wall.point_kind();
+
+        trace!("updating `{point_kind:?}` to `{vertex:?}`");
+        match point_kind {
+            PointKind::Start => segment.start = vertex,
+            PointKind::End => segment.end = vertex,
         }
     }
 
@@ -176,32 +184,33 @@ impl PlacingWallPlugin {
         mut history: CommandsHistory,
         mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &SplineSegment)>,
     ) {
-        if let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() {
-            info!("configrming {placing_wall:?}");
+        let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() else {
+            return;
+        };
 
-            let id = match placing_wall {
-                PlacingWall::Spawning => history.push_pending(WallCommand::Create {
-                    city_entity: **parent,
-                    segment: *segment,
-                }),
-                PlacingWall::MovingPoint { entity, kind } => {
-                    let point = match kind {
-                        PointKind::Start => segment.start,
-                        PointKind::End => segment.end,
-                    };
-                    history.push_pending(WallCommand::MovePoint {
-                        entity,
-                        kind,
-                        point,
-                    })
-                }
-            };
+        info!("configrming {placing_wall:?}");
+        let id = match placing_wall {
+            PlacingWall::Spawning => history.push_pending(WallCommand::Create {
+                city_entity: **parent,
+                segment: *segment,
+            }),
+            PlacingWall::MovingPoint { entity, kind } => {
+                let point = match kind {
+                    PointKind::Start => segment.start,
+                    PointKind::End => segment.end,
+                };
+                history.push_pending(WallCommand::MovePoint {
+                    entity,
+                    kind,
+                    point,
+                })
+            }
+        };
 
-            commands
-                .entity(entity)
-                .insert(PendingDespawn(id))
-                .remove::<PlacingWall>();
-        }
+        commands
+            .entity(entity)
+            .insert(PendingDespawn(id))
+            .remove::<PlacingWall>();
     }
 
     fn delete(
@@ -210,20 +219,23 @@ impl PlacingWallPlugin {
         mut placing_walls: Query<(Entity, &PlacingWall, &mut SplineSegment)>,
         walls: Query<&SplineSegment, Without<PlacingWall>>,
     ) {
-        if let Ok((placing_entity, &placing_wall, mut segment)) = placing_walls.get_single_mut() {
-            info!("deleting wall");
-            if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
-                // Set original segment until the deletion is confirmed.
-                *segment = *walls.get(entity).expect("moving wall should exist");
+        let Ok((placing_entity, &placing_wall, mut segment)) = placing_walls.get_single_mut()
+        else {
+            return;
+        };
 
-                let id = history.push_pending(WallCommand::Delete { entity });
-                commands
-                    .entity(placing_entity)
-                    .insert(PendingDespawn(id))
-                    .remove::<PlacingWall>();
-            } else {
-                commands.entity(placing_entity).despawn_recursive();
-            }
+        info!("deleting wall");
+        if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
+            // Set original segment until the deletion is confirmed.
+            *segment = *walls.get(entity).expect("moving wall should exist");
+
+            let id = history.push_pending(WallCommand::Delete { entity });
+            commands
+                .entity(placing_entity)
+                .insert(PendingDespawn(id))
+                .remove::<PlacingWall>();
+        } else {
+            commands.entity(placing_entity).despawn_recursive();
         }
     }
 
