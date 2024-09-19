@@ -182,7 +182,7 @@ impl PlacingWallPlugin {
             let id = match placing_wall {
                 PlacingWall::Spawning => history.push_pending(WallCommand::Create {
                     city_entity: **parent,
-                    segment,
+                    segment: *segment,
                 }),
                 PlacingWall::MovingPoint { entity, kind } => {
                     let point = match kind {

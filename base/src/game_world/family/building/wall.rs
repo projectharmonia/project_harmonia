@@ -21,7 +21,7 @@ use crate::{
         },
         Layer,
     },
-    math::triangulator::Triangulator,
+    math::{segment::Segment, triangulator::Triangulator},
 };
 use placing_wall::PlacingWallPlugin;
 
@@ -203,16 +203,16 @@ impl WallTool {
 #[derive(Bundle)]
 struct WallBundle {
     wall: Wall,
-    spline_segment: SplineSegment,
+    segment: SplineSegment,
     parent_sync: ParentSync,
     replication: Replicated,
 }
 
 impl WallBundle {
-    fn new(segment: SplineSegment) -> Self {
+    fn new(segment: Segment) -> Self {
         Self {
             wall: Wall,
-            spline_segment: segment,
+            segment: SplineSegment(segment),
             parent_sync: Default::default(),
             replication: Replicated,
         }
@@ -292,7 +292,7 @@ pub(crate) struct Aperture {
 enum WallCommand {
     Create {
         city_entity: Entity,
-        segment: SplineSegment,
+        segment: Segment,
     },
     MovePoint {
         entity: Entity,
@@ -331,10 +331,10 @@ impl PendingCommand for WallCommand {
             Self::Delete { entity } => {
                 recorder.record(entity);
                 let entity = world.entity(entity);
-                let segment = *entity.get::<SplineSegment>().unwrap();
-                let parent = entity.get::<Parent>().unwrap();
+                let segment = **entity.get::<SplineSegment>().unwrap();
+                let city_entity = **entity.get::<Parent>().unwrap();
                 Self::Create {
-                    city_entity: **parent,
+                    city_entity,
                     segment,
                 }
             }
