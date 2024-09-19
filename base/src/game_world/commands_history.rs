@@ -426,7 +426,7 @@ impl<T: MapEntities> MapCommandEntities for T {
 /// Generic event to send a pending command with its ID.
 ///
 /// Event should be registered for each command.
-#[derive(Event, Clone, Serialize, Deserialize)]
+#[derive(Event, Clone, Copy, Serialize, Deserialize)]
 pub(super) struct CommandRequest<C> {
     pub(super) id: CommandId,
     pub(super) command: C,

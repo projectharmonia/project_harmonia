@@ -129,7 +129,7 @@ impl WallPlugin {
         mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
         mut walls: Query<&mut SplineSegment, With<Wall>>,
     ) {
-        for FromClient { client_id, event } in request_events.read().cloned() {
+        for FromClient { client_id, event } in request_events.read().copied() {
             // TODO: validate if command can be applied.
             let mut confirmation = CommandConfirmation::new(event.id);
             match event.command {
