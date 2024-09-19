@@ -66,7 +66,7 @@ impl Plugin for ActorPlugin {
     }
 }
 
-pub const ACTOR_HEIGHT: f32 = 1.2;
+pub const ACTOR_HEIGHT: f32 = 1.8;
 pub const ACTOR_RADIUS: f32 = 0.4;
 
 impl ActorPlugin {
@@ -76,24 +76,19 @@ impl ActorPlugin {
     ) {
         for entity in &actors {
             debug!("initializing actor `{entity}`");
-            commands
-                .entity(entity)
-                .insert((
-                    AnimationState::default(),
-                    GlobalTransform::default(),
-                    VisibilityBundle::default(),
-                    OutlineBundle::highlighting(),
-                    Hoverable,
-                ))
-                .with_children(|parent| {
-                    parent.spawn((
-                        RigidBody::Kinematic,
-                        SpatialBundle::from_transform(Transform::from_translation(
-                            Vec3::Y * (ACTOR_HEIGHT / 2.0 + ACTOR_RADIUS),
-                        )),
-                        Collider::capsule(ACTOR_RADIUS, ACTOR_HEIGHT),
-                    ));
-                });
+            commands.entity(entity).insert((
+                AnimationState::default(),
+                GlobalTransform::default(),
+                VisibilityBundle::default(),
+                RigidBody::Kinematic,
+                Collider::capsule_endpoints(
+                    ACTOR_RADIUS,
+                    Vec3::Y * ACTOR_RADIUS,
+                    Vec3::Y * (ACTOR_HEIGHT - ACTOR_RADIUS),
+                ),
+                OutlineBundle::highlighting(),
+                Hoverable,
+            ));
         }
     }
 
