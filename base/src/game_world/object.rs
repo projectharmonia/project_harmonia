@@ -171,7 +171,7 @@ impl ObjectBundle {
 #[reflect(Component)]
 pub(crate) struct Object(AssetPath<'static>);
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 enum ObjectCommand {
     Buy {
         info_path: AssetPath<'static>,
