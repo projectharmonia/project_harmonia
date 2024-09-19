@@ -58,7 +58,7 @@ impl PlacingWallPlugin {
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &Parent, &SplineSegment, &Hovered)>,
+        walls: Query<(Entity, &Parent, &SplineSegment, &Hovered), With<Wall>>,
     ) {
         let Ok((entity, parent, &segment, hovered)) = walls.get_single() else {
             return;
