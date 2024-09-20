@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{
-    asset::{LoadState, RecursiveDependencyLoadState},
+    asset::RecursiveDependencyLoadState,
     prelude::*,
     render::{
         camera::RenderTarget,
@@ -97,9 +97,8 @@ impl PreviewPlugin {
         targets: Query<&Style>,
     ) {
         let (preview_target, scene_handle) = preview_scenes.single();
-        let asset_state = asset_server.load_state(scene_handle);
         let deps_state = asset_server.recursive_dependency_load_state(scene_handle);
-        if asset_state == LoadState::Loaded && deps_state == RecursiveDependencyLoadState::Loaded {
+        if deps_state == RecursiveDependencyLoadState::Loaded {
             debug!("asset for preview was sucessfully loaded");
 
             let Ok(style) = targets.get(preview_target.0) else {
@@ -127,9 +126,7 @@ impl PreviewPlugin {
             camera.target = RenderTarget::Image(image_handle.clone());
 
             preview_state.set(PreviewState::Rendering);
-        } else if matches!(asset_state, LoadState::Failed(_))
-            || deps_state == RecursiveDependencyLoadState::Failed
-        {
+        } else if deps_state == RecursiveDependencyLoadState::Failed {
             error!("unable to load asset");
             preview_state.set(PreviewState::Inactive);
         }
