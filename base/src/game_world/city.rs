@@ -73,6 +73,7 @@ impl CityPlugin {
                             Vec2::new(HALF_CITY_SIZE, HALF_CITY_SIZE),
                             Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
                         ]),
+                        agent_radius: 0.4,
                         ..Default::default()
                     },
                     transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),

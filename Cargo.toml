@@ -22,7 +22,7 @@ bevy_replicon = "0.28.3"
 bevy_replicon_renet = "0.5"
 bevy_mod_outline = { version = "0.8" }
 bevy_simple_text_input = "0.9"
-vleue_navigator = { git = "https://github.com/vleue/vleue_navigator", features = [
+vleue_navigator = { git = "https://github.com/vleue/vleue_navigator", branch = "radius-baking-v2", features = [
   "avian3d",
 ] }
 avian3d = { version = "0.1", features = ["serialize"] }

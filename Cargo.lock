@@ -1452,8 +1452,7 @@ checksum = "8ea184aa71bb362a1157c896979544cc23974e08fd265f29ea96b59f0b4a555b"
 [[package]]
 name = "bvh2d"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49f7b7c8431cebdffb70bc4e0066006564d09c00009461f23de3059748fe75e"
+source = "git+https://github.com/mockersf/bvh2d#22eee2e7599b62eb0e1bf7d3bb7c364bbc9776f3"
 dependencies = [
  "glam",
 ]
@@ -1637,6 +1636,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15efe7a882b08f34e38556b14f2fb3daa98769d06c7f0c1b076dfd0d983bc892"
 dependencies = [
  "error-code",
+]
+
+[[package]]
+name = "clipper-sys"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6bccb550d47c390af7a601bee66a74fd3a01163feb85442021096f5533d2e5"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -2354,6 +2362,27 @@ dependencies = [
  "robust",
  "rstar",
  "spade",
+]
+
+[[package]]
+name = "geo-clipper"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c080ca0fbf8beeaad1c3bb420d00db56fa109f92cb8e985a0ff53fb5c2820bab"
+dependencies = [
+ "clipper-sys",
+ "geo-types",
+]
+
+[[package]]
+name = "geo-offset"
+version = "0.3.1-alpha.0"
+source = "git+https://github.com/lelongg/geo-offset#e0ed82f849b9a84fde84a752d71a036be18f79a3"
+dependencies = [
+ "geo-clipper",
+ "geo-types",
+ "itertools 0.13.0",
+ "num-traits",
 ]
 
 [[package]]
@@ -3802,12 +3831,12 @@ dependencies = [
 
 [[package]]
 name = "polyanya"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78f8e9cf221ca5d76ab48af431c9ecf0a98c056482388becd1ec7c4ccc194440"
+version = "0.9.3"
+source = "git+https://github.com/vleue/polyanya?branch=radius-baking-v2#d0aa42910fd5511a36286f14f1a685da8edfb114"
 dependencies = [
  "bvh2d",
  "geo",
+ "geo-offset",
  "glam",
  "hashbrown",
  "log",
@@ -4799,7 +4828,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vleue_navigator"
 version = "0.8.0"
-source = "git+https://github.com/vleue/vleue_navigator#efabdedff49ec3114a6d9bc9f221936543bcb7b8"
+source = "git+https://github.com/vleue/vleue_navigator?branch=radius-baking-v2#63ca84e3b669d528a3d19f8ef2c2851ff010ecfb"
 dependencies = [
  "avian3d",
  "bevy",
