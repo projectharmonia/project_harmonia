@@ -2,13 +2,8 @@ mod cli;
 
 use avian3d::{prelude::*, sync::SyncConfig};
 use bevy::{
-    core_pipeline::experimental::taa::TemporalAntiAliasPlugin,
-    pbr::wireframe::WireframePlugin,
-    prelude::*,
-    render::{
-        settings::{RenderCreation, WgpuFeatures, WgpuSettings},
-        RenderPlugin,
-    },
+    core_pipeline::experimental::taa::TemporalAntiAliasPlugin, pbr::wireframe::WireframePlugin,
+    prelude::*, render::RenderPlugin,
 };
 use bevy_atmosphere::prelude::*;
 #[cfg(feature = "inspector")]
@@ -44,11 +39,8 @@ fn main() {
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
-                    render_creation: RenderCreation::Automatic(WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..Default::default()
-                    }),
                     synchronous_pipeline_compilation: true,
+                    ..Default::default()
                 })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
