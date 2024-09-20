@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::{self, DirEntry},
     path::PathBuf,
 };
@@ -54,7 +53,7 @@ impl Default for GamePaths {
     /// In tests points to a temporary folder that will be removed on destruction.
     fn default() -> Self {
         let app_info = AppInfo {
-            name: env!("CARGO_PKG_NAME"),
+            name: "Project Harmonia",
             author: "shatur",
         };
         let config_dir = app_dirs2::app_dir(AppDataType::UserConfig, &app_info, "")
@@ -62,7 +61,7 @@ impl Default for GamePaths {
         info!("using {config_dir:?} as config directory");
 
         let mut settings = config_dir.clone();
-        settings.push(env!("CARGO_PKG_NAME"));
+        settings.push(app_info.name);
         settings.set_extension("ron");
 
         let mut worlds = config_dir;
