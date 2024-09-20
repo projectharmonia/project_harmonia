@@ -41,7 +41,7 @@ impl ObjectsNodePlugin {
             if toggled.0 {
                 debug!("starting spawning object `{id:?}`");
                 let placing_entity = commands
-                    .spawn(PlacingObject::spawning(id))
+                    .spawn(PlacingObject::Spawning(id))
                     .set_parent(active_cities.single())
                     .id();
 

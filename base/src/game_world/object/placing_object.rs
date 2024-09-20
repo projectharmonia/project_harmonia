@@ -83,7 +83,7 @@ impl PlacingObjectPlugin {
         if let Ok((object_entity, parent)) = objects.get_single() {
             info!("picking object `{object_entity}`");
             commands.entity(**parent).with_children(|parent| {
-                parent.spawn(PlacingObject::moving(object_entity));
+                parent.spawn(PlacingObject::Moving(object_entity));
             });
         }
     }
@@ -102,13 +102,10 @@ impl PlacingObjectPlugin {
             return;
         };
 
-        debug!(
-            "initializing placing object `{:?}` for `{placing_entity}`",
-            placing_object.kind
-        );
+        debug!("initializing `{placing_object:?}` for `{placing_entity}`");
 
-        let (info, cursor_offset, rotation) = match placing_object.kind {
-            PlacingObjectKind::Spawning(id) => {
+        let (info, cursor_offset, rotation) = match placing_object {
+            PlacingObject::Spawning(id) => {
                 let info = objects_info.get(id).expect("info should be preloaded");
 
                 // Rotate towards camera and round to the nearest cardinal direction.
@@ -119,7 +116,7 @@ impl PlacingObjectPlugin {
 
                 (info, Vec3::ZERO, rotation)
             }
-            PlacingObjectKind::Moving(object_entity) => {
+            PlacingObject::Moving(object_entity) => {
                 let (object, &transform) = objects
                     .get(object_entity)
                     .expect("moving object should referece a valid object");
@@ -146,6 +143,7 @@ impl PlacingObjectPlugin {
             StateScoped(CityMode::Objects),
             scene_handle,
             PlacingObjectState::new(cursor_offset),
+            ObjectRotationLimit::default(),
             SpatialBundle::from_transform(Transform::from_rotation(rotation)),
             RigidBody::Kinematic,
             CombinedSceneCollider,
@@ -155,7 +153,7 @@ impl PlacingObjectPlugin {
             ),
         ));
 
-        if let PlacingObjectKind::Moving(object_entity) = placing_object.kind {
+        if let PlacingObject::Moving(object_entity) = placing_object {
             placing_entity.insert(Ghost::new(object_entity).with_filters(Layer::PlacingObject));
         }
 
@@ -167,10 +165,10 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn rotate(mut placing_objects: Query<(&mut Transform, &PlacingObject)>) {
-        if let Ok((mut transform, object)) = placing_objects.get_single_mut() {
+    fn rotate(mut placing_objects: Query<(&mut Transform, &ObjectRotationLimit)>) {
+        if let Ok((mut transform, rotation_limit)) = placing_objects.get_single_mut() {
             transform.rotation *=
-                Quat::from_axis_angle(Vec3::Y, object.rotation_limit.unwrap_or(FRAC_PI_4));
+                Quat::from_axis_angle(Vec3::Y, rotation_limit.unwrap_or(FRAC_PI_4));
 
             debug!(
                 "rotating placing object to '{}'",
@@ -247,8 +245,8 @@ impl PlacingObjectPlugin {
                 return;
             }
 
-            let id = match placing_object.kind {
-                PlacingObjectKind::Spawning(id) => {
+            let id = match placing_object {
+                PlacingObject::Spawning(id) => {
                     let info_path = asset_server
                         .get_path(id)
                         .expect("info should always come from file");
@@ -259,7 +257,7 @@ impl PlacingObjectPlugin {
                         rotation: translation.rotation,
                     })
                 }
-                PlacingObjectKind::Moving(entity) => history.push_pending(ObjectCommand::Move {
+                PlacingObject::Moving(entity) => history.push_pending(ObjectCommand::Move {
                     entity,
                     translation: translation.translation,
                     rotation: translation.rotation,
@@ -271,7 +269,7 @@ impl PlacingObjectPlugin {
                 .insert(PendingDespawn(id))
                 .remove::<(PlacingObject, PlacingObjectState)>();
 
-            info!("confirming `{:?}`", placing_object.kind);
+            info!("confirming `{placing_object:?}`");
         }
     }
 
@@ -284,8 +282,8 @@ impl PlacingObjectPlugin {
         if let Ok((placing_entity, &placing_object, mut transform)) =
             placing_objects.get_single_mut()
         {
-            info!("selling object");
-            if let PlacingObjectKind::Moving(entity) = placing_object.kind {
+            info!("selling `{placing_object:?}`");
+            if let PlacingObject::Moving(entity) = placing_object {
                 // Set original position until the deletion is confirmed.
                 *transform = *objects.get(entity).expect("moving object should exist");
 
@@ -323,33 +321,14 @@ impl PlacingObjectPlugin {
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
-#[derive(Clone, Copy, Component)]
-pub struct PlacingObject {
-    kind: PlacingObjectKind,
-    rotation_limit: Option<f32>,
-}
-
-impl PlacingObject {
-    pub fn spawning(id: AssetId<ObjectInfo>) -> Self {
-        Self {
-            kind: PlacingObjectKind::Spawning(id),
-            rotation_limit: None,
-        }
-    }
-
-    fn moving(entity: Entity) -> Self {
-        Self {
-            kind: PlacingObjectKind::Moving(entity),
-            rotation_limit: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum PlacingObjectKind {
+#[derive(Debug, Clone, Copy, Component)]
+pub enum PlacingObject {
     Spawning(AssetId<ObjectInfo>),
     Moving(Entity),
 }
+
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct ObjectRotationLimit(Option<f32>);
 
 /// Controls if an object can be placed.
 ///
