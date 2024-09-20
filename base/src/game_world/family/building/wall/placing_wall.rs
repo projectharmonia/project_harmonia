@@ -279,7 +279,7 @@ impl PlacingWallBundle {
             apertures: Default::default(),
             collider: Default::default(),
             // TODO: collide with regular walls.
-            collision_layers: CollisionLayers::new(Layer::PlacingWall, [Layer::Object]),
+            collision_layers: CollisionLayers::new(Layer::PlacingWall, Layer::Object),
             no_culling: NoFrustumCulling,
             pbr_bundle: PbrBundle {
                 material,
