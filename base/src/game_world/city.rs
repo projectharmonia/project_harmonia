@@ -17,7 +17,11 @@ use super::{
     player_camera::{EnvironmentMap, PlayerCameraBundle},
     WorldState,
 };
-use crate::{asset::collection::Collection, core::GameState, game_world::Layer};
+use crate::{
+    asset::collection::Collection,
+    core::GameState,
+    game_world::{actor::ACTOR_RADIUS, Layer},
+};
 use lot::LotPlugin;
 use road::RoadPlugin;
 
@@ -73,7 +77,7 @@ impl CityPlugin {
                             Vec2::new(HALF_CITY_SIZE, HALF_CITY_SIZE),
                             Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
                         ]),
-                        agent_radius: 0.4,
+                        agent_radius: ACTOR_RADIUS,
                         ..Default::default()
                     },
                     transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
