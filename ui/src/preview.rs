@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::{
     asset::RecursiveDependencyLoadState,
+    pbr::wireframe::NoWireframe,
     prelude::*,
     render::{
         camera::RenderTarget,
@@ -89,14 +90,17 @@ impl PreviewPlugin {
     }
 
     fn wait_for_loading(
+        mut commands: Commands,
         mut preview_state: ResMut<NextState<PreviewState>>,
         mut images: ResMut<Assets<Image>>,
         asset_server: Res<AssetServer>,
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
-        preview_scenes: Query<(&PreviewTarget, &Handle<Scene>)>,
+        preview_scenes: Query<(Entity, &PreviewTarget, &Handle<Scene>)>,
         targets: Query<&Style>,
+        chidlren: Query<&Children>,
+        meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
-        let (preview_target, scene_handle) = preview_scenes.single();
+        let (scene_entity, preview_target, scene_handle) = preview_scenes.single();
         let deps_state = asset_server.recursive_dependency_load_state(scene_handle);
         if deps_state == RecursiveDependencyLoadState::Loaded {
             debug!("asset for preview was sucessfully loaded");
@@ -125,6 +129,14 @@ impl PreviewPlugin {
             camera.is_active = true;
             camera.target = RenderTarget::Image(image_handle.clone());
 
+            for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
+                commands.entity(child_entity).insert((
+                    PREVIEW_RENDER_LAYER,
+                    NoFrustumCulling,
+                    NoWireframe,
+                ));
+            }
+
             preview_state.set(PreviewState::Rendering);
         } else if deps_state == RecursiveDependencyLoadState::Failed {
             error!("unable to load asset");
@@ -132,21 +144,9 @@ impl PreviewPlugin {
         }
     }
 
-    fn render_preview(
-        mut commands: Commands,
-        mut preview_state: ResMut<NextState<PreviewState>>,
-        preview_scenes: Query<Entity, With<PreviewTarget>>,
-        chidlren: Query<&Children>,
-        meshes: Query<Entity, With<Handle<Mesh>>>,
-    ) {
-        debug!("waiting for rendering");
-        let scene_entity = preview_scenes.single();
-        for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
-            commands
-                .entity(child_entity)
-                .insert((PREVIEW_RENDER_LAYER, NoFrustumCulling));
-        }
-
+    /// Waits one frame for components like [`NoWireframe`] to take effect.
+    fn render_preview(mut preview_state: ResMut<NextState<PreviewState>>) {
+        debug!("finishing rendering");
         preview_state.set(PreviewState::Inactive);
     }
 
