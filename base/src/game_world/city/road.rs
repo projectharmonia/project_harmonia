@@ -79,7 +79,7 @@ impl RoadPlugin {
         roads_info: Res<Assets<RoadInfo>>,
         mut changed_roads: Query<
             (&Handle<Mesh>, &SplineSegment, &SplineConnections, &Road),
-            Or<(Changed<SplineConnections>, Added<Handle<Mesh>>)>, // `Added` is needed to run after scene load.
+            Changed<SplineConnections>,
         >,
     ) {
         for (mesh_handle, segment, connections, road) in &mut changed_roads {
