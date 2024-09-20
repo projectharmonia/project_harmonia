@@ -93,17 +93,20 @@ impl PlacingWallPlugin {
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<&SplineSegment, With<Wall>>,
+        walls: Query<(&Parent, &SplineSegment), With<Wall>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
         let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) else {
             return;
         };
 
+        let city_entity = cities.single();
+
         // Use an existing point if it is within the `SNAP_DELTA` distance.
         let point = walls
             .iter()
-            .flat_map(|segment| segment.points())
+            .filter(|(parent, _)| ***parent == city_entity)
+            .flat_map(|(_, segment)| segment.points())
             .find(|vertex| vertex.distance(point) < SNAP_DELTA)
             .unwrap_or(point);
 
@@ -150,10 +153,10 @@ impl PlacingWallPlugin {
     fn update_end(
         camera_caster: CameraCaster,
         mut placing_walls: Query<(&mut SplineSegment, &Parent, &PlacingWall)>,
-        walls: Query<&SplineSegment, (With<Wall>, Without<PlacingWall>)>,
-        children: Query<&Children>,
+        walls: Query<(&Parent, &SplineSegment), (With<Wall>, Without<PlacingWall>)>,
     ) {
-        let Ok((mut segment, parent, &placing_wall)) = placing_walls.get_single_mut() else {
+        let Ok((mut segment, placing_parent, &placing_wall)) = placing_walls.get_single_mut()
+        else {
             return;
         };
 
@@ -161,12 +164,11 @@ impl PlacingWallPlugin {
             return;
         };
 
-        let children = children.get(**parent).unwrap();
-
         // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
         let vertex = walls
-            .iter_many(children)
-            .flat_map(|segment| segment.points())
+            .iter()
+            .filter(|(parent, _)| *parent == placing_parent)
+            .flat_map(|(_, segment)| segment.points())
             .find(|vertex| vertex.distance(point) < SNAP_DELTA)
             .unwrap_or(point);
 
