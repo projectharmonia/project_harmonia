@@ -94,8 +94,8 @@ impl CityPlugin {
                 .insert((
                     StateScoped(GameState::InGame),
                     CityNavMesh(navmesh_entity),
-                    TransformBundle::from_transform(transform),
-                    VisibilityBundle {
+                    SpatialBundle {
+                        transform,
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
