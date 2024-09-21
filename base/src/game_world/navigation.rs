@@ -48,14 +48,14 @@ impl NavigationPlugin {
             &Transform,
             &mut NavDestination,
             &mut NavPath,
-            &mut WaypointIndex,
+            &mut NavPathIndex,
         )>,
     ) {
-        for (entity, parent, transform, mut dest, mut path, mut waypoint_index) in &mut agents {
+        for (entity, parent, transform, mut dest, mut path, mut path_index) in &mut agents {
             if dest.is_changed() {
                 debug!("resetting old path for `{entity}`");
                 path.0.clear();
-                waypoint_index.0 = 0;
+                path_index.0 = 0;
             }
 
             let Some(endpoint) = **dest else {
@@ -104,42 +104,34 @@ impl NavigationPlugin {
             Entity,
             &NavSettings,
             &NavPath,
-            &mut WaypointIndex,
+            &mut NavPathIndex,
             &mut NavDestination,
             &mut Transform,
         )>,
     ) {
-        for (entity, nav_settings, path, mut waypoint_index, mut dest, mut transform) in &mut agents
-        {
+        for (entity, &nav_settings, path, mut path_index, mut dest, mut transform) in &mut agents {
             if dest.is_none() || path.is_empty() {
                 continue;
             }
 
-            let next_index = **waypoint_index + 1;
-            let next_waypoint = path[next_index];
-            let disp = next_waypoint - transform.translation;
-            let delta_secs = time.delta_seconds();
-            let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
-
-            const ROTATION_SPEED: f32 = 10.0;
-            transform.translation += disp.normalize() * nav_settings.speed * delta_secs;
-            transform.rotation = transform
-                .rotation
-                .slerp(target_rotation, ROTATION_SPEED * delta_secs);
-
-            const DISTANCE_EPSILON: f32 = 0.1;
-            if next_index == path.len() - 1 {
-                if disp.length() < nav_settings.offset.unwrap_or(DISTANCE_EPSILON) {
-                    debug!("`{entity}` finished navigation");
-                    **dest = None;
+            let target_index = **path_index + 1;
+            if let Some(passed_points) = move_agent(
+                &mut transform,
+                nav_settings,
+                &path[target_index..],
+                time.delta_seconds(),
+            ) {
+                if passed_points != 0 {
+                    **path_index += passed_points;
+                    debug!(
+                        "advancing path index to {}/{} for `{entity}`",
+                        **path_index,
+                        path.len() - 1,
+                    );
                 }
-            } else if disp.length() < DISTANCE_EPSILON {
-                waypoint_index.0 += 1;
-                debug!(
-                    "advancing waypoint index to {}/{} for `{entity}`",
-                    **waypoint_index,
-                    path.len(),
-                );
+            } else {
+                debug!("`{entity}` finished navigation");
+                **dest = None;
             }
         }
     }
@@ -168,6 +160,45 @@ fn transformed_path(
     Ok(path)
 }
 
+/// Moves the agent along a path.
+///
+/// The path should contain only the remaining points to reach.
+///
+/// Skips points that actor have projected past to prevent jitter
+/// when multiple points are near each other.
+///
+/// Returns the number of points passed.
+/// If the path is completed, returns [`None`].
+fn move_agent(
+    transform: &mut Transform,
+    nav_settings: NavSettings,
+    path: &[Vec3],
+    delta: f32,
+) -> Option<usize> {
+    let movement_step = nav_settings.speed * delta;
+    let (passed_points, &target_point) = path.iter().enumerate().find(|&(index, &point)| {
+        const EPSILON: f32 = 0.1;
+        let tolerance = if index == path.len() - 1 {
+            // Apply the desired offset for the last point.
+            nav_settings.offset.unwrap_or(EPSILON)
+        } else {
+            EPSILON
+        };
+
+        transform.translation.distance(point) - movement_step > tolerance
+    })?;
+
+    let disp = target_point - transform.translation;
+    let target_rotation = transform.looking_to(disp, Vec3::Y).rotation;
+    const ROTATION_SPEED: f32 = 10.0;
+    transform.translation += disp.normalize() * movement_step;
+    transform.rotation = transform
+        .rotation
+        .slerp(target_rotation, ROTATION_SPEED * delta);
+
+    Some(passed_points)
+}
+
 #[derive(Bundle, Default)]
 pub(super) struct NavigationBundle {
     nav_settings: NavSettings,
@@ -176,13 +207,13 @@ pub(super) struct NavigationBundle {
 }
 
 /// Navigation parameters.
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[derive(Component, Clone, Copy, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub(super) struct NavSettings {
     /// Movement speed.
     speed: f32,
 
-    /// Offset for the last waypoint.
+    /// Offset for the target point.
     offset: Option<f32>,
 }
 
@@ -219,11 +250,11 @@ impl Component for NavDestination {
 
     fn register_component_hooks(hooks: &mut ComponentHooks) {
         hooks.on_add(|mut world, targeted_entity, _component_id| {
-            if world.get::<WaypointIndex>(targeted_entity).is_none() {
+            if world.get::<NavPathIndex>(targeted_entity).is_none() {
                 world
                     .commands()
                     .entity(targeted_entity)
-                    .insert(WaypointIndex::default());
+                    .insert(NavPathIndex::default());
             }
             if world.get::<NavPath>(targeted_entity).is_none() {
                 world
@@ -242,9 +273,9 @@ impl Component for NavDestination {
 #[derive(Default, Deref, Component, Serialize, Deserialize)]
 pub(super) struct NavPath(Vec<Vec3>);
 
-/// Index of the last reached waypoint from [`NavPath`].
+/// Index of the last reached point from [`NavPath`].
 ///
-/// Updated each time agent reaches a waypoint from it's path.
+/// Updated each time agent reaches a point from it's path.
 /// Resets to 0 each time [`NavPath`] changes.
-#[derive(Component, Default, Serialize, Deserialize, Deref)]
-struct WaypointIndex(usize);
+#[derive(Component, Default, Serialize, Deserialize, Deref, DerefMut)]
+struct NavPathIndex(usize);
