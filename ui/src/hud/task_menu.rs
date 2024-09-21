@@ -28,8 +28,7 @@ impl Plugin for TaskMenuPlugin {
             PostUpdate,
             (
                 Self::open,
-                Self::close
-                    .run_if(action_just_pressed(Action::Cancel).or_else(on_event::<TaskList>())),
+                Self::close.run_if(action_just_pressed(Action::Cancel)),
             )
                 .run_if(in_state(FamilyMode::Life)),
         );
@@ -41,6 +40,7 @@ impl TaskMenuPlugin {
         mut commands: Commands,
         mut list_events: ResMut<Events<TaskList>>,
         theme: Res<Theme>,
+        task_menus: Query<Entity, With<TaskMenu>>,
         hovered: Query<&Name, With<Hovered>>,
         windows: Query<&Window>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
@@ -50,7 +50,13 @@ impl TaskMenuPlugin {
             return;
         }
 
-        info!("displaying task menu");
+        if let Ok(entity) = task_menus.get_single() {
+            info!("reopening task menu");
+            commands.entity(entity).despawn_recursive();
+        } else {
+            info!("displaying task menu");
+        }
+
         let cursor_pos = windows.single().cursor_position().unwrap_or_default();
         commands.entity(roots.single()).with_children(|parent| {
             parent
