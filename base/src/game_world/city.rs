@@ -78,6 +78,7 @@ impl CityPlugin {
                             Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
                         ]),
                         agent_radius: ACTOR_RADIUS,
+                        default_delta: 0.2, // To avoid agents stuck on namesh edges.
                         ..Default::default()
                     },
                     transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
