@@ -48,4 +48,4 @@ too_many_arguments = "allow"
 doc_markdown = "warn"
 
 [patch.crates-io]
-avian3d = { git = "https://github.com/Jondolf/avian", rev = "5041bea37bec4edde808bd472b0c00c82375c148"}
+avian3d = { git = "https://github.com/Jondolf/avian", rev = "d79bb13f4d5a92a26d2a798f706429f60f96a521"}
