@@ -7,4 +7,7 @@
     scene: "childrens_ladder.gltf#Scene0",
     category: OutdoorActivities,
     preview_translation: (0.0, -0.5, -4.4),
+    components: [
+        { "CombinedSceneCollider": Aabb },
+    ]
 )

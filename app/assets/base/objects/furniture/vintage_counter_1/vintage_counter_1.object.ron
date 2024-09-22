@@ -7,5 +7,8 @@
     scene: "vintage_counter_1.gltf#Scene0",
     category: Furniture,
     preview_translation: (0.0, -0.40, -1.5),
-    components: [{ "SideSnap": (half_width: 0.4) }]
+    components: [
+        { "CombinedSceneCollider": Aabb },
+        { "SideSnap": (half_width: 0.4) },
+    ]
 )

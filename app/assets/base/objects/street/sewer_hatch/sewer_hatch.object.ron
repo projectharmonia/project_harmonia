@@ -7,4 +7,7 @@
     scene: "sewer_hatch.gltf#Scene0",
     category: Street,
     preview_translation: (0.0, -0.5, -1.6),
+    components: [
+        { "CombinedSceneCollider": Aabb },
+    ]
 )

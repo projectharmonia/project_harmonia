@@ -7,4 +7,7 @@
     scene: "simple_bench.gltf#Scene0",
     category: OutdoorFurniture,
     preview_translation: (0.0, -0.25, -2.8),
+    components: [
+        { "CombinedSceneCollider": Aabb },
+    ]
 )

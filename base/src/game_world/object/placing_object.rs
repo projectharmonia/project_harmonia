@@ -17,7 +17,6 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{
     asset::info::object_info::ObjectInfo,
-    combined_scene_collider::CombinedSceneCollider,
     game_world::{
         city::CityMode,
         commands_history::{CommandsHistory, PendingDespawn},
@@ -146,7 +145,6 @@ impl PlacingObjectPlugin {
             ObjectRotationLimit::default(),
             SpatialBundle::from_transform(Transform::from_rotation(rotation)),
             RigidBody::Kinematic,
-            CombinedSceneCollider,
             CollisionLayers::new(
                 Layer::PlacingObject,
                 [Layer::Object, Layer::PlacingObject, Layer::Wall],

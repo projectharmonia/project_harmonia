@@ -8,6 +8,7 @@
     category: Windows,
     preview_translation: (0.0, -1.50, -2.9),
     components: [
+        { "CombinedSceneCollider": Aabb },
         { 
           "WallMount": (
             cutout: [

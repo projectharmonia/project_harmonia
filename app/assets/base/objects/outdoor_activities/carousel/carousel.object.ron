@@ -7,4 +7,7 @@
     scene: "carousel.gltf#Scene0",
     category: OutdoorActivities,
     preview_translation: (0.0, -0.5, -3.0),
+    components: [
+        { "CombinedSceneCollider": Aabb },
+    ]
 )

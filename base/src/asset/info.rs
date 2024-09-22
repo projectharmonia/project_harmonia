@@ -165,21 +165,23 @@ mod tests {
     use walkdir::WalkDir;
 
     use super::*;
-    use crate::game_world::object::{
-        door::Door,
-        placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
-        wall_mount::WallMount,
+    use crate::{
+        combined_scene_collider::CombinedSceneCollider,
+        game_world::object::{
+            door::Door,
+            placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
+            wall_mount::WallMount,
+        },
     };
 
     #[test]
     fn deserialization() -> Result<()> {
         let mut registry = TypeRegistry::new();
-        registry.register::<Vec2>();
-        registry.register::<Vec<Vec2>>();
         registry.register::<WallMount>();
         registry.register::<WallSnap>();
         registry.register::<SideSnap>();
         registry.register::<Door>();
+        registry.register::<CombinedSceneCollider>();
 
         deserialize::<ObjectInfo>(&registry)?;
         deserialize::<RoadInfo>(&registry)?;

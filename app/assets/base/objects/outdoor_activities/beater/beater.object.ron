@@ -7,4 +7,7 @@
     scene: "beater.gltf#Scene0",
     category: OutdoorActivities,
     preview_translation: (0.0, -0.8, -3.0),
+    components: [
+        { "CombinedSceneCollider": Aabb },
+    ]
 )

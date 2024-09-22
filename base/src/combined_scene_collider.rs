@@ -11,7 +11,7 @@ pub(super) struct CombinedSceneColliderPlugin;
 
 impl Plugin for CombinedSceneColliderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.register_type::<CombinedSceneCollider>().add_systems(
             SpawnScene,
             Self::init
                 .run_if(in_state(GameState::InGame))
@@ -54,5 +54,9 @@ impl CombinedSceneColliderPlugin {
     }
 }
 
-#[derive(Component)]
-pub(super) struct CombinedSceneCollider;
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub(super) enum CombinedSceneCollider {
+    Aabb,
+    ConvexHull,
+}

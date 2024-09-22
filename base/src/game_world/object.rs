@@ -20,10 +20,7 @@ use super::{
     },
     hover::{highlighting::OutlineHighlightingExt, Hoverable},
 };
-use crate::{
-    asset::info::object_info::ObjectInfo, combined_scene_collider::CombinedSceneCollider,
-    core::GameState, game_world::Layer,
-};
+use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
 use door::DoorPlugin;
 use placing_object::PlacingObjectPlugin;
 use wall_mount::WallMountPlugin;
@@ -73,7 +70,6 @@ impl ObjectPlugin {
                 Name::new(info.general.name.clone()),
                 Hoverable,
                 RigidBody::Kinematic,
-                CombinedSceneCollider,
                 OutlineBundle::highlighting(),
                 GlobalTransform::default(),
                 VisibilityBundle::default(),
