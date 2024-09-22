@@ -46,3 +46,6 @@ bitflags = "2.6"
 type_complexity = "allow"
 too_many_arguments = "allow"
 doc_markdown = "warn"
+
+[patch.crates-io]
+avian3d = { git = "https://github.com/Jondolf/avian", rev = "5041bea37bec4edde808bd472b0c00c82375c148"}
