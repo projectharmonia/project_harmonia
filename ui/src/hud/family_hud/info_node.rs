@@ -105,7 +105,7 @@ pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, them
                 .id();
 
             for (index, tab) in InfoTab::iter().enumerate() {
-                let tab_content = match tab {
+                let content_entity = match tab {
                     InfoTab::Needs => parent
                         .spawn(NodeBundle {
                             style: Style {
@@ -133,7 +133,7 @@ pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, them
                 tab_commands
                     .spawn((
                         tab,
-                        TabContent(tab_content),
+                        TabContent(content_entity),
                         ExclusiveButton,
                         Toggled(index == 0),
                         TextButtonBundle::symbol(theme, tab.glyph()),
