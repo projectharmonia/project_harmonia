@@ -163,6 +163,7 @@ impl Default for ControlsSettings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
+    pub free_camera_rotation: bool,
     pub wireframe: bool,
     pub colliders: bool,
     pub paths: bool,

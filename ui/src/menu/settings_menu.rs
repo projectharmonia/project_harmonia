@@ -412,6 +412,14 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
         })
         .with_children(|parent| {
             parent.spawn((
+                CheckboxBundle::new(
+                    theme,
+                    settings.developer.free_camera_rotation,
+                    "Free camera rotation",
+                ),
+                setting_field!(settings.developer.free_camera_rotation),
+            ));
+            parent.spawn((
                 CheckboxBundle::new(theme, settings.developer.wireframe, "Display wireframe"),
                 setting_field!(settings.developer.wireframe),
             ));

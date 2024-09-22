@@ -1,6 +1,6 @@
 mod exp_smoothed;
 
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
     asset::AssetPath,
@@ -22,7 +22,7 @@ use crate::{
     asset::collection::{AssetCollection, Collection},
     common_conditions::in_any_state,
     game_world::WorldState,
-    settings::Action,
+    settings::{Action, Settings},
 };
 
 pub(super) struct PlayerCameraPlugin;
@@ -56,6 +56,7 @@ impl Plugin for PlayerCameraPlugin {
 impl PlayerCameraPlugin {
     fn update_rotation(
         time: Res<Time>,
+        settings: Res<Settings>,
         action_state: Res<ActionState<Action>>,
         mut motion_events: EventReader<MouseMotion>,
         mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
@@ -65,8 +66,14 @@ impl PlayerCameraPlugin {
         if action_state.pressed(&Action::RotateCamera) {
             const SENSETIVITY: f32 = 0.01;
             orbit_rotation.dest -= SENSETIVITY * motion;
-            // We don't clap at exactly zero to avoid rotation jitter when the camera is top-down.
-            orbit_rotation.dest.y = orbit_rotation.dest.y.clamp(0.001, FRAC_PI_2);
+
+            let max_y = if settings.developer.free_camera_rotation {
+                PI
+            } else {
+                FRAC_PI_2 - 0.01 // To avoid ground intersection.
+            };
+            const EPSILON: f32 = 0.001; // To avoid rotation jitter when the camera is vertical.
+            orbit_rotation.dest.y = orbit_rotation.dest.y.clamp(EPSILON, max_y - EPSILON);
         }
         orbit_rotation.smooth(time.delta_seconds());
     }
