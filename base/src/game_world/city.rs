@@ -265,7 +265,7 @@ impl Default for GroundBundle {
         Self {
             name: Name::new("Ground"),
             collider: Collider::cuboid(CITY_SIZE, 0.0, CITY_SIZE),
-            collision_layers: CollisionLayers::new(LayerMask::ALL, Layer::Ground),
+            collision_layers: CollisionLayers::new(Layer::Ground, LayerMask::ALL),
             ground: Ground,
             cursor_hoverable: Hoverable,
             pbr_bundle: Default::default(),
