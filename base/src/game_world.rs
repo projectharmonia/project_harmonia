@@ -181,4 +181,6 @@ pub(super) enum Layer {
     PlacingObject,
     Wall,
     PlacingWall,
+    Road,
+    PlacingRoad,
 }

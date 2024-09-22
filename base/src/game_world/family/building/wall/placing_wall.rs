@@ -280,8 +280,15 @@ impl PlacingWallBundle {
             state_scoped: StateScoped(tool),
             apertures: Default::default(),
             collider: Default::default(),
-            // TODO: collide with regular walls.
-            collision_layers: CollisionLayers::new(Layer::PlacingWall, Layer::Object),
+            collision_layers: CollisionLayers::new(
+                Layer::PlacingWall,
+                [
+                    Layer::Object,
+                    Layer::PlacingObject,
+                    Layer::Road,
+                    Layer::PlacingRoad,
+                ],
+            ),
             no_culling: NoFrustumCulling,
             pbr_bundle: PbrBundle {
                 material,

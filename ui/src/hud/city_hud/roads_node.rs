@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 use project_harmonia_base::{
     asset::info::road_info::RoadInfo,
     game_world::city::{
-        road::{creating_road::CreatingRoadId, RoadTool},
+        road::{placing_road::SpawnRoadId, RoadTool},
         CityMode,
     },
 };
@@ -18,10 +18,12 @@ pub(super) struct RoadsNodePlugin;
 
 impl Plugin for RoadsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (Self::select, Self::show_popup).run_if(in_state(CityMode::Roads)),
-        );
+        app.add_systems(OnEnter(CityMode::Roads), Self::sync_road_tool)
+            .add_systems(
+                Update,
+                (Self::select, Self::show_popup, Self::set_road_tool)
+                    .run_if(in_state(CityMode::Roads)),
+            );
     }
 }
 
@@ -30,7 +32,7 @@ impl RoadsNodePlugin {
         for (toggled, road_button) in &buttons {
             if toggled.0 {
                 debug!("selecting road `{:?}` for creation", road_button.0);
-                commands.insert_resource(CreatingRoadId(road_button.0));
+                commands.insert_resource(SpawnRoadId(road_button.0));
             }
         }
     }
@@ -79,6 +81,33 @@ impl RoadsNodePlugin {
             });
         }
     }
+
+    fn set_road_tool(
+        mut road_tool: ResMut<NextState<RoadTool>>,
+        buttons: Query<(Ref<Toggled>, &RoadTool), Changed<Toggled>>,
+    ) {
+        for (toggled, &mode) in &buttons {
+            if toggled.0 && !toggled.is_added() {
+                info!("changing road tool to `{mode:?}`");
+                road_tool.set(mode);
+            }
+        }
+    }
+
+    /// Sets tool to the last selected.
+    ///
+    /// Needed because on swithicng tab the tool resets, but selected button doesn't.
+    fn sync_road_tool(
+        mut road_tool: ResMut<NextState<RoadTool>>,
+        buttons: Query<(&Toggled, &RoadTool)>,
+    ) {
+        for (toggled, &mode) in &buttons {
+            if toggled.0 {
+                debug!("syncing road tool to `{mode:?}`");
+                road_tool.set(mode);
+            }
+        }
+    }
 }
 
 pub(super) fn setup(
@@ -99,39 +128,41 @@ pub(super) fn setup(
         .id();
 
     for tool in RoadTool::iter() {
-        let content_entity = parent
-            .spawn(NodeBundle {
-                style: Style {
-                    display: Display::Grid,
-                    column_gap: theme.gap.normal,
-                    row_gap: theme.gap.normal,
-                    padding: theme.padding.normal,
-                    grid_template_columns: vec![GridTrack::auto(); 8],
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .with_children(|parent| {
-                for (id, info) in roads_info.iter() {
-                    parent.spawn((
-                        RoadButton(id),
-                        Toggled(false),
-                        ExclusiveButton,
-                        ImageButtonBundle::new(theme, asset_server.load(info.preview.clone())),
-                    ));
-                }
-            })
-            .id();
+        let mut button_entity = tab_commands.spawn((
+            tool,
+            ExclusiveButton,
+            Toggled(tool == Default::default()),
+            TextButtonBundle::symbol(theme, tool.glyph()),
+        ));
+        button_entity.set_parent(tabs_entity);
 
-        tab_commands
-            .spawn((
-                tool,
-                TabContent(content_entity),
-                ExclusiveButton,
-                Toggled(tool == Default::default()),
-                TextButtonBundle::symbol(theme, tool.glyph()),
-            ))
-            .set_parent(tabs_entity);
+        if tool == RoadTool::Create {
+            let content_entity = parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        display: Display::Grid,
+                        column_gap: theme.gap.normal,
+                        row_gap: theme.gap.normal,
+                        padding: theme.padding.normal,
+                        grid_template_columns: vec![GridTrack::auto(); 8],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    for (id, info) in roads_info.iter() {
+                        parent.spawn((
+                            RoadButton(id),
+                            Toggled(false),
+                            ExclusiveButton,
+                            ImageButtonBundle::new(theme, asset_server.load(info.preview.clone())),
+                        ));
+                    }
+                })
+                .id();
+
+            button_entity.insert(TabContent(content_entity));
+        }
     }
 }
 

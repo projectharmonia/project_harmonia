@@ -147,7 +147,12 @@ impl PlacingObjectPlugin {
             RigidBody::Kinematic,
             CollisionLayers::new(
                 Layer::PlacingObject,
-                [Layer::Object, Layer::PlacingObject, Layer::Wall],
+                [
+                    Layer::Object,
+                    Layer::PlacingObject,
+                    Layer::Wall,
+                    Layer::PlacingWall,
+                ],
             ),
         ));
 

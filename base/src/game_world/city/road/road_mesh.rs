@@ -1,5 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
+use avian3d::prelude::Collider;
 use bevy::prelude::*;
 use itertools::MinMaxResult;
 
@@ -132,4 +133,30 @@ fn generate_end_connection(
     mesh.indices.push(3);
     mesh.indices.push(vertices_start);
     mesh.indices.push(2);
+}
+
+pub(super) fn generate_collider(segment: SplineSegment, half_width: f32) -> Collider {
+    if segment.start == segment.end {
+        return Default::default();
+    }
+
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+
+    let disp = segment.displacement();
+    let width_disp = disp.perp().normalize() * half_width;
+    let left_start = segment.start + width_disp;
+    let right_start = segment.start - width_disp;
+    let left_end = segment.end + width_disp;
+    let right_end = segment.end - width_disp;
+
+    vertices.push(Vec3::new(left_start.x, 0.0, left_start.y));
+    vertices.push(Vec3::new(right_start.x, 0.0, right_start.y));
+    vertices.push(Vec3::new(right_end.x, 0.0, right_end.y));
+    vertices.push(Vec3::new(left_end.x, 0.0, left_end.y));
+
+    indices.push([1, 0, 2]);
+    indices.push([0, 3, 2]);
+
+    Collider::trimesh(vertices, indices)
 }

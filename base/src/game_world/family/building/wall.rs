@@ -67,12 +67,19 @@ impl WallPlugin {
         for entity in &walls {
             debug!("initializing wall `{entity}`");
 
-            let mut entity = commands.entity(entity);
-            entity.insert((
+            commands.entity(entity).insert((
                 Name::new("Wall"),
                 Apertures::default(),
                 Collider::default(),
-                CollisionLayers::new(Layer::Wall, [Layer::Object, Layer::PlacingObject]),
+                CollisionLayers::new(
+                    Layer::Wall,
+                    [
+                        Layer::Object,
+                        Layer::PlacingObject,
+                        Layer::Road,
+                        Layer::PlacingRoad,
+                    ],
+                ),
                 Hoverable,
                 NoFrustumCulling,
                 Obstacle,

@@ -75,7 +75,7 @@ impl ObjectPlugin {
                 VisibilityBundle::default(),
                 CollisionLayers::new(
                     Layer::Object,
-                    [Layer::Object, Layer::PlacingObject, Layer::Wall],
+                    [Layer::PlacingObject, Layer::Wall, Layer::PlacingWall],
                 ),
             ));
 
