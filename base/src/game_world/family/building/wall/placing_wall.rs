@@ -191,7 +191,7 @@ impl PlacingWallPlugin {
         };
 
         info!("configrming {placing_wall:?}");
-        let id = match placing_wall {
+        let command_id = match placing_wall {
             PlacingWall::Spawning => history.push_pending(WallCommand::Create {
                 city_entity: **parent,
                 segment: *segment,
@@ -211,7 +211,7 @@ impl PlacingWallPlugin {
 
         commands
             .entity(entity)
-            .insert(PendingDespawn(id))
+            .insert(PendingDespawn { command_id })
             .remove::<PlacingWall>();
     }
 
@@ -231,10 +231,10 @@ impl PlacingWallPlugin {
             // Set original segment until the deletion is confirmed.
             *segment = *walls.get(entity).expect("moving wall should exist");
 
-            let id = history.push_pending(WallCommand::Delete { entity });
+            let command_id = history.push_pending(WallCommand::Delete { entity });
             commands
                 .entity(placing_entity)
-                .insert(PendingDespawn(id))
+                .insert(PendingDespawn { command_id })
                 .remove::<PlacingWall>();
         } else {
             commands.entity(placing_entity).despawn_recursive();

@@ -42,7 +42,7 @@ impl CommandHistoryPlugin {
 
             if let Some((entity, _)) = despawn_entities
                 .iter()
-                .find(|(_, despawn)| despawn.0 == confirmation.id)
+                .find(|(_, despawn)| despawn.command_id == confirmation.id)
             {
                 debug!("despawning entity `{entity}` for `{confirmation:?}`");
                 commands.entity(entity).despawn_recursive();
@@ -57,7 +57,9 @@ impl CommandHistoryPlugin {
 
 /// Entities marked with this component will be despawned when the command with this ID will be confirmed.
 #[derive(Component)]
-pub(super) struct PendingDespawn(pub(super) CommandId);
+pub(super) struct PendingDespawn {
+    pub(super) command_id: CommandId,
+}
 
 #[derive(SystemParam)]
 pub struct CommandsHistory<'w, 's> {

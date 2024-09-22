@@ -243,7 +243,7 @@ impl PlacingObjectPlugin {
                 return;
             }
 
-            let id = match placing_object {
+            let command_id = match placing_object {
                 PlacingObject::Spawning(id) => {
                     let info_path = asset_server
                         .get_path(id)
@@ -264,7 +264,7 @@ impl PlacingObjectPlugin {
 
             commands
                 .entity(entity)
-                .insert(PendingDespawn(id))
+                .insert(PendingDespawn { command_id })
                 .remove::<(PlacingObject, PlacingObjectState)>();
 
             info!("confirming `{placing_object:?}`");
@@ -285,10 +285,10 @@ impl PlacingObjectPlugin {
                 // Set original position until the deletion is confirmed.
                 *transform = *objects.get(entity).expect("moving object should exist");
 
-                let id = history.push_pending(ObjectCommand::Sell { entity });
+                let command_id = history.push_pending(ObjectCommand::Sell { entity });
                 commands
                     .entity(placing_entity)
-                    .insert(PendingDespawn(id))
+                    .insert(PendingDespawn { command_id })
                     .remove::<(PlacingObject, PlacingObjectState)>();
             } else {
                 commands.entity(placing_entity).despawn_recursive();
