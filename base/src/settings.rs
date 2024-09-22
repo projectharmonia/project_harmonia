@@ -53,8 +53,8 @@ impl SettingsPlugin {
             window.mode = WindowMode::Windowed;
         }
 
-        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.colliders;
         wireframe_config.global = settings.developer.wireframe;
+        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.colliders;
         if settings.developer.nav_mesh {
             commands.insert_resource(NavMeshesDebug(DARK_RED.into()))
         } else {
@@ -163,10 +163,10 @@ impl Default for ControlsSettings {
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
+    pub wireframe: bool,
     pub colliders: bool,
     pub paths: bool,
     pub nav_mesh: bool,
-    pub wireframe: bool,
 }
 
 #[derive(
