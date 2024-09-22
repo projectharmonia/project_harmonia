@@ -8,9 +8,8 @@ use bevy::{
     asset::AssetPath,
     ecs::{entity::MapEntities, reflect::ReflectMapEntities},
     prelude::*,
-    scene::{self, SceneInstanceReady},
 };
-use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle};
+use bevy_mod_outline::OutlineBundle;
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
@@ -54,12 +53,6 @@ impl Plugin for ActorPlugin {
                     .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
-                SpawnScene,
-                Self::init_children
-                    .run_if(in_state(GameState::InGame))
-                    .after(scene::scene_spawner_system),
-            )
-            .add_systems(
                 PostUpdate,
                 Self::update_names.run_if(in_state(GameState::InGame)),
             );
@@ -89,22 +82,6 @@ impl ActorPlugin {
                 OutlineBundle::highlighting(),
                 Hoverable,
             ));
-        }
-    }
-
-    fn init_children(
-        mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
-        actors: Query<Entity, With<Actor>>,
-        children: Query<&Children>,
-    ) {
-        for actor_entity in actors.iter_many(ready_events.read().map(|event| event.parent)) {
-            debug!("initializing outline for `{actor_entity}`");
-            for child_entity in children.iter_descendants(actor_entity) {
-                commands
-                    .entity(child_entity)
-                    .insert(InheritOutlineBundle::default());
-            }
         }
     }
 

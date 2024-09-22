@@ -1,17 +1,44 @@
-use bevy::prelude::*;
-use bevy_mod_outline::{OutlineBundle, OutlineVolume};
+use bevy::{
+    prelude::*,
+    scene::{self, SceneInstanceReady},
+};
+use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle, OutlineVolume};
 
-use crate::game_world::hover::Hovered;
+use crate::{core::GameState, game_world::hover::Hovered};
 
 pub(super) struct HighlightingPlugin;
 
 impl Plugin for HighlightingPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::enable).observe(Self::disable);
+        app.observe(Self::enable)
+            .observe(Self::disable)
+            .add_systems(
+                SpawnScene,
+                Self::init_scene
+                    .run_if(in_state(GameState::InGame))
+                    .after(scene::scene_spawner_system),
+            );
     }
 }
 
 impl HighlightingPlugin {
+    /// Initializes scene children with [`InheritOutlineBundle`] to let toggle only top-level entity.
+    fn init_scene(
+        mut commands: Commands,
+        mut ready_events: EventReader<SceneInstanceReady>,
+        scenes: Query<Entity, With<OutlineVolume>>,
+        chidlren: Query<&Children>,
+    ) {
+        for scene_entity in scenes.iter_many(ready_events.read().map(|event| event.parent)) {
+            debug!("initializing outline for scene `{scene_entity}`");
+            for child_entity in chidlren.iter_descendants(scene_entity) {
+                commands
+                    .entity(child_entity)
+                    .insert(InheritOutlineBundle::default());
+            }
+        }
+    }
+
     fn enable(trigger: Trigger<OnAdd, Hovered>, mut hovered: Query<&mut OutlineVolume>) {
         if let Ok(mut outline) = hovered.get_mut(trigger.entity()) {
             debug!("highlighting enabled");

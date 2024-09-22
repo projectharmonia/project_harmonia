@@ -4,7 +4,6 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     scene::{self, SceneInstanceReady},
 };
-use bevy_mod_outline::InheritOutlineBundle;
 
 use crate::core::GameState;
 
@@ -36,10 +35,6 @@ impl CombinedSceneColliderPlugin {
                 .with_inserted_indices(Indices::U32(Vec::new()));
 
             for child_entity in chidlren.iter_descendants(scene_entity) {
-                commands
-                    .entity(child_entity)
-                    .insert(InheritOutlineBundle::default());
-
                 if let Ok((&transform, mesh_handle)) = child_meshes.get(child_entity) {
                     let mut mesh = meshes
                         .get(mesh_handle)
