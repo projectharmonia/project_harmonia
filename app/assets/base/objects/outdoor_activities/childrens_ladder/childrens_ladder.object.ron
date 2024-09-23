@@ -8,6 +8,6 @@
     category: OutdoorActivities,
     preview_translation: (0.0, -0.5, -4.4),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ]
 )

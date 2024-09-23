@@ -8,6 +8,6 @@
     category: Electronics,
     preview_translation: (0.0, -0.5, -1.9),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ],
 )

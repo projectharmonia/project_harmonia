@@ -166,7 +166,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        combined_scene_collider::CombinedSceneCollider,
+        combined_scene_collider::SceneColliderConstructor,
         game_world::object::{
             door::Door,
             placing_object::{side_snap::SideSnap, wall_snap::WallSnap},
@@ -181,7 +181,7 @@ mod tests {
         registry.register::<WallSnap>();
         registry.register::<SideSnap>();
         registry.register::<Door>();
-        registry.register::<CombinedSceneCollider>();
+        registry.register::<SceneColliderConstructor>();
 
         deserialize::<ObjectInfo>(&registry)?;
         deserialize::<RoadInfo>(&registry)?;

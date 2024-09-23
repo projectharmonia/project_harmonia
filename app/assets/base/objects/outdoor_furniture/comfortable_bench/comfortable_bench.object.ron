@@ -8,6 +8,6 @@
     category: OutdoorFurniture,
     preview_translation: (0.0, -0.35, -2.4),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ]
 )

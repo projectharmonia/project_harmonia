@@ -8,6 +8,6 @@
     category: Street,
     preview_translation: (0.0, -1.4, -3.5),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ]
 )

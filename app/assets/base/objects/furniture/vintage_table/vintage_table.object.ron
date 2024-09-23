@@ -8,6 +8,6 @@
     category: Furniture,
     preview_translation: (0.0, -0.40, -1.5),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ]
 )

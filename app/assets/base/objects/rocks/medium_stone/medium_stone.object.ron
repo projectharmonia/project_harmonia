@@ -8,6 +8,6 @@
     category: Rocks,
     preview_translation: (-0.20, -0.35, -2.1),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ]
 )

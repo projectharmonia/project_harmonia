@@ -7,11 +7,11 @@ use bevy::{
 
 use crate::core::GameState;
 
-pub(super) struct CombinedSceneColliderPlugin;
+pub(super) struct SceneColliderConstructorPlugin;
 
-impl Plugin for CombinedSceneColliderPlugin {
+impl Plugin for SceneColliderConstructorPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<CombinedSceneCollider>().add_systems(
+        app.register_type::<SceneColliderConstructor>().add_systems(
             SpawnScene,
             Self::init
                 .run_if(in_state(GameState::InGame))
@@ -20,15 +20,15 @@ impl Plugin for CombinedSceneColliderPlugin {
     }
 }
 
-impl CombinedSceneColliderPlugin {
+impl SceneColliderConstructorPlugin {
     fn init(
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        scenes: Query<(Entity, &Children, &CombinedSceneCollider)>,
+        scenes: Query<(Entity, &Children, &SceneColliderConstructor)>,
         scene_meshes: Query<(&Transform, Option<&Handle<Mesh>>, Option<&Children>)>,
     ) {
-        for (scene_entity, children, combined_collider) in
+        for (scene_entity, children, constructor) in
             scenes.iter_many(ready_events.read().map(|event| event.parent))
         {
             let mut combined_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
@@ -45,8 +45,8 @@ impl CombinedSceneColliderPlugin {
                 );
             }
 
-            let collider = match combined_collider {
-                CombinedSceneCollider::Aabb => {
+            let collider = match constructor {
+                SceneColliderConstructor::Aabb => {
                     let aabb = combined_mesh
                         .compute_aabb()
                         .expect("object mesh should be in compatible format");
@@ -58,7 +58,7 @@ impl CombinedSceneColliderPlugin {
                     );
                     Collider::compound(vec![(center, Rotation::default(), cuboid)])
                 }
-                CombinedSceneCollider::ConvexHull => {
+                SceneColliderConstructor::ConvexHull => {
                     Collider::convex_hull_from_mesh(&combined_mesh)
                         .expect("object mesh should be in compatible format")
                 }
@@ -106,7 +106,7 @@ fn recursive_merge(
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
-pub(super) enum CombinedSceneCollider {
+pub(super) enum SceneColliderConstructor {
     Aabb,
     ConvexHull,
 }

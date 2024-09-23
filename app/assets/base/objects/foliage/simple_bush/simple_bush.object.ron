@@ -8,6 +8,6 @@
     category: Foliage,
     preview_translation: (0.0, -0.6, -1.9),
     components: [
-        { "CombinedSceneCollider": Aabb },
+        { "SceneColliderConstructor": Aabb },
     ],
 )
