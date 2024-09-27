@@ -78,7 +78,9 @@ impl CityPlugin {
                             Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
                         ]),
                         agent_radius: ACTOR_RADIUS,
-                        default_delta: 0.2, // To avoid agents stuck on namesh edges.
+                        merge_steps: 1, // Merge triangles when possible to reduce the number of triangles.
+                        simplify: 0.01, // Remove points that contribute very little to the mesh.
+                        default_search_delta: 0.2, // To avoid agents stuck on namesh edges.
                         ..Default::default()
                     },
                     transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
