@@ -42,7 +42,7 @@ impl HoverPlugin {
             ray.direction,
             f32::MAX,
             false,
-            Default::default(),
+            &Default::default(),
         )?;
 
         let (hovered_entity, parent) = hoverable

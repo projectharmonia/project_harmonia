@@ -174,8 +174,9 @@ pub enum WorldState {
     Family,
 }
 
-#[derive(PhysicsLayer)]
+#[derive(PhysicsLayer, Default)]
 pub(super) enum Layer {
+    #[default]
     Ground,
     Object,
     PlacingObject,
