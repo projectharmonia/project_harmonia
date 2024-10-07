@@ -3846,9 +3846,9 @@ dependencies = [
 
 [[package]]
 name = "polyanya"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41b89d358c4751e73520add466286d7215e58e67159a88e4ae363bcd20f297df"
+checksum = "330b4fde9d0cb290522b95607f420d1b99e6c668959151111d70552c4969243e"
 dependencies = [
  "bvh2d",
  "geo",
@@ -4843,9 +4843,9 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vleue_navigator"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "991790d4f99168d334788bee0d79253f1701e48b1578e3e46b26e45de3b82e54"
+checksum = "c89cd6dda32b745a2a9540e314534135f00c89def430c89044a3fbff7a363014"
 dependencies = [
  "avian3d",
  "bevy",
