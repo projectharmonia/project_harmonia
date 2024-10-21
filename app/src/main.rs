@@ -27,6 +27,7 @@ fn main() {
             position_to_transform: false,
             ..Default::default()
         })
+        .insert_resource(Time::<Fixed>::from_hz(30.0))
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
