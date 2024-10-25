@@ -223,7 +223,7 @@ impl WorldMenuPlugin {
                         .first()
                         .expect("family always have at least one member");
 
-                    info!("starting playing for family `{:?}`", world_entity.0);
+                    info!("starting playing for family `{}`", world_entity.0);
                     commands.entity(actor_entity).insert(SelectedActor);
                     world_state.set(WorldState::Family);
                 }
