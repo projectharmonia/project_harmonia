@@ -40,80 +40,83 @@ impl CityHudPlugin {
         asset_server: Res<AssetServer>,
         objects_info: Res<Assets<ObjectInfo>>,
         roads_info: Res<Assets<RoadInfo>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         debug!("showing city HUD");
-        commands
-            .spawn((
-                StateScoped(WorldState::City),
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            ))
-            .with_children(|parent| {
-                tools_node::setup(parent, &theme);
-
-                let tabs_entity = parent
-                    .spawn(NodeBundle {
+        commands.entity(roots.single()).with_children(|parent| {
+            parent
+                .spawn((
+                    StateScoped(WorldState::City),
+                    NodeBundle {
                         style: Style {
-                            flex_direction: FlexDirection::Column,
-                            align_self: AlignSelf::FlexEnd,
-                            padding: theme.padding.normal,
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
                             ..Default::default()
                         },
-                        background_color: theme.panel_color.into(),
                         ..Default::default()
-                    })
-                    .id();
+                    },
+                ))
+                .with_children(|parent| {
+                    tools_node::setup(parent, &theme);
 
-                for mode in CityMode::iter() {
-                    let content_entity = parent
+                    let tabs_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
+                                flex_direction: FlexDirection::Column,
                                 align_self: AlignSelf::FlexEnd,
                                 padding: theme.padding.normal,
-                                column_gap: theme.gap.normal,
                                 ..Default::default()
                             },
                             background_color: theme.panel_color.into(),
                             ..Default::default()
                         })
-                        .with_children(|parent| match mode {
-                            CityMode::Objects => {
-                                objects_node::setup(
-                                    parent,
-                                    &mut tab_commands,
-                                    &theme,
-                                    &objects_info,
-                                    ObjectCategory::CITY_CATEGORIES,
-                                );
-                            }
-                            CityMode::Lots => lots_node::setup(parent, &theme),
-                            CityMode::Roads => roads_node::setup(
-                                parent,
-                                &mut tab_commands,
-                                &asset_server,
-                                &theme,
-                                &roads_info,
-                            ),
-                        })
                         .id();
 
-                    tab_commands
-                        .spawn((
-                            mode,
-                            TabContent(content_entity),
-                            ExclusiveButton,
-                            Toggled(mode == Default::default()),
-                            TextButtonBundle::symbol(&theme, mode.glyph()),
-                        ))
-                        .set_parent(tabs_entity);
-                }
-            });
+                    for mode in CityMode::iter() {
+                        let content_entity = parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    align_self: AlignSelf::FlexEnd,
+                                    padding: theme.padding.normal,
+                                    column_gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                background_color: theme.panel_color.into(),
+                                ..Default::default()
+                            })
+                            .with_children(|parent| match mode {
+                                CityMode::Objects => {
+                                    objects_node::setup(
+                                        parent,
+                                        &mut tab_commands,
+                                        &theme,
+                                        &objects_info,
+                                        ObjectCategory::CITY_CATEGORIES,
+                                    );
+                                }
+                                CityMode::Lots => lots_node::setup(parent, &theme),
+                                CityMode::Roads => roads_node::setup(
+                                    parent,
+                                    &mut tab_commands,
+                                    &asset_server,
+                                    &theme,
+                                    &roads_info,
+                                ),
+                            })
+                            .id();
+
+                        tab_commands
+                            .spawn((
+                                mode,
+                                TabContent(content_entity),
+                                ExclusiveButton,
+                                Toggled(mode == Default::default()),
+                                TextButtonBundle::symbol(&theme, mode.glyph()),
+                            ))
+                            .set_parent(tabs_entity);
+                    }
+                });
+        });
     }
 
     fn set_city_mode(

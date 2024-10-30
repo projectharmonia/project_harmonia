@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use project_harmonia_base::game_world::WorldState;
 
+/// Spawn a dedicated camera for UI when we don't use 3D camera.
 pub(super) struct Camera2dPlugin;
 
 impl Plugin for Camera2dPlugin {
@@ -23,6 +24,7 @@ impl Camera2dPlugin {
     }
 
     fn despawn(mut commands: Commands, cameras: Query<Entity, With<Camera2d>>) {
+        debug!("despawning camera for ui");
         commands.entity(cameras.single()).despawn();
     }
 }

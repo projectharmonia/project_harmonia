@@ -63,25 +63,32 @@ impl Plugin for EditorMenuPlugin {
 }
 
 impl EditorMenuPlugin {
-    fn setup(mut commands: Commands, theme: Res<Theme>) {
+    fn setup(
+        mut commands: Commands,
+        theme: Res<Theme>,
+
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+    ) {
         info!("entering family editor");
-        commands
-            .spawn((
-                StateScoped(WorldState::FamilyEditor),
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
+        commands.entity(roots.single()).with_children(|parent| {
+            parent
+                .spawn((
+                    StateScoped(WorldState::FamilyEditor),
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     },
-                    ..Default::default()
-                },
-            ))
-            .with_children(|parent| {
-                setup_personality_node(parent, &theme);
-                setup_actors_node(parent, &theme);
-                setup_family_menu_buttons(parent, &theme);
-            });
+                ))
+                .with_children(|parent| {
+                    setup_personality_node(parent, &theme);
+                    setup_actors_node(parent, &theme);
+                    setup_family_menu_buttons(parent, &theme);
+                });
+        });
     }
 
     fn add_member(

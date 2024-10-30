@@ -17,30 +17,36 @@ impl Plugin for MainMenuPlugin {
 }
 
 impl MainMenuPlugin {
-    fn setup(mut commands: Commands, theme: Res<Theme>) {
+    fn setup(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+    ) {
         info!("entering main menu");
-        commands
-            .spawn((
-                StateScoped(MenuState::MainMenu),
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        align_items: AlignItems::FlexStart,
-                        justify_content: JustifyContent::Center,
-                        padding: theme.padding.global,
-                        row_gap: theme.gap.large,
+        commands.entity(roots.single()).with_children(|parent| {
+            parent
+                .spawn((
+                    StateScoped(MenuState::MainMenu),
+                    NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Column,
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            align_items: AlignItems::FlexStart,
+                            justify_content: JustifyContent::Center,
+                            padding: theme.padding.global,
+                            row_gap: theme.gap.large,
+                            ..Default::default()
+                        },
                         ..Default::default()
                     },
-                    ..Default::default()
-                },
-            ))
-            .with_children(|parent| {
-                for button in MainMenuButton::iter() {
-                    parent.spawn((button, TextButtonBundle::large(&theme, button.to_string())));
-                }
-            });
+                ))
+                .with_children(|parent| {
+                    for button in MainMenuButton::iter() {
+                        parent.spawn((button, TextButtonBundle::large(&theme, button.to_string())));
+                    }
+                });
+        });
     }
 
     fn handle_clicks(

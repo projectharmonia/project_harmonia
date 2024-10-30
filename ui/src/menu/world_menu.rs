@@ -57,104 +57,111 @@ impl WorldMenuPlugin {
         world_name: Res<WorldName>,
         families: Query<(Entity, &Name), With<Family>>,
         cities: Query<(Entity, &Name), With<City>>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        info!("entering world menu");
-        commands
-            .spawn((
-                StateScoped(WorldState::World),
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::FlexStart,
-                        padding: theme.padding.global,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            ))
-            .with_children(|parent| {
-                parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));
-
-                let tabs_entity = parent
-                    .spawn(NodeBundle {
+        commands.entity(roots.single()).with_children(|parent| {
+            info!("entering world menu");
+            parent
+                .spawn((
+                    StateScoped(WorldState::World),
+                    NodeBundle {
                         style: Style {
-                            justify_content: JustifyContent::Center,
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::FlexStart,
+                            padding: theme.padding.global,
                             ..Default::default()
                         },
                         ..Default::default()
-                    })
-                    .id();
+                    },
+                ))
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));
 
-                for tab in WorldTab::iter() {
-                    let content_entity = parent
+                    let tabs_entity = parent
                         .spawn(NodeBundle {
                             style: Style {
-                                width: Val::Percent(100.0),
-                                height: Val::Percent(100.0),
-                                flex_direction: FlexDirection::Column,
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::FlexStart,
-                                padding: theme.padding.normal,
-                                row_gap: theme.gap.normal,
+                                justify_content: JustifyContent::Center,
                                 ..Default::default()
                             },
                             ..Default::default()
-                        })
-                        .with_children(|parent| match tab {
-                            WorldTab::Families => {
-                                for (entity, name) in &families {
-                                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
-                                }
-                            }
-                            WorldTab::Cities => {
-                                for (entity, name) in &cities {
-                                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
-                                }
-                            }
                         })
                         .id();
 
-                    tab_commands
-                        .spawn((
-                            tab,
-                            TabContent(content_entity),
-                            ExclusiveButton,
-                            Toggled(tab == Default::default()),
-                            TextButtonBundle::normal(&theme, tab.to_string()),
-                        ))
-                        .set_parent(tabs_entity);
-                }
+                    for tab in WorldTab::iter() {
+                        let content_entity = parent
+                            .spawn(NodeBundle {
+                                style: Style {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                    flex_direction: FlexDirection::Column,
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::FlexStart,
+                                    padding: theme.padding.normal,
+                                    row_gap: theme.gap.normal,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            })
+                            .with_children(|parent| match tab {
+                                WorldTab::Families => {
+                                    for (entity, name) in &families {
+                                        setup_entity_node::<FamilyButton>(
+                                            parent, &theme, entity, name,
+                                        );
+                                    }
+                                }
+                                WorldTab::Cities => {
+                                    for (entity, name) in &cities {
+                                        setup_entity_node::<CityButton>(
+                                            parent, &theme, entity, name,
+                                        );
+                                    }
+                                }
+                            })
+                            .id();
 
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            justify_content: JustifyContent::FlexStart,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn((
-                            MainMenuButton,
-                            TextButtonBundle::normal(&theme, "Main menu"),
-                        ));
-                        parent.spawn(NodeBundle {
+                        tab_commands
+                            .spawn((
+                                tab,
+                                TabContent(content_entity),
+                                ExclusiveButton,
+                                Toggled(tab == Default::default()),
+                                TextButtonBundle::normal(&theme, tab.to_string()),
+                            ))
+                            .set_parent(tabs_entity);
+                    }
+
+                    parent
+                        .spawn(NodeBundle {
                             style: Style {
                                 width: Val::Percent(100.0),
+                                justify_content: JustifyContent::FlexStart,
                                 ..Default::default()
                             },
                             ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent.spawn((
+                                MainMenuButton,
+                                TextButtonBundle::normal(&theme, "Main menu"),
+                            ));
+                            parent.spawn(NodeBundle {
+                                style: Style {
+                                    width: Val::Percent(100.0),
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            });
+                            parent.spawn((
+                                CreateEntityButton,
+                                TextButtonBundle::normal(&theme, "Create new"),
+                            ));
                         });
-                        parent.spawn((
-                            CreateEntityButton,
-                            TextButtonBundle::normal(&theme, "Create new"),
-                        ));
-                    });
-            });
+                });
+        });
     }
 
     fn create_family_nodes(

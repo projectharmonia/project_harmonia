@@ -3,6 +3,7 @@ mod error_dialog;
 mod hud;
 mod menu;
 mod preview;
+mod root;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
@@ -11,6 +12,7 @@ use error_dialog::MessageBoxPlugin;
 use hud::HudPlugin;
 use menu::MenuPlugin;
 use preview::PreviewPlugin;
+use root::RootPlugin;
 
 pub struct UiPlugins;
 
@@ -22,5 +24,6 @@ impl PluginGroup for UiPlugins {
             .add(MessageBoxPlugin)
             .add(HudPlugin)
             .add(PreviewPlugin)
+            .add(RootPlugin)
     }
 }

@@ -44,69 +44,76 @@ impl Plugin for WorldBrowserPlugin {
 }
 
 impl WorldBrowserPlugin {
-    fn setup(mut commands: Commands, theme: Res<Theme>, game_paths: Res<GamePaths>) {
+    fn setup(
+        mut commands: Commands,
+        theme: Res<Theme>,
+        game_paths: Res<GamePaths>,
+        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+    ) {
         info!("entering world browser");
-        commands
-            .spawn((
-                StateScoped(MenuState::WorldBrowser),
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::FlexStart,
-                        padding: theme.padding.global,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            ))
-            .with_children(|parent| {
-                parent.spawn(LabelBundle::large(&theme, "World browser"));
-                parent
-                    .spawn(NodeBundle {
+        commands.entity(roots.single()).with_children(|parent| {
+            parent
+                .spawn((
+                    StateScoped(MenuState::WorldBrowser),
+                    NodeBundle {
                         style: Style {
                             width: Val::Percent(100.0),
                             height: Val::Percent(100.0),
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             justify_content: JustifyContent::FlexStart,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
+                            padding: theme.padding.global,
                             ..Default::default()
                         },
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        let world_names = game_paths
-                            .get_world_names()
-                            .map_err(|e| error!("unable to get world names: {e}"))
-                            .unwrap_or_default();
-                        for name in world_names {
-                            setup_world_node(parent, &theme, name);
-                        }
-                    });
+                    },
+                ))
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::large(&theme, "World browser"));
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::FlexStart,
+                                padding: theme.padding.normal,
+                                row_gap: theme.gap.normal,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            let world_names = game_paths
+                                .get_world_names()
+                                .map_err(|e| error!("unable to get world names: {e}"))
+                                .unwrap_or_default();
+                            for name in world_names {
+                                setup_world_node(parent, &theme, name);
+                            }
+                        });
 
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            justify_content: JustifyContent::FlexStart,
-                            column_gap: theme.gap.normal,
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                justify_content: JustifyContent::FlexStart,
+                                column_gap: theme.gap.normal,
+                                ..Default::default()
+                            },
                             ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        for button in WorldBrowserButton::iter() {
-                            parent.spawn((
-                                button,
-                                TextButtonBundle::normal(&theme, button.to_string()),
-                            ));
-                        }
-                    });
-            });
+                        })
+                        .with_children(|parent| {
+                            for button in WorldBrowserButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(&theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
     }
 
     fn handle_world_clicks(
