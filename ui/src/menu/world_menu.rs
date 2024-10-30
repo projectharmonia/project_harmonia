@@ -298,7 +298,9 @@ impl WorldMenuPlugin {
             match current_tab {
                 WorldTab::Families => world_state.set(WorldState::FamilyEditor),
                 WorldTab::Cities => {
-                    setup_create_city_dialog(&mut commands, roots.single(), &theme);
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_create_city_dialog(parent, &theme);
+                    });
                 }
             }
         }
@@ -396,46 +398,44 @@ fn setup_entity_node<E>(
         });
 }
 
-fn setup_create_city_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn(DialogBundle::new(theme))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+fn setup_create_city_dialog(parent: &mut ChildBuilder, theme: &Theme) {
+    parent
+        .spawn(DialogBundle::new(theme))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, "Create city"));
-                        parent.spawn((CityNameEdit, TextEditBundle::new(theme, "New city")));
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, "Create city"));
+                    parent.spawn((CityNameEdit, TextEditBundle::new(theme, "New city")));
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for dialog_button in CityDialogButton::iter() {
-                                    parent.spawn((
-                                        dialog_button,
-                                        TextButtonBundle::normal(theme, dialog_button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for dialog_button in CityDialogButton::iter() {
+                                parent.spawn((
+                                    dialog_button,
+                                    TextButtonBundle::normal(theme, dialog_button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 #[derive(Clone, Component, Copy, Default, Display, EnumIter, PartialEq)]

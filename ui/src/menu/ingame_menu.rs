@@ -117,10 +117,14 @@ impl InGameMenuPlugin {
                 }
                 IngameMenuButton::World => world_state.set(WorldState::World),
                 IngameMenuButton::MainMenu => {
-                    setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::MainMenu)
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_exit_dialog(parent, &theme, ExitDialog::MainMenu);
+                    });
                 }
                 IngameMenuButton::ExitGame => {
-                    setup_exit_dialog(&mut commands, roots.single(), &theme, ExitDialog::Game)
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_exit_dialog(parent, &theme, ExitDialog::Game);
+                    });
                 }
             }
         }
@@ -169,52 +173,45 @@ impl InGameMenuPlugin {
     }
 }
 
-fn setup_exit_dialog(
-    commands: &mut Commands,
-    root_entity: Entity,
-    theme: &Theme,
-    exit_dialog: ExitDialog,
-) {
+fn setup_exit_dialog(parent: &mut ChildBuilder, theme: &Theme, exit_dialog: ExitDialog) {
     info!("showing exit dialog");
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn((exit_dialog, DialogBundle::new(theme)))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    parent
+        .spawn((exit_dialog, DialogBundle::new(theme)))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, exit_dialog.label()));
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, exit_dialog.label()));
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in ExitDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in ExitDialogButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 #[derive(Component)]

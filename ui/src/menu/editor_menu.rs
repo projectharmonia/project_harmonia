@@ -261,7 +261,9 @@ impl EditorMenuPlugin {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
                 FamilyMenuButton::Confirm => {
-                    setup_save_family_dialog(&mut commands, roots.single(), &theme);
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_save_family_dialog(parent, &theme);
+                    });
                 }
                 FamilyMenuButton::Cancel => world_state.set(WorldState::World),
             }
@@ -283,7 +285,9 @@ impl EditorMenuPlugin {
                 SaveDialogButton::Save => {
                     let mut family_name = text_edits.single_mut();
                     commands.insert_resource(FamilyScene::new(mem::take(&mut family_name.0)));
-                    setup_place_family_dialog(&mut commands, roots.single(), &theme, &cities);
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_place_family_dialog(parent, &theme, &cities);
+                    });
                 }
                 SaveDialogButton::Cancel => info!("cancelling saving"),
             }
@@ -440,130 +444,122 @@ fn setup_family_menu_buttons(parent: &mut ChildBuilder, theme: &Theme) {
         });
 }
 
-fn setup_save_family_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+fn setup_save_family_dialog(parent: &mut ChildBuilder, theme: &Theme) {
     info!("showing save family dialog");
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn(DialogBundle::new(theme))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    parent
+        .spawn(DialogBundle::new(theme))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, "Save family"));
-                        parent.spawn((FamilyNameEdit, TextEditBundle::new(theme, "New family")));
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, "Save family"));
+                    parent.spawn((FamilyNameEdit, TextEditBundle::new(theme, "New family")));
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for dialog_button in SaveDialogButton::iter() {
-                                    parent.spawn((
-                                        dialog_button,
-                                        TextButtonBundle::normal(theme, dialog_button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for dialog_button in SaveDialogButton::iter() {
+                                parent.spawn((
+                                    dialog_button,
+                                    TextButtonBundle::normal(theme, dialog_button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 fn setup_place_family_dialog(
-    commands: &mut Commands,
-    root_entity: Entity,
+    parent: &mut ChildBuilder,
     theme: &Theme,
     cities: &Query<(Entity, &Name), With<City>>,
 ) {
     info!("showing placing dialog");
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn(DialogBundle::new(theme))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    parent
+        .spawn(DialogBundle::new(theme))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, "Place family"));
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    width: Val::Percent(100.0),
-                                    height: Val::Percent(100.0),
-                                    justify_content: JustifyContent::Center,
-                                    ..Default::default()
-                                },
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, "Place family"));
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                justify_content: JustifyContent::Center,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                // TODO: Use combobox.
-                                for (entity, name) in cities {
-                                    parent
-                                        .spawn(NodeBundle {
-                                            style: Style {
-                                                column_gap: theme.gap.normal,
-                                                ..Default::default()
-                                            },
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            // TODO: Use combobox.
+                            for (entity, name) in cities {
+                                parent
+                                    .spawn(NodeBundle {
+                                        style: Style {
+                                            column_gap: theme.gap.normal,
                                             ..Default::default()
-                                        })
-                                        .with_children(|parent| {
-                                            parent.spawn(LabelBundle::normal(theme, name));
-                                            for button in CityPlaceButton::iter() {
-                                                parent.spawn((
-                                                    button,
-                                                    PlaceCity(entity),
-                                                    TextButtonBundle::normal(
-                                                        theme,
-                                                        button.to_string(),
-                                                    ),
-                                                ));
-                                            }
-                                        });
-                                }
-                            });
+                                        },
+                                        ..Default::default()
+                                    })
+                                    .with_children(|parent| {
+                                        parent.spawn(LabelBundle::normal(theme, name));
+                                        for button in CityPlaceButton::iter() {
+                                            parent.spawn((
+                                                button,
+                                                PlaceCity(entity),
+                                                TextButtonBundle::normal(theme, button.to_string()),
+                                            ));
+                                        }
+                                    });
+                            }
+                        });
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in PlaceDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in PlaceDialogButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 #[derive(Component)]

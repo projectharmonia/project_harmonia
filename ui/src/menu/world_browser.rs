@@ -136,21 +136,25 @@ impl WorldBrowserPlugin {
                     commands.insert_resource(WorldName(world_name.sections[0].value.clone()));
                     load_events.send_default();
                 }
-                WorldButton::Host => setup_host_world_dialog(
-                    &mut commands,
-                    roots.single(),
-                    &theme,
-                    world_node,
-                    &world_name.sections[0].value,
-                ),
+                WorldButton::Host => {
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_host_world_dialog(
+                            parent,
+                            &theme,
+                            world_node,
+                            &world_name.sections[0].value,
+                        );
+                    });
+                }
                 WorldButton::Remove => {
-                    setup_remove_world_dialog(
-                        &mut commands,
-                        roots.single(),
-                        &theme,
-                        world_node,
-                        &world_name.sections[0].value,
-                    );
+                    commands.entity(roots.single()).with_children(|parent| {
+                        setup_remove_world_dialog(
+                            parent,
+                            &theme,
+                            world_node,
+                            &world_name.sections[0].value,
+                        );
+                    });
                 }
             }
         }
@@ -234,14 +238,12 @@ impl WorldBrowserPlugin {
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            match button {
-                WorldBrowserButton::Create => {
-                    setup_create_world_dialog(&mut commands, roots.single(), &theme)
-                }
-                WorldBrowserButton::Join => {
-                    setup_join_world_dialog(&mut commands, roots.single(), &theme)
-                }
-            }
+            commands
+                .entity(roots.single())
+                .with_children(|parent| match button {
+                    WorldBrowserButton::Create => setup_create_world_dialog(parent, &theme),
+                    WorldBrowserButton::Join => setup_join_world_dialog(parent, &theme),
+                });
         }
     }
 
@@ -351,233 +353,223 @@ fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<S
 }
 
 fn setup_host_world_dialog(
-    commands: &mut Commands,
-    root_entity: Entity,
+    parent: &mut ChildBuilder,
     theme: &Theme,
     world_node: WorldNode,
     world_name: &str,
 ) {
-    commands.entity(root_entity).with_children(|parent| {
-        info!("showing host dialog");
-        parent
-            .spawn((DialogBundle::new(theme), world_node))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    info!("showing host dialog");
+    parent
+        .spawn((DialogBundle::new(theme), world_node))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, format!("Host {world_name}")));
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, format!("Host {world_name}")));
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    justify_content: JustifyContent::Center,
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
+                                justify_content: JustifyContent::Center,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(LabelBundle::normal(theme, "Port:"));
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(LabelBundle::normal(theme, "Port:"));
+                            parent.spawn((
+                                PortEdit,
+                                TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                            ));
+                        });
+
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in HostDialogButton::iter() {
                                 parent.spawn((
-                                    PortEdit,
-                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
                                 ));
-                            });
-
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in HostDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            }
+                        });
+                });
+        });
 }
 
 fn setup_remove_world_dialog(
-    commands: &mut Commands,
-    root_entity: Entity,
+    parent: &mut ChildBuilder,
     theme: &Theme,
     world_node: WorldNode,
     world_name: &str,
 ) {
-    commands.entity(root_entity).with_children(|parent| {
-        info!("showing remove dialog");
-        parent
-            .spawn((DialogBundle::new(theme), world_node))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    info!("showing remove dialog");
+    parent
+        .spawn((DialogBundle::new(theme), world_node))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(
-                            theme,
-                            format!("Are you sure you want to remove world {world_name}?",),
-                        ));
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(
+                        theme,
+                        format!("Are you sure you want to remove world {world_name}?",),
+                    ));
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in RemoveDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in RemoveDialogButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
-fn setup_create_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+fn setup_create_world_dialog(parent: &mut ChildBuilder, theme: &Theme) {
     info!("showing create dialog");
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn(DialogBundle::new(theme))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    parent
+        .spawn(DialogBundle::new(theme))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, "Create world"));
-                        parent.spawn((WorldNameEdit, TextEditBundle::new(theme, "New world")));
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, "Create world"));
+                    parent.spawn((WorldNameEdit, TextEditBundle::new(theme, "New world")));
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in CreateDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in CreateDialogButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
-fn setup_join_world_dialog(commands: &mut Commands, root_entity: Entity, theme: &Theme) {
+fn setup_join_world_dialog(parent: &mut ChildBuilder, theme: &Theme) {
     info!("showing join dialog");
-    commands.entity(root_entity).with_children(|parent| {
-        parent
-            .spawn(DialogBundle::new(theme))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+    parent
+        .spawn(DialogBundle::new(theme))
+        .with_children(|parent| {
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(LabelBundle::normal(theme, "Join world"));
+                    },
+                    background_color: theme.panel_color.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(LabelBundle::normal(theme, "Join world"));
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    display: Display::Grid,
-                                    column_gap: theme.gap.normal,
-                                    row_gap: theme.gap.normal,
-                                    grid_template_columns: vec![GridTrack::auto(); 2],
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                display: Display::Grid,
+                                column_gap: theme.gap.normal,
+                                row_gap: theme.gap.normal,
+                                grid_template_columns: vec![GridTrack::auto(); 2],
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(LabelBundle::normal(theme, "IP:"));
-                                parent.spawn((
-                                    IpEdit,
-                                    TextEditBundle::new(theme, Ipv4Addr::LOCALHOST.to_string()),
-                                ));
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(LabelBundle::normal(theme, "IP:"));
+                            parent.spawn((
+                                IpEdit,
+                                TextEditBundle::new(theme, Ipv4Addr::LOCALHOST.to_string()),
+                            ));
 
-                                parent.spawn(LabelBundle::normal(theme, "Port:"));
-                                parent.spawn((
-                                    PortEdit,
-                                    TextEditBundle::new(theme, DEFAULT_PORT.to_string())
-                                        .inactive(theme),
-                                ));
-                            });
+                            parent.spawn(LabelBundle::normal(theme, "Port:"));
+                            parent.spawn((
+                                PortEdit,
+                                TextEditBundle::new(theme, DEFAULT_PORT.to_string())
+                                    .inactive(theme),
+                            ));
+                        });
 
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    column_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: theme.gap.normal,
                                 ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                for button in JoinDialogButton::iter() {
-                                    parent.spawn((
-                                        button,
-                                        TextButtonBundle::normal(theme, button.to_string()),
-                                    ));
-                                }
-                            });
-                    });
-            });
-    });
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            for button in JoinDialogButton::iter() {
+                                parent.spawn((
+                                    button,
+                                    TextButtonBundle::normal(theme, button.to_string()),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 #[derive(Component, EnumIter, Clone, Copy, Display)]
