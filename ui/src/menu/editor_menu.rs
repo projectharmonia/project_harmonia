@@ -66,7 +66,6 @@ impl EditorMenuPlugin {
     fn setup(
         mut commands: Commands,
         theme: Res<Theme>,
-
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         info!("entering family editor");
