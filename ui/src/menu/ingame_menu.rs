@@ -55,13 +55,18 @@ impl Plugin for InGameMenuPlugin {
 impl InGameMenuPlugin {
     fn open(
         mut commands: Commands,
+        world_state: Res<State<WorldState>>,
         theme: Res<Theme>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
         info!("showing in-game menu");
         commands.entity(roots.single()).with_children(|parent| {
             parent
-                .spawn((IngameMenu, DialogBundle::new(&theme)))
+                .spawn((
+                    IngameMenu,
+                    StateScoped(**world_state),
+                    DialogBundle::new(&theme),
+                ))
                 .with_children(|parent| {
                     parent
                         .spawn(NodeBundle {
