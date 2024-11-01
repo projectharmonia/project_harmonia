@@ -18,7 +18,6 @@ use crate::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        hover::Hoverable,
         spline::{
             dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
         },
@@ -78,7 +77,6 @@ impl RoadPlugin {
                 RoadData::new(info),
                 Collider::default(),
                 CollisionLayers::new(Layer::Road, [Layer::Wall, Layer::PlacingWall]),
-                Hoverable,
                 NoFrustumCulling,
                 PbrBundle {
                     material: asset_server.load(info.material.clone()),

@@ -12,10 +12,11 @@ use crate::{
     game_world::{
         actor::{
             animation_state::{AnimationState, Montage, MontageFinished},
-            task::{linked_task::LinkedTask, Task, TaskGroups, TaskList, TaskListSet, TaskState},
+            task::{
+                linked_task::LinkedTask, AvailableTasks, ListTasks, Task, TaskGroups, TaskState,
+            },
             Actor, ActorAnimation, Movement,
         },
-        hover::Hovered,
         navigation::{following::Following, NavDestination, NavSettings},
     },
 };
@@ -28,10 +29,10 @@ impl Plugin for TellSecretPlugin {
             .register_type::<ListenSecret>()
             .replicate::<TellSecret>()
             .replicate::<ListenSecret>()
+            .observe(Self::add_to_list)
             .add_systems(
                 Update,
                 (
-                    Self::add_to_list.in_set(TaskListSet),
                     Self::start_following.run_if(server_or_singleplayer),
                     Self::start_telling,
                     Self::start_listening,
@@ -44,11 +45,12 @@ impl Plugin for TellSecretPlugin {
 
 impl TellSecretPlugin {
     fn add_to_list(
-        mut list_events: EventWriter<TaskList>,
-        mut actors: Query<Entity, (With<Actor>, With<Hovered>)>,
+        trigger: Trigger<ListTasks>,
+        mut available_tasks: ResMut<AvailableTasks>,
+        actors: Query<(), With<Actor>>,
     ) {
-        if let Ok(entity) = actors.get_single_mut() {
-            list_events.send(TellSecret(entity).into());
+        if actors.get(trigger.entity()).is_ok() {
+            available_tasks.add(TellSecret(trigger.entity()));
         }
     }
 

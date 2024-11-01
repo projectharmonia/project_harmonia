@@ -2,9 +2,10 @@ pub mod actor;
 pub mod city;
 pub mod commands_history;
 pub mod family;
-pub mod hover;
+pub mod highlighting;
 pub mod navigation;
 pub mod object;
+pub mod picking;
 mod player_camera;
 mod spline;
 
@@ -24,9 +25,10 @@ use actor::{Actor, ActorPlugin};
 use city::CityPlugin;
 use commands_history::CommandHistoryPlugin;
 use family::FamilyPlugin;
-use hover::HoverPlugin;
+use highlighting::HighlightingPlugin;
 use navigation::NavigationPlugin;
 use object::ObjectPlugin;
+use picking::PickingPlugin;
 use player_camera::PlayerCameraPlugin;
 use spline::SplinePlugin;
 
@@ -38,10 +40,11 @@ impl Plugin for GameWorldPlugin {
             ActorPlugin,
             CityPlugin,
             SplinePlugin,
-            HoverPlugin,
             FamilyPlugin,
+            HighlightingPlugin,
             NavigationPlugin,
             ObjectPlugin,
+            PickingPlugin,
             PlayerCameraPlugin,
             CommandHistoryPlugin,
         ))

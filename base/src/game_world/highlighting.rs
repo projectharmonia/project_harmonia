@@ -4,14 +4,17 @@ use bevy::{
 };
 use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle, OutlineVolume};
 
-use crate::{core::GameState, game_world::hover::Hovered};
+use super::picking::{Hovered, Picked, Unhovered};
+use crate::core::GameState;
 
 pub(super) struct HighlightingPlugin;
 
 impl Plugin for HighlightingPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::enable)
+        app.init_resource::<LastHighlighted>()
+            .observe(Self::enable)
             .observe(Self::disable)
+            .observe(Self::pick)
             .add_systems(
                 SpawnScene,
                 Self::init_scene
@@ -39,20 +42,49 @@ impl HighlightingPlugin {
         }
     }
 
-    fn enable(trigger: Trigger<OnAdd, Hovered>, mut hovered: Query<&mut OutlineVolume>) {
-        if let Ok(mut outline) = hovered.get_mut(trigger.entity()) {
-            debug!("highlighting enabled");
+    fn enable(
+        trigger: Trigger<Hovered>,
+        mut last_hovered: ResMut<LastHighlighted>,
+        mut volumes: Query<&mut OutlineVolume>,
+    ) {
+        if let Ok(mut outline) = volumes.get_mut(trigger.entity()) {
+            debug!("enabling highlighting for `{}`", trigger.entity());
             outline.visible = true;
+            **last_hovered = Some(trigger.entity());
         }
     }
 
-    fn disable(trigger: Trigger<OnRemove, Hovered>, mut hovered: Query<&mut OutlineVolume>) {
-        if let Ok(mut outline) = hovered.get_mut(trigger.entity()) {
-            debug!("highlighting disabled");
+    fn disable(
+        trigger: Trigger<Unhovered>,
+        mut volumes: Query<&mut OutlineVolume>,
+        mut last_hovered: ResMut<LastHighlighted>,
+    ) {
+        **last_hovered = None;
+        if let Ok(mut outline) = volumes.get_mut(trigger.entity()) {
+            debug!("disabling highlighting for `{}`", trigger.entity());
             outline.visible = false;
         }
     }
+
+    fn pick(
+        _trigger: Trigger<OnRemove, Picked>,
+        mut last_hovered: ResMut<LastHighlighted>,
+        mut volumes: Query<&mut OutlineVolume>,
+    ) {
+        if let Some(entity) = **last_hovered {
+            debug!("clearing highlighting for `{entity}`");
+            let mut outline = volumes
+                .get_mut(entity)
+                .expect("all hovered entities have outline");
+            outline.visible = true;
+            **last_hovered = Some(entity);
+        }
+    }
 }
+
+/// Stores last highlighted entity to cleanup when picking is disabled.
+#[derive(Resource, Default, Deref, DerefMut)]
+struct LastHighlighted(Option<Entity>);
 
 pub(crate) trait OutlineHighlightingExt {
     fn highlighting() -> Self;

@@ -14,7 +14,6 @@ use crate::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        hover::Hoverable,
         navigation::Obstacle,
         spline::{
             dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
@@ -80,7 +79,6 @@ impl WallPlugin {
                         Layer::PlacingRoad,
                     ],
                 ),
-                Hoverable,
                 NoFrustumCulling,
                 Obstacle,
                 PbrBundle {

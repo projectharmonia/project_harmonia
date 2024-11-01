@@ -13,7 +13,6 @@ use vleue_navigator::prelude::*;
 
 use super::{
     actor::SelectedActor,
-    hover::Hoverable,
     player_camera::{EnvironmentMap, PlayerCameraBundle},
     WorldState,
 };
@@ -258,7 +257,6 @@ struct GroundBundle {
     collider: Collider,
     collision_layers: CollisionLayers,
     ground: Ground,
-    cursor_hoverable: Hoverable,
     pbr_bundle: PbrBundle,
 }
 
@@ -269,7 +267,6 @@ impl Default for GroundBundle {
             collider: Collider::cuboid(CITY_SIZE, 0.0, CITY_SIZE),
             collision_layers: CollisionLayers::new(Layer::Ground, LayerMask::ALL),
             ground: Ground,
-            cursor_hoverable: Hoverable,
             pbr_bundle: Default::default(),
         }
     }

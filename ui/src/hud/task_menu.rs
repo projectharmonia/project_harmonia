@@ -1,14 +1,15 @@
+use std::mem;
+
 use bevy::prelude::*;
 use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use project_harmonia_base::{
     game_world::{
         actor::{
-            task::{Task, TaskList, TaskRequest},
+            task::{AvailableTasks, Task, TaskRequest},
             SelectedActor,
         },
         family::FamilyMode,
-        hover::Hovered,
     },
     settings::Action,
 };
@@ -27,7 +28,7 @@ impl Plugin for TaskMenuPlugin {
         .add_systems(
             PostUpdate,
             (
-                Self::open,
+                Self::open.run_if(resource_exists::<AvailableTasks>),
                 Self::close.run_if(action_just_pressed(Action::Cancel)),
             )
                 .run_if(in_state(FamilyMode::Life)),
@@ -38,33 +39,35 @@ impl Plugin for TaskMenuPlugin {
 impl TaskMenuPlugin {
     fn open(
         mut commands: Commands,
-        mut list_events: ResMut<Events<TaskList>>,
+        mut available_tasks: ResMut<AvailableTasks>,
         theme: Res<Theme>,
         task_menus: Query<Entity, With<TaskMenu>>,
-        hovered: Query<&Name, With<Hovered>>,
+        names: Query<&Name>,
         windows: Query<&Window>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        let tasks = list_events.drain().map(|event| event.0).collect::<Vec<_>>();
-        if tasks.is_empty() {
+        commands.remove_resource::<AvailableTasks>();
+        if let Ok(entity) = task_menus.get_single() {
+            info!("closing previous task menu");
+            commands.entity(entity).despawn_recursive();
+        }
+
+        if available_tasks.tasks.is_empty() {
             return;
         }
 
-        if let Ok(entity) = task_menus.get_single() {
-            info!("reopening task menu");
-            commands.entity(entity).despawn_recursive();
-        } else {
-            info!("displaying task menu");
-        }
-
+        info!("showing task menu");
+        let name = names
+            .get(available_tasks.entity)
+            .expect("task entity should have a name");
         let cursor_pos = windows.single().cursor_position().unwrap_or_default();
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn_empty()
                 .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(&theme, hovered.single()));
+                    parent.spawn(LabelBundle::normal(&theme, name));
 
-                    for (index, task) in tasks.iter().enumerate() {
+                    for (index, task) in available_tasks.tasks.iter().enumerate() {
                         parent.spawn((
                             TaskMenuIndex(index),
                             TextButtonBundle::normal(&theme, task.name()),
@@ -72,7 +75,7 @@ impl TaskMenuPlugin {
                     }
                 })
                 .insert((
-                    TaskMenu(tasks),
+                    TaskMenu(mem::take(&mut available_tasks.tasks)),
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,

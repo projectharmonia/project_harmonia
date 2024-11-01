@@ -15,10 +15,7 @@ use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
 
-use super::{
-    hover::{highlighting::OutlineHighlightingExt, Hoverable},
-    WorldState,
-};
+use super::{highlighting::OutlineHighlightingExt, WorldState};
 use crate::{
     asset::collection::{AssetCollection, Collection},
     core::GameState,
@@ -80,7 +77,6 @@ impl ActorPlugin {
                     Vec3::Y * (ACTOR_HEIGHT - ACTOR_RADIUS),
                 ),
                 OutlineBundle::highlighting(),
-                Hoverable,
             ));
         }
     }

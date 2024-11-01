@@ -2,15 +2,12 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::{AvailableTasks, ListTasks, Task, TaskGroups, TaskState};
 use crate::{
     core::GameState,
     game_world::{
-        actor::{
-            task::{Task, TaskGroups, TaskList, TaskListSet, TaskState},
-            Movement,
-        },
+        actor::Movement,
         city::Ground,
-        hover::Hovered,
         navigation::{NavDestination, NavSettings},
     },
 };
@@ -21,11 +18,8 @@ impl Plugin for MoveHerePlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<MoveHere>()
             .replicate::<MoveHere>()
-            .add_systems(
-                Update,
-                (Self::add_to_list.in_set(TaskListSet), Self::finish)
-                    .run_if(in_state(GameState::InGame)),
-            )
+            .observe(Self::add_to_list)
+            .add_systems(Update, Self::finish.run_if(in_state(GameState::InGame)))
             // Should run in `PostUpdate` to let tiles initialize.
             .add_systems(
                 PostUpdate,
@@ -36,24 +30,19 @@ impl Plugin for MoveHerePlugin {
 
 impl MoveHerePlugin {
     fn add_to_list(
-        mut list_events: EventWriter<TaskList>,
-        mut grounds: Query<&Hovered, With<Ground>>,
+        trigger: Trigger<ListTasks>,
+        mut available_tasks: ResMut<AvailableTasks>,
+        grounds: Query<(), With<Ground>>,
     ) {
-        if let Ok(hovered) = grounds.get_single_mut() {
-            list_events.send(
-                MoveHere {
-                    endpoint: hovered.0,
-                    movement: Movement::Walk,
-                }
-                .into(),
-            );
-            list_events.send(
-                MoveHere {
-                    endpoint: hovered.0,
-                    movement: Movement::Run,
-                }
-                .into(),
-            );
+        if grounds.get(trigger.entity()).is_ok() {
+            available_tasks.add(MoveHere {
+                endpoint: **trigger.event(),
+                movement: Movement::Walk,
+            });
+            available_tasks.add(MoveHere {
+                endpoint: **trigger.event(),
+                movement: Movement::Run,
+            });
         }
     }
 

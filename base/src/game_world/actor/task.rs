@@ -16,16 +16,16 @@ use bevy_replicon::{
 };
 use bincode::{DefaultOptions, ErrorKind, Options};
 use bitflags::bitflags;
-use leafwing_input_manager::common_conditions::action_just_pressed;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use crate::{
+    common_conditions::observer_in_state,
     game_world::{
         actor::{animation_state::AnimationState, Actor},
         family::FamilyMode,
         navigation::NavDestination,
+        picking::Clicked,
     },
-    settings::Action,
 };
 use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;
@@ -44,18 +44,12 @@ impl Plugin for TaskPlugin {
         ))
         .register_type::<TaskState>()
         .replicate::<TaskState>()
+        .observe(Self::list)
         .add_client_event::<TaskCancel>(ChannelKind::Unordered)
         .add_client_event_with(
             ChannelKind::Unordered,
             serialize_task_request,
             deserialize_task_request,
-        )
-        .add_event::<TaskList>()
-        .configure_sets(
-            Update,
-            TaskListSet
-                .run_if(action_just_pressed(Action::Confirm))
-                .run_if(in_state(FamilyMode::Life)),
         )
         .add_systems(
             PreUpdate,
@@ -71,6 +65,19 @@ impl Plugin for TaskPlugin {
 }
 
 impl TaskPlugin {
+    fn list(
+        trigger: Trigger<Clicked>,
+        mut commands: Commands,
+        family_mode: Option<Res<State<FamilyMode>>>,
+    ) {
+        if !observer_in_state(family_mode, FamilyMode::Life) {
+            return;
+        }
+
+        commands.insert_resource(AvailableTasks::new(trigger.entity()));
+        commands.trigger_targets(ListTasks(**trigger.event()), trigger.entity());
+    }
+
     fn request(
         mut commands: Commands,
         mut request_events: ResMut<Events<FromClient<TaskRequest>>>,
@@ -192,20 +199,31 @@ fn deserialize_task_request(
     Ok(TaskRequest { entity, task })
 }
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub(crate) struct TaskListSet;
+/// Stores available tasks for an entity, triggered by [`ListTasks`].
+#[derive(Resource)]
+pub struct AvailableTasks {
+    pub entity: Entity,
+    pub tasks: Vec<Box<dyn Task>>,
+}
 
-// Contains a task that should be listed.
-///
-/// Emitted when clicking on objects.
-#[derive(Event)]
-pub struct TaskList(pub Box<dyn Task>);
+impl AvailableTasks {
+    fn new(entity: Entity) -> Self {
+        Self {
+            entity,
+            tasks: Default::default(),
+        }
+    }
 
-impl<T: Task> From<T> for TaskList {
-    fn from(value: T) -> Self {
-        Self(Box::new(value))
+    fn add<T: Task>(&mut self, task: T) {
+        self.tasks.push(Box::new(task));
     }
 }
+
+/// Event that all possible tasks for an entity clicked at location.
+///
+/// All tasks needs to be stored in [`AvailableTasks`]
+#[derive(Event, Deref, DerefMut)]
+struct ListTasks(pub Vec3);
 
 #[derive(Bundle)]
 struct TaskBundle {

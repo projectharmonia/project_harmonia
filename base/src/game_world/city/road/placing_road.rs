@@ -10,10 +10,11 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 use super::{Road, RoadData, RoadTool};
 use crate::{
     asset::info::road_info::RoadInfo,
+    common_conditions::observer_in_state,
     game_world::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
-        hover::{HoverPlugin, Hovered},
+        picking::Clicked,
         player_camera::CameraCaster,
         spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
         Layer,
@@ -27,34 +28,31 @@ pub(super) struct PlacingRoadPlugin;
 
 impl Plugin for PlacingRoadPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(HoverPlugin::enable_on_remove::<PlacingRoad>)
-            .observe(HoverPlugin::disable_on_add::<PlacingRoad>)
-            .add_systems(
-                Update,
+        app.observe(Self::pick).add_systems(
+            Update,
+            (
+                Self::spawn
+                    .run_if(resource_exists::<SpawnRoadId>)
+                    .run_if(in_state(RoadTool::Create))
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<PlacingRoad>)),
                 (
-                    (
-                        Self::spawn
-                            .run_if(resource_exists::<SpawnRoadId>)
-                            .run_if(in_state(RoadTool::Create)),
-                        Self::pick.run_if(in_state(RoadTool::Move)),
-                    )
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<PlacingRoad>)),
-                    (
-                        Self::update_end,
-                        Self::update_material,
-                        Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                        Self::delete.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                    )
-                        .run_if(in_state(CityMode::Roads)),
-                ),
-            );
+                    Self::update_end,
+                    Self::update_material,
+                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                    Self::delete.run_if(action_just_pressed(Action::Delete)),
+                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
+                )
+                    .run_if(in_state(CityMode::Roads)),
+            ),
+        );
     }
 }
 
 impl PlacingRoadPlugin {
     fn pick(
+        trigger: Trigger<Clicked>,
+        road_tool: Option<Res<State<RoadTool>>>,
         mut commands: Commands,
         roads_info: Res<Assets<RoadInfo>>,
         asset_server: Res<AssetServer>,
@@ -65,10 +63,13 @@ impl PlacingRoadPlugin {
             &Handle<StandardMaterial>,
             &Road,
             &SplineSegment,
-            &Hovered,
         )>,
     ) {
-        let Ok((entity, parent, material, road, &segment, hovered)) = roads.get_single() else {
+        if !observer_in_state(road_tool, RoadTool::Move) {
+            return;
+        }
+
+        let Ok((entity, parent, material, road, &segment)) = roads.get(trigger.entity()) else {
             return;
         };
 
@@ -77,7 +78,7 @@ impl PlacingRoadPlugin {
             .expect("info should be preloaded");
         let info = roads_info.get(&info_handle).unwrap();
 
-        let point = hovered.xz();
+        let point = trigger.event().xz();
         let kind = if segment.start.distance(point) < info.half_width {
             PointKind::Start
         } else if segment.end.distance(point) < info.half_width {

@@ -17,12 +17,13 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use crate::{
     asset::info::object_info::ObjectInfo,
+    common_conditions::observer_in_state,
     game_world::{
         city::CityMode,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::BuildingMode,
-        hover::{HoverPlugin, Hovered},
         object::{Object, ObjectCommand},
+        picking::{Clicked, Picked},
         player_camera::{CameraCaster, PlayerCamera},
         Layer,
     },
@@ -38,8 +39,7 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
-            .observe(HoverPlugin::enable_on_remove::<PlacingObject>)
-            .observe(HoverPlugin::disable_on_add::<PlacingObject>)
+            .observe(Self::pick)
             .observe(Self::ensure_single)
             .add_systems(
                 PreUpdate,
@@ -50,9 +50,6 @@ impl Plugin for PlacingObjectPlugin {
                 Update,
                 (
                     (
-                        Self::pick
-                            .run_if(action_just_pressed(Action::Confirm))
-                            .run_if(not(any_with_component::<PlacingObject>)),
                         Self::sell.run_if(action_just_pressed(Action::Delete)),
                         Self::cancel.run_if(action_just_pressed(Action::Cancel)),
                     ),
@@ -76,10 +73,19 @@ impl Plugin for PlacingObjectPlugin {
 
 impl PlacingObjectPlugin {
     fn pick(
+        trigger: Trigger<Clicked>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
-        objects: Query<(Entity, &Parent), (With<Object>, With<Hovered>)>,
+        objects: Query<(Entity, &Parent), With<Object>>,
     ) {
-        if let Ok((object_entity, parent)) = objects.get_single() {
+        if !observer_in_state(city_mode, CityMode::Objects)
+            && !observer_in_state(building_mode, BuildingMode::Objects)
+        {
+            return;
+        }
+
+        if let Ok((object_entity, parent)) = objects.get(trigger.entity()) {
             info!("picking object `{object_entity}`");
             commands.entity(**parent).with_children(|parent| {
                 parent.spawn(PlacingObject::Moving(object_entity));
@@ -140,6 +146,7 @@ impl PlacingObjectPlugin {
             Name::new("Placing object"),
             StateScoped(BuildingMode::Objects),
             StateScoped(CityMode::Objects),
+            Picked,
             scene_handle,
             PlacingObjectState::new(cursor_offset),
             ObjectRotationLimit::default(),

@@ -18,7 +18,7 @@ use super::{
         CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
         PendingCommand,
     },
-    hover::{highlighting::OutlineHighlightingExt, Hoverable},
+    highlighting::OutlineHighlightingExt,
 };
 use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
 use door::DoorPlugin;
@@ -68,7 +68,6 @@ impl ObjectPlugin {
             entity.insert((
                 scene_handle,
                 Name::new(info.general.name.clone()),
-                Hoverable,
                 RigidBody::Kinematic,
                 OutlineBundle::highlighting(),
                 GlobalTransform::default(),

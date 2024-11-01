@@ -6,16 +6,13 @@ use bevy::{
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::{AvailableTasks, ListTasks, Task, TaskState};
 use crate::game_world::{
-    actor::{
-        task::{Task, TaskList, TaskListSet, TaskState},
-        Actor,
-    },
+    actor::Actor,
     city::{
         lot::{LotFamily, LotVertices},
         Ground,
     },
-    hover::Hovered,
 };
 
 pub(super) struct BuyLotPlugin;
@@ -24,28 +21,24 @@ impl Plugin for BuyLotPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<BuyLot>()
             .replicate::<BuyLot>()
-            .add_systems(
-                Update,
-                (
-                    Self::add_to_list.in_set(TaskListSet),
-                    Self::buy.run_if(server_or_singleplayer),
-                ),
-            );
+            .observe(Self::add_to_list)
+            .add_systems(Update, Self::buy.run_if(server_or_singleplayer));
     }
 }
 
 impl BuyLotPlugin {
     fn add_to_list(
-        mut list_events: EventWriter<TaskList>,
-        mut grounds: Query<&Hovered, With<Ground>>,
+        trigger: Trigger<ListTasks>,
+        mut available_tasks: ResMut<AvailableTasks>,
+        grounds: Query<(), With<Ground>>,
         lots: Query<(Entity, &LotVertices), Without<LotFamily>>,
     ) {
-        if let Ok(point) = grounds.get_single_mut().map(|point| point.xz()) {
+        if grounds.get(trigger.entity()).is_ok() {
             if let Some((lot_entity, _)) = lots
                 .iter()
-                .find(|(_, vertices)| vertices.contains_point(point))
+                .find(|(_, vertices)| vertices.contains_point(trigger.event().xz()))
             {
-                list_events.send(BuyLot(lot_entity).into());
+                available_tasks.add(BuyLot(lot_entity));
             }
         }
     }

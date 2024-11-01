@@ -9,11 +9,12 @@ use leafwing_input_manager::common_conditions::action_just_pressed;
 
 use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
+    common_conditions::observer_in_state,
     game_world::{
         city::ActiveCity,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
-        hover::{HoverPlugin, Hovered},
+        picking::{Clicked, Picked},
         player_camera::CameraCaster,
         spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
         Layer,
@@ -27,27 +28,23 @@ pub(super) struct PlacingWallPlugin;
 
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(HoverPlugin::enable_on_remove::<PlacingWall>)
-            .observe(HoverPlugin::disable_on_add::<PlacingWall>)
-            .add_systems(
-                Update,
+        app.observe(Self::pick).add_systems(
+            Update,
+            (
+                Self::spawn
+                    .run_if(in_state(WallTool::Create))
+                    .run_if(action_just_pressed(Action::Confirm))
+                    .run_if(not(any_with_component::<PlacingWall>)),
                 (
-                    (
-                        Self::spawn.run_if(in_state(WallTool::Create)),
-                        Self::pick.run_if(in_state(WallTool::Move)),
-                    )
-                        .run_if(action_just_pressed(Action::Confirm))
-                        .run_if(not(any_with_component::<PlacingWall>)),
-                    (
-                        Self::update_end,
-                        Self::update_material,
-                        Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                        Self::delete.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                    )
-                        .run_if(in_state(BuildingMode::Walls)),
-                ),
-            );
+                    Self::update_end,
+                    Self::update_material,
+                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
+                    Self::delete.run_if(action_just_pressed(Action::Delete)),
+                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
+                )
+                    .run_if(in_state(BuildingMode::Walls)),
+            ),
+        );
     }
 }
 
@@ -55,17 +52,23 @@ const SNAP_DELTA: f32 = 0.5;
 
 impl PlacingWallPlugin {
     fn pick(
+        trigger: Trigger<Clicked>,
+        wall_tool: Option<Res<State<WallTool>>>,
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &Parent, &SplineSegment, &Hovered), With<Wall>>,
+        walls: Query<(Entity, &Parent, &SplineSegment), With<Wall>>,
     ) {
-        let Ok((entity, parent, &segment, hovered)) = walls.get_single() else {
+        if !observer_in_state(wall_tool, WallTool::Move) {
+            return;
+        }
+
+        let Ok((entity, parent, &segment)) = walls.get(trigger.entity()) else {
             return;
         };
 
         const PICK_DELTA: f32 = 0.4;
-        let point = hovered.xz();
+        let point = trigger.event().xz();
         let kind = if segment.start.distance(point) < PICK_DELTA {
             PointKind::Start
         } else if segment.end.distance(point) < PICK_DELTA {
@@ -254,6 +257,7 @@ struct PlacingWallBundle {
     name: Name,
     placing_wall: PlacingWall,
     segment: SplineSegment,
+    picked: Picked,
     state_scoped: StateScoped<WallTool>,
     apertures: Apertures,
     collider: Collider,
@@ -277,6 +281,7 @@ impl PlacingWallBundle {
             name: Name::new("Placing wall"),
             placing_wall,
             segment,
+            picked: Picked,
             state_scoped: StateScoped(tool),
             apertures: Default::default(),
             collider: Default::default(),
