@@ -9,6 +9,7 @@ use bevy::{
         render_resource::{Extent3d, TextureUsages},
         view::{NoFrustumCulling, RenderLayers},
     },
+    scene,
 };
 
 use project_harmonia_base::asset::info::object_info::ObjectInfo;
@@ -20,12 +21,16 @@ impl Plugin for PreviewPlugin {
         app.init_state::<PreviewState>()
             .add_systems(Startup, Self::setup)
             .add_systems(OnEnter(PreviewState::Inactive), Self::despawn_scene)
+            .add_systems(OnEnter(PreviewState::Rendering), Self::render)
             .add_systems(
-                Update,
+                SpawnScene,
                 (
-                    Self::wait_for_request.run_if(in_state(PreviewState::Inactive)),
-                    Self::wait_for_loading.run_if(in_state(PreviewState::LoadingAsset)),
-                    Self::render_preview.run_if(in_state(PreviewState::Rendering)),
+                    Self::wait_for_request
+                        .before(scene::scene_spawner_system)
+                        .run_if(in_state(PreviewState::Inactive)),
+                    Self::wait_for_loading
+                        .after(scene::scene_spawner_system)
+                        .run_if(in_state(PreviewState::LoadingAsset)),
                 ),
             );
     }
@@ -145,7 +150,7 @@ impl PreviewPlugin {
     }
 
     /// Waits one frame for components like [`NoWireframe`] to take effect.
-    fn render_preview(mut preview_state: ResMut<NextState<PreviewState>>) {
+    fn render(mut preview_state: ResMut<NextState<PreviewState>>) {
         debug!("finishing rendering");
         preview_state.set(PreviewState::Inactive);
     }
