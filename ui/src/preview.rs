@@ -127,7 +127,7 @@ impl PreviewPlugin {
 
             let mut camera = preview_cameras.single_mut();
             camera.is_active = true;
-            camera.target = RenderTarget::Image(image_handle.clone());
+            camera.target = RenderTarget::Image(image_handle);
 
             for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
                 commands.entity(child_entity).insert((
