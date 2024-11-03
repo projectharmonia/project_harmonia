@@ -1,17 +1,14 @@
 use std::mem;
 
 use bevy::prelude::*;
-use leafwing_input_manager::common_conditions::action_just_pressed;
+use bevy_enhanced_input::prelude::*;
 
-use project_harmonia_base::{
-    game_world::{
-        actor::{
-            task::{AvailableTasks, Task, TaskRequest},
-            SelectedActor,
-        },
-        family::FamilyMode,
+use project_harmonia_base::game_world::{
+    actor::{
+        task::{AvailableTasks, Task, TaskRequest},
+        SelectedActor,
     },
-    settings::Action,
+    family::FamilyMode,
 };
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, label::LabelBundle, theme::Theme,
@@ -21,18 +18,18 @@ pub(super) struct TaskMenuPlugin;
 
 impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            Self::request_task.run_if(in_state(FamilyMode::Life)),
-        )
-        .add_systems(
-            PostUpdate,
-            (
-                Self::open.run_if(resource_exists::<AvailableTasks>),
-                Self::close.run_if(action_just_pressed(Action::Cancel)),
+        app.add_input_context::<TaskMenu>()
+            .observe(Self::close)
+            .add_systems(
+                Update,
+                Self::request_task.run_if(in_state(FamilyMode::Life)),
             )
-                .run_if(in_state(FamilyMode::Life)),
-        );
+            .add_systems(
+                PostUpdate,
+                Self::open
+                    .run_if(resource_exists::<AvailableTasks>)
+                    .run_if(in_state(FamilyMode::Life)),
+            );
     }
 }
 
@@ -117,7 +114,11 @@ impl TaskMenuPlugin {
         }
     }
 
-    fn close(mut commands: Commands, task_menus: Query<Entity, With<TaskMenu>>) {
+    fn close(
+        _trigger: Trigger<Started<CloseTaskMenu>>,
+        mut commands: Commands,
+        task_menus: Query<Entity, With<TaskMenu>>,
+    ) {
         if let Ok(entity) = task_menus.get_single() {
             info!("closing task menu");
             commands.entity(entity).despawn_recursive();
@@ -126,7 +127,24 @@ impl TaskMenuPlugin {
 }
 
 #[derive(Component, Deref, DerefMut)]
-pub(crate) struct TaskMenu(Vec<Box<dyn Task>>);
+struct TaskMenu(Vec<Box<dyn Task>>);
+
+impl InputContext for TaskMenu {
+    const PRIORITY: isize = -1;
+
+    fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        ctx.bind::<CloseTaskMenu>()
+            .with(KeyCode::Escape)
+            .with(GamepadButtonType::South)
+            .with(GamepadButtonType::East);
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct CloseTaskMenu;
 
 #[derive(Component)]
 struct TaskMenuIndex(usize);

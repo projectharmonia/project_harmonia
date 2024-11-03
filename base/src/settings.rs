@@ -4,11 +4,10 @@ use anyhow::{Context, Result};
 use avian3d::prelude::*;
 use bevy::{
     color::palettes::css::DARK_RED, pbr::wireframe::WireframeConfig, prelude::*, scene::ron,
-    utils::HashMap, window::WindowMode,
+    window::WindowMode,
 };
-use leafwing_input_manager::{prelude::*, user_input::InputKind};
+use bevy_enhanced_input::prelude::*;
 use serde::{Deserialize, Serialize};
-use strum::Display;
 use vleue_navigator::prelude::*;
 
 use super::{game_paths::GamePaths, message::error_message};
@@ -21,8 +20,6 @@ impl Plugin for SettingsPlugin {
 
         app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
             .add_event::<SettingsApply>()
-            .init_resource::<InputMap<Action>>()
-            .init_resource::<ActionState<Action>>()
             .add_systems(Startup, Self::apply)
             .add_systems(
                 PostUpdate,
@@ -40,7 +37,6 @@ impl SettingsPlugin {
         mut commands: Commands,
         mut config_store: ResMut<GizmoConfigStore>,
         mut wireframe_config: ResMut<WireframeConfig>,
-        mut input_map: ResMut<InputMap<Action>>,
         settings: Res<Settings>,
         mut windows: Query<&mut Window>,
     ) {
@@ -61,10 +57,7 @@ impl SettingsPlugin {
             commands.remove_resource::<NavMeshesDebug>();
         }
 
-        input_map.clear();
-        for (&action, inputs) in &settings.controls.mappings {
-            input_map.insert_one_to_many(action, inputs.iter().cloned());
-        }
+        commands.trigger(RebuildInputContexts);
     }
 }
 
@@ -76,8 +69,7 @@ pub struct SettingsApply;
 #[serde(default)]
 pub struct Settings {
     pub video: VideoSettings,
-    #[reflect(ignore)]
-    pub controls: ControlsSettings,
+    pub keyboard: KeyboardSettings,
     pub developer: DeveloperSettings,
 }
 
@@ -122,41 +114,47 @@ pub struct VideoSettings {
     pub fullscreen: bool,
 }
 
-#[derive(Clone, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, PartialEq, Reflect, Serialize)]
 #[serde(default)]
-pub struct ControlsSettings {
-    pub mappings: HashMap<Action, Vec<InputKind>>,
+pub struct KeyboardSettings {
+    pub camera_forward: Vec<KeyCode>,
+    pub camera_left: Vec<KeyCode>,
+    pub camera_backward: Vec<KeyCode>,
+    pub camera_right: Vec<KeyCode>,
+    pub rotate_left: Vec<KeyCode>,
+    pub rotate_right: Vec<KeyCode>,
+    pub zoom_in: Vec<KeyCode>,
+    pub zoom_out: Vec<KeyCode>,
+    pub delete: Vec<KeyCode>,
 }
 
-impl Default for ControlsSettings {
-    fn default() -> Self {
-        let mappings = [
-            (
-                Action::CameraForward,
-                vec![KeyCode::KeyW.into(), KeyCode::ArrowUp.into()],
-            ),
-            (
-                Action::CameraBackward,
-                vec![KeyCode::KeyS.into(), KeyCode::ArrowDown.into()],
-            ),
-            (
-                Action::CameraLeft,
-                vec![KeyCode::KeyA.into(), KeyCode::ArrowLeft.into()],
-            ),
-            (
-                Action::CameraRight,
-                vec![KeyCode::KeyD.into(), KeyCode::ArrowRight.into()],
-            ),
-            (Action::RotateCamera, vec![MouseButton::Middle.into()]),
-            (Action::ZoomCamera, vec![SingleAxis::mouse_wheel_y().into()]),
-            (Action::RotateObject, vec![MouseButton::Right.into()]),
-            (Action::Confirm, vec![MouseButton::Left.into()]),
-            (Action::Delete, vec![KeyCode::Delete.into()]),
-            (Action::Cancel, vec![KeyCode::Escape.into()]),
-        ]
-        .into();
+impl KeyboardSettings {
+    pub fn clear(&mut self) {
+        self.camera_forward.clear();
+        self.camera_left.clear();
+        self.camera_backward.clear();
+        self.camera_right.clear();
+        self.rotate_left.clear();
+        self.rotate_right.clear();
+        self.zoom_in.clear();
+        self.zoom_out.clear();
+        self.delete.clear();
+    }
+}
 
-        Self { mappings }
+impl Default for KeyboardSettings {
+    fn default() -> Self {
+        Self {
+            camera_forward: vec![KeyCode::KeyW, KeyCode::ArrowUp],
+            camera_left: vec![KeyCode::KeyA, KeyCode::ArrowLeft],
+            camera_backward: vec![KeyCode::KeyS, KeyCode::ArrowDown],
+            camera_right: vec![KeyCode::KeyD, KeyCode::ArrowRight],
+            rotate_left: vec![KeyCode::Comma],
+            rotate_right: vec![KeyCode::Period],
+            zoom_in: vec![KeyCode::Equal, KeyCode::NumpadAdd],
+            zoom_out: vec![KeyCode::Minus, KeyCode::NumpadSubtract],
+            delete: vec![KeyCode::Delete, KeyCode::Backspace],
+        }
     }
 }
 
@@ -168,39 +166,4 @@ pub struct DeveloperSettings {
     pub colliders: bool,
     pub paths: bool,
     pub nav_mesh: bool,
-}
-
-#[derive(
-    Actionlike,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    Display,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    Reflect,
-    Serialize,
-)]
-pub enum Action {
-    #[strum(serialize = "Camera Forward")]
-    CameraForward,
-    #[strum(serialize = "Camera Backward")]
-    CameraBackward,
-    #[strum(serialize = "Camera Left")]
-    CameraLeft,
-    #[strum(serialize = "Camera Right")]
-    CameraRight,
-    #[strum(serialize = "Rotate Camera")]
-    RotateCamera,
-    #[strum(serialize = "Zoom Camera")]
-    ZoomCamera,
-    #[strum(serialize = "Rotate Object")]
-    RotateObject,
-    Confirm,
-    Delete,
-    Cancel,
 }

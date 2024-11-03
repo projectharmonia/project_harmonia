@@ -1,25 +1,32 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use leafwing_input_manager::prelude::*;
+use bevy_enhanced_input::prelude::*;
 
 use super::{city::ActiveCity, player_camera::CameraCaster, WorldState};
-use crate::{common_conditions::in_any_state, settings::Action};
+use crate::common_conditions::in_any_state;
 
 pub(super) struct PickingPlugin;
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PreUpdate,
-            Self::raycast
-                .pipe(Self::trigger)
-                .run_if(not(any_with_component::<Picked>))
-                .run_if(in_any_state([WorldState::City, WorldState::Family])),
-        );
+        app.add_input_context::<PickerInput>()
+            .add_systems(OnEnter(WorldState::City), Self::spawn)
+            .add_systems(OnEnter(WorldState::Family), Self::spawn)
+            .add_systems(
+                PreUpdate,
+                Self::raycast
+                    .pipe(Self::trigger)
+                    .run_if(not(any_with_component::<Picked>))
+                    .run_if(in_any_state([WorldState::City, WorldState::Family])),
+            );
     }
 }
 
 impl PickingPlugin {
+    fn spawn(mut commands: Commands, world_state: Res<State<WorldState>>) {
+        commands.spawn((PickerInput, StateScoped(**world_state)));
+    }
+
     fn raycast(
         spatial_query: SpatialQuery,
         camera_caster: CameraCaster,
@@ -47,7 +54,8 @@ impl PickingPlugin {
     fn trigger(
         In(hit): In<Option<(Entity, Vec3)>>,
         mut last_hover: Local<Option<Entity>>,
-        actions: Res<ActionState<Action>>,
+        instances: Res<ContextInstances>,
+        pickers: Query<Entity, With<PickerInput>>,
         mut commands: Commands,
     ) {
         let current_hover = hit.map(|(entity, _)| entity);
@@ -72,9 +80,12 @@ impl PickingPlugin {
 
         *last_hover = current_hover;
 
-        if let Some((entity, point)) = hit {
-            if actions.just_pressed(&Action::Confirm) {
-                commands.trigger_targets(Clicked(point), entity);
+        if let Some((hit_entity, point)) = hit {
+            let picker_entity = pickers.single();
+            let ctx = instances.get::<PickerInput>(picker_entity).unwrap();
+            let action = ctx.action::<Pick>().unwrap();
+            if action.events().contains(ActionEvents::COMPLETED) {
+                commands.trigger_targets(Clicked(point), hit_entity);
             }
         }
     }
@@ -92,6 +103,26 @@ pub(super) struct Unhovered;
 #[derive(Event, Deref)]
 pub struct Clicked(pub Vec3);
 
-/// A component that disables the picking logic if present on any entity.
+/// A component that disables the raycasting logic if present on any entity.
 #[derive(Component)]
 pub(super) struct Picked;
+
+/// Reads input for picking.
+#[derive(Component)]
+struct PickerInput;
+
+impl InputContext for PickerInput {
+    fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+
+        ctx.bind::<Pick>()
+            .with(MouseButton::Left)
+            .with(GamepadButtonType::South);
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct Pick;

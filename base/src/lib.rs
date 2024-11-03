@@ -6,7 +6,6 @@ pub mod core;
 pub mod game_paths;
 pub mod game_world;
 mod ghost;
-pub mod input_events;
 mod math;
 pub mod message;
 pub mod network;

@@ -1,11 +1,7 @@
-use bevy::{prelude::*, reflect::GetPath, ui::FocusPolicy};
-use leafwing_input_manager::user_input::InputKind;
+use bevy::{input::keyboard::KeyboardInput, prelude::*, reflect::GetPath, ui::FocusPolicy};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use project_harmonia_base::{
-    input_events::InputEvents,
-    settings::{Action, Settings, SettingsApply},
-};
+use project_harmonia_base::settings::{Settings, SettingsApply};
 use project_harmonia_widgets::{
     button::{ButtonText, ExclusiveButton, TabContent, TextButtonBundle, Toggled},
     checkbox::{Checkbox, CheckboxBundle},
@@ -90,8 +86,8 @@ impl SettingsMenuPlugin {
                             })
                             .with_children(|parent| match tab {
                                 SettingsTab::Video => setup_video_tab(parent, &theme, &settings),
-                                SettingsTab::Controls => {
-                                    setup_controls_tab(parent, &theme, &settings)
+                                SettingsTab::Keyboard => {
+                                    setup_keyboard_tab(parent, &theme, &settings)
                                 }
                                 SettingsTab::Developer => {
                                     setup_developer_tab(parent, &theme, &settings)
@@ -135,18 +131,11 @@ impl SettingsMenuPlugin {
 
     fn update_mapping_text(mut buttons: Query<(&Mapping, &mut ButtonText), Changed<Mapping>>) {
         for (mapping, mut text) in &mut buttons {
-            text.0 = match mapping.input_kind {
-                Some(InputKind::GamepadButton(gamepad_button)) => {
-                    format!("{gamepad_button:?}")
-                }
-                Some(InputKind::PhysicalKey(keycode)) => {
-                    format!("{keycode:?}")
-                }
-                Some(InputKind::Mouse(mouse_button)) => {
-                    format!("{mouse_button:?}")
-                }
-                _ => "Empty".to_string(),
-            };
+            if let Some(key) = mapping.key {
+                text.0 = format!("{key:?}");
+            } else {
+                text.0 = "Empty".to_string();
+            }
         }
     }
 
@@ -158,7 +147,7 @@ impl SettingsMenuPlugin {
         buttons: Query<(Entity, &Mapping)>,
     ) {
         for (entity, mapping) in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            info!("starting binding for '{}'", mapping.action);
+            info!("starting binding for '{}'", mapping.name);
             commands.entity(roots.single()).with_children(|parent| {
                 parent
                     .spawn((BindingButton(entity), DialogBundle::new(&theme)))
@@ -181,7 +170,7 @@ impl SettingsMenuPlugin {
                                     BindingLabel,
                                     LabelBundle::normal(
                                         &theme,
-                                        format!("Binding \"{}\", press any key", mapping.action),
+                                        format!("Binding \"{}\", press any key", mapping.name),
                                     ),
                                 ));
                                 parent
@@ -221,7 +210,7 @@ impl SettingsMenuPlugin {
 
     fn read_binding(
         mut commands: Commands,
-        mut input_events: InputEvents,
+        mut key_events: EventReader<KeyboardInput>,
         dialogs: Query<(Entity, &BindingButton)>,
         mut mapping_buttons: Query<(Entity, &mut Mapping)>,
         mut labels: Query<&mut Text, With<BindingLabel>>,
@@ -231,19 +220,17 @@ impl SettingsMenuPlugin {
             return;
         };
 
-        let Some(input_kind) = input_events.input_kind() else {
+        let Some(&KeyboardInput { key_code, .. }) = key_events.read().last() else {
             return;
         };
 
         if let Some((conflict_entity, mapping)) = mapping_buttons
             .iter()
-            .find(|(_, mapping)| mapping.input_kind == Some(input_kind))
+            .find(|(_, mapping)| mapping.key == Some(key_code))
         {
-            info!("found conflict with '{}'", mapping.action);
-            labels.single_mut().sections[0].value = format!(
-                "\"{input_kind}\" is already used by \"{:?}\"",
-                mapping.action
-            );
+            info!("found conflict with '{}' for `{key_code:?}`", mapping.name);
+            labels.single_mut().sections[0].value =
+                format!("\"{key_code:?}\" is already used by \"{:?}\"", mapping.name);
 
             commands
                 .entity(dialog_entity)
@@ -258,8 +245,8 @@ impl SettingsMenuPlugin {
             let (_, mut mapping) = mapping_buttons
                 .get_mut(binding_button.0)
                 .expect("binding dialog should point to a button with mapping");
-            mapping.input_kind = Some(input_kind);
-            info!("assigning binding to '{}'", mapping.action);
+            info!("assigning `{key_code:?}` to '{}'", mapping.name);
+            mapping.key = Some(key_code);
             commands.entity(dialog_entity).despawn_recursive();
         }
     }
@@ -280,21 +267,21 @@ impl SettingsMenuPlugin {
                     let mut conflict_mapping = mapping_buttons
                         .get_mut(conflict_button.0)
                         .expect("binding conflict should point to a button");
-                    let input_kind = conflict_mapping.input_kind;
-                    conflict_mapping.input_kind = None;
+                    let input_kind = conflict_mapping.key;
+                    conflict_mapping.key = None;
 
                     let mut mapping = mapping_buttons
                         .get_mut(binding_button.0)
                         .expect("binding should point to a button");
-                    mapping.input_kind = input_kind;
-                    info!("reassigning binding to '{}'", mapping.action);
+                    mapping.key = input_kind;
+                    info!("reassigning binding to '{}'", mapping.name);
                 }
                 BindingDialogButton::Delete => {
                     let mut mapping = mapping_buttons
                         .get_mut(binding_button.0)
                         .expect("binding should point to a button");
-                    info!("deleting binding for '{}'", mapping.action);
-                    mapping.input_kind = None;
+                    info!("deleting binding for '{}'", mapping.name);
+                    mapping.key = None;
                 }
                 BindingDialogButton::Cancel => info!("cancelling binding"),
             }
@@ -309,7 +296,7 @@ impl SettingsMenuPlugin {
         mut settings: ResMut<Settings>,
         settings_menus: Query<Entity, With<SettingsMenu>>,
         settings_buttons: Query<&SettingsButton>,
-        mapping_buttons: Query<&Mapping>,
+        mapping_buttons: Query<(&Mapping, &SettingsField)>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
         for &settings_button in settings_buttons.iter_many(click_events.read().map(|event| event.0))
@@ -321,15 +308,13 @@ impl SettingsMenuPlugin {
                         .expect("fields with checkboxes should be stored as bools");
                     *field_value = checkbox.0;
                 }
-                settings.controls.mappings.clear();
-                for mapping in &mapping_buttons {
-                    if let Some(input_kind) = mapping.input_kind {
-                        settings
-                            .controls
-                            .mappings
-                            .entry(mapping.action)
-                            .or_default()
-                            .push(input_kind);
+                settings.keyboard.clear();
+                for (mapping, field) in &mapping_buttons {
+                    if let Some(key) = mapping.key {
+                        let field_value = settings
+                            .path_mut::<Vec<KeyCode>>(field.0)
+                            .expect("fields with mappings should be stored as Vec");
+                        field_value.push(key);
                     }
                 }
                 apply_events.send_default();
@@ -342,12 +327,15 @@ impl SettingsMenuPlugin {
 }
 
 /// Creates [`SettingsField`] from passed field.
-macro_rules! setting_field {
+macro_rules! settings_field {
     ($path:expr) => {{
-        let _validate_field = $path;
-        SettingsField(stringify!($path).split_once('.').unwrap().1)
+        let _validate_field = &$path;
+        SettingsField(stringify!($path))
     }};
 }
+
+#[derive(Component, Clone, Copy)]
+struct SettingsField(&'static str);
 
 fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
     parent
@@ -360,15 +348,17 @@ fn setup_video_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings
             ..Default::default()
         })
         .with_children(|parent| {
+            let video = &settings.video;
             parent.spawn((
-                CheckboxBundle::new(theme, settings.video.fullscreen, "Fullscreen"),
-                setting_field!(settings.video.fullscreen),
+                CheckboxBundle::new(theme, video.fullscreen, "Fullscreen"),
+                settings_field!(video.fullscreen),
             ));
         });
 }
 
-fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
-    const INPUTS_PER_ACTION: usize = 3;
+const INPUTS_PER_ACTION: usize = 3;
+
+fn setup_keyboard_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
     parent
         .spawn(NodeBundle {
             style: Style {
@@ -381,23 +371,91 @@ fn setup_controls_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
             ..Default::default()
         })
         .with_children(|parent| {
-            for (&action, inputs) in &settings.controls.mappings {
-                parent.spawn(TextBundle::from_section(
-                    action.to_string(),
-                    theme.label.normal.clone(),
-                ));
-
-                for index in 0..INPUTS_PER_ACTION {
-                    parent.spawn((
-                        Mapping {
-                            action,
-                            input_kind: inputs.get(index).cloned(),
-                        },
-                        TextButtonBundle::normal(theme, String::new()),
-                    ));
-                }
-            }
+            let keyboard = &settings.keyboard;
+            setup_action_row(
+                parent,
+                theme,
+                "Camera forward",
+                &keyboard.camera_forward,
+                settings_field!(keyboard.camera_forward),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Camera left",
+                &keyboard.camera_left,
+                settings_field!(keyboard.camera_left),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Camera backward",
+                &keyboard.camera_backward,
+                settings_field!(keyboard.camera_backward),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Camera right",
+                &keyboard.camera_right,
+                settings_field!(keyboard.camera_right),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Rotate left",
+                &keyboard.rotate_left,
+                settings_field!(keyboard.rotate_left),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Rotate right",
+                &keyboard.rotate_right,
+                settings_field!(keyboard.rotate_right),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Zoom in",
+                &keyboard.zoom_in,
+                settings_field!(keyboard.zoom_in),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Zoom out",
+                &keyboard.zoom_out,
+                settings_field!(keyboard.zoom_out),
+            );
+            setup_action_row(
+                parent,
+                theme,
+                "Delete object",
+                &keyboard.delete,
+                settings_field!(keyboard.delete),
+            );
         });
+}
+
+fn setup_action_row(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    name: &'static str,
+    keys: &[KeyCode],
+    field: SettingsField,
+) {
+    parent.spawn(TextBundle::from_section(name, theme.label.normal.clone()));
+    for index in 0..INPUTS_PER_ACTION {
+        parent.spawn((
+            field,
+            Mapping {
+                name,
+                key: keys.get(index).copied(),
+            },
+            TextButtonBundle::normal(theme, String::new()),
+        ));
+    }
 }
 
 fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Settings) {
@@ -411,33 +469,30 @@ fn setup_developer_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Sett
             ..Default::default()
         })
         .with_children(|parent| {
+            let developer = &settings.developer;
             parent.spawn((
                 CheckboxBundle::new(
                     theme,
-                    settings.developer.free_camera_rotation,
+                    developer.free_camera_rotation,
                     "Free camera rotation",
                 ),
-                setting_field!(settings.developer.free_camera_rotation),
+                settings_field!(developer.free_camera_rotation),
             ));
             parent.spawn((
-                CheckboxBundle::new(theme, settings.developer.wireframe, "Display wireframe"),
-                setting_field!(settings.developer.wireframe),
+                CheckboxBundle::new(theme, developer.wireframe, "Display wireframe"),
+                settings_field!(developer.wireframe),
             ));
             parent.spawn((
-                CheckboxBundle::new(theme, settings.developer.colliders, "Display colliders"),
-                setting_field!(settings.developer.colliders),
+                CheckboxBundle::new(theme, developer.colliders, "Display colliders"),
+                settings_field!(developer.colliders),
             ));
             parent.spawn((
-                CheckboxBundle::new(theme, settings.developer.paths, "Display navigation paths"),
-                setting_field!(settings.developer.paths),
+                CheckboxBundle::new(theme, developer.paths, "Display navigation paths"),
+                settings_field!(developer.paths),
             ));
             parent.spawn((
-                CheckboxBundle::new(
-                    theme,
-                    settings.developer.nav_mesh,
-                    "Display navigation mesh",
-                ),
-                setting_field!(settings.developer.nav_mesh),
+                CheckboxBundle::new(theme, developer.nav_mesh, "Display navigation mesh"),
+                settings_field!(developer.nav_mesh),
             ));
         });
 }
@@ -453,7 +508,7 @@ struct SettingsMenu;
 enum SettingsTab {
     #[default]
     Video,
-    Controls,
+    Keyboard,
     Developer,
 }
 
@@ -473,8 +528,8 @@ enum BindingDialogButton {
 /// Stores information about button mapping.
 #[derive(Component)]
 struct Mapping {
-    action: Action,
-    input_kind: Option<InputKind>,
+    name: &'static str,
+    key: Option<KeyCode>,
 }
 
 /// Contains button entity that was selected for binding.
@@ -488,6 +543,3 @@ struct ConflictButton(Entity);
 /// Marker for label with binding dialog text.
 #[derive(Component)]
 struct BindingLabel;
-
-#[derive(Component)]
-struct SettingsField(&'static str);

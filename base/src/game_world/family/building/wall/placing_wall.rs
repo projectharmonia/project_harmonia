@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     render::view::NoFrustumCulling,
 };
-use leafwing_input_manager::common_conditions::action_just_pressed;
+use bevy_enhanced_input::prelude::*;
 
 use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
@@ -21,30 +21,23 @@ use crate::{
     },
     ghost::Ghost,
     math::segment::Segment,
-    settings::Action,
+    settings::Settings,
 };
 
 pub(super) struct PlacingWallPlugin;
 
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::pick).add_systems(
-            Update,
-            (
-                Self::spawn
-                    .run_if(in_state(WallTool::Create))
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<PlacingWall>)),
-                (
-                    Self::update_end,
-                    Self::update_material,
-                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    Self::delete.run_if(action_just_pressed(Action::Delete)),
-                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                )
-                    .run_if(in_state(BuildingMode::Walls)),
-            ),
-        );
+        app.add_input_context::<PlacingWall>()
+            .observe(Self::pick)
+            .observe(Self::spawn)
+            .observe(Self::delete)
+            .observe(Self::cancel)
+            .observe(Self::confirm)
+            .add_systems(
+                Update,
+                (Self::update_end, Self::update_material).run_if(in_state(BuildingMode::Walls)),
+            );
     }
 }
 
@@ -92,21 +85,23 @@ impl PlacingWallPlugin {
     }
 
     fn spawn(
-        camera_caster: CameraCaster,
+        trigger: Trigger<Clicked>,
+        wall_tool: Option<Res<State<WallTool>>>,
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
         walls: Query<(&Parent, &SplineSegment), With<Wall>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
-        let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) else {
+        if !observer_in_state(wall_tool, WallTool::Create) {
             return;
-        };
+        }
 
         let city_entity = cities.single();
 
         // Use an existing point if it is within the `SNAP_DELTA` distance.
-        let point = walls
+        let point = trigger.event().xz();
+        let snapped_point = walls
             .iter()
             .filter(|(parent, _)| ***parent == city_entity)
             .flat_map(|(_, segment)| segment.points())
@@ -117,7 +112,7 @@ impl PlacingWallPlugin {
         commands.entity(cities.single()).with_children(|parent| {
             parent.spawn(PlacingWallBundle::new(
                 PlacingWall::Spawning,
-                SplineSegment(Segment::splat(point)),
+                SplineSegment(Segment::splat(snapped_point)),
                 wall_material.0.clone(),
                 meshes.add(DynamicMesh::create_empty()),
             ));
@@ -184,11 +179,65 @@ impl PlacingWallPlugin {
         }
     }
 
+    fn delete(
+        _trigger: Trigger<Completed<DeleteWall>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut commands: Commands,
+        mut history: CommandsHistory,
+        mut placing_walls: Query<(Entity, &PlacingWall, &mut SplineSegment)>,
+        walls: Query<&SplineSegment, Without<PlacingWall>>,
+    ) {
+        if !observer_in_state(building_mode, BuildingMode::Walls) {
+            return;
+        }
+
+        let Ok((placing_entity, &placing_wall, mut segment)) = placing_walls.get_single_mut()
+        else {
+            return;
+        };
+
+        info!("deleting wall");
+        if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
+            // Set original segment until the deletion is confirmed.
+            *segment = *walls.get(entity).expect("moving wall should exist");
+
+            let command_id = history.push_pending(WallCommand::Delete { entity });
+            commands
+                .entity(placing_entity)
+                .insert(PendingDespawn { command_id })
+                .remove::<PlacingWall>();
+        } else {
+            commands.entity(placing_entity).despawn_recursive();
+        }
+    }
+
+    fn cancel(
+        _trigger: Trigger<Completed<CancelWall>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut commands: Commands,
+        placing_walls: Query<Entity, With<PlacingWall>>,
+    ) {
+        if !observer_in_state(building_mode, BuildingMode::Walls) {
+            return;
+        }
+
+        if let Ok(entity) = placing_walls.get_single() {
+            debug!("cancelling placing");
+            commands.entity(entity).despawn();
+        }
+    }
+
     fn confirm(
+        _trigger: Trigger<Completed<ConfirmWall>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
         mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &SplineSegment)>,
     ) {
+        if !observer_in_state(building_mode, BuildingMode::Walls) {
+            return;
+        }
+
         let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() else {
             return;
         };
@@ -216,39 +265,6 @@ impl PlacingWallPlugin {
             .entity(entity)
             .insert(PendingDespawn { command_id })
             .remove::<PlacingWall>();
-    }
-
-    fn delete(
-        mut commands: Commands,
-        mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &PlacingWall, &mut SplineSegment)>,
-        walls: Query<&SplineSegment, Without<PlacingWall>>,
-    ) {
-        let Ok((placing_entity, &placing_wall, mut segment)) = placing_walls.get_single_mut()
-        else {
-            return;
-        };
-
-        info!("deleting wall");
-        if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
-            // Set original segment until the deletion is confirmed.
-            *segment = *walls.get(entity).expect("moving wall should exist");
-
-            let command_id = history.push_pending(WallCommand::Delete { entity });
-            commands
-                .entity(placing_entity)
-                .insert(PendingDespawn { command_id })
-                .remove::<PlacingWall>();
-        } else {
-            commands.entity(placing_entity).despawn_recursive();
-        }
-    }
-
-    fn cancel(mut commands: Commands, placing_walls: Query<Entity, With<PlacingWall>>) {
-        if let Ok(entity) = placing_walls.get_single() {
-            debug!("cancelling placing");
-            commands.entity(entity).despawn();
-        }
     }
 }
 
@@ -305,7 +321,7 @@ impl PlacingWallBundle {
 }
 
 #[derive(Debug, Clone, Copy, Component)]
-pub enum PlacingWall {
+enum PlacingWall {
     Spawning,
     MovingPoint { entity: Entity, kind: PointKind },
 }
@@ -319,3 +335,39 @@ impl PlacingWall {
         }
     }
 }
+
+impl InputContext for PlacingWall {
+    const PRIORITY: isize = 1;
+
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
+
+        let delete = ctx.bind::<DeleteWall>().with(GamepadButtonType::North);
+        for &key in &settings.keyboard.delete {
+            delete.with(key);
+        }
+
+        ctx.bind::<CancelWall>()
+            .with(KeyCode::Escape)
+            .with(GamepadButtonType::East);
+
+        ctx.bind::<ConfirmWall>()
+            .with(MouseButton::Left)
+            .with(GamepadButtonType::South);
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct DeleteWall;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct CancelWall;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct ConfirmWall;

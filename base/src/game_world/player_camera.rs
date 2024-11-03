@@ -1,5 +1,3 @@
-mod exp_smoothed;
-
 use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
@@ -9,20 +7,18 @@ use bevy::{
         tonemapping::Tonemapping,
     },
     ecs::system::SystemParam,
-    input::mouse::MouseMotion,
     pbr::ScreenSpaceAmbientOcclusionSettings,
     prelude::*,
 };
-use leafwing_input_manager::prelude::ActionState;
+use bevy_enhanced_input::prelude::*;
 use num_enum::IntoPrimitive;
 use strum::EnumIter;
 
-use self::exp_smoothed::ExpSmoothed;
 use crate::{
     asset::collection::{AssetCollection, Collection},
-    common_conditions::in_any_state,
+    common_conditions::{in_any_state, observer_in_state},
     game_world::WorldState,
-    settings::{Action, Settings},
+    settings::Settings,
 };
 
 pub(super) struct PlayerCameraPlugin;
@@ -30,73 +26,74 @@ pub(super) struct PlayerCameraPlugin;
 impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<EnvironmentMap>>()
+            .add_input_context::<PlayerCamera>()
+            .observe(Self::apply_movement)
+            .observe(Self::zoom)
+            .observe(Self::rotate)
             .add_systems(
                 Update,
-                (
-                    (
-                        Self::update_rotation,
-                        (
-                            Self::update_spring_arm,
-                            Self::update_origin.run_if(not(in_state(WorldState::FamilyEditor))),
-                        )
-                            .chain(),
-                    ),
-                    Self::apply_transform,
-                )
-                    .chain()
-                    .run_if(in_any_state([
-                        WorldState::FamilyEditor,
-                        WorldState::City,
-                        WorldState::Family,
-                    ])),
+                Self::apply_transform.run_if(in_any_state([
+                    WorldState::FamilyEditor,
+                    WorldState::City,
+                    WorldState::Family,
+                ])),
             );
     }
 }
 
 impl PlayerCameraPlugin {
-    fn update_rotation(
-        time: Res<Time>,
-        settings: Res<Settings>,
-        action_state: Res<ActionState<Action>>,
-        mut motion_events: EventReader<MouseMotion>,
-        mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
-    ) {
-        let mut orbit_rotation = cameras.single_mut();
-        let motion = motion_events.read().map(|event| &event.delta).sum::<Vec2>();
-        if action_state.pressed(&Action::RotateCamera) {
-            const SENSETIVITY: f32 = 0.01;
-            orbit_rotation.dest -= SENSETIVITY * motion;
-
-            let max_y = if settings.developer.free_camera_rotation {
-                PI
-            } else {
-                FRAC_PI_2 - 0.01 // To avoid ground intersection.
-            };
-            const EPSILON: f32 = 0.001; // To avoid rotation jitter when the camera is vertical.
-            orbit_rotation.dest.y = orbit_rotation.dest.y.clamp(EPSILON, max_y - EPSILON);
-        }
-        orbit_rotation.smooth(time.delta_seconds());
-    }
-
-    fn update_origin(
-        time: Res<Time>,
-        action_state: Res<ActionState<Action>>,
+    fn apply_movement(
+        trigger: Trigger<Fired<MoveCamera>>,
+        world_state: Option<Res<State<WorldState>>>,
         mut cameras: Query<(&mut OrbitOrigin, &Transform, &SpringArm), With<PlayerCamera>>,
     ) {
+        if observer_in_state(world_state, WorldState::FamilyEditor) {
+            return;
+        }
+
+        // Calculate direction without camera's tilt.
         let (mut orbit_origin, transform, spring_arm) = cameras.single_mut();
-        let direction = movement_direction(&action_state, transform.rotation);
-        orbit_origin.dest += direction * time.delta_seconds() * spring_arm.dest;
-        orbit_origin.smooth(time.delta_seconds());
+        let forward = transform.forward();
+        let camera_dir = Vec3::new(forward.x, 0.0, forward.z).normalize();
+        let rotation = Quat::from_rotation_arc(Vec3::NEG_Z, camera_dir);
+
+        // Movement consists of X and -Z components, so swap Y and Z with negation.
+        let event = trigger.event();
+        let mut movement = event.value.as_axis3d().xzy();
+        movement.z = -movement.z;
+
+        // Make speed dependent on camera distance.
+        let arm_multiplier = **spring_arm * 0.02;
+
+        **orbit_origin += rotation * movement * arm_multiplier;
     }
 
-    fn update_spring_arm(
-        time: Res<Time>,
-        action_state: Res<ActionState<Action>>,
+    fn zoom(
+        trigger: Trigger<Fired<ZoomCamera>>,
         mut cameras: Query<&mut SpringArm, With<PlayerCamera>>,
     ) {
+        let event = trigger.event();
         let mut spring_arm = cameras.single_mut();
-        spring_arm.dest = (spring_arm.dest - action_state.value(&Action::ZoomCamera)).max(0.0);
-        spring_arm.smooth(time.delta_seconds());
+        // Limit to prevent clipping into the ground.
+        **spring_arm = (**spring_arm - event.value.as_axis1d()).max(0.2);
+    }
+
+    fn rotate(
+        trigger: Trigger<Fired<RotateCamera>>,
+        mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
+        settings: Res<Settings>,
+    ) {
+        let event = trigger.event();
+        let mut rotation = cameras.single_mut();
+        **rotation += event.value.as_axis2d();
+
+        let max_y = if settings.developer.free_camera_rotation {
+            PI // To avoid flipping when the camera is under ground.
+        } else {
+            FRAC_PI_2 - 0.01 // To avoid ground intersection.
+        };
+        let min_y = 0.001; // To avoid flipping when the camera is vertical.
+        rotation.y = rotation.y.clamp(min_y, max_y);
     }
 
     fn apply_transform(
@@ -106,31 +103,9 @@ impl PlayerCameraPlugin {
         >,
     ) {
         let (mut transform, orbit_origin, orbit_rotation, spring_arm) = cameras.single_mut();
-        transform.translation =
-            orbit_rotation.sphere_pos() * spring_arm.value() + orbit_origin.value();
-        transform.look_at(orbit_origin.value(), Vec3::Y);
+        transform.translation = orbit_rotation.sphere_pos() * **spring_arm + **orbit_origin;
+        transform.look_at(**orbit_origin, Vec3::Y);
     }
-}
-
-fn movement_direction(action_state: &ActionState<Action>, rotation: Quat) -> Vec3 {
-    let mut direction = Vec3::ZERO;
-    if action_state.pressed(&Action::CameraLeft) {
-        direction.x -= 1.0;
-    }
-    if action_state.pressed(&Action::CameraRight) {
-        direction.x += 1.0;
-    }
-    if action_state.pressed(&Action::CameraForward) {
-        direction.z -= 1.0;
-    }
-    if action_state.pressed(&Action::CameraBackward) {
-        direction.z += 1.0;
-    }
-
-    direction = rotation * direction;
-    direction.y = 0.0;
-
-    direction.normalize_or_zero()
 }
 
 #[derive(Bundle)]
@@ -199,36 +174,127 @@ impl AssetCollection for EnvironmentMap {
 
 /// The origin of a camera.
 #[derive(Component, Default, Deref, DerefMut)]
-struct OrbitOrigin(ExpSmoothed<Vec3>);
+struct OrbitOrigin(Vec3);
 
 /// Camera rotation in `X` and `Z`.
 #[derive(Component, Deref, DerefMut)]
-struct OrbitRotation(ExpSmoothed<Vec2>);
+struct OrbitRotation(Vec2);
 
 impl OrbitRotation {
     fn sphere_pos(&self) -> Vec3 {
-        Quat::from_euler(EulerRot::YXZ, self.value().x, self.value().y, 0.0) * Vec3::Y
+        Quat::from_euler(EulerRot::YXZ, self.x, self.y, 0.0) * Vec3::Y
     }
 }
 
 impl Default for OrbitRotation {
     fn default() -> Self {
-        Self(ExpSmoothed::new(Vec2::new(0.0, 60_f32.to_radians())))
+        Self(Vec2::new(0.0, 60_f32.to_radians()))
     }
 }
 
 /// Camera distance.
 #[derive(Component, Deref, DerefMut)]
-struct SpringArm(ExpSmoothed<f32>);
+struct SpringArm(f32);
 
 impl Default for SpringArm {
     fn default() -> Self {
-        Self(ExpSmoothed::new(10.0))
+        Self(10.0)
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub(super) struct PlayerCamera;
+
+impl InputContext for PlayerCamera {
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
+
+        ctx.bind::<MouseCameraMove>().with(MouseButton::Right);
+
+        let move_action = ctx
+            .bind::<MoveCamera>()
+            .with_stick(GamepadStick::Left)
+            .with(
+                InputBind::new(Input::mouse_motion())
+                    .with_modifier(Negate::y(true))
+                    .with_modifier(AccumulateBy::<MouseCameraMove>::default())
+                    .with_modifier(Scale::splat(0.003))
+                    .with_condition(Chord::<MouseCameraMove>::default()),
+            )
+            .with_modifier(DeadZone::default())
+            .with_modifier(Scale::splat(0.7))
+            .with_modifier(DeltaLerp::default());
+        for &key in &settings.keyboard.camera_forward {
+            move_action.with(InputBind::new(key).with_modifier(SwizzleAxis::YXZ));
+        }
+        for &key in &settings.keyboard.camera_left {
+            move_action.with(InputBind::new(key).with_modifier(Negate::default()));
+        }
+        for &key in &settings.keyboard.camera_backward {
+            move_action.with(
+                InputBind::new(key)
+                    .with_modifier(SwizzleAxis::YXZ)
+                    .with_modifier(Negate::default()),
+            );
+        }
+        for &key in &settings.keyboard.camera_right {
+            move_action.with(key);
+        }
+
+        ctx.bind::<MouseCameraRotation>().with(MouseButton::Middle);
+
+        let rotate = ctx
+            .bind::<RotateCamera>()
+            .with_stick(GamepadStick::Right)
+            .with(
+                InputBind::new(Input::mouse_motion())
+                    .with_modifier(Scale::splat(0.05))
+                    .with_condition(Chord::<MouseCameraRotation>::default()),
+            )
+            .with_modifier(Scale::splat(0.05))
+            .with_modifier(DeltaLerp::default());
+        for &key in &settings.keyboard.rotate_left {
+            rotate.with(InputBind::new(key).with_modifier(Negate::default()));
+        }
+        for &key in &settings.keyboard.rotate_right {
+            rotate.with(key);
+        }
+
+        let zoom = ctx
+            .bind::<ZoomCamera>()
+            .with(InputBind::new(Input::mouse_wheel()).with_modifier(SwizzleAxis::YXZ))
+            .with_modifier(DeltaLerp::default());
+        for &key in &settings.keyboard.zoom_in {
+            zoom.with(key);
+        }
+        for &key in &settings.keyboard.zoom_out {
+            zoom.with(InputBind::new(key).with_modifier(Negate::default()));
+        }
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Axis2D)]
+struct MoveCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Axis1D)]
+struct ZoomCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Axis2D)]
+struct RotateCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct MouseCameraRotation;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct MouseCameraMove;
 
 /// A helper to cast rays from [`PlayerCamera`].
 #[derive(SystemParam)]

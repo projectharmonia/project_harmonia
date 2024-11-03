@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     render::view::NoFrustumCulling,
 };
-use leafwing_input_manager::common_conditions::action_just_pressed;
+use bevy_enhanced_input::prelude::*;
 
 use super::{Road, RoadData, RoadTool};
 use crate::{
@@ -21,31 +21,23 @@ use crate::{
     },
     ghost::Ghost,
     math::segment::Segment,
-    settings::Action,
+    settings::Settings,
 };
 
 pub(super) struct PlacingRoadPlugin;
 
 impl Plugin for PlacingRoadPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::pick).add_systems(
-            Update,
-            (
-                Self::spawn
-                    .run_if(resource_exists::<SpawnRoadId>)
-                    .run_if(in_state(RoadTool::Create))
-                    .run_if(action_just_pressed(Action::Confirm))
-                    .run_if(not(any_with_component::<PlacingRoad>)),
-                (
-                    Self::update_end,
-                    Self::update_material,
-                    Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    Self::delete.run_if(action_just_pressed(Action::Delete)),
-                    Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                )
-                    .run_if(in_state(CityMode::Roads)),
-            ),
-        );
+        app.add_input_context::<PlacingRoad>()
+            .observe(Self::pick)
+            .observe(Self::spawn)
+            .observe(Self::delete)
+            .observe(Self::cancel)
+            .observe(Self::confirm)
+            .add_systems(
+                Update,
+                (Self::update_end, Self::update_material).run_if(in_state(CityMode::Roads)),
+            );
     }
 }
 
@@ -103,16 +95,21 @@ impl PlacingRoadPlugin {
     }
 
     fn spawn(
-        camera_caster: CameraCaster,
+        trigger: Trigger<Clicked>,
+        road_tool: Option<Res<State<RoadTool>>>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         asset_server: Res<AssetServer>,
         roads_info: Res<Assets<RoadInfo>>,
-        placing_id: Res<SpawnRoadId>,
+        placing_id: Option<Res<SpawnRoadId>>,
         roads: Query<(&Parent, &SplineSegment), With<Road>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
-        let Some(point) = camera_caster.intersect_ground().map(|point| point.xz()) else {
+        if !observer_in_state(road_tool, RoadTool::Create) {
+            return;
+        }
+
+        let Some(placing_id) = placing_id else {
             return;
         };
 
@@ -122,7 +119,8 @@ impl PlacingRoadPlugin {
             .expect("info should be preloaded");
 
         // Use an existing point if it is within the half width distance.
-        let point = roads
+        let point = trigger.event().xz();
+        let snapped_point = roads
             .iter()
             .filter(|(parent, _)| ***parent == city_entity)
             .flat_map(|(_, segment)| segment.points())
@@ -134,7 +132,7 @@ impl PlacingRoadPlugin {
             parent.spawn(PlacingRoadBundle::new(
                 PlacingRoad::Spawning(placing_id.0),
                 info.half_width,
-                Segment::splat(point),
+                Segment::splat(snapped_point),
                 asset_server.load(info.material.clone()),
                 meshes.add(DynamicMesh::create_empty()),
             ));
@@ -202,12 +200,66 @@ impl PlacingRoadPlugin {
         }
     }
 
+    fn delete(
+        _trigger: Trigger<Completed<DeleteRoad>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        mut commands: Commands,
+        mut history: CommandsHistory,
+        mut placing_roads: Query<(Entity, &PlacingRoad, &mut SplineSegment)>,
+        roads: Query<&SplineSegment, Without<PlacingRoad>>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Roads) {
+            return;
+        }
+
+        let Ok((placing_entity, &placing_road, mut segment)) = placing_roads.get_single_mut()
+        else {
+            return;
+        };
+
+        info!("deleting road");
+        if let PlacingRoad::MovingPoint { entity, .. } = placing_road {
+            // Set original segment until the deletion is confirmed.
+            *segment = *roads.get(entity).expect("moving road should exist");
+
+            let command_id = history.push_pending(RoadCommand::Delete { entity });
+            commands
+                .entity(placing_entity)
+                .insert(PendingDespawn { command_id })
+                .remove::<PlacingRoad>();
+        } else {
+            commands.entity(placing_entity).despawn_recursive();
+        }
+    }
+
+    fn cancel(
+        _trigger: Trigger<Completed<CancelRoad>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        mut commands: Commands,
+        placing_roads: Query<Entity, With<PlacingRoad>>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Roads) {
+            return;
+        }
+
+        if let Ok(entity) = placing_roads.get_single() {
+            debug!("cancelling placing");
+            commands.entity(entity).despawn();
+        }
+    }
+
     fn confirm(
+        _trigger: Trigger<Completed<ConfirmRoad>>,
+        city_mode: Option<Res<State<CityMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
         mut placing_roads: Query<(Entity, &Parent, &SplineSegment, &PlacingRoad)>,
     ) {
+        if !observer_in_state(city_mode, CityMode::Roads) {
+            return;
+        }
+
         let Ok((entity, parent, &segment, &placing_road)) = placing_roads.get_single_mut() else {
             return;
         };
@@ -241,39 +293,6 @@ impl PlacingRoadPlugin {
             .entity(entity)
             .insert(PendingDespawn { command_id })
             .remove::<PlacingRoad>();
-    }
-
-    fn delete(
-        mut commands: Commands,
-        mut history: CommandsHistory,
-        mut placing_roads: Query<(Entity, &PlacingRoad, &mut SplineSegment)>,
-        roads: Query<&SplineSegment, Without<PlacingRoad>>,
-    ) {
-        let Ok((placing_entity, &placing_road, mut segment)) = placing_roads.get_single_mut()
-        else {
-            return;
-        };
-
-        info!("deleting road");
-        if let PlacingRoad::MovingPoint { entity, .. } = placing_road {
-            // Set original segment until the deletion is confirmed.
-            *segment = *roads.get(entity).expect("moving road should exist");
-
-            let command_id = history.push_pending(RoadCommand::Delete { entity });
-            commands
-                .entity(placing_entity)
-                .insert(PendingDespawn { command_id })
-                .remove::<PlacingRoad>();
-        } else {
-            commands.entity(placing_entity).despawn_recursive();
-        }
-    }
-
-    fn cancel(mut commands: Commands, placing_roads: Query<Entity, With<PlacingRoad>>) {
-        if let Ok(entity) = placing_roads.get_single() {
-            debug!("cancelling placing");
-            commands.entity(entity).despawn();
-        }
     }
 }
 
@@ -330,7 +349,7 @@ impl PlacingRoadBundle {
 }
 
 #[derive(Debug, Clone, Copy, Component)]
-pub enum PlacingRoad {
+enum PlacingRoad {
     Spawning(AssetId<RoadInfo>),
     MovingPoint { entity: Entity, kind: PointKind },
 }
@@ -344,3 +363,39 @@ impl PlacingRoad {
         }
     }
 }
+
+impl InputContext for PlacingRoad {
+    const PRIORITY: isize = 1;
+
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
+
+        let delete = ctx.bind::<DeleteRoad>().with(GamepadButtonType::North);
+        for &key in &settings.keyboard.delete {
+            delete.with(key);
+        }
+
+        ctx.bind::<CancelRoad>()
+            .with(KeyCode::Escape)
+            .with(GamepadButtonType::East);
+
+        ctx.bind::<ConfirmRoad>()
+            .with(MouseButton::Left)
+            .with(GamepadButtonType::South);
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct CancelRoad;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct DeleteRoad;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct ConfirmRoad;

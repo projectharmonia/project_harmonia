@@ -13,7 +13,7 @@ use bevy::{
     prelude::*,
     scene,
 };
-use leafwing_input_manager::common_conditions::action_just_pressed;
+use bevy_enhanced_input::prelude::*;
 
 use crate::{
     asset::info::object_info::ObjectInfo,
@@ -28,7 +28,7 @@ use crate::{
         Layer,
     },
     ghost::Ghost,
-    settings::Action,
+    settings::Settings,
 };
 use side_snap::SideSnapPlugin;
 use wall_snap::WallSnapPlugin;
@@ -39,7 +39,12 @@ impl Plugin for PlacingObjectPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
+            .add_input_context::<PlacingObject>()
             .observe(Self::pick)
+            .observe(Self::rotate)
+            .observe(Self::sell)
+            .observe(Self::cancel)
+            .observe(Self::confirm)
             .observe(Self::ensure_single)
             .add_systems(
                 PreUpdate,
@@ -48,18 +53,7 @@ impl Plugin for PlacingObjectPlugin {
             )
             .add_systems(
                 Update,
-                (
-                    (
-                        Self::sell.run_if(action_just_pressed(Action::Delete)),
-                        Self::cancel.run_if(action_just_pressed(Action::Cancel)),
-                    ),
-                    (
-                        Self::rotate.run_if(action_just_pressed(Action::RotateObject)),
-                        Self::apply_position,
-                        Self::confirm.run_if(action_just_pressed(Action::Confirm)),
-                    )
-                        .chain(),
-                )
+                Self::apply_position
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
@@ -175,16 +169,143 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn rotate(mut placing_objects: Query<(&mut Transform, &ObjectRotationLimit)>) {
-        if let Ok((mut transform, rotation_limit)) = placing_objects.get_single_mut() {
-            transform.rotation *=
-                Quat::from_axis_angle(Vec3::Y, rotation_limit.unwrap_or(FRAC_PI_4));
-
-            debug!(
-                "rotating placing object to '{}'",
-                transform.rotation.to_euler(EulerRot::YXZ).0.to_degrees()
-            );
+    fn rotate(
+        trigger: Trigger<Started<RotateObject>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut placing_objects: Query<(&mut Transform, &ObjectRotationLimit)>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Objects)
+            && !observer_in_state(building_mode, BuildingMode::Objects)
+        {
+            return;
         }
+
+        let Ok((mut transform, rotation_limit)) = placing_objects.get_single_mut() else {
+            return;
+        };
+
+        let event = trigger.event();
+        let angle = rotation_limit.unwrap_or(FRAC_PI_4) * event.value.as_axis1d();
+        transform.rotation *= Quat::from_axis_angle(Vec3::Y, angle);
+
+        debug!(
+            "rotating placing object to '{}'",
+            transform.rotation.to_euler(EulerRot::YXZ).0.to_degrees()
+        );
+    }
+
+    fn sell(
+        _trigger: Trigger<Completed<SellObject>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut commands: Commands,
+        mut history: CommandsHistory,
+        mut placing_objects: Query<(Entity, &PlacingObject, &mut Transform)>,
+        objects: Query<&Transform, Without<PlacingObject>>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Objects)
+            && !observer_in_state(building_mode, BuildingMode::Objects)
+        {
+            return;
+        }
+
+        let Ok((placing_entity, &placing_object, mut transform)) = placing_objects.get_single_mut()
+        else {
+            return;
+        };
+
+        info!("selling `{placing_object:?}`");
+        if let PlacingObject::Moving(entity) = placing_object {
+            // Set original position until the deletion is confirmed.
+            *transform = *objects.get(entity).expect("moving object should exist");
+
+            let command_id = history.push_pending(ObjectCommand::Sell { entity });
+            commands
+                .entity(placing_entity)
+                .insert(PendingDespawn { command_id })
+                .remove::<(PlacingObject, PlacingObjectState)>();
+        } else {
+            commands.entity(placing_entity).despawn_recursive();
+        }
+    }
+
+    fn cancel(
+        _trigger: Trigger<Completed<CancelObject>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut commands: Commands,
+        placing_objects: Query<Entity, With<PlacingObject>>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Objects)
+            && !observer_in_state(building_mode, BuildingMode::Objects)
+        {
+            return;
+        }
+
+        if let Ok(placing_entity) = placing_objects.get_single() {
+            info!("cancelling placing");
+            commands.entity(placing_entity).despawn_recursive();
+        }
+    }
+
+    fn confirm(
+        _trigger: Trigger<Completed<ConfirmObject>>,
+        city_mode: Option<Res<State<CityMode>>>,
+        building_mode: Option<Res<State<BuildingMode>>>,
+        mut commands: Commands,
+        mut history: CommandsHistory,
+        asset_server: Res<AssetServer>,
+        placing_objects: Query<(
+            Entity,
+            &Parent,
+            &Transform,
+            &PlacingObject,
+            &PlacingObjectState,
+            &CollidingEntities,
+        )>,
+    ) {
+        if !observer_in_state(city_mode, CityMode::Objects)
+            && !observer_in_state(building_mode, BuildingMode::Objects)
+        {
+            return;
+        }
+
+        let Ok((entity, parent, translation, &placing_object, state, colliding_entities)) =
+            placing_objects.get_single()
+        else {
+            return;
+        };
+
+        if !state.allowed_place || !colliding_entities.is_empty() {
+            return;
+        }
+
+        let command_id = match placing_object {
+            PlacingObject::Spawning(id) => {
+                let info_path = asset_server
+                    .get_path(id)
+                    .expect("info should always come from file");
+                history.push_pending(ObjectCommand::Buy {
+                    info_path: info_path.into_owned(),
+                    city_entity: **parent,
+                    translation: translation.translation,
+                    rotation: translation.rotation,
+                })
+            }
+            PlacingObject::Moving(entity) => history.push_pending(ObjectCommand::Move {
+                entity,
+                translation: translation.translation,
+                rotation: translation.rotation,
+            }),
+        };
+
+        commands
+            .entity(entity)
+            .insert(PendingDespawn { command_id })
+            .remove::<(PlacingObject, PlacingObjectState)>();
+
+        info!("confirming `{placing_object:?}`");
     }
 
     fn apply_position(
@@ -207,111 +328,32 @@ impl PlacingObjectPlugin {
         children: Query<&Children>,
         mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
-        if let Ok((placing_entity, state, colliding_entities)) = placing_objects.get_single() {
-            let color = if state.allowed_place && colliding_entities.is_empty() {
-                WHITE.into()
-            } else {
-                RED.into()
-            };
-            debug!("changing base color to `{color:?}`");
+        let Ok((placing_entity, state, colliding_entities)) = placing_objects.get_single() else {
+            return;
+        };
 
-            let mut iter =
-                material_handles.iter_many_mut(children.iter_descendants(placing_entity));
-            while let Some(mut material_handle) = iter.fetch_next() {
-                let material = materials
-                    .get(&*material_handle)
-                    .expect("material handle should be valid");
+        let color = if state.allowed_place && colliding_entities.is_empty() {
+            WHITE.into()
+        } else {
+            RED.into()
+        };
+        debug!("changing base color to `{color:?}`");
 
-                // If color matches, assume that we don't need any update.
-                if material.base_color == color {
-                    return;
-                }
+        let mut iter = material_handles.iter_many_mut(children.iter_descendants(placing_entity));
+        while let Some(mut material_handle) = iter.fetch_next() {
+            let material = materials
+                .get(&*material_handle)
+                .expect("material handle should be valid");
 
-                let mut material = material.clone();
-                material.base_color = color;
-                material.alpha_mode = AlphaMode::Add;
-                *material_handle = materials.add(material);
-            }
-        }
-    }
-
-    fn confirm(
-        mut commands: Commands,
-        mut history: CommandsHistory,
-        asset_server: Res<AssetServer>,
-        placing_objects: Query<(
-            Entity,
-            &Parent,
-            &Transform,
-            &PlacingObject,
-            &PlacingObjectState,
-            &CollidingEntities,
-        )>,
-    ) {
-        if let Ok((entity, parent, translation, &placing_object, state, colliding_entities)) =
-            placing_objects.get_single()
-        {
-            if !state.allowed_place || !colliding_entities.is_empty() {
+            // If color matches, assume that we don't need any update.
+            if material.base_color == color {
                 return;
             }
 
-            let command_id = match placing_object {
-                PlacingObject::Spawning(id) => {
-                    let info_path = asset_server
-                        .get_path(id)
-                        .expect("info should always come from file");
-                    history.push_pending(ObjectCommand::Buy {
-                        info_path: info_path.into_owned(),
-                        city_entity: **parent,
-                        translation: translation.translation,
-                        rotation: translation.rotation,
-                    })
-                }
-                PlacingObject::Moving(entity) => history.push_pending(ObjectCommand::Move {
-                    entity,
-                    translation: translation.translation,
-                    rotation: translation.rotation,
-                }),
-            };
-
-            commands
-                .entity(entity)
-                .insert(PendingDespawn { command_id })
-                .remove::<(PlacingObject, PlacingObjectState)>();
-
-            info!("confirming `{placing_object:?}`");
-        }
-    }
-
-    fn sell(
-        mut commands: Commands,
-        mut history: CommandsHistory,
-        mut placing_objects: Query<(Entity, &PlacingObject, &mut Transform)>,
-        objects: Query<&Transform, Without<PlacingObject>>,
-    ) {
-        if let Ok((placing_entity, &placing_object, mut transform)) =
-            placing_objects.get_single_mut()
-        {
-            info!("selling `{placing_object:?}`");
-            if let PlacingObject::Moving(entity) = placing_object {
-                // Set original position until the deletion is confirmed.
-                *transform = *objects.get(entity).expect("moving object should exist");
-
-                let command_id = history.push_pending(ObjectCommand::Sell { entity });
-                commands
-                    .entity(placing_entity)
-                    .insert(PendingDespawn { command_id })
-                    .remove::<(PlacingObject, PlacingObjectState)>();
-            } else {
-                commands.entity(placing_entity).despawn_recursive();
-            }
-        }
-    }
-
-    fn cancel(mut commands: Commands, placing_objects: Query<Entity, With<PlacingObject>>) {
-        if let Ok(placing_entity) = placing_objects.get_single() {
-            info!("cancelling placing");
-            commands.entity(placing_entity).despawn_recursive();
+            let mut material = material.clone();
+            material.base_color = color;
+            material.alpha_mode = AlphaMode::Add;
+            *material_handle = materials.add(material);
         }
     }
 
@@ -336,6 +378,57 @@ pub enum PlacingObject {
     Spawning(AssetId<ObjectInfo>),
     Moving(Entity),
 }
+
+impl InputContext for PlacingObject {
+    const PRIORITY: isize = 1;
+
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
+
+        let rotate = ctx
+            .bind::<RotateObject>()
+            .with(MouseButton::Right)
+            .with(GamepadButtonType::West);
+        for &key in &settings.keyboard.rotate_left {
+            rotate.with(InputBind::new(key).with_modifier(Negate::default()));
+        }
+        for &key in &settings.keyboard.rotate_right {
+            rotate.with(key);
+        }
+
+        let sell = ctx.bind::<SellObject>().with(GamepadButtonType::North);
+        for &key in &settings.keyboard.delete {
+            sell.with(key);
+        }
+
+        ctx.bind::<CancelObject>()
+            .with(KeyCode::Escape)
+            .with(GamepadButtonType::East);
+
+        ctx.bind::<ConfirmObject>()
+            .with(MouseButton::Left)
+            .with(GamepadButtonType::South);
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Axis1D)]
+struct RotateObject;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct SellObject;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct CancelObject;
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct ConfirmObject;
 
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct ObjectRotationLimit(Option<f32>);

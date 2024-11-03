@@ -18,13 +18,13 @@ bevy = { workspace = true, features = [
   "x11",
 ] }
 bevy_atmosphere.workspace = true
+bevy_enhanced_input.workspace = true
 bevy_replicon.workspace = true
 bevy_replicon_renet.workspace = true
 bevy_mod_outline.workspace = true
 bevy_simple_text_input.workspace = true
 avian3d.workspace = true
 vleue_navigator.workspace = true
-leafwing-input-manager.workspace = true
 bevy-inspector-egui = { workspace = true, optional = true }
 app_dirs2.workspace = true
 serde.workspace = true
@@ -39,7 +39,7 @@ itertools.workspace = true
 bitflags.workspace = true
 
 [features]
-inspector = ["dep:bevy-inspector-egui", "leafwing-input-manager/egui"]
+inspector = ["dep:bevy-inspector-egui"]
 
 [lints]
 workspace = true

@@ -29,6 +29,11 @@ impl DialogBundle {
             },
         }
     }
+
+    pub fn with_display(mut self, display: Display) -> Self {
+        self.node_bundle.style.display = display;
+        self
+    }
 }
 
 #[derive(Component)]

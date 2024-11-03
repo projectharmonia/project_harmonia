@@ -6,14 +6,14 @@ use bevy::{
     prelude::*, render::RenderPlugin,
 };
 use bevy_atmosphere::prelude::*;
+use bevy_enhanced_input::prelude::*;
 #[cfg(feature = "inspector")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetPlugins;
 use bevy_simple_text_input::TextInputPlugin;
-use leafwing_input_manager::prelude::*;
-use project_harmonia_base::{game_world::navigation::Obstacle, settings::Action, CorePlugins};
+use project_harmonia_base::{game_world::navigation::Obstacle, CorePlugins};
 use project_harmonia_ui::UiPlugins;
 use project_harmonia_widgets::WidgetsPlugin;
 use vleue_navigator::prelude::*;
@@ -45,7 +45,7 @@ fn main() {
             RepliconRenetPlugins,
             WireframePlugin,
             AtmospherePlugin,
-            InputManagerPlugin::<Action>::default(),
+            EnhancedInputPlugin,
             VleueNavigatorPlugin,
             NavmeshUpdaterPlugin::<Collider, Obstacle>::default(),
             PhysicsPlugins::default()

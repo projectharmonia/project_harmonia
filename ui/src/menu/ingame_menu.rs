@@ -1,18 +1,8 @@
 use bevy::{app::AppExit, prelude::*};
-use leafwing_input_manager::common_conditions::action_just_pressed;
+use bevy_enhanced_input::prelude::*;
 use project_harmonia_base::{
-    common_conditions::in_any_state,
     core::GameState,
-    game_world::{
-        city::{
-            lot::{creating_lot::CreatingLot, moving_lot::MovingLot},
-            road::placing_road::PlacingRoad,
-        },
-        family::building::wall::placing_wall::PlacingWall,
-        object::placing_object::PlacingObject,
-        GameSave, WorldState,
-    },
-    settings::Action,
+    game_world::{GameSave, WorldState},
 };
 use project_harmonia_widgets::{
     button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
@@ -20,52 +10,36 @@ use project_harmonia_widgets::{
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::settings_menu::SettingsMenuOpen;
-use crate::hud::task_menu::TaskMenu;
 
 pub(super) struct InGameMenuPlugin;
 
 impl Plugin for InGameMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                Self::open
-                    .run_if(action_just_pressed(Action::Cancel))
-                    .run_if(not(any_with_component::<IngameMenu>))
-                    .run_if(not(any_with_component::<TaskMenu>))
-                    .run_if(not(any_with_component::<PlacingObject>))
-                    .run_if(not(any_with_component::<MovingLot>))
-                    .run_if(not(any_with_component::<CreatingLot>))
-                    .run_if(not(any_with_component::<PlacingWall>))
-                    .run_if(not(any_with_component::<PlacingRoad>))
-                    .run_if(in_any_state([WorldState::Family, WorldState::City])),
-                (
-                    Self::handle_menu_clicks,
-                    Self::handle_exit_dialog_clicks,
-                    Self::close
-                        .run_if(not(any_with_component::<ExitDialog>))
-                        .run_if(action_just_pressed(Action::Cancel)),
-                )
+        app.add_input_context::<IngameMenu>()
+            .observe(Self::toggle)
+            .add_systems(OnEnter(WorldState::Family), Self::setup)
+            .add_systems(OnEnter(WorldState::City), Self::setup)
+            .add_systems(
+                Update,
+                (Self::handle_menu_clicks, Self::handle_exit_dialog_clicks)
                     .run_if(any_with_component::<IngameMenu>),
-            ),
-        );
+            );
     }
 }
 
 impl InGameMenuPlugin {
-    fn open(
+    fn setup(
         mut commands: Commands,
         world_state: Res<State<WorldState>>,
         theme: Res<Theme>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        info!("showing in-game menu");
         commands.entity(roots.single()).with_children(|parent| {
             parent
                 .spawn((
                     IngameMenu,
+                    DialogBundle::new(&theme).with_display(Display::None),
                     StateScoped(**world_state),
-                    DialogBundle::new(&theme),
                 ))
                 .with_children(|parent| {
                     parent
@@ -95,6 +69,24 @@ impl InGameMenuPlugin {
         });
     }
 
+    fn toggle(
+        _trigger: Trigger<Started<ToggleIngameMenu>>,
+        mut menus: Query<&mut Style, With<IngameMenu>>,
+    ) {
+        let mut style = menus.single_mut();
+        match style.display {
+            Display::Flex => {
+                info!("closing in-game menu");
+                style.display = Display::None;
+            }
+            Display::None => {
+                info!("showing in-game menu");
+                style.display = Display::Flex;
+            }
+            Display::Block | Display::Grid => unreachable!(),
+        }
+    }
+
     fn handle_menu_clicks(
         mut commands: Commands,
         mut save_events: EventWriter<GameSave>,
@@ -103,31 +95,34 @@ impl InGameMenuPlugin {
         theme: Res<Theme>,
         mut world_state: ResMut<NextState<WorldState>>,
         buttons: Query<&IngameMenuButton>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
-        ingame_menus: Query<Entity, With<IngameMenu>>,
+        mut menus: Query<(Entity, &mut Style), With<IngameMenu>>,
     ) {
         for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             match button {
                 IngameMenuButton::Resume => {
                     info!("closing in-game menu");
-                    commands.entity(ingame_menus.single()).despawn_recursive()
+                    let (_, mut style) = menus.single_mut();
+                    style.display = Display::None;
                 }
                 IngameMenuButton::Save => {
                     save_events.send_default();
                     info!("closing in-game menu");
-                    commands.entity(ingame_menus.single()).despawn_recursive();
+                    let (_, mut style) = menus.single_mut();
+                    style.display = Display::None;
                 }
                 IngameMenuButton::Settings => {
                     settings_events.send_default();
                 }
                 IngameMenuButton::World => world_state.set(WorldState::World),
                 IngameMenuButton::MainMenu => {
-                    commands.entity(roots.single()).with_children(|parent| {
+                    let (entity, _) = menus.single();
+                    commands.entity(entity).with_children(|parent| {
                         setup_exit_dialog(parent, &theme, ExitDialog::MainMenu);
                     });
                 }
                 IngameMenuButton::ExitGame => {
-                    commands.entity(roots.single()).with_children(|parent| {
+                    let (entity, _) = menus.single();
+                    commands.entity(entity).with_children(|parent| {
                         setup_exit_dialog(parent, &theme, ExitDialog::Game);
                     });
                 }
@@ -170,11 +165,6 @@ impl InGameMenuPlugin {
                 }
             }
         }
-    }
-
-    fn close(mut commands: Commands, ingame_menus: Query<Entity, With<IngameMenu>>) {
-        info!("closing in-game menu");
-        commands.entity(ingame_menus.single()).despawn_recursive();
     }
 }
 
@@ -221,6 +211,22 @@ fn setup_exit_dialog(parent: &mut ChildBuilder, theme: &Theme, exit_dialog: Exit
 
 #[derive(Component)]
 struct IngameMenu;
+
+impl InputContext for IngameMenu {
+    const PRIORITY: isize = -1;
+
+    fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        ctx.bind::<ToggleIngameMenu>()
+            .with(KeyCode::Escape)
+            .with(GamepadButtonType::Start);
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(dim = Bool)]
+struct ToggleIngameMenu;
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum IngameMenuButton {
