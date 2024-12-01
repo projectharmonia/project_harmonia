@@ -59,7 +59,7 @@ impl PlayerCameraPlugin {
 
         // Movement consists of X and -Z components, so swap Y and Z with negation.
         let event = trigger.event();
-        let mut movement = event.value.as_axis3d().xzy();
+        let mut movement = event.value.extend(0.0).xzy();
         movement.z = -movement.z;
 
         // Make speed dependent on camera distance.
@@ -75,7 +75,7 @@ impl PlayerCameraPlugin {
         let event = trigger.event();
         let mut spring_arm = cameras.single_mut();
         // Limit to prevent clipping into the ground.
-        **spring_arm = (**spring_arm - event.value.as_axis1d()).max(0.2);
+        **spring_arm = (**spring_arm - event.value).max(0.2);
     }
 
     fn rotate(
@@ -85,7 +85,7 @@ impl PlayerCameraPlugin {
     ) {
         let event = trigger.event();
         let mut rotation = cameras.single_mut();
-        **rotation += event.value.as_axis2d();
+        **rotation += event.value;
 
         let max_y = if settings.developer.free_camera_rotation {
             PI // To avoid flipping when the camera is under ground.
@@ -210,90 +210,73 @@ impl InputContext for PlayerCamera {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        ctx.bind::<MouseCameraMove>().with(MouseButton::Right);
+        ctx.bind::<MouseCameraRotation>().to(MouseButton::Middle);
+        ctx.bind::<MouseCameraMove>().to(MouseButton::Right);
 
-        let move_action = ctx
-            .bind::<MoveCamera>()
-            .with_stick(GamepadStick::Left)
-            .with(
-                InputBind::new(Input::mouse_motion())
-                    .with_modifier(Negate::y(true))
-                    .with_modifier(AccumulateBy::<MouseCameraMove>::default())
-                    .with_modifier(Scale::splat(0.003))
-                    .with_condition(Chord::<MouseCameraMove>::default()),
-            )
-            .with_modifier(DeadZone::default())
-            .with_modifier(Scale::splat(0.7))
-            .with_modifier(DeltaLerp::default());
-        for &key in &settings.keyboard.camera_forward {
-            move_action.with(InputBind::new(key).with_modifier(SwizzleAxis::YXZ));
-        }
-        for &key in &settings.keyboard.camera_left {
-            move_action.with(InputBind::new(key).with_modifier(Negate::default()));
-        }
-        for &key in &settings.keyboard.camera_backward {
-            move_action.with(
-                InputBind::new(key)
-                    .with_modifier(SwizzleAxis::YXZ)
-                    .with_modifier(Negate::default()),
-            );
-        }
-        for &key in &settings.keyboard.camera_right {
-            move_action.with(key);
-        }
+        ctx.bind::<MoveCamera>()
+            .to((
+                Cardinal {
+                    north: &settings.keyboard.camera_forward,
+                    east: &settings.keyboard.camera_left,
+                    south: &settings.keyboard.camera_backward,
+                    west: &settings.keyboard.camera_right,
+                },
+                GamepadStick::Left,
+                Input::mouse_motion()
+                    .with_modifiers((
+                        Negate::y(true),
+                        AccumulateBy::<MouseCameraMove>::default(),
+                        Scale::splat(0.003),
+                    ))
+                    .with_conditions(Chord::<MouseCameraMove>::default()),
+            ))
+            .with_modifiers((DeadZone::default(), Scale::splat(0.7), DeltaLerp::default()));
 
-        ctx.bind::<MouseCameraRotation>().with(MouseButton::Middle);
+        ctx.bind::<RotateCamera>()
+            .to((
+                Biderectional {
+                    positive: &settings.keyboard.rotate_right,
+                    negative: &settings.keyboard.rotate_left,
+                },
+                GamepadStick::Right,
+                Input::mouse_motion()
+                    .with_modifiers(Scale::splat(0.05))
+                    .with_conditions(Chord::<MouseCameraRotation>::default()),
+            ))
+            .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
 
-        let rotate = ctx
-            .bind::<RotateCamera>()
-            .with_stick(GamepadStick::Right)
-            .with(
-                InputBind::new(Input::mouse_motion())
-                    .with_modifier(Scale::splat(0.05))
-                    .with_condition(Chord::<MouseCameraRotation>::default()),
-            )
-            .with_modifier(Scale::splat(0.05))
-            .with_modifier(DeltaLerp::default());
-        for &key in &settings.keyboard.rotate_left {
-            rotate.with(InputBind::new(key).with_modifier(Negate::default()));
-        }
-        for &key in &settings.keyboard.rotate_right {
-            rotate.with(key);
-        }
-
-        let zoom = ctx
-            .bind::<ZoomCamera>()
-            .with(InputBind::new(Input::mouse_wheel()).with_modifier(SwizzleAxis::YXZ))
-            .with_modifier(DeltaLerp::default());
-        for &key in &settings.keyboard.zoom_in {
-            zoom.with(key);
-        }
-        for &key in &settings.keyboard.zoom_out {
-            zoom.with(InputBind::new(key).with_modifier(Negate::default()));
-        }
+        ctx.bind::<ZoomCamera>()
+            .to((
+                Biderectional {
+                    positive: &settings.keyboard.zoom_in,
+                    negative: &settings.keyboard.zoom_out,
+                },
+                Input::mouse_wheel().with_modifiers(SwizzleAxis::YXZ),
+            ))
+            .with_modifiers(DeltaLerp::default());
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Axis2D)]
+#[input_action(output = Vec2)]
 struct MoveCamera;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Axis1D)]
+#[input_action(output = f32)]
 struct ZoomCamera;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Axis2D)]
+#[input_action(output = Vec2)]
 struct RotateCamera;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct MouseCameraRotation;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct MouseCameraMove;
 
 /// A helper to cast rays from [`PlayerCamera`].

@@ -116,13 +116,12 @@ impl InputContext for PickerInput {
         let mut ctx = ContextInstance::default();
 
         ctx.bind::<Pick>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct Pick;

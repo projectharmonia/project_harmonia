@@ -124,21 +124,18 @@ impl InputContext for CreatingLot {
         let mut ctx = ContextInstance::default();
 
         ctx.bind::<CancelLot>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::East);
-
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx.bind::<ConfirmLot>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CancelLot;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ConfirmLot;

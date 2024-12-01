@@ -371,31 +371,25 @@ impl InputContext for PlacingRoad {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        let delete = ctx.bind::<DeleteRoad>().with(GamepadButtonType::North);
-        for &key in &settings.keyboard.delete {
-            delete.with(key);
-        }
-
+        ctx.bind::<DeleteRoad>()
+            .to((&settings.keyboard.delete, GamepadButtonType::North));
         ctx.bind::<CancelRoad>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::East);
-
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx.bind::<ConfirmRoad>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CancelRoad;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct DeleteRoad;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ConfirmRoad;

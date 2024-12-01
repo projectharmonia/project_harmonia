@@ -343,31 +343,25 @@ impl InputContext for PlacingWall {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        let delete = ctx.bind::<DeleteWall>().with(GamepadButtonType::North);
-        for &key in &settings.keyboard.delete {
-            delete.with(key);
-        }
-
+        ctx.bind::<DeleteWall>()
+            .to((&settings.keyboard.delete, GamepadButtonType::North));
         ctx.bind::<CancelWall>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::East);
-
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx.bind::<ConfirmWall>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct DeleteWall;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CancelWall;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ConfirmWall;

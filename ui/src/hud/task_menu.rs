@@ -135,15 +135,13 @@ impl InputContext for TaskMenu {
     fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
         let mut ctx = ContextInstance::default();
         ctx.bind::<CloseTaskMenu>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::South)
-            .with(GamepadButtonType::East);
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CloseTaskMenu;
 
 #[derive(Component)]

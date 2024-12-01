@@ -186,7 +186,7 @@ impl PlacingObjectPlugin {
         };
 
         let event = trigger.event();
-        let angle = rotation_limit.unwrap_or(FRAC_PI_4) * event.value.as_axis1d();
+        let angle = rotation_limit.unwrap_or(FRAC_PI_4) * event.value;
         transform.rotation *= Quat::from_axis_angle(Vec3::Y, angle);
 
         debug!(
@@ -386,48 +386,39 @@ impl InputContext for PlacingObject {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        let rotate = ctx
-            .bind::<RotateObject>()
-            .with(MouseButton::Right)
-            .with(GamepadButtonType::West);
-        for &key in &settings.keyboard.rotate_left {
-            rotate.with(InputBind::new(key).with_modifier(Negate::default()));
-        }
-        for &key in &settings.keyboard.rotate_right {
-            rotate.with(key);
-        }
-
-        let sell = ctx.bind::<SellObject>().with(GamepadButtonType::North);
-        for &key in &settings.keyboard.delete {
-            sell.with(key);
-        }
-
+        ctx.bind::<RotateObject>().to((
+            Biderectional {
+                positive: &settings.keyboard.rotate_left,
+                negative: &settings.keyboard.rotate_right,
+            },
+            MouseButton::Right,
+            GamepadButtonType::West,
+        ));
+        ctx.bind::<SellObject>()
+            .to((&settings.keyboard.delete, GamepadButtonType::North));
         ctx.bind::<CancelObject>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::East);
-
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx.bind::<ConfirmObject>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Axis1D)]
+#[input_action(output = f32)]
 struct RotateObject;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct SellObject;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CancelObject;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ConfirmObject;
 
 #[derive(Component, Default, Deref, DerefMut)]

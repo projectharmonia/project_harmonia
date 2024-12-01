@@ -218,14 +218,13 @@ impl InputContext for IngameMenu {
     fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
         let mut ctx = ContextInstance::default();
         ctx.bind::<ToggleIngameMenu>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::Start);
+            .to((KeyCode::Escape, GamepadButtonType::Start));
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ToggleIngameMenu;
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]

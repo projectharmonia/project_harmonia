@@ -145,31 +145,25 @@ impl InputContext for MovingLot {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        let delete = ctx.bind::<DeleteLot>().with(GamepadButtonType::North);
-        for &key in &settings.keyboard.delete {
-            delete.with(key);
-        }
-
+        ctx.bind::<DeleteLot>()
+            .to((&settings.keyboard.delete, GamepadButtonType::North));
         ctx.bind::<CancelLot>()
-            .with(KeyCode::Escape)
-            .with(GamepadButtonType::East);
-
+            .to((KeyCode::Escape, GamepadButtonType::East));
         ctx.bind::<ConfirmLot>()
-            .with(MouseButton::Left)
-            .with(GamepadButtonType::South);
+            .to((MouseButton::Left, GamepadButtonType::South));
 
         ctx
     }
 }
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct DeleteLot;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct CancelLot;
 
 #[derive(Debug, InputAction)]
-#[input_action(dim = Bool)]
+#[input_action(output = bool)]
 struct ConfirmLot;
