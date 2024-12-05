@@ -6,6 +6,11 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[lib]
+name = "project_harmonia"
+# We need `cdylib` for Android and `lib` for everything else.
+crate-type = ["lib", "cdylib"]
+
 [dependencies]
 project_harmonia_base.workspace = true
 project_harmonia_widgets.workspace = true
