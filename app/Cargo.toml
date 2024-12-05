@@ -17,6 +17,7 @@ bevy = { workspace = true, features = [
   "tonemapping_luts",
   "png",
   "x11",
+  "wayland",
 ] }
 bevy_atmosphere.workspace = true
 bevy_enhanced_input.workspace = true
