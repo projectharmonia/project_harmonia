@@ -35,7 +35,7 @@ impl Plugin for WorldMenuPlugin {
                 (
                     Self::handle_family_clicks,
                     Self::handle_city_clicks,
-                    Self::handle_main_menu_clicks,
+                    Self::handle_exit_clicks,
                     Self::handle_create_clicks,
                     Self::handle_city_dialog_clicks,
                 )
@@ -145,8 +145,8 @@ impl WorldMenuPlugin {
                         })
                         .with_children(|parent| {
                             parent.spawn((
-                                MainMenuButton,
-                                TextButtonBundle::normal(&theme, "Main menu"),
+                                ExitWorldButton,
+                                TextButtonBundle::normal(&theme, "Exit world"),
                             ));
                             parent.spawn(NodeBundle {
                                 style: Style {
@@ -270,10 +270,10 @@ impl WorldMenuPlugin {
         }
     }
 
-    fn handle_main_menu_clicks(
+    fn handle_exit_clicks(
         mut click_events: EventReader<Click>,
         mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(), With<MainMenuButton>>,
+        buttons: Query<(), With<ExitWorldButton>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
             game_state.set(GameState::Menu);
@@ -470,7 +470,7 @@ struct WorldEntityNode(Entity);
 struct CreateEntityButton;
 
 #[derive(Component)]
-struct MainMenuButton;
+struct ExitWorldButton;
 
 #[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
 enum CityDialogButton {
