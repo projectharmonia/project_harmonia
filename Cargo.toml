@@ -25,7 +25,7 @@ bevy_mod_outline = { version = "0.8" }
 bevy_simple_text_input = "0.9"
 vleue_navigator = { version = "0.10", features = ["avian3d"] }
 avian3d = { version = "0.1", features = ["serialize"] }
-bevy-inspector-egui = "0.25"
+bevy-inspector-egui = "0.27"
 app_dirs2 = "2.5"
 serde = "1.0"
 earcut = "0.4"

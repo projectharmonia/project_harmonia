@@ -46,7 +46,7 @@ itertools.workspace = true
 bitflags.workspace = true
 
 [features]
-inspector = ["dep:bevy-inspector-egui"]
+inspector = ["dep:bevy-inspector-egui", "bevy_enhanced_input/egui_priority"]
 
 [lints]
 workspace = true
