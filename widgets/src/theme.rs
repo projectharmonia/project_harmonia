@@ -38,7 +38,7 @@ impl FromWorld for Theme {
         Self {
             button: ButtonTheme {
                 normal: Style {
-                    width: Val::Px(150.0),
+                    width: Val::Px(160.0),
                     height: Val::Px(35.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
