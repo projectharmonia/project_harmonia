@@ -15,7 +15,7 @@ impl ClickPlugin {
         mut buttons: Query<(Entity, &Interaction, &mut LastInteraction), Changed<Interaction>>,
     ) {
         for (entity, &interaction, mut last_interaction) in &mut buttons {
-            if interaction == Interaction::Hovered && last_interaction.0 == Interaction::Pressed {
+            if last_interaction.0 == Interaction::Pressed {
                 click_events.send(Click(entity));
             }
             last_interaction.0 = interaction;
