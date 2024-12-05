@@ -491,7 +491,10 @@ fn setup_place_family_dialog(
 ) {
     info!("showing placing dialog");
     parent
-        .spawn(DialogBundle::new(theme))
+        .spawn((
+            DialogBundle::new(theme),
+            StateScoped(WorldState::FamilyEditor),
+        ))
         .with_children(|parent| {
             parent
                 .spawn(NodeBundle {
