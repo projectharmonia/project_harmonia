@@ -27,7 +27,7 @@ impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<EnvironmentMap>>()
             .add_input_context::<PlayerCamera>()
-            .observe(Self::apply_movement)
+            .observe(Self::pan)
             .observe(Self::zoom)
             .observe(Self::rotate)
             .add_systems(
@@ -42,8 +42,8 @@ impl Plugin for PlayerCameraPlugin {
 }
 
 impl PlayerCameraPlugin {
-    fn apply_movement(
-        trigger: Trigger<Fired<MoveCamera>>,
+    fn pan(
+        trigger: Trigger<Fired<PanCamera>>,
         world_state: Option<Res<State<WorldState>>>,
         mut cameras: Query<(&mut OrbitOrigin, &Transform, &SpringArm), With<PlayerCamera>>,
     ) {
@@ -210,10 +210,11 @@ impl InputContext for PlayerCamera {
         let mut ctx = ContextInstance::default();
         let settings = world.resource::<Settings>();
 
-        ctx.bind::<MouseCameraRotation>().to(MouseButton::Middle);
-        ctx.bind::<MouseCameraMove>().to(MouseButton::Right);
+        ctx.bind::<EnableCameraRotation>().to(MouseButton::Middle);
+        ctx.bind::<EnablePanCamera>()
+            .to((MouseButton::Right, GamepadButtonType::East));
 
-        ctx.bind::<MoveCamera>()
+        ctx.bind::<PanCamera>()
             .to((
                 Cardinal {
                     north: &settings.keyboard.camera_forward,
@@ -221,14 +222,21 @@ impl InputContext for PlayerCamera {
                     south: &settings.keyboard.camera_backward,
                     west: &settings.keyboard.camera_right,
                 },
-                GamepadStick::Left,
+                // TODO 0.15: replace with condition on set.
+                (
+                    GamepadAxisType::LeftStickX
+                        .with_conditions(Chord::<EnablePanCamera>::default()),
+                    GamepadAxisType::LeftStickY
+                        .with_modifiers(SwizzleAxis::YXZ)
+                        .with_conditions(Chord::<EnablePanCamera>::default()),
+                ),
                 Input::mouse_motion()
                     .with_modifiers((
                         Negate::y(true),
-                        AccumulateBy::<MouseCameraMove>::default(),
+                        AccumulateBy::<EnablePanCamera>::default(),
                         Scale::splat(0.003),
                     ))
-                    .with_conditions(Chord::<MouseCameraMove>::default()),
+                    .with_conditions(Chord::<EnablePanCamera>::default()),
             ))
             .with_modifiers((DeadZone::default(), Scale::splat(0.7), DeltaLerp::default()));
 
@@ -241,7 +249,7 @@ impl InputContext for PlayerCamera {
                 GamepadStick::Right,
                 Input::mouse_motion()
                     .with_modifiers(Scale::splat(0.05))
-                    .with_conditions(Chord::<MouseCameraRotation>::default()),
+                    .with_conditions(Chord::<EnableCameraRotation>::default()),
             ))
             .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
 
@@ -250,6 +258,11 @@ impl InputContext for PlayerCamera {
                 Biderectional {
                     positive: &settings.keyboard.zoom_in,
                     negative: &settings.keyboard.zoom_out,
+                },
+                // TODO 0.15: scale set.
+                Biderectional {
+                    positive: GamepadAxisType::RightZ.with_modifiers(Scale::splat(0.1)),
+                    negative: GamepadAxisType::LeftZ.with_modifiers(Scale::splat(0.1)),
                 },
                 Input::mouse_wheel().with_modifiers(SwizzleAxis::YXZ),
             ))
@@ -261,7 +274,7 @@ impl InputContext for PlayerCamera {
 
 #[derive(Debug, InputAction)]
 #[input_action(output = Vec2)]
-struct MoveCamera;
+struct PanCamera;
 
 #[derive(Debug, InputAction)]
 #[input_action(output = f32)]
@@ -273,11 +286,11 @@ struct RotateCamera;
 
 #[derive(Debug, InputAction)]
 #[input_action(output = bool)]
-struct MouseCameraRotation;
+struct EnableCameraRotation;
 
 #[derive(Debug, InputAction)]
 #[input_action(output = bool)]
-struct MouseCameraMove;
+struct EnablePanCamera;
 
 /// A helper to cast rays from [`PlayerCamera`].
 #[derive(SystemParam)]

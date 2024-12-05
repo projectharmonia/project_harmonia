@@ -1,9 +1,10 @@
 mod cli;
+mod cursor_controller;
 
 use avian3d::{prelude::*, sync::SyncConfig};
 use bevy::{
-    core_pipeline::experimental::taa::TemporalAntiAliasPlugin, pbr::wireframe::WireframePlugin,
-    prelude::*, render::RenderPlugin,
+    app::PluginGroupBuilder, core_pipeline::experimental::taa::TemporalAntiAliasPlugin,
+    pbr::wireframe::WireframePlugin, prelude::*, render::RenderPlugin,
 };
 use bevy_atmosphere::prelude::*;
 use bevy_enhanced_input::prelude::*;
@@ -19,6 +20,17 @@ use project_harmonia_widgets::WidgetsPlugin;
 use vleue_navigator::prelude::*;
 
 use cli::{Cli, CliPlugin};
+use cursor_controller::CursorControllerPlugin;
+
+struct AppPlugins;
+
+impl PluginGroup for AppPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(CliPlugin)
+            .add(CursorControllerPlugin)
+    }
+}
 
 fn main() {
     let mut app = App::new();
@@ -56,7 +68,7 @@ fn main() {
             TextInputPlugin,
             OutlinePlugin,
         ))
-        .add_plugins((CliPlugin, CorePlugins, WidgetsPlugin, UiPlugins));
+        .add_plugins((CorePlugins, WidgetsPlugin, UiPlugins, AppPlugins));
 
     #[cfg(feature = "inspector")]
     app.add_plugins(WorldInspectorPlugin::default());

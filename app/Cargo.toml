@@ -11,6 +11,7 @@ project_harmonia_base.workspace = true
 project_harmonia_widgets.workspace = true
 project_harmonia_ui.workspace = true
 bevy = { workspace = true, features = [
+  "bevy_gilrs",
   "file_watcher",
   "multi_threaded",
   "tonemapping_luts",
