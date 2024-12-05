@@ -155,10 +155,8 @@ impl WorldMenuPlugin {
                                 },
                                 ..Default::default()
                             });
-                            parent.spawn((
-                                CreateEntityButton,
-                                TextButtonBundle::normal(&theme, "Create new"),
-                            ));
+                            parent
+                                .spawn((NewEntityButton, TextButtonBundle::normal(&theme, "New")));
                         });
                 });
         });
@@ -285,7 +283,7 @@ impl WorldMenuPlugin {
         mut click_events: EventReader<Click>,
         mut world_state: ResMut<NextState<WorldState>>,
         theme: Res<Theme>,
-        buttons: Query<(), With<CreateEntityButton>>,
+        buttons: Query<(), With<NewEntityButton>>,
         tabs: Query<(&Toggled, &WorldTab)>,
         roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
@@ -467,7 +465,7 @@ struct WorldEntityNode(Entity);
 
 /// Button that creates family or city depending on the selected [`WorldTab`].
 #[derive(Component)]
-struct CreateEntityButton;
+struct NewEntityButton;
 
 #[derive(Component)]
 struct ExitWorldButton;
