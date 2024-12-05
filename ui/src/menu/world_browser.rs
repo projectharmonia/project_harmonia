@@ -34,6 +34,7 @@ impl Plugin for WorldBrowserPlugin {
                     Self::handle_world_clicks,
                     Self::handle_host_dialog_clicks.pipe(error_message),
                     Self::handle_remove_dialog_clicks.pipe(error_message),
+                    Self::handle_back_clicks,
                     Self::handle_world_browser_clicks,
                     Self::handle_create_dialog_clicks,
                     Self::handle_join_dialog_clicks.pipe(error_message),
@@ -105,6 +106,14 @@ impl WorldBrowserPlugin {
                             ..Default::default()
                         })
                         .with_children(|parent| {
+                            parent.spawn((BackButton, TextButtonBundle::normal(&theme, "Back")));
+                            parent.spawn(NodeBundle {
+                                style: Style {
+                                    width: Val::Percent(100.0),
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            });
                             for button in WorldBrowserButton::iter() {
                                 parent.spawn((
                                     button,
@@ -228,6 +237,16 @@ impl WorldBrowserPlugin {
         }
 
         Ok(())
+    }
+
+    fn handle_back_clicks(
+        mut click_events: EventReader<Click>,
+        mut menu_state: ResMut<NextState<MenuState>>,
+        buttons: Query<(), With<BackButton>>,
+    ) {
+        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
+            menu_state.set(MenuState::MainMenu);
+        }
     }
 
     fn handle_world_browser_clicks(
@@ -591,6 +610,9 @@ struct WorldNode {
     label_entity: Entity,
     node_entity: Entity,
 }
+
+#[derive(Component)]
+struct BackButton;
 
 #[derive(Component, EnumIter, Clone, Copy, Display)]
 enum WorldBrowserButton {
