@@ -106,6 +106,7 @@ pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, them
 
             for (index, tab) in InfoTab::iter().enumerate() {
                 let content_entity = match tab {
+                    InfoTab::Skills => parent.spawn(NodeBundle::default()).id(),
                     InfoTab::Needs => parent
                         .spawn(NodeBundle {
                             style: Style {
@@ -127,7 +128,6 @@ pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, them
                             ..Default::default()
                         })
                         .id(),
-                    InfoTab::Skills => parent.spawn(NodeBundle::default()).id(),
                 };
 
                 tab_commands
@@ -148,15 +148,15 @@ struct BarNeed(Entity);
 
 #[derive(Component, EnumIter, Clone, Copy, PartialEq)]
 enum InfoTab {
-    Needs,
     Skills,
+    Needs,
 }
 
 impl InfoTab {
     fn glyph(self) -> &'static str {
         match self {
-            InfoTab::Needs => "📈",
             InfoTab::Skills => "💡",
+            InfoTab::Needs => "📈",
         }
     }
 }
