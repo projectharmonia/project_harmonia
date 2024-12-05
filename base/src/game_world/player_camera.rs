@@ -166,8 +166,10 @@ impl AssetCollection for EnvironmentMap {
 
     fn asset_path(&self) -> AssetPath<'static> {
         match self {
-            EnvironmentMap::Diffuse => "environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2".into(),
-            EnvironmentMap::Specular => "environment_maps/pisa_specular_rgb9e5_zstd.ktx2".into(),
+            EnvironmentMap::Diffuse => "base/environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2".into(),
+            EnvironmentMap::Specular => {
+                "base/environment_maps/pisa_specular_rgb9e5_zstd.ktx2".into()
+            }
         }
     }
 }
