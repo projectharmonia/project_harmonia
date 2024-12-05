@@ -12,7 +12,7 @@ pub(super) struct Ghost {
     /// Original entity will be hidden until this component is present.
     original_entity: Entity,
 
-    /// Collision layer filters that will be temporarely removed until this component is present.
+    /// Collision layer filters that will be temporarily removed until this component is present.
     filters: LayerMask,
 }
 

@@ -1,6 +1,6 @@
 (
     base_color_texture: Some("brick_base_color.png"),
-    metallic_roughness_texture: Some("brick_roughnes_metalic.png"),
+    metallic_roughness_texture: Some("brick_roughnes_metallic.png"),
     normal_map_texture: Some("brick_normal.png"),
     occlusion_texture: Some("brick_occlusion.png"),
     perceptual_roughness: 0.0,

@@ -277,7 +277,7 @@ impl Component for NavDestination {
 
 /// Calculated navigation path.
 ///
-/// Includes start point, itermediate points and the destination point.
+/// Includes start point, intermediate points and the destination point.
 /// This component updates each time [`NavDestination`] changes.
 #[derive(Default, Deref, Component, Serialize, Deserialize)]
 pub(super) struct NavPath(Vec<Vec3>);

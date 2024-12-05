@@ -42,3 +42,6 @@ bitflags = "2.6"
 type_complexity = "allow"
 too_many_arguments = "allow"
 doc_markdown = "warn"
+
+[workspace.metadata.typos]
+default.extend-words = { lod = "lod" }

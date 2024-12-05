@@ -118,7 +118,7 @@ impl PlacingObjectPlugin {
             PlacingObject::Moving(object_entity) => {
                 let (object, &transform) = objects
                     .get(object_entity)
-                    .expect("moving object should referece a valid object");
+                    .expect("moving object should reference a valid object");
 
                 let info_handle = asset_server
                     .get_handle(&object.0)

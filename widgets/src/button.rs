@@ -28,12 +28,12 @@ impl Plugin for ButtonPlugin {
 
 impl ButtonPlugin {
     fn init_text(
-        mut commmands: Commands,
+        mut commands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &ButtonText, &TextButtonKind), Added<ButtonText>>,
     ) {
         for (entity, text, kind) in &buttons {
-            commmands.entity(entity).with_children(|parent| {
+            commands.entity(entity).with_children(|parent| {
                 let style = match kind {
                     TextButtonKind::Normal => theme.button.normal_text.clone(),
                     TextButtonKind::Large => theme.button.large_text.clone(),
@@ -45,13 +45,13 @@ impl ButtonPlugin {
     }
 
     fn init_images(
-        mut commmands: Commands,
+        mut commands: Commands,
         theme: Res<Theme>,
         buttons: Query<(Entity, &Handle<Image>), (Changed<Handle<Image>>, With<Button>)>,
     ) {
         for (entity, image_handle) in &buttons {
             // Entity could be despawned in the same frame, so check for existence.
-            if let Some(mut entity) = commmands.get_entity(entity) {
+            if let Some(mut entity) = commands.get_entity(entity) {
                 entity.despawn_descendants().with_children(|parent| {
                     parent.spawn(ImageBundle {
                         style: theme.button.image.clone(),
@@ -140,7 +140,7 @@ impl ButtonPlugin {
     }
 
     fn switch_tabs(
-        mut commmands: Commands,
+        mut commands: Commands,
         tabs: Query<(&Toggled, &TabContent), Changed<Toggled>>,
         mut tab_nodes: Query<(&mut Style, Option<&mut PreviousDisplay>)>,
     ) {
@@ -157,7 +157,7 @@ impl ButtonPlugin {
                 if let Some(previous_display) = &mut previous_display {
                     previous_display.0 = style.display;
                 } else {
-                    commmands
+                    commands
                         .entity(tab_content.0)
                         .insert(PreviousDisplay(style.display));
                 }

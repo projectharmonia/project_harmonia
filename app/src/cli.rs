@@ -34,7 +34,7 @@ impl Plugin for CliPlugin {
                 Self::quick_load.pipe(error_message).run_if(
                     in_state(WorldState::World)
                         // HACK: wait for family members initialiaztion.
-                        // They initalized in `PreUpdate`, but state transitions happens later.
+                        // They initialized in `PreUpdate`, but state transitions happens later.
                         // Can be removed after switching to hooks.
                         .and_then(any_with_component::<FamilyMembers>)
                         .and_then(run_once()),

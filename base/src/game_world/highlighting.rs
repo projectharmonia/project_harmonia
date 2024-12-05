@@ -30,11 +30,11 @@ impl HighlightingPlugin {
         mut commands: Commands,
         mut ready_events: EventReader<SceneInstanceReady>,
         scenes: Query<Entity, With<OutlineVolume>>,
-        chidlren: Query<&Children>,
+        children: Query<&Children>,
     ) {
         for scene_entity in scenes.iter_many(ready_events.read().map(|event| event.parent)) {
             debug!("initializing outline for scene `{scene_entity}`");
-            for child_entity in chidlren.iter_descendants(scene_entity) {
+            for child_entity in children.iter_descendants(scene_entity) {
                 commands
                     .entity(child_entity)
                     .insert(InheritOutlineBundle::default());

@@ -57,7 +57,7 @@ impl Default for GamePaths {
             author: "shatur",
         };
         let config_dir = app_dirs2::app_dir(AppDataType::UserConfig, &app_info, "")
-            .expect("config directory should be accessiable");
+            .expect("config directory should be accessible");
         info!("using {config_dir:?} as config directory");
 
         let mut settings = config_dir.clone();

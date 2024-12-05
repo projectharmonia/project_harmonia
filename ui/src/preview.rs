@@ -102,13 +102,13 @@ impl PreviewPlugin {
         mut preview_cameras: Query<&mut Camera, With<PreviewCamera>>,
         preview_scenes: Query<(Entity, &PreviewTarget, &Handle<Scene>)>,
         targets: Query<&Style>,
-        chidlren: Query<&Children>,
+        children: Query<&Children>,
         meshes: Query<Entity, With<Handle<Mesh>>>,
     ) {
         let (scene_entity, preview_target, scene_handle) = preview_scenes.single();
         let deps_state = asset_server.recursive_dependency_load_state(scene_handle);
         if deps_state == RecursiveDependencyLoadState::Loaded {
-            debug!("asset for preview was sucessfully loaded");
+            debug!("asset for preview was successfully loaded");
 
             let Ok(style) = targets.get(preview_target.0) else {
                 debug!("preview target is no longer valid");
@@ -134,7 +134,7 @@ impl PreviewPlugin {
             camera.is_active = true;
             camera.target = RenderTarget::Image(image_handle);
 
-            for child_entity in meshes.iter_many(chidlren.iter_descendants(scene_entity)) {
+            for child_entity in meshes.iter_many(children.iter_descendants(scene_entity)) {
                 commands.entity(child_entity).insert((
                     PREVIEW_RENDER_LAYER,
                     NoFrustumCulling,

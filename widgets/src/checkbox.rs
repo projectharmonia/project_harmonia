@@ -15,12 +15,12 @@ impl Plugin for CheckboxPlugin {
 
 impl CheckboxPlugin {
     fn init(
-        mut commmands: Commands,
+        mut commands: Commands,
         theme: Res<Theme>,
         checkboxes: Query<(Entity, &Checkbox, &CheckboxText), Added<CheckboxText>>,
     ) {
         for (entity, checkbox, text) in &checkboxes {
-            commmands.entity(entity).with_children(|parent| {
+            commands.entity(entity).with_children(|parent| {
                 parent
                     .spawn((
                         LastInteraction::default(),
@@ -60,18 +60,18 @@ impl CheckboxPlugin {
 
     /// Won't be triggered after spawning because button child will be spawned at the next frame.
     fn update_tick(
-        mut commmands: Commands,
+        mut commands: Commands,
         theme: Res<Theme>,
         checkboxes: Query<(&Children, &Checkbox), Changed<Checkbox>>,
         buttons: Query<Entity, With<Button>>,
     ) {
-        for (chidlren, checkbox) in &checkboxes {
+        for (children, checkbox) in &checkboxes {
             let entity = buttons
-                .iter_many(chidlren)
+                .iter_many(children)
                 .next()
                 .expect("checkbox should have child button");
             if checkbox.0 {
-                commmands.entity(entity).with_children(|parent| {
+                commands.entity(entity).with_children(|parent| {
                     parent.spawn(NodeBundle {
                         style: theme.checkbox.tick.clone(),
                         background_color: theme.checkbox.tick_color.into(),
@@ -79,7 +79,7 @@ impl CheckboxPlugin {
                     });
                 });
             } else {
-                commmands.entity(entity).despawn_descendants();
+                commands.entity(entity).despawn_descendants();
             }
         }
     }

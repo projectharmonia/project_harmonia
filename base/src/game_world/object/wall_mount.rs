@@ -71,7 +71,7 @@ impl WallMountPlugin {
             if visibility == Visibility::Hidden {
                 if let Some(wall_entity) = object_wall.0.take() {
                     trace!(
-                        "removing hidden `{object_entity}` from the apreture of `{wall_entity}`"
+                        "removing hidden `{object_entity}` from the aperture of `{wall_entity}`"
                     );
                     let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
                     apertures.remove(object_entity);
@@ -80,15 +80,15 @@ impl WallMountPlugin {
             }
 
             let translation = transform.translation;
-            if let Some((wall_entity, _, sement, mut apertures)) = walls
+            if let Some((wall_entity, _, segment, mut apertures)) = walls
                 .iter_mut()
                 .filter(|&(_, parent, ..)| parent == object_parent)
                 .find(|(.., segment, _)| segment.contains(translation.xz()))
             {
-                let distance = translation.xz().distance(sement.start);
+                let distance = translation.xz().distance(segment.start);
                 if let Some(current_entity) = object_wall.0 {
                     if current_entity == wall_entity {
-                        trace!("updating apreture of `{wall_entity}` for `{object_entity}`");
+                        trace!("updating aperture of `{wall_entity}` for `{object_entity}`");
                         // Remove to update distance.
                         let mut aperture = apertures.remove(object_entity);
 
@@ -97,7 +97,7 @@ impl WallMountPlugin {
 
                         apertures.insert(aperture);
                     } else {
-                        trace!("adding `{object_entity}` to the apreture of `{wall_entity}`");
+                        trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
                         apertures.insert(Aperture {
                             object_entity,
                             translation,
@@ -110,13 +110,13 @@ impl WallMountPlugin {
                         object_wall.0 = Some(wall_entity);
 
                         trace!(
-                            "removing `{object_entity}` from the apreture of `{current_entity}`"
+                            "removing `{object_entity}` from the aperture of `{current_entity}`"
                         );
                         let (.., mut current_apertures) = walls.get_mut(current_entity).unwrap();
                         current_apertures.remove(object_entity);
                     }
                 } else {
-                    trace!("adding `{object_entity}` to the apreture of `{wall_entity}`");
+                    trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
                     apertures.insert(Aperture {
                         object_entity,
                         translation,
@@ -129,7 +129,7 @@ impl WallMountPlugin {
                     object_wall.0 = Some(wall_entity);
                 }
             } else if let Some(wall_entity) = object_wall.0.take() {
-                trace!("removing `{object_entity}` from the apreture of `{wall_entity}`");
+                trace!("removing `{object_entity}` from the aperture of `{wall_entity}`");
                 let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
                 apertures.remove(object_entity);
             }

@@ -83,7 +83,7 @@ impl CommandsHistory<'_, '_> {
         });
     }
 
-    /// Like [`Self::push`], but the command will wait for confirmation from server to be avaiable for [`Self::undo`].
+    /// Like [`Self::push`], but the command will wait for confirmation from server to be available for [`Self::undo`].
     ///
     /// See also [`CommandConfirmation`].
     pub(super) fn push_pending<C: PendingCommand + 'static>(&mut self, command: C) -> CommandId {
@@ -347,7 +347,7 @@ pub(super) trait ConfirmableCommand: Send + Sync {
 ///
 /// Needed to correctly handle entity references in commands that spawn/despawn entities.
 /// Entities tracked by their record order using internal indexing.
-/// The index resets each command executation.
+/// The index resets each command execution.
 pub(super) struct EntityRecorder<'a> {
     index: usize,
     entities: &'a mut Vec<Entity>,
