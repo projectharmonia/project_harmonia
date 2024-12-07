@@ -2,6 +2,10 @@
 
 A work-in-progress life simulation game made with [Bevy](https://bevyengine.org).
 
+![](https://lemmy.ml/pictrs/image/cbdfc19d-0f34-4fec-ae21-598c58648b09.png)
+
+<img style="height: 150px;" src="https://lemmy.ml/pictrs/image/6c42fe21-6b9c-416a-b578-8bb7e3ef0f31.png"> <img style="height: 150px;" src="https://lemmy.ml/pictrs/image/cbf70dd4-07ad-4f0a-8239-7b7bb50bc8b2.png"> <img style="height: 150px;" src="https://lemmy.ml/pictrs/image/d13e57da-9d8c-4351-85ff-782a86ee84de.png">
+
 ## Building
 
 ### Desktop
