@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use strum::{EnumIter, IntoEnumIterator};
 
 use project_harmonia_base::game_world::{
@@ -10,15 +11,26 @@ pub(super) struct ToolsNodePlugin;
 
 impl Plugin for ToolsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            Self::apply_history_action
-                .run_if(in_state(FamilyMode::Building).or_else(in_state(WorldState::City))),
-        );
+        app.add_input_context::<ToolsNode>()
+            .observe(Self::undo)
+            .observe(Self::redo)
+            .add_systems(
+                Update,
+                Self::apply_history_action
+                    .run_if(in_state(FamilyMode::Building).or_else(in_state(WorldState::City))),
+            );
     }
 }
 
 impl ToolsNodePlugin {
+    fn undo(_trigger: Trigger<Fired<Undo>>, mut history: CommandsHistory) {
+        history.undo();
+    }
+
+    fn redo(_trigger: Trigger<Fired<Redo>>, mut history: CommandsHistory) {
+        history.redo();
+    }
+
     fn apply_history_action(
         mut history: CommandsHistory,
         mut click_events: EventReader<Click>,
@@ -35,16 +47,19 @@ impl ToolsNodePlugin {
 
 pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                position_type: PositionType::Absolute,
-                left: Val::Percent(50.0),
-                padding: theme.padding.normal,
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Percent(50.0),
+                    padding: theme.padding.normal,
+                    ..Default::default()
+                },
+                background_color: theme.panel_color.into(),
                 ..Default::default()
             },
-            background_color: theme.panel_color.into(),
-            ..Default::default()
-        })
+            ToolsNode,
+        ))
         .with_children(|parent| {
             for button in HistoryButton::iter() {
                 parent.spawn((button, TextButtonBundle::symbol(theme, button.glyph())));
@@ -66,3 +81,29 @@ impl HistoryButton {
         }
     }
 }
+
+#[derive(Component)]
+struct ToolsNode;
+
+impl InputContext for ToolsNode {
+    fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+
+        ctx.bind::<Redo>()
+            .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL | ModKeys::SHIFT))
+            .to(GamepadButtonType::RightThumb);
+        ctx.bind::<Undo>()
+            .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL))
+            .to(GamepadButtonType::LeftThumb);
+
+        ctx
+    }
+}
+
+#[derive(Component, InputAction, Debug)]
+#[input_action(output = bool)]
+struct Undo;
+
+#[derive(Component, InputAction, Debug)]
+#[input_action(output = bool)]
+struct Redo;
