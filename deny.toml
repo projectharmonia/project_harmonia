@@ -13,6 +13,7 @@ allow = [
   "BSD-2-Clause",
   "CC0-1.0",
   "Unicode-DFS-2016",
+  "Unicode-3.0",
 ]
 
 [bans]
@@ -26,7 +27,6 @@ skip = [
   { name = "event-listener", version = "<5.1" },
   { name = "fixedbitset", version = "0.4" },
   { name = "heck", version = "0.4" },
-  { name = "image", version = "0.24" },
   { name = "inotify", version = "0.9" },
   { name = "itertools", version = "0.11" },
   { name = "libloading", version = "0.7" },
