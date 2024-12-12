@@ -311,6 +311,7 @@ impl WorldBrowserPlugin {
 
                     commands.insert_resource(client);
                     commands.insert_resource(transport);
+                    commands.entity(dialogs.single()).despawn_recursive(); // Despawn only on transport creation.
                 }
                 JoinDialogButton::Cancel => {
                     info!("cancelling join");
