@@ -176,8 +176,8 @@ impl WorldBrowserPlugin {
         network_channels: Res<RepliconChannels>,
         dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
         buttons: Query<&HostDialogButton>,
-        text_edits: Query<&Text, With<PortEdit>>,
-        mut labels: Query<&mut Text, Without<PortEdit>>,
+        text_edits: Query<&TextInputValue, With<PortEdit>>,
+        mut labels: Query<&mut Text>,
     ) -> Result<()> {
         for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
             let (dialog_entity, world_node) = dialogs.single();
@@ -189,7 +189,7 @@ impl WorldBrowserPlugin {
                         ..Default::default()
                     });
                     let port = text_edits.single();
-                    let transport = network::create_server(port.sections[0].value.parse()?)
+                    let transport = network::create_server(port.0.parse()?)
                         .context("unable to create server")?;
 
                     commands.insert_resource(server);
