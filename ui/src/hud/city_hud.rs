@@ -1,4 +1,3 @@
-mod lots_node;
 mod roads_node;
 
 use bevy::prelude::*;
@@ -16,14 +15,13 @@ use project_harmonia_widgets::{
 use strum::IntoEnumIterator;
 
 use crate::hud::{objects_node, tools_node};
-use lots_node::LotsNodePlugin;
 use roads_node::RoadsNodePlugin;
 
 pub(super) struct CityHudPlugin;
 
 impl Plugin for CityHudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((LotsNodePlugin, RoadsNodePlugin))
+        app.add_plugins(RoadsNodePlugin)
             .add_systems(OnEnter(WorldState::City), Self::setup)
             .add_systems(
                 Update,
@@ -94,7 +92,6 @@ impl CityHudPlugin {
                                         ObjectCategory::CITY_CATEGORIES,
                                     );
                                 }
-                                CityMode::Lots => lots_node::setup(parent, &theme),
                                 CityMode::Roads => roads_node::setup(
                                     parent,
                                     &mut tab_commands,

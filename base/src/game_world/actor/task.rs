@@ -1,4 +1,3 @@
-mod buy_lot;
 mod friendly;
 mod linked_task;
 mod move_here;
@@ -27,7 +26,6 @@ use crate::{
         picking::Clicked,
     },
 };
-use buy_lot::BuyLotPlugin;
 use friendly::FriendlyPlugins;
 use linked_task::LinkedTaskPlugin;
 use move_here::MoveHerePlugin;
@@ -36,31 +34,26 @@ pub(super) struct TaskPlugin;
 
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            BuyLotPlugin,
-            FriendlyPlugins,
-            LinkedTaskPlugin,
-            MoveHerePlugin,
-        ))
-        .register_type::<TaskState>()
-        .replicate::<TaskState>()
-        .observe(Self::list)
-        .add_client_event::<TaskCancel>(ChannelKind::Unordered)
-        .add_client_event_with(
-            ChannelKind::Unordered,
-            serialize_task_request,
-            deserialize_task_request,
-        )
-        .add_systems(
-            PreUpdate,
-            (Self::request, Self::cancel)
-                .after(ClientSet::Receive)
-                .run_if(server_or_singleplayer),
-        )
-        .add_systems(
-            PostUpdate,
-            (Self::despawn_cancelled, Self::activate_queued).run_if(server_or_singleplayer),
-        );
+        app.add_plugins((FriendlyPlugins, LinkedTaskPlugin, MoveHerePlugin))
+            .register_type::<TaskState>()
+            .replicate::<TaskState>()
+            .observe(Self::list)
+            .add_client_event::<TaskCancel>(ChannelKind::Unordered)
+            .add_client_event_with(
+                ChannelKind::Unordered,
+                serialize_task_request,
+                deserialize_task_request,
+            )
+            .add_systems(
+                PreUpdate,
+                (Self::request, Self::cancel)
+                    .after(ClientSet::Receive)
+                    .run_if(server_or_singleplayer),
+            )
+            .add_systems(
+                PostUpdate,
+                (Self::despawn_cancelled, Self::activate_queued).run_if(server_or_singleplayer),
+            );
     }
 }
 

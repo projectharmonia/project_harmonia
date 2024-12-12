@@ -1,4 +1,3 @@
-pub mod lot;
 pub mod road;
 
 use std::f32::consts::FRAC_PI_2;
@@ -21,14 +20,13 @@ use crate::{
     core::GameState,
     game_world::{actor::ACTOR_RADIUS, Layer},
 };
-use lot::LotPlugin;
 use road::RoadPlugin;
 
 pub(super) struct CityPlugin;
 
 impl Plugin for CityPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((LotPlugin, RoadPlugin))
+        app.add_plugins(RoadPlugin)
             .add_sub_state::<CityMode>()
             .enable_state_scoped_entities::<CityMode>()
             .register_type::<City>()
@@ -202,7 +200,6 @@ impl FromWorld for GroundMesh {
 pub enum CityMode {
     #[default]
     Objects,
-    Lots,
     Roads,
 }
 
@@ -210,7 +207,6 @@ impl CityMode {
     pub fn glyph(self) -> &'static str {
         match self {
             Self::Objects => "🌳",
-            Self::Lots => "⬛",
             Self::Roads => "🚧",
         }
     }
