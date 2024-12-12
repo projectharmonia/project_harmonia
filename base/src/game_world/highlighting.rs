@@ -14,7 +14,7 @@ impl Plugin for HighlightingPlugin {
         app.init_resource::<LastHighlighted>()
             .observe(Self::enable)
             .observe(Self::disable)
-            .observe(Self::pick)
+            .observe(Self::clear)
             .add_systems(
                 SpawnScene,
                 Self::init_scene
@@ -66,18 +66,17 @@ impl HighlightingPlugin {
         }
     }
 
-    fn pick(
+    fn clear(
         _trigger: Trigger<OnRemove, Picked>,
         mut last_hovered: ResMut<LastHighlighted>,
         mut volumes: Query<&mut OutlineVolume>,
     ) {
         if let Some(entity) = **last_hovered {
-            debug!("clearing highlighting for `{entity}`");
-            let mut outline = volumes
-                .get_mut(entity)
-                .expect("all hovered entities have outline");
-            outline.visible = true;
-            **last_hovered = Some(entity);
+            if let Ok(mut outline) = volumes.get_mut(entity) {
+                debug!("clearing highlighting for `{entity}`");
+                outline.visible = true;
+                **last_hovered = Some(entity);
+            }
         }
     }
 }
