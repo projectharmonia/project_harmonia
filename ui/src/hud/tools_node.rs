@@ -91,10 +91,12 @@ impl InputContext for ToolsNode {
 
         ctx.bind::<Redo>()
             .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL | ModKeys::SHIFT))
-            .to(GamepadButtonType::RightThumb);
+            .to(GamepadButtonType::RightThumb)
+            .with_conditions(Pulse::new(0.3));
         ctx.bind::<Undo>()
             .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL))
-            .to(GamepadButtonType::LeftThumb);
+            .to(GamepadButtonType::LeftThumb)
+            .with_conditions(Pulse::new(0.3));
 
         ctx
     }
