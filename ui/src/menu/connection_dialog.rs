@@ -14,7 +14,7 @@ impl Plugin for ConnectionDialogPlugin {
             Update,
             (
                 Self::show.run_if(client_started_connecting),
-                Self::close.run_if(client_just_disconnected),
+                Self::close.run_if(client_just_disconnected.or_else(client_just_connected)),
             ),
         );
     }
@@ -57,18 +57,19 @@ impl ConnectionDialogPlugin {
         mut commands: Commands,
         mut click_events: EventReader<Click>,
         buttons: Query<(), With<CancelButton>>,
-        dialogs: Query<Entity, With<ConnectionDialog>>,
     ) {
         for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
             info!("cancelling connection");
             commands.remove_resource::<RenetClient>();
-            commands.entity(dialogs.single()).despawn_recursive();
         }
     }
 
     fn close(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
-        info!("closing connection dialog");
-        commands.entity(dialogs.single()).despawn_recursive();
+        if let Ok(entity) = dialogs.get_single() {
+            // Dialog may not be created if the connection happens instantly.
+            info!("closing connection dialog");
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }
 
