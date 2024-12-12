@@ -250,7 +250,8 @@ impl InputContext for PlayerCamera {
                 },
                 GamepadStick::Right,
                 Input::mouse_motion()
-                    .with_modifiers(Scale::splat(0.05))
+                    .with_modifiers(Negate::all(true))
+                    .with_modifiers(Scale::splat(0.08))
                     .with_conditions(Chord::<EnableCameraRotation>::default()),
             ))
             .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
