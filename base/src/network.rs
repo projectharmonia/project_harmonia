@@ -14,7 +14,7 @@ pub const DEFAULT_PORT: u16 = 4761;
 const PROTOCOL_ID: u64 = 7;
 
 pub fn create_server(port: u16) -> Result<NetcodeServerTransport> {
-    info!("creating server transport");
+    info!("creating server transport for port {port}");
 
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
@@ -32,7 +32,7 @@ pub fn create_server(port: u16) -> Result<NetcodeServerTransport> {
 }
 
 pub fn create_client(ip: IpAddr, port: u16) -> Result<NetcodeClientTransport> {
-    info!("creating client transport");
+    info!("creating client transport for {ip}:{port}");
 
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;
