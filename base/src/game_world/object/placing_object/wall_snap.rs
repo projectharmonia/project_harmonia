@@ -20,9 +20,7 @@ impl Plugin for WallSnapPlugin {
             Update,
             (
                 Self::init_placing,
-                Self::snap
-                    .after(PlacingObjectPlugin::apply_position)
-                    .before(PlacingObjectPlugin::confirm),
+                Self::snap.after(PlacingObjectPlugin::apply_position),
             )
                 .chain()
                 .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
