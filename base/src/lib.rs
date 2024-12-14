@@ -1,3 +1,4 @@
+mod alpha_color;
 pub mod asset;
 mod combined_scene_collider;
 pub mod common_conditions;
@@ -13,6 +14,7 @@ pub mod settings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
+use alpha_color::AlphaColorPlugin;
 use asset::AssetPlugin;
 use combined_scene_collider::SceneColliderConstructorPlugin;
 use core::CorePlugin;
@@ -30,6 +32,7 @@ impl PluginGroup for CorePlugins {
             .add(AssetPlugin)
             .add(MathPlugin)
             .add(CorePlugin)
+            .add(AlphaColorPlugin)
             .add(SceneColliderConstructorPlugin)
             .add(GameWorldPlugin)
             .add(ErrorReportPlugin)

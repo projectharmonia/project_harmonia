@@ -9,6 +9,7 @@ use bevy_enhanced_input::prelude::*;
 
 use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
+    alpha_color::{AlphaColor, AlphaColorPlugin},
     common_conditions::observer_in_state,
     game_world::{
         city::ActiveCity,
@@ -36,7 +37,14 @@ impl Plugin for PlacingWallPlugin {
             .observe(Self::confirm)
             .add_systems(
                 Update,
-                (Self::update_end, Self::update_material).run_if(in_state(BuildingMode::Walls)),
+                Self::update_end.run_if(in_state(BuildingMode::Walls)),
+            )
+            .add_systems(
+                PostUpdate,
+                Self::update_alpha
+                    .before(AlphaColorPlugin::update_materials)
+                    .after(PhysicsSet::StepSimulation)
+                    .run_if(in_state(BuildingMode::Walls)),
             );
     }
 }
@@ -119,33 +127,21 @@ impl PlacingWallPlugin {
         });
     }
 
-    fn update_material(
-        mut materials: ResMut<Assets<StandardMaterial>>,
+    fn update_alpha(
         mut placing_walls: Query<
-            (&mut Handle<StandardMaterial>, &CollidingEntities),
+            (&mut AlphaColor, &CollidingEntities),
             (Changed<CollidingEntities>, With<PlacingWall>),
         >,
     ) {
-        let Ok((mut material_handle, colliding_entities)) = placing_walls.get_single_mut() else {
+        let Ok((mut alpha, colliding_entities)) = placing_walls.get_single_mut() else {
             return;
         };
 
-        let mut material = materials
-            .get(&*material_handle)
-            .cloned()
-            .expect("material should be preloaded");
-
-        let color = if colliding_entities.is_empty() {
-            WHITE.into()
+        if colliding_entities.is_empty() {
+            **alpha = WHITE.into();
         } else {
-            RED.into()
+            **alpha = RED.into();
         };
-        debug!("changing base color to `{color:?}`");
-
-        material.alpha_mode = AlphaMode::Add;
-        material.base_color = color;
-
-        *material_handle = materials.add(material);
     }
 
     fn update_end(
@@ -274,6 +270,7 @@ struct PlacingWallBundle {
     placing_wall: PlacingWall,
     segment: SplineSegment,
     picked: Picked,
+    alpha: AlphaColor,
     state_scoped: StateScoped<WallTool>,
     apertures: Apertures,
     collider: Collider,
@@ -298,6 +295,7 @@ impl PlacingWallBundle {
             placing_wall,
             segment,
             picked: Picked,
+            alpha: AlphaColor(WHITE.into()),
             state_scoped: StateScoped(tool),
             apertures: Default::default(),
             collider: Default::default(),

@@ -11,11 +11,11 @@ use bevy::{
     color::palettes::css::{RED, WHITE},
     ecs::reflect::ReflectCommandExt,
     prelude::*,
-    scene,
 };
 use bevy_enhanced_input::prelude::*;
 
 use crate::{
+    alpha_color::{AlphaColor, AlphaColorPlugin},
     asset::info::object_info::ObjectInfo,
     common_conditions::observer_in_state,
     game_world::{
@@ -57,9 +57,10 @@ impl Plugin for PlacingObjectPlugin {
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             )
             .add_systems(
-                SpawnScene,
-                Self::update_materials
-                    .after(scene::scene_spawner_system)
+                PostUpdate,
+                Self::update_alpha
+                    .before(AlphaColorPlugin::update_materials)
+                    .after(PhysicsSet::StepSimulation)
                     .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
             );
     }
@@ -141,6 +142,7 @@ impl PlacingObjectPlugin {
             StateScoped(BuildingMode::Objects),
             StateScoped(CityMode::Objects),
             Picked,
+            AlphaColor(WHITE.into()),
             scene_handle,
             PlacingObjectState::new(cursor_offset),
             ObjectRotationLimit::default(),
@@ -319,42 +321,21 @@ impl PlacingObjectPlugin {
         }
     }
 
-    fn update_materials(
-        mut materials: ResMut<Assets<StandardMaterial>>,
-        placing_objects: Query<
-            (Entity, &PlacingObjectState, &CollidingEntities),
+    fn update_alpha(
+        mut placing_objects: Query<
+            (&mut AlphaColor, &PlacingObjectState, &CollidingEntities),
             Or<(Changed<CollidingEntities>, Changed<PlacingObjectState>)>,
         >,
-        children: Query<&Children>,
-        mut material_handles: Query<&mut Handle<StandardMaterial>>,
     ) {
-        let Ok((placing_entity, state, colliding_entities)) = placing_objects.get_single() else {
+        let Ok((mut alpha, state, colliding_entities)) = placing_objects.get_single_mut() else {
             return;
         };
 
-        let color = if state.allowed_place && colliding_entities.is_empty() {
-            WHITE.into()
+        if state.allowed_place && colliding_entities.is_empty() {
+            **alpha = WHITE.into();
         } else {
-            RED.into()
+            **alpha = RED.into();
         };
-        debug!("changing base color to `{color:?}`");
-
-        let mut iter = material_handles.iter_many_mut(children.iter_descendants(placing_entity));
-        while let Some(mut material_handle) = iter.fetch_next() {
-            let material = materials
-                .get(&*material_handle)
-                .expect("material handle should be valid");
-
-            // If color matches, assume that we don't need any update.
-            if material.base_color == color {
-                return;
-            }
-
-            let mut material = material.clone();
-            material.base_color = color;
-            material.alpha_mode = AlphaMode::Add;
-            *material_handle = materials.add(material);
-        }
     }
 
     fn ensure_single(

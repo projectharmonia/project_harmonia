@@ -9,6 +9,7 @@ use bevy_enhanced_input::prelude::*;
 
 use super::{Road, RoadData, RoadTool};
 use crate::{
+    alpha_color::{AlphaColor, AlphaColorPlugin},
     asset::info::road_info::RoadInfo,
     common_conditions::observer_in_state,
     game_world::{
@@ -34,9 +35,13 @@ impl Plugin for PlacingRoadPlugin {
             .observe(Self::delete)
             .observe(Self::cancel)
             .observe(Self::confirm)
+            .add_systems(Update, Self::update_end.run_if(in_state(CityMode::Roads)))
             .add_systems(
-                Update,
-                (Self::update_end, Self::update_material).run_if(in_state(CityMode::Roads)),
+                PostUpdate,
+                Self::update_alpha
+                    .before(AlphaColorPlugin::update_materials)
+                    .after(PhysicsSet::StepSimulation)
+                    .run_if(in_state(CityMode::Roads)),
             );
     }
 }
@@ -139,33 +144,21 @@ impl PlacingRoadPlugin {
         });
     }
 
-    fn update_material(
-        mut materials: ResMut<Assets<StandardMaterial>>,
+    fn update_alpha(
         mut placing_roads: Query<
-            (&mut Handle<StandardMaterial>, &CollidingEntities),
+            (&mut AlphaColor, &CollidingEntities),
             (Changed<CollidingEntities>, With<PlacingRoad>),
         >,
     ) {
-        let Ok((mut material_handle, colliding_entities)) = placing_roads.get_single_mut() else {
+        let Ok((mut alpha, colliding_entities)) = placing_roads.get_single_mut() else {
             return;
         };
 
-        let mut material = materials
-            .get(&*material_handle)
-            .cloned()
-            .expect("material handle should be valid");
-
-        let color = if colliding_entities.is_empty() {
-            WHITE.into()
+        if colliding_entities.is_empty() {
+            **alpha = WHITE.into();
         } else {
-            RED.into()
+            **alpha = RED.into();
         };
-        debug!("changing base color to `{color:?}`");
-
-        material.alpha_mode = AlphaMode::Add;
-        material.base_color = color;
-
-        *material_handle = materials.add(material);
     }
 
     fn update_end(
@@ -309,6 +302,7 @@ struct PlacingRoadBundle {
     road_data: RoadData,
     segment: SplineSegment,
     state_scoped: StateScoped<RoadTool>,
+    alpha: AlphaColor,
     collider: Collider,
     collision_layers: CollisionLayers,
     no_culling: NoFrustumCulling,
@@ -333,6 +327,7 @@ impl PlacingRoadBundle {
             placing_road,
             segment: SplineSegment(segment),
             state_scoped: StateScoped(tool),
+            alpha: AlphaColor(WHITE.into()),
             collider: Default::default(),
             collision_layers: CollisionLayers::new(
                 Layer::PlacingRoad,
