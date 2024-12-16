@@ -18,12 +18,9 @@ use crate::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        spline::{
-            dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplinePlugin, SplineSegment,
-        },
+        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections, SplinePlugin},
         Layer,
     },
-    math::segment::Segment,
 };
 use placing_road::PlacingRoadPlugin;
 
@@ -92,7 +89,7 @@ impl RoadPlugin {
         mut changed_roads: Query<
             (
                 &Handle<Mesh>,
-                Ref<SplineSegment>,
+                Ref<Segment>,
                 &SplineConnections,
                 &RoadData,
                 &mut Collider,
@@ -121,7 +118,7 @@ impl RoadPlugin {
         mut commands: Commands,
         mut request_events: EventReader<FromClient<CommandRequest<RoadCommand>>>,
         mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
-        mut roads: Query<&mut SplineSegment, With<Road>>,
+        mut roads: Query<&mut Segment, With<Road>>,
     ) {
         for FromClient { client_id, event } in request_events.read().cloned() {
             // TODO: validate if command can be applied.
@@ -190,7 +187,7 @@ impl RoadTool {
 #[derive(Bundle)]
 struct RoadBundle {
     road: Road,
-    spline_segment: SplineSegment,
+    segment: Segment,
     parent_sync: ParentSync,
     replication: Replicated,
 }
@@ -199,7 +196,7 @@ impl RoadBundle {
     fn new(info_path: AssetPath<'static>, segment: Segment) -> Self {
         Self {
             road: Road(info_path),
-            spline_segment: SplineSegment(segment),
+            segment,
             parent_sync: Default::default(),
             replication: Replicated,
         }
@@ -256,7 +253,7 @@ impl PendingCommand for RoadCommand {
                 entity: Entity::PLACEHOLDER,
             },
             Self::MovePoint { entity, kind, .. } => {
-                let segment = world.get::<SplineSegment>(entity).unwrap();
+                let segment = world.get::<Segment>(entity).unwrap();
                 let point = match kind {
                     PointKind::Start => segment.start,
                     PointKind::End => segment.end,
@@ -271,7 +268,7 @@ impl PendingCommand for RoadCommand {
                 recorder.record(entity);
                 let entity = world.entity(entity);
                 let road = entity.get::<Road>().unwrap();
-                let segment = **entity.get::<SplineSegment>().unwrap();
+                let segment = *entity.get::<Segment>().unwrap();
                 let city_entity = **entity.get::<Parent>().unwrap();
                 Self::Create {
                     city_entity,

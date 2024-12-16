@@ -9,8 +9,7 @@ use crate::{
         info::{MapPaths, ReflectMapPaths},
     },
     core::GameState,
-    game_world::{actor::Actor, navigation::NavPath},
-    math::segment::Segment,
+    game_world::{actor::Actor, navigation::NavPath, segment::Segment},
 };
 
 pub(super) struct DoorPlugin;

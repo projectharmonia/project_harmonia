@@ -17,11 +17,10 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
         player_camera::CameraCaster,
-        spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
+        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
-    math::segment::Segment,
     settings::Settings,
 };
 
@@ -54,13 +53,7 @@ impl PlacingRoadPlugin {
         roads_info: Res<Assets<RoadInfo>>,
         asset_server: Res<AssetServer>,
         mut meshes: ResMut<Assets<Mesh>>,
-        roads: Query<(
-            Entity,
-            &Parent,
-            &Handle<StandardMaterial>,
-            &Road,
-            &SplineSegment,
-        )>,
+        roads: Query<(Entity, &Parent, &Handle<StandardMaterial>, &Road, &Segment)>,
     ) {
         if !observer_in_state(road_tool, RoadTool::Move) {
             return;
@@ -91,7 +84,7 @@ impl PlacingRoadPlugin {
                 PlacingRoadBundle::new(
                     PlacingRoad::MovingPoint { entity, kind },
                     info.half_width,
-                    *segment,
+                    segment,
                     material.clone(),
                     meshes.add(DynamicMesh::create_empty()),
                 ),
@@ -107,7 +100,7 @@ impl PlacingRoadPlugin {
         asset_server: Res<AssetServer>,
         roads_info: Res<Assets<RoadInfo>>,
         placing_id: Option<Res<SpawnRoadId>>,
-        roads: Query<(&Parent, &SplineSegment), With<Road>>,
+        roads: Query<(&Parent, &Segment), With<Road>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
         if !observer_in_state(road_tool, RoadTool::Create) {
@@ -163,8 +156,8 @@ impl PlacingRoadPlugin {
 
     fn update_end(
         camera_caster: CameraCaster,
-        mut placing_roads: Query<(&mut SplineSegment, &Parent, &PlacingRoad, &RoadData)>,
-        roads: Query<(&Parent, &SplineSegment), (With<Road>, Without<PlacingRoad>)>,
+        mut placing_roads: Query<(&mut Segment, &Parent, &PlacingRoad, &RoadData)>,
+        roads: Query<(&Parent, &Segment), (With<Road>, Without<PlacingRoad>)>,
     ) {
         let Ok((mut segment, placing_parent, placing_road, road_data)) =
             placing_roads.get_single_mut()
@@ -198,8 +191,8 @@ impl PlacingRoadPlugin {
         city_mode: Option<Res<State<CityMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_roads: Query<(Entity, &PlacingRoad, &mut SplineSegment)>,
-        roads: Query<&SplineSegment, Without<PlacingRoad>>,
+        mut placing_roads: Query<(Entity, &PlacingRoad, &mut Segment)>,
+        roads: Query<&Segment, Without<PlacingRoad>>,
     ) {
         if !observer_in_state(city_mode, CityMode::Roads) {
             return;
@@ -247,7 +240,7 @@ impl PlacingRoadPlugin {
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        mut placing_roads: Query<(Entity, &Parent, &SplineSegment, &PlacingRoad)>,
+        mut placing_roads: Query<(Entity, &Parent, &Segment, &PlacingRoad)>,
     ) {
         if !observer_in_state(city_mode, CityMode::Roads) {
             return;
@@ -266,7 +259,7 @@ impl PlacingRoadPlugin {
                 history.push_pending(RoadCommand::Create {
                     city_entity: **parent,
                     info_path: info_path.into_owned(),
-                    segment: *segment,
+                    segment,
                 })
             }
             PlacingRoad::MovingPoint { entity, kind } => {
@@ -300,7 +293,7 @@ struct PlacingRoadBundle {
     name: Name,
     placing_road: PlacingRoad,
     road_data: RoadData,
-    segment: SplineSegment,
+    segment: Segment,
     state_scoped: StateScoped<RoadTool>,
     alpha: AlphaColor,
     collider: Collider,
@@ -325,7 +318,7 @@ impl PlacingRoadBundle {
             name: Name::new("Placing road"),
             road_data: RoadData { half_width },
             placing_road,
-            segment: SplineSegment(segment),
+            segment,
             state_scoped: StateScoped(tool),
             alpha: AlphaColor(WHITE.into()),
             collider: Default::default(),

@@ -9,7 +9,7 @@ use crate::game_world::{
         wall::{wall_mesh::HALF_WIDTH, Wall},
         BuildingMode,
     },
-    spline::SplineSegment,
+    segment::Segment,
 };
 
 pub(super) struct WallSnapPlugin;
@@ -41,7 +41,7 @@ impl WallSnapPlugin {
     }
 
     fn snap(
-        walls: Query<&SplineSegment, With<Wall>>,
+        walls: Query<&Segment, With<Wall>>,
         mut placing_objects: Query<(
             &mut Transform,
             &mut PlacingObjectState,

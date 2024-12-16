@@ -4,17 +4,14 @@ use avian3d::prelude::Collider;
 use bevy::prelude::*;
 use itertools::MinMaxResult;
 
-use crate::{
-    game_world::spline::{dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplineSegment},
-    math::segment::Segment,
-};
+use crate::game_world::segment::{dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections};
 
 /// Small offset to avoid Z-fighting with the ground.
 const HEIGHT: f32 = 0.001;
 
 pub(super) fn generate(
     mesh: &mut DynamicMesh,
-    segment: SplineSegment,
+    segment: Segment,
     connections: &SplineConnections,
     half_width: f32,
 ) {
@@ -43,7 +40,7 @@ pub(super) fn generate(
 
     generate_surface(
         mesh,
-        *segment,
+        segment,
         start_left,
         start_right,
         end_left,
@@ -53,11 +50,11 @@ pub(super) fn generate(
     );
 
     if let MinMaxResult::MinMax(_, _) = start_connections {
-        generate_start_connection(mesh, *segment);
+        generate_start_connection(mesh, segment);
     }
 
     if let MinMaxResult::MinMax(_, _) = end_connections {
-        generate_end_connection(mesh, *segment, rotation_mat, width);
+        generate_end_connection(mesh, segment, rotation_mat, width);
     }
 }
 
@@ -135,7 +132,7 @@ fn generate_end_connection(
     mesh.indices.push(2);
 }
 
-pub(super) fn generate_collider(segment: SplineSegment, half_width: f32) -> Collider {
+pub(super) fn generate_collider(segment: Segment, half_width: f32) -> Collider {
     if segment.start == segment.end {
         return Default::default();
     }

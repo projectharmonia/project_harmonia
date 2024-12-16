@@ -17,11 +17,10 @@ use crate::{
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
         player_camera::CameraCaster,
-        spline::{dynamic_mesh::DynamicMesh, PointKind, SplineSegment},
+        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
-    math::segment::Segment,
     settings::Settings,
 };
 
@@ -58,7 +57,7 @@ impl PlacingWallPlugin {
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(Entity, &Parent, &SplineSegment), With<Wall>>,
+        walls: Query<(Entity, &Parent, &Segment), With<Wall>>,
     ) {
         if !observer_in_state(wall_tool, WallTool::Move) {
             return;
@@ -98,7 +97,7 @@ impl PlacingWallPlugin {
         mut commands: Commands,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<(&Parent, &SplineSegment), With<Wall>>,
+        walls: Query<(&Parent, &Segment), With<Wall>>,
         cities: Query<Entity, With<ActiveCity>>,
     ) {
         if !observer_in_state(wall_tool, WallTool::Create) {
@@ -120,7 +119,7 @@ impl PlacingWallPlugin {
         commands.entity(cities.single()).with_children(|parent| {
             parent.spawn(PlacingWallBundle::new(
                 PlacingWall::Spawning,
-                SplineSegment(Segment::splat(snapped_point)),
+                Segment::splat(snapped_point),
                 wall_material.0.clone(),
                 meshes.add(DynamicMesh::create_empty()),
             ));
@@ -146,8 +145,8 @@ impl PlacingWallPlugin {
 
     fn update_end(
         camera_caster: CameraCaster,
-        mut placing_walls: Query<(&mut SplineSegment, &Parent, &PlacingWall)>,
-        walls: Query<(&Parent, &SplineSegment), (With<Wall>, Without<PlacingWall>)>,
+        mut placing_walls: Query<(&mut Segment, &Parent, &PlacingWall)>,
+        walls: Query<(&Parent, &Segment), (With<Wall>, Without<PlacingWall>)>,
     ) {
         let Ok((mut segment, placing_parent, &placing_wall)) = placing_walls.get_single_mut()
         else {
@@ -180,8 +179,8 @@ impl PlacingWallPlugin {
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &PlacingWall, &mut SplineSegment)>,
-        walls: Query<&SplineSegment, Without<PlacingWall>>,
+        mut placing_walls: Query<(Entity, &PlacingWall, &mut Segment)>,
+        walls: Query<&Segment, Without<PlacingWall>>,
     ) {
         if !observer_in_state(building_mode, BuildingMode::Walls) {
             return;
@@ -228,7 +227,7 @@ impl PlacingWallPlugin {
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &SplineSegment)>,
+        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &Segment)>,
     ) {
         if !observer_in_state(building_mode, BuildingMode::Walls) {
             return;
@@ -242,7 +241,7 @@ impl PlacingWallPlugin {
         let command_id = match placing_wall {
             PlacingWall::Spawning => history.push_pending(WallCommand::Create {
                 city_entity: **parent,
-                segment: *segment,
+                segment,
             }),
             PlacingWall::MovingPoint { entity, kind } => {
                 let point = match kind {
@@ -268,7 +267,7 @@ impl PlacingWallPlugin {
 struct PlacingWallBundle {
     name: Name,
     placing_wall: PlacingWall,
-    segment: SplineSegment,
+    segment: Segment,
     picked: Picked,
     alpha: AlphaColor,
     state_scoped: StateScoped<WallTool>,
@@ -282,7 +281,7 @@ struct PlacingWallBundle {
 impl PlacingWallBundle {
     fn new(
         placing_wall: PlacingWall,
-        segment: SplineSegment,
+        segment: Segment,
         material: Handle<StandardMaterial>,
         mesh: Handle<Mesh>,
     ) -> Self {

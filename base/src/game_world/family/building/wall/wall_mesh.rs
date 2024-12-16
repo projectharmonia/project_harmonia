@@ -4,10 +4,9 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use itertools::MinMaxResult;
 
-use super::{Aperture, Apertures};
-use crate::{
-    game_world::spline::{dynamic_mesh::DynamicMesh, PointKind, SplineConnections, SplineSegment},
-    math::{segment::Segment, triangulator::Triangulator},
+use super::{triangulator::Triangulator, Aperture, Apertures};
+use crate::game_world::segment::{
+    dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections,
 };
 
 const WIDTH: f32 = 0.15;
@@ -16,7 +15,7 @@ pub(crate) const HALF_WIDTH: f32 = WIDTH / 2.0;
 
 pub(super) fn generate(
     mesh: &mut DynamicMesh,
-    segment: SplineSegment,
+    segment: Segment,
     connections: &SplineConnections,
     apertures: &Apertures,
     triangulator: &mut Triangulator,
@@ -44,7 +43,7 @@ pub(super) fn generate(
 
     generate_top(
         mesh,
-        *segment,
+        segment,
         start_left,
         start_right,
         end_left,
@@ -58,7 +57,7 @@ pub(super) fn generate(
     triangulator.set_inverse_winding(inverse_winding);
     generate_side(
         mesh,
-        *segment,
+        segment,
         apertures,
         triangulator,
         start_right,
@@ -71,7 +70,7 @@ pub(super) fn generate(
     triangulator.set_inverse_winding(!inverse_winding);
     generate_side(
         mesh,
-        *segment,
+        segment,
         apertures,
         triangulator,
         start_left,
@@ -84,13 +83,13 @@ pub(super) fn generate(
     match start_connections {
         MinMaxResult::OneElement(_) => (),
         MinMaxResult::NoElements => generate_front(mesh, start_left, start_right, disp),
-        MinMaxResult::MinMax(_, _) => generate_start_connection(mesh, *segment),
+        MinMaxResult::MinMax(_, _) => generate_start_connection(mesh, segment),
     }
 
     match end_connections {
         MinMaxResult::OneElement(_) => (),
         MinMaxResult::NoElements => generate_back(mesh, end_left, end_right, disp),
-        MinMaxResult::MinMax(_, _) => generate_end_connection(mesh, *segment, rotation_mat),
+        MinMaxResult::MinMax(_, _) => generate_end_connection(mesh, segment, rotation_mat),
     }
 }
 
@@ -294,7 +293,7 @@ fn generate_end_connection(mesh: &mut DynamicMesh, segment: Segment, rotation_ma
 ///
 /// Clippings split the collider into separate cuboids.
 /// We generate a trimesh since navigation doesn't support compound shapes.
-pub(super) fn generate_collider(segment: SplineSegment, apertures: &Apertures) -> Collider {
+pub(super) fn generate_collider(segment: Segment, apertures: &Apertures) -> Collider {
     if segment.start == segment.end {
         return Default::default();
     }

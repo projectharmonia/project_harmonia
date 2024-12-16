@@ -9,7 +9,7 @@ use crate::{
     core::GameState,
     game_world::{
         family::building::wall::{Aperture, Apertures, WallPlugin},
-        spline::SplineSegment,
+        segment::Segment,
         Layer,
     },
 };
@@ -44,7 +44,7 @@ impl WallMountPlugin {
 
     /// Updates [`Apertures`] based on spawned objects.
     fn update_apertures(
-        mut walls: Query<(Entity, &Parent, &SplineSegment, &mut Apertures)>,
+        mut walls: Query<(Entity, &Parent, &Segment, &mut Apertures)>,
         mut objects: Query<
             (
                 Entity,

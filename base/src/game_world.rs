@@ -7,7 +7,7 @@ pub mod navigation;
 pub mod object;
 pub mod picking;
 mod player_camera;
-mod spline;
+mod segment;
 
 use std::fs;
 
@@ -30,7 +30,7 @@ use navigation::NavigationPlugin;
 use object::ObjectPlugin;
 use picking::PickingPlugin;
 use player_camera::PlayerCameraPlugin;
-use spline::SplinePlugin;
+use segment::SplinePlugin;
 
 pub(super) struct GameWorldPlugin;
 

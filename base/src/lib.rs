@@ -7,7 +7,6 @@ pub mod core;
 pub mod game_paths;
 pub mod game_world;
 mod ghost;
-mod math;
 pub mod message;
 pub mod network;
 pub mod settings;
@@ -20,7 +19,6 @@ use combined_scene_collider::SceneColliderConstructorPlugin;
 use core::CorePlugin;
 use game_paths::GamePathsPlugin;
 use game_world::GameWorldPlugin;
-use math::MathPlugin;
 use message::ErrorReportPlugin;
 use settings::SettingsPlugin;
 
@@ -30,7 +28,6 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(AssetPlugin)
-            .add(MathPlugin)
             .add(CorePlugin)
             .add(AlphaColorPlugin)
             .add(SceneColliderConstructorPlugin)
