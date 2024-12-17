@@ -109,7 +109,7 @@ impl PlayerCameraPlugin {
 }
 
 #[derive(Bundle)]
-pub(crate) struct PlayerCameraBundle {
+pub(super) struct PlayerCameraBundle {
     orbit_origin: OrbitOrigin,
     orbit_rotation: OrbitRotation,
     spring_arm: SpringArm,
@@ -127,7 +127,7 @@ pub(crate) struct PlayerCameraBundle {
 }
 
 impl PlayerCameraBundle {
-    pub(crate) fn new(environment_map: &Collection<EnvironmentMap>) -> Self {
+    pub(super) fn new(environment_map: &Collection<EnvironmentMap>) -> Self {
         Self {
             orbit_origin: Default::default(),
             orbit_rotation: Default::default(),
