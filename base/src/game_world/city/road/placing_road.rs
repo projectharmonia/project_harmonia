@@ -16,8 +16,7 @@ use crate::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
-        player_camera::CameraCaster,
-        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment},
+        segment::{dynamic_mesh::DynamicMesh, MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
@@ -34,7 +33,6 @@ impl Plugin for PlacingRoadPlugin {
             .observe(Self::delete)
             .observe(Self::cancel)
             .observe(Self::confirm)
-            .add_systems(Update, Self::update_end.run_if(in_state(CityMode::Roads)))
             .add_systems(
                 PostUpdate,
                 Self::update_alpha
@@ -82,9 +80,13 @@ impl PlacingRoadPlugin {
             parent.spawn((
                 Ghost::new(entity),
                 PlacingRoadBundle::new(
-                    PlacingRoad::MovingPoint { entity, kind },
+                    PlacingRoad::EditPoint { entity },
                     info.half_width,
                     segment,
+                    MovingPoint {
+                        kind,
+                        snap_offset: info.half_width,
+                    },
                     material.clone(),
                     meshes.add(DynamicMesh::create_empty()),
                 ),
@@ -131,6 +133,10 @@ impl PlacingRoadPlugin {
                 PlacingRoad::Spawning(placing_id.0),
                 info.half_width,
                 Segment::splat(snapped_point),
+                MovingPoint {
+                    kind: PointKind::End,
+                    snap_offset: info.half_width,
+                },
                 asset_server.load(info.material.clone()),
                 meshes.add(DynamicMesh::create_empty()),
             ));
@@ -154,38 +160,6 @@ impl PlacingRoadPlugin {
         };
     }
 
-    fn update_end(
-        camera_caster: CameraCaster,
-        mut placing_roads: Query<(&mut Segment, &Parent, &PlacingRoad, &RoadData)>,
-        roads: Query<(&Parent, &Segment), (With<Road>, Without<PlacingRoad>)>,
-    ) {
-        let Ok((mut segment, placing_parent, placing_road, road_data)) =
-            placing_roads.get_single_mut()
-        else {
-            return;
-        };
-
-        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
-            return;
-        };
-
-        // Use an already existing vertex if it is within the half width distance if one exists.
-        let vertex = roads
-            .iter()
-            .filter(|(parent, _)| *parent == placing_parent)
-            .flat_map(|(_, segment)| segment.points())
-            .find(|vertex| vertex.distance(point) < road_data.half_width)
-            .unwrap_or(point);
-
-        let point_kind = placing_road.point_kind();
-
-        trace!("updating `{point_kind:?}` to `{vertex:?}`");
-        match point_kind {
-            PointKind::Start => segment.start = vertex,
-            PointKind::End => segment.end = vertex,
-        }
-    }
-
     fn delete(
         _trigger: Trigger<Completed<DeleteRoad>>,
         city_mode: Option<Res<State<CityMode>>>,
@@ -204,7 +178,7 @@ impl PlacingRoadPlugin {
         };
 
         info!("deleting road");
-        if let PlacingRoad::MovingPoint { entity, .. } = placing_road {
+        if let PlacingRoad::EditPoint { entity } = placing_road {
             // Set original segment until the deletion is confirmed.
             *segment = *roads.get(entity).expect("moving road should exist");
 
@@ -240,13 +214,15 @@ impl PlacingRoadPlugin {
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        mut placing_roads: Query<(Entity, &Parent, &Segment, &PlacingRoad)>,
+        mut placing_roads: Query<(Entity, &Parent, &Segment, &PlacingRoad, &MovingPoint)>,
     ) {
         if !observer_in_state(city_mode, CityMode::Roads) {
             return;
         }
 
-        let Ok((entity, parent, &segment, &placing_road)) = placing_roads.get_single_mut() else {
+        let Ok((entity, parent, &segment, &placing_road, moving_point)) =
+            placing_roads.get_single_mut()
+        else {
             return;
         };
 
@@ -262,14 +238,14 @@ impl PlacingRoadPlugin {
                     segment,
                 })
             }
-            PlacingRoad::MovingPoint { entity, kind } => {
-                let point = match kind {
+            PlacingRoad::EditPoint { entity } => {
+                let point = match moving_point.kind {
                     PointKind::Start => segment.start,
                     PointKind::End => segment.end,
                 };
-                history.push_pending(RoadCommand::MovePoint {
+                history.push_pending(RoadCommand::EditPoint {
                     entity,
-                    kind,
+                    kind: moving_point.kind,
                     point,
                 })
             }
@@ -294,6 +270,7 @@ struct PlacingRoadBundle {
     placing_road: PlacingRoad,
     road_data: RoadData,
     segment: Segment,
+    moving_point: MovingPoint,
     state_scoped: StateScoped<RoadTool>,
     alpha: AlphaColor,
     collider: Collider,
@@ -307,18 +284,20 @@ impl PlacingRoadBundle {
         placing_road: PlacingRoad,
         half_width: f32,
         segment: Segment,
+        moving_point: MovingPoint,
         material: Handle<StandardMaterial>,
         mesh: Handle<Mesh>,
     ) -> Self {
         let tool = match placing_road {
             PlacingRoad::Spawning(_) => RoadTool::Create,
-            PlacingRoad::MovingPoint { .. } => RoadTool::Move,
+            PlacingRoad::EditPoint { .. } => RoadTool::Move,
         };
         Self {
             name: Name::new("Placing road"),
             road_data: RoadData { half_width },
             placing_road,
             segment,
+            moving_point,
             state_scoped: StateScoped(tool),
             alpha: AlphaColor(WHITE.into()),
             collider: Default::default(),
@@ -339,17 +318,7 @@ impl PlacingRoadBundle {
 #[derive(Debug, Clone, Copy, Component)]
 enum PlacingRoad {
     Spawning(AssetId<RoadInfo>),
-    MovingPoint { entity: Entity, kind: PointKind },
-}
-
-impl PlacingRoad {
-    /// Returns point kind that should be edited for this road.
-    fn point_kind(self) -> PointKind {
-        match self {
-            PlacingRoad::Spawning(_) => PointKind::End,
-            PlacingRoad::MovingPoint { entity: _, kind } => kind,
-        }
-    }
+    EditPoint { entity: Entity },
 }
 
 impl InputContext for PlacingRoad {

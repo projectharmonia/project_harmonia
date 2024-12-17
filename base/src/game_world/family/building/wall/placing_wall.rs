@@ -16,8 +16,7 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
-        player_camera::CameraCaster,
-        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment},
+        segment::{dynamic_mesh::DynamicMesh, MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
@@ -34,10 +33,6 @@ impl Plugin for PlacingWallPlugin {
             .observe(Self::delete)
             .observe(Self::cancel)
             .observe(Self::confirm)
-            .add_systems(
-                Update,
-                Self::update_end.run_if(in_state(BuildingMode::Walls)),
-            )
             .add_systems(
                 PostUpdate,
                 Self::update_alpha
@@ -82,8 +77,12 @@ impl PlacingWallPlugin {
             parent.spawn((
                 Ghost::new(entity),
                 PlacingWallBundle::new(
-                    PlacingWall::MovingPoint { entity, kind },
+                    PlacingWall::EditingPoint { entity },
                     segment,
+                    MovingPoint {
+                        kind,
+                        snap_offset: 0.5,
+                    },
                     wall_material.0.clone(),
                     meshes.add(DynamicMesh::create_empty()),
                 ),
@@ -120,6 +119,10 @@ impl PlacingWallPlugin {
             parent.spawn(PlacingWallBundle::new(
                 PlacingWall::Spawning,
                 Segment::splat(snapped_point),
+                MovingPoint {
+                    kind: PointKind::End,
+                    snap_offset: 0.5,
+                },
                 wall_material.0.clone(),
                 meshes.add(DynamicMesh::create_empty()),
             ));
@@ -143,37 +146,6 @@ impl PlacingWallPlugin {
         };
     }
 
-    fn update_end(
-        camera_caster: CameraCaster,
-        mut placing_walls: Query<(&mut Segment, &Parent, &PlacingWall)>,
-        walls: Query<(&Parent, &Segment), (With<Wall>, Without<PlacingWall>)>,
-    ) {
-        let Ok((mut segment, placing_parent, &placing_wall)) = placing_walls.get_single_mut()
-        else {
-            return;
-        };
-
-        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
-            return;
-        };
-
-        // Use an already existing vertex if it is within the `SNAP_DELTA` distance if one exists.
-        let vertex = walls
-            .iter()
-            .filter(|(parent, _)| *parent == placing_parent)
-            .flat_map(|(_, segment)| segment.points())
-            .find(|vertex| vertex.distance(point) < SNAP_DELTA)
-            .unwrap_or(point);
-
-        let point_kind = placing_wall.point_kind();
-
-        trace!("updating `{point_kind:?}` to `{vertex:?}`");
-        match point_kind {
-            PointKind::Start => segment.start = vertex,
-            PointKind::End => segment.end = vertex,
-        }
-    }
-
     fn delete(
         _trigger: Trigger<Completed<DeleteWall>>,
         building_mode: Option<Res<State<BuildingMode>>>,
@@ -192,7 +164,7 @@ impl PlacingWallPlugin {
         };
 
         info!("deleting wall");
-        if let PlacingWall::MovingPoint { entity, .. } = placing_wall {
+        if let PlacingWall::EditingPoint { entity } = placing_wall {
             // Set original segment until the deletion is confirmed.
             *segment = *walls.get(entity).expect("moving wall should exist");
 
@@ -227,13 +199,15 @@ impl PlacingWallPlugin {
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &Segment)>,
+        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &Segment, &MovingPoint)>,
     ) {
         if !observer_in_state(building_mode, BuildingMode::Walls) {
             return;
         }
 
-        let Ok((entity, parent, &placing_wall, &segment)) = placing_walls.get_single_mut() else {
+        let Ok((entity, parent, &placing_wall, &segment, moving_point)) =
+            placing_walls.get_single_mut()
+        else {
             return;
         };
 
@@ -243,14 +217,14 @@ impl PlacingWallPlugin {
                 city_entity: **parent,
                 segment,
             }),
-            PlacingWall::MovingPoint { entity, kind } => {
-                let point = match kind {
+            PlacingWall::EditingPoint { entity } => {
+                let point = match moving_point.kind {
                     PointKind::Start => segment.start,
                     PointKind::End => segment.end,
                 };
-                history.push_pending(WallCommand::MovePoint {
+                history.push_pending(WallCommand::EditPoint {
                     entity,
-                    kind,
+                    kind: moving_point.kind,
                     point,
                 })
             }
@@ -268,6 +242,7 @@ struct PlacingWallBundle {
     name: Name,
     placing_wall: PlacingWall,
     segment: Segment,
+    moving_point: MovingPoint,
     picked: Picked,
     alpha: AlphaColor,
     state_scoped: StateScoped<WallTool>,
@@ -282,17 +257,19 @@ impl PlacingWallBundle {
     fn new(
         placing_wall: PlacingWall,
         segment: Segment,
+        moving_point: MovingPoint,
         material: Handle<StandardMaterial>,
         mesh: Handle<Mesh>,
     ) -> Self {
         let tool = match placing_wall {
             PlacingWall::Spawning => WallTool::Create,
-            PlacingWall::MovingPoint { .. } => WallTool::Move,
+            PlacingWall::EditingPoint { .. } => WallTool::Move,
         };
         Self {
             name: Name::new("Placing wall"),
             placing_wall,
             segment,
+            moving_point,
             picked: Picked,
             alpha: AlphaColor(WHITE.into()),
             state_scoped: StateScoped(tool),
@@ -320,17 +297,7 @@ impl PlacingWallBundle {
 #[derive(Debug, Clone, Copy, Component)]
 enum PlacingWall {
     Spawning,
-    MovingPoint { entity: Entity, kind: PointKind },
-}
-
-impl PlacingWall {
-    /// Returns point kind that should be edited for this wall.
-    fn point_kind(self) -> PointKind {
-        match self {
-            PlacingWall::Spawning => PointKind::End,
-            PlacingWall::MovingPoint { entity: _, kind } => kind,
-        }
-    }
+    EditingPoint { entity: Entity },
 }
 
 impl InputContext for PlacingWall {

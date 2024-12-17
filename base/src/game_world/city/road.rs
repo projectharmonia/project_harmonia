@@ -137,13 +137,13 @@ impl RoadPlugin {
                         confirmation.entity = Some(entity);
                     });
                 }
-                RoadCommand::MovePoint {
+                RoadCommand::EditPoint {
                     entity,
                     kind,
                     point,
                 } => match roads.get_mut(entity) {
                     Ok(mut segment) => {
-                        info!("`{client_id:?}` moves `{kind:?}` for road `{entity}`");
+                        info!("`{client_id:?}` edits `{kind:?}` for road `{entity}`");
                         match kind {
                             PointKind::Start => segment.start = point,
                             PointKind::End => segment.end = point,
@@ -230,7 +230,7 @@ enum RoadCommand {
         info_path: AssetPath<'static>,
         segment: Segment,
     },
-    MovePoint {
+    EditPoint {
         entity: Entity,
         kind: PointKind,
         point: Vec2,
@@ -252,13 +252,13 @@ impl PendingCommand for RoadCommand {
                 // Correct entity will be set after the server confirmation.
                 entity: Entity::PLACEHOLDER,
             },
-            Self::MovePoint { entity, kind, .. } => {
+            Self::EditPoint { entity, kind, .. } => {
                 let segment = world.get::<Segment>(entity).unwrap();
                 let point = match kind {
                     PointKind::Start => segment.start,
                     PointKind::End => segment.end,
                 };
-                Self::MovePoint {
+                Self::EditPoint {
                     entity,
                     kind,
                     point,
@@ -305,7 +305,7 @@ impl MapEntities for RoadCommand {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         match self {
             Self::Create { .. } => (),
-            Self::MovePoint { entity, .. } => *entity = entity_mapper.map_entity(*entity),
+            Self::EditPoint { entity, .. } => *entity = entity_mapper.map_entity(*entity),
             Self::Delete { entity } => *entity = entity_mapper.map_entity(*entity),
         };
     }
