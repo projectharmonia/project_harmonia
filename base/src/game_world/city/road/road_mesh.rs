@@ -4,7 +4,9 @@ use avian3d::prelude::Collider;
 use bevy::prelude::*;
 use itertools::MinMaxResult;
 
-use crate::game_world::segment::{dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections};
+use crate::game_world::segment::{
+    dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections,
+};
 
 /// Small offset to avoid Z-fighting with the ground.
 const HEIGHT: f32 = 0.001;
