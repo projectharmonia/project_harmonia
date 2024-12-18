@@ -17,7 +17,7 @@ use crate::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
-        segment::{MovingPoint, PointKind, Segment},
+        segment::{moving_point::MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,

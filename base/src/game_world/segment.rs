@@ -1,3 +1,5 @@
+pub(super) mod moving_point;
+
 use std::{
     f32::consts::PI,
     mem,
@@ -13,23 +15,20 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use itertools::{Itertools, MinMaxResult};
+use moving_point::MovingPointPlugin;
 use serde::{Deserialize, Serialize};
 
-use super::{city::CityMode, family::building::BuildingMode, player_camera::CameraCaster};
+use super::player_camera::CameraCaster;
 use crate::core::GameState;
 
 pub(super) struct SplinePlugin;
 
 impl Plugin for SplinePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Segment>()
+        app.add_plugins(MovingPointPlugin)
+            .register_type::<Segment>()
             .replicate::<Segment>()
             .observe(Self::cleanup_connections)
-            .add_systems(
-                Update,
-                Self::move_end
-                    .run_if(in_state(BuildingMode::Walls).or_else(in_state(CityMode::Roads))),
-            )
             .add_systems(
                 PostUpdate,
                 Self::update_connections.run_if(in_state(GameState::InGame)),
@@ -38,35 +37,6 @@ impl Plugin for SplinePlugin {
 }
 
 impl SplinePlugin {
-    fn move_end(
-        camera_caster: CameraCaster,
-        mut moving_segments: Query<(&mut Segment, &Parent, &MovingPoint)>,
-        segments: Query<(&Parent, &Segment), Without<MovingPoint>>,
-    ) {
-        let Ok((mut segment, moving_parent, moving_point)) = moving_segments.get_single_mut()
-        else {
-            return;
-        };
-
-        let Some(point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
-            return;
-        };
-
-        // Use an already existing vertex if it is within the `snap_offset` distance if one exists.
-        let vertex = segments
-            .iter()
-            .filter(|(parent, _)| *parent == moving_parent)
-            .flat_map(|(_, segment)| segment.points())
-            .find(|vertex| vertex.distance(point) < moving_point.snap_offset)
-            .unwrap_or(point);
-
-        trace!("updating `{:?}` to `{vertex:?}`", moving_point.kind);
-        match moving_point.kind {
-            PointKind::Start => segment.start = vertex,
-            PointKind::End => segment.end = vertex,
-        }
-    }
-
     /// Updates [`SplineConnections`] between segments.
     pub(super) fn update_connections(
         mut segments: Query<(Entity, &Visibility, &Segment, &mut SplineConnections)>,
@@ -393,12 +363,6 @@ pub(crate) struct SplineConnection {
     entity: Entity,
     segment: Segment,
     kind: (PointKind, PointKind),
-}
-
-#[derive(Component)]
-pub(super) struct MovingPoint {
-    pub(super) kind: PointKind,
-    pub(super) snap_offset: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]

@@ -19,7 +19,7 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
-        segment::{MovingPoint, PointKind, Segment},
+        segment::{moving_point::MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
