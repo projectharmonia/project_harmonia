@@ -4,6 +4,7 @@ mod combined_scene_collider;
 pub mod common_conditions;
 mod component_commands;
 pub mod core;
+mod dynamic_mesh;
 pub mod game_paths;
 pub mod game_world;
 mod ghost;

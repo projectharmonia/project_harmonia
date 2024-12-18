@@ -13,12 +13,13 @@ use super::{Wall, WallCommand, WallMaterial, WallTool};
 use crate::{
     alpha_color::{AlphaColor, AlphaColorPlugin},
     common_conditions::observer_in_state,
+    dynamic_mesh::DynamicMesh,
     game_world::{
         city::ActiveCity,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
-        segment::{dynamic_mesh::DynamicMesh, MovingPoint, PointKind, Segment},
+        segment::{MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,

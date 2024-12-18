@@ -12,11 +12,12 @@ use crate::{
     alpha_color::{AlphaColor, AlphaColorPlugin},
     asset::info::road_info::RoadInfo,
     common_conditions::observer_in_state,
+    dynamic_mesh::DynamicMesh,
     game_world::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
-        segment::{dynamic_mesh::DynamicMesh, MovingPoint, PointKind, Segment},
+        segment::{MovingPoint, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,

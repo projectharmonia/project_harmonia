@@ -1,5 +1,3 @@
-pub(crate) mod dynamic_mesh;
-
 use std::{
     f32::consts::PI,
     mem,

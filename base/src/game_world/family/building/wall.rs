@@ -11,13 +11,14 @@ use strum::{Display, EnumIter};
 use super::BuildingMode;
 use crate::{
     core::GameState,
+    dynamic_mesh::DynamicMesh,
     game_world::{
         commands_history::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
         navigation::Obstacle,
-        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections, SplinePlugin},
+        segment::{PointKind, Segment, SplineConnections, SplinePlugin},
         Layer,
     },
 };

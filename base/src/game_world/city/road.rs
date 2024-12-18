@@ -12,13 +12,14 @@ use strum::{Display, EnumIter};
 use crate::{
     asset::info::road_info::RoadInfo,
     core::GameState,
+    dynamic_mesh::DynamicMesh,
     game_world::{
         city::CityMode,
         commands_history::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        segment::{dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections, SplinePlugin},
+        segment::{PointKind, Segment, SplineConnections, SplinePlugin},
         Layer,
     },
 };

@@ -5,8 +5,9 @@ use bevy::prelude::*;
 use itertools::MinMaxResult;
 
 use super::{triangulator::Triangulator, Aperture, Apertures};
-use crate::game_world::segment::{
-    dynamic_mesh::DynamicMesh, PointKind, Segment, SplineConnections,
+use crate::{
+    dynamic_mesh::DynamicMesh,
+    game_world::segment::{PointKind, Segment, SplineConnections},
 };
 
 const WIDTH: f32 = 0.15;
