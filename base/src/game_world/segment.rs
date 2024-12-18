@@ -1,4 +1,5 @@
 pub(super) mod moving_point;
+pub(super) mod ruler;
 
 use std::{
     f32::consts::PI,
@@ -20,12 +21,14 @@ use serde::{Deserialize, Serialize};
 
 use super::player_camera::CameraCaster;
 use crate::core::GameState;
+use ruler::RulerPlugin;
 
 pub(super) struct SplinePlugin;
 
 impl Plugin for SplinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MovingPointPlugin)
+        app.add_plugins(RulerPlugin)
+            .add_plugins(MovingPointPlugin)
             .register_type::<Segment>()
             .replicate::<Segment>()
             .observe(Self::cleanup_connections)

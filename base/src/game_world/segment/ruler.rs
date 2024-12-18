@@ -87,7 +87,7 @@ impl RulerPlugin {
 #[derive(GizmoConfigGroup, Default, Reflect)]
 struct RulerConfig;
 
-pub(super) struct Ruler {
+pub(crate) struct Ruler {
     text_entity: Entity,
 }
 
