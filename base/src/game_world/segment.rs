@@ -303,7 +303,7 @@ impl Segment {
     }
 
     /// Returns distance from start to end.
-    fn len(&self) -> f32 {
+    pub(super) fn len(&self) -> f32 {
         self.start.distance(self.end)
     }
 

@@ -1,3 +1,5 @@
+mod ruler;
+
 use avian3d::prelude::*;
 use bevy::{
     color::palettes::css::{RED, WHITE},
@@ -22,12 +24,14 @@ use crate::{
     ghost::Ghost,
     settings::Settings,
 };
+use ruler::{Ruler, RulerPlugin};
 
 pub(super) struct PlacingWallPlugin;
 
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_input_context::<PlacingWall>()
+        app.add_plugins(RulerPlugin)
+            .add_input_context::<PlacingWall>()
             .observe(Self::pick)
             .observe(Self::spawn)
             .observe(Self::delete)
@@ -190,7 +194,7 @@ impl PlacingWallPlugin {
 
         if let Ok(entity) = placing_walls.get_single() {
             debug!("cancelling placing");
-            commands.entity(entity).despawn();
+            commands.entity(entity).despawn_recursive();
         }
     }
 
@@ -244,6 +248,7 @@ struct PlacingWallBundle {
     segment: Segment,
     moving_point: MovingPoint,
     picked: Picked,
+    ruler: Ruler,
     alpha: AlphaColor,
     state_scoped: StateScoped<WallTool>,
     apertures: Apertures,
@@ -271,6 +276,7 @@ impl PlacingWallBundle {
             segment,
             moving_point,
             picked: Picked,
+            ruler: Default::default(),
             alpha: AlphaColor(WHITE.into()),
             state_scoped: StateScoped(tool),
             apertures: Default::default(),

@@ -13,6 +13,7 @@ bevy_enhanced_input.workspace = true
 bevy_replicon.workspace = true
 bevy_replicon_renet.workspace = true
 bevy_mod_outline.workspace = true
+bevy_mod_billboard.workspace = true
 avian3d.workspace = true
 vleue_navigator.workspace = true
 serde.workspace = true

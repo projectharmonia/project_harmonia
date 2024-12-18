@@ -10,6 +10,7 @@ use bevy_atmosphere::prelude::*;
 use bevy_enhanced_input::prelude::*;
 #[cfg(feature = "inspector")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_mod_billboard::prelude::*;
 use bevy_mod_outline::OutlinePlugin;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::RepliconRenetPlugins;
@@ -69,6 +70,7 @@ pub fn main() {
             PhysicsDebugPlugin::default(),
             TextInputPlugin,
             OutlinePlugin,
+            BillboardPlugin,
         ))
         .add_plugins((CorePlugins, WidgetsPlugin, UiPlugins, AppPlugins));
 
