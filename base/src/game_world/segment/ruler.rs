@@ -21,17 +21,18 @@ pub(super) struct RulerPlugin;
 
 impl Plugin for RulerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_gizmo_config(
-            RulerConfig,
-            GizmoConfig {
-                line_width: 100.0,
-                line_perspective: true,
-                line_style: GizmoLineStyle::Dotted,
-                depth_bias: -1.0,
-                ..Default::default()
-            },
-        )
-        .add_systems(Update, Self::draw.run_if(in_state(BuildingMode::Walls)));
+        app.init_resource::<RulerFont>()
+            .insert_gizmo_config(
+                RulerConfig,
+                GizmoConfig {
+                    line_width: 100.0,
+                    line_perspective: true,
+                    line_style: GizmoLineStyle::Dotted,
+                    depth_bias: -1.0,
+                    ..Default::default()
+                },
+            )
+            .add_systems(Update, Self::draw.run_if(in_state(BuildingMode::Walls)));
     }
 }
 
@@ -93,8 +94,7 @@ pub(crate) struct Ruler {
 
 impl Ruler {
     fn on_insert(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
-        let asset_server = world.resource::<AssetServer>();
-        let text_handle = asset_server.load("base/fonts/FiraMono-Bold.ttf");
+        let font = world.resource::<RulerFont>().0.clone();
 
         let text_entity = world
             .commands()
@@ -104,7 +104,7 @@ impl Ruler {
                     text: Text::from_section(
                         "",
                         TextStyle {
-                            font: text_handle,
+                            font,
                             font_size: 100.0,
                             color: WHITE.into(),
                         },
@@ -138,5 +138,16 @@ impl Default for Ruler {
         Self {
             text_entity: Entity::PLACEHOLDER,
         }
+    }
+}
+
+#[derive(Resource)]
+struct RulerFont(Handle<Font>);
+
+impl FromWorld for RulerFont {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        let font_handle = asset_server.load("base/fonts/FiraMono-Bold.ttf");
+        Self(font_handle)
     }
 }
