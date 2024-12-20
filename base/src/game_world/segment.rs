@@ -10,6 +10,7 @@ use std::{
 use bevy::{
     ecs::{
         component::{ComponentHooks, ComponentId, StorageType},
+        system::QueryLens,
         world::DeferredWorld,
     },
     prelude::*,
@@ -53,21 +54,7 @@ impl SplinePlugin {
         >,
     ) {
         for (segment_entity, parent, visibility, &segment) in &changed_segments {
-            // Take changed connections to avoid mutability issues.
-            let (.., mut connections) = segments
-                .get_mut(segment_entity)
-                .expect("query is a subset of the changed query");
-            let mut taken_connections = mem::take(&mut *connections);
-
-            // Cleanup old connections.
-            for connection in taken_connections.0.drain(..) {
-                let (.., mut other_connections) = segments
-                    .get_mut(connection.entity)
-                    .expect("connected segment should also have connections");
-                if let Some(index) = other_connections.position(segment_entity) {
-                    other_connections.0.remove(index);
-                }
-            }
+            let mut taken_connections = disconnect_all(segment_entity, segments.transmute_lens());
 
             // If segment have zero length or hidden, exclude it from connections.
             if segment.start != segment.end && visibility != Visibility::Hidden {
@@ -81,7 +68,7 @@ impl SplinePlugin {
                         continue;
                     }
 
-                    let kind = if segment.start == other_segment.start {
+                    let (from, to) = if segment.start == other_segment.start {
                         (PointKind::Start, PointKind::Start)
                     } else if segment.start == other_segment.end {
                         (PointKind::Start, PointKind::End)
@@ -94,17 +81,17 @@ impl SplinePlugin {
                     };
 
                     trace!(
-                        "connecting segments `{segment_entity}` and `{other_entity}` as `{kind:?}`"
+                        "connecting `{from:?}` for `{segment_entity}` to `{to:?}` for `{other_entity}`"
                     );
-                    taken_connections.0.push(SplineConnection {
+                    taken_connections.get_mut(from).push(SplineConnection {
                         entity: other_entity,
                         segment: other_segment,
-                        kind,
+                        kind: to,
                     });
-                    other_connections.0.push(SplineConnection {
+                    other_connections.get_mut(to).push(SplineConnection {
                         entity: segment_entity,
                         segment,
-                        kind: (kind.1, kind.0),
+                        kind: from,
                     });
                 }
             }
@@ -117,23 +104,47 @@ impl SplinePlugin {
 
     fn cleanup_connections(
         trigger: Trigger<OnRemove, Segment>,
-        mut entities_buffer: Local<Vec<Entity>>,
         mut segments: Query<&mut SplineConnections>,
     ) {
-        let connections = segments.get(trigger.entity()).unwrap();
-        entities_buffer.extend(connections.iter().map(|connection| connection.entity));
+        disconnect_all(trigger.entity(), segments.as_query_lens());
+    }
+}
 
-        debug!("removing connections for segment `{}`", trigger.entity());
-        for entity in entities_buffer.drain(..) {
-            if let Ok(mut connections) = segments.get_mut(entity) {
-                let index = connections
-                    .position(trigger.entity())
-                    .expect("segment connection should be done both ways");
+/// Removes all spline connections for the given entity.
+///
+/// During the process, the component will be taken from
+/// the entity to avoid mutability issues.
+///
+/// Returns the taken component back for memory reuse.
+fn disconnect_all(
+    disconnect_entity: Entity,
+    mut segments: QueryLens<&mut SplineConnections>,
+) -> SplineConnections {
+    debug!("removing connections for segment `{disconnect_entity}`");
 
-                connections.0.remove(index);
+    let mut segments = segments.query();
+    let mut connections = segments.get_mut(disconnect_entity).unwrap();
+    let mut taken_connections = mem::take(&mut *connections);
+
+    for kind in [PointKind::Start, PointKind::End] {
+        for connection in taken_connections.get_mut(kind).drain(..) {
+            let mut other_connections = segments
+                .get_mut(connection.entity)
+                .expect("connected segment should also have connections");
+            for other_kind in [PointKind::Start, PointKind::End] {
+                let point_connections = other_connections.get_mut(other_kind);
+                if let Some(index) = point_connections
+                    .iter()
+                    .position(|&SplineConnection { entity, .. }| entity == disconnect_entity)
+                {
+                    point_connections.remove(index);
+                    break; // A segment can connect to a single point of another segment, so stop at the first match.
+                }
             }
         }
     }
+
+    return taken_connections;
 }
 
 #[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
@@ -341,19 +352,21 @@ impl Sub<Vec2> for Segment {
 }
 
 /// Dynamically updated component with precalculated connected entities for each segment point.
-#[derive(Component, Default, Deref)]
-pub(crate) struct SplineConnections(Vec<SplineConnection>);
+#[derive(Component, Default)]
+pub(crate) struct SplineConnections {
+    start: Vec<SplineConnection>,
+    end: Vec<SplineConnection>,
+}
 
 impl SplineConnections {
     /// Returns the segments with the maximum and minimum angle relative
     /// to the displacement vector.
     pub(super) fn minmax_angles(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
-        self.0
+        self.get(point_kind)
             .iter()
-            .filter(|connection| connection.kind.0 == point_kind)
             .map(|connection| {
                 // Rotate points based on connection type.
-                match connection.kind {
+                match (point_kind, connection.kind) {
                     (PointKind::Start, PointKind::End) => connection.segment.inverse(),
                     (PointKind::End, PointKind::Start) => connection.segment,
                     (PointKind::Start, PointKind::Start) => connection.segment,
@@ -370,16 +383,25 @@ impl SplineConnections {
             })
     }
 
-    fn position(&self, segment_entity: Entity) -> Option<usize> {
-        self.iter()
-            .position(|&SplineConnection { entity, .. }| entity == segment_entity)
+    fn get(&self, kind: PointKind) -> &[SplineConnection] {
+        match kind {
+            PointKind::Start => &self.start,
+            PointKind::End => &self.end,
+        }
+    }
+
+    fn get_mut(&mut self, kind: PointKind) -> &mut Vec<SplineConnection> {
+        match kind {
+            PointKind::Start => &mut self.start,
+            PointKind::End => &mut self.end,
+        }
     }
 }
 
 pub(crate) struct SplineConnection {
     entity: Entity,
     segment: Segment,
-    kind: (PointKind, PointKind),
+    kind: PointKind,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
