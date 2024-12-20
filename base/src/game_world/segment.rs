@@ -361,7 +361,7 @@ pub(crate) struct SplineConnections {
 impl SplineConnections {
     /// Returns the segments with the maximum and minimum angle relative
     /// to the displacement vector.
-    pub(super) fn minmax_angles(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
+    pub(super) fn side_segments(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
         self.get(point_kind)
             .iter()
             .map(|connection| {

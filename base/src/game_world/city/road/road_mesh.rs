@@ -29,11 +29,11 @@ pub(super) fn generate(
     let width_disp = disp.perp().normalize() * half_width;
     let rotation_mat = Mat2::from_angle(angle + FRAC_PI_2); // PI/2 because the texture is vertical.
 
-    let start_connections = connections.minmax_angles(disp, PointKind::Start);
+    let start_connections = connections.side_segments(disp, PointKind::Start);
     let (start_left, start_right) =
         segment.offset_points(width_disp, half_width, start_connections);
 
-    let end_connections = connections.minmax_angles(-disp, PointKind::End);
+    let end_connections = connections.side_segments(-disp, PointKind::End);
     let (end_right, end_left) =
         segment
             .inverse()
