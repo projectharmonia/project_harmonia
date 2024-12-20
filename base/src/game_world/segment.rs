@@ -157,6 +157,20 @@ impl Segment {
         }
     }
 
+    pub(super) fn point(&self, kind: PointKind) -> Vec2 {
+        match kind {
+            PointKind::Start => self.start,
+            PointKind::End => self.end,
+        }
+    }
+
+    pub(super) fn set_point(&mut self, kind: PointKind, point: Vec2) {
+        match kind {
+            PointKind::Start => self.start = point,
+            PointKind::End => self.end = point,
+        }
+    }
+
     /// Returns `true` if a point belongs to a segment.
     pub(super) fn contains(&self, point: Vec2) -> bool {
         let disp = self.displacement();

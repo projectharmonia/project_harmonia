@@ -154,10 +154,7 @@ impl WallPlugin {
                 } => match walls.get_mut(entity) {
                     Ok(mut segment) => {
                         info!("`{client_id:?}` edits `{kind:?}` for wall `{entity}`");
-                        match kind {
-                            PointKind::Start => segment.start = point,
-                            PointKind::End => segment.end = point,
-                        }
+                        segment.set_point(kind, point);
                     }
                     Err(e) => error!("unable to move wall `{entity}`: {e}"),
                 },
@@ -322,10 +319,7 @@ impl PendingCommand for WallCommand {
             },
             Self::EditPoint { entity, kind, .. } => {
                 let segment = world.get::<Segment>(entity).unwrap();
-                let point = match kind {
-                    PointKind::Start => segment.start,
-                    PointKind::End => segment.end,
-                };
+                let point = segment.point(kind);
                 Self::EditPoint {
                     entity,
                     kind,

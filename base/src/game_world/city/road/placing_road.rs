@@ -240,10 +240,7 @@ impl PlacingRoadPlugin {
                 })
             }
             PlacingRoad::EditPoint { entity } => {
-                let point = match moving_point.kind {
-                    PointKind::Start => segment.start,
-                    PointKind::End => segment.end,
-                };
+                let point = segment.point(moving_point.kind);
                 history.push_pending(RoadCommand::EditPoint {
                     entity,
                     kind: moving_point.kind,

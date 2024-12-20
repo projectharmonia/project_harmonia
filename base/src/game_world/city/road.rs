@@ -145,10 +145,7 @@ impl RoadPlugin {
                 } => match roads.get_mut(entity) {
                     Ok(mut segment) => {
                         info!("`{client_id:?}` edits `{kind:?}` for road `{entity}`");
-                        match kind {
-                            PointKind::Start => segment.start = point,
-                            PointKind::End => segment.end = point,
-                        }
+                        segment.set_point(kind, point);
                     }
                     Err(e) => error!("unable to move road `{entity}`: {e}"),
                 },
@@ -255,10 +252,7 @@ impl PendingCommand for RoadCommand {
             },
             Self::EditPoint { entity, kind, .. } => {
                 let segment = world.get::<Segment>(entity).unwrap();
-                let point = match kind {
-                    PointKind::Start => segment.start,
-                    PointKind::End => segment.end,
-                };
+                let point = segment.point(kind);
                 Self::EditPoint {
                     entity,
                     kind,

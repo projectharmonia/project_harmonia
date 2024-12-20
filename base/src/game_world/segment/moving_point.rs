@@ -31,18 +31,15 @@ impl MovingPointPlugin {
         };
 
         // Use an already existing vertex if it is within the `snap_offset` distance if one exists.
-        let vertex = segments
+        let snapped_point = segments
             .iter()
             .filter(|(parent, _)| *parent == moving_parent)
             .flat_map(|(_, segment)| segment.points())
             .find(|vertex| vertex.distance(point) < moving_point.snap_offset)
             .unwrap_or(point);
 
-        trace!("updating `{:?}` to `{vertex:?}`", moving_point.kind);
-        match moving_point.kind {
-            PointKind::Start => segment.start = vertex,
-            PointKind::End => segment.end = vertex,
-        }
+        trace!("updating `{:?}` to `{snapped_point:?}`", moving_point.kind);
+        segment.set_point(moving_point.kind, snapped_point);
     }
 }
 

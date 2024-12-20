@@ -219,10 +219,7 @@ impl PlacingWallPlugin {
                 segment,
             }),
             PlacingWall::EditingPoint { entity } => {
-                let point = match moving_point.kind {
-                    PointKind::Start => segment.start,
-                    PointKind::End => segment.end,
-                };
+                let point = segment.point(moving_point.kind);
                 history.push_pending(WallCommand::EditPoint {
                     entity,
                     kind: moving_point.kind,
