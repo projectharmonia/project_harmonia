@@ -144,7 +144,7 @@ fn disconnect_all(
         }
     }
 
-    return taken_connections;
+    taken_connections
 }
 
 #[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
@@ -359,27 +359,34 @@ pub(crate) struct SplineConnections {
 }
 
 impl SplineConnections {
-    /// Returns the segments with the maximum and minimum angle relative
-    /// to the displacement vector.
+    /// Returns closest left and right segments relative to the displacement vector.
     pub(super) fn side_segments(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
+        self.get_unified(point_kind).minmax_by_key(|segment| {
+            let angle = segment.displacement().angle_between(disp);
+            if angle < 0.0 {
+                angle + 2.0 * PI
+            } else {
+                angle
+            }
+        })
+    }
+
+    /// Returns angles between closest left and right segments relative to the displacement vector.
+    pub(super) fn side_angles(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<f32> {
+        self.get_unified(point_kind)
+            .map(|segment| segment.displacement().angle_between(disp))
+            .minmax_by_key(|&angle| if angle < 0.0 { angle + 2.0 * PI } else { angle })
+    }
+
+    /// Returns iterator over segments that with unified direction based on point type.
+    fn get_unified(&self, point_kind: PointKind) -> impl Iterator<Item = Segment> + '_ {
         self.get(point_kind)
             .iter()
-            .map(|connection| {
-                // Rotate points based on connection type.
-                match (point_kind, connection.kind) {
-                    (PointKind::Start, PointKind::End) => connection.segment.inverse(),
-                    (PointKind::End, PointKind::Start) => connection.segment,
-                    (PointKind::Start, PointKind::Start) => connection.segment,
-                    (PointKind::End, PointKind::End) => connection.segment.inverse(),
-                }
-            })
-            .minmax_by_key(|segment| {
-                let angle = segment.displacement().angle_between(disp);
-                if angle < 0.0 {
-                    angle + 2.0 * PI
-                } else {
-                    angle
-                }
+            .map(move |connection| match (point_kind, connection.kind) {
+                (PointKind::Start, PointKind::End) => connection.segment.inverse(),
+                (PointKind::End, PointKind::Start) => connection.segment,
+                (PointKind::Start, PointKind::Start) => connection.segment,
+                (PointKind::End, PointKind::End) => connection.segment.inverse(),
             })
     }
 

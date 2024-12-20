@@ -12,10 +12,10 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_billboard::{prelude::*, BillboardLockAxis};
+use itertools::MinMaxResult;
 
-use crate::game_world::{
-    family::building::BuildingMode, player_camera::PlayerCamera, segment::Segment,
-};
+use super::{PointKind, Segment, SplineConnections};
+use crate::game_world::{family::building::BuildingMode, player_camera::PlayerCamera};
 
 pub(super) struct RulerPlugin;
 
@@ -32,18 +32,28 @@ impl Plugin for RulerPlugin {
                     ..Default::default()
                 },
             )
+            .insert_gizmo_config(
+                AngleConfig,
+                GizmoConfig {
+                    line_width: 60.0,
+                    line_perspective: true,
+                    depth_bias: -1.0,
+                    ..Default::default()
+                },
+            )
             .add_systems(Update, Self::draw.run_if(in_state(BuildingMode::Walls)));
     }
 }
 
 impl RulerPlugin {
     fn draw(
-        mut gizmos: Gizmos<RulerConfig>,
-        segments: Query<(Ref<Segment>, &Ruler)>,
+        mut ruler_gizmos: Gizmos<RulerConfig>,
+        mut angle_gizmos: Gizmos<AngleConfig>,
+        segments: Query<(Ref<Segment>, &SplineConnections, &Ruler)>,
         cameras: Query<&Transform, With<PlayerCamera>>,
         mut text: Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
     ) {
-        for (segment, ruler) in &segments {
+        for (segment, connections, ruler) in &segments {
             let camera_transform = cameras.single();
             let camera_pos = camera_transform.translation.xz();
 
@@ -56,11 +66,33 @@ impl RulerPlugin {
             let start = segment.start + offset * sign;
             let end = segment.end + offset * sign;
 
-            gizmos.line(
+            ruler_gizmos.line(
                 Vec3::new(start.x, 0.0, start.y),
                 Vec3::new(end.x, 0.0, end.y),
                 WHITE,
             );
+
+            for point_kind in [PointKind::Start, PointKind::End] {
+                let point = segment.point(point_kind);
+                let point_disp = match point_kind {
+                    PointKind::Start => segment_disp,
+                    PointKind::End => -segment_disp,
+                };
+                match connections.side_angles(point_disp, point_kind) {
+                    MinMaxResult::NoElements => (),
+                    MinMaxResult::OneElement(angle) => {
+                        draw_angle(&mut angle_gizmos, angle, point, point_disp);
+                    }
+                    MinMaxResult::MinMax(angle1, angle2) => {
+                        let angle = if angle1.abs() > angle2.abs() {
+                            angle2
+                        } else {
+                            angle1
+                        };
+                        draw_angle(&mut angle_gizmos, angle, point, point_disp);
+                    }
+                }
+            }
 
             if !segment.is_changed() {
                 continue;
@@ -85,8 +117,22 @@ impl RulerPlugin {
     }
 }
 
+fn draw_angle(angle_gizmos: &mut Gizmos<AngleConfig>, angle: f32, point: Vec2, segment_disp: Vec2) {
+    let start_angle = segment_disp.angle_between(Vec2::X);
+    angle_gizmos.arc_3d(
+        angle,
+        1.0,
+        Vec3::new(point.x, 0.0, point.y),
+        Quat::from_rotation_y(start_angle),
+        WHITE,
+    );
+}
+
 #[derive(GizmoConfigGroup, Default, Reflect)]
 struct RulerConfig;
+
+#[derive(GizmoConfigGroup, Default, Reflect)]
+struct AngleConfig;
 
 pub(crate) struct Ruler {
     text_entity: Entity,
