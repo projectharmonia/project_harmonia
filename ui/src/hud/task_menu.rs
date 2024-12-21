@@ -116,7 +116,7 @@ impl TaskMenuPlugin {
     }
 
     fn close(
-        _trigger: Trigger<Started<CloseTaskMenu>>,
+        _trigger: Trigger<Completed<CloseTaskMenu>>,
         mut commands: Commands,
         task_menus: Query<Entity, With<TaskMenu>>,
     ) {
@@ -131,7 +131,7 @@ impl TaskMenuPlugin {
 struct TaskMenu(Vec<Box<dyn Task>>);
 
 impl InputContext for TaskMenu {
-    const PRIORITY: isize = -1;
+    const PRIORITY: isize = 1;
 
     fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
         let mut ctx = ContextInstance::default();
