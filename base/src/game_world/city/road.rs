@@ -19,7 +19,7 @@ use crate::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        segment::{PointKind, Segment, SplineConnections, SplinePlugin},
+        segment::{PointKind, Segment, SegmentConnections, SegmentPlugin},
         Layer,
     },
 };
@@ -48,7 +48,7 @@ impl Plugin for RoadPlugin {
                     Self::apply_command
                         .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
-                    Self::update_meshes.after(SplinePlugin::update_connections),
+                    Self::update_meshes.after(SegmentPlugin::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
@@ -91,11 +91,11 @@ impl RoadPlugin {
             (
                 &Handle<Mesh>,
                 Ref<Segment>,
-                &SplineConnections,
+                &SegmentConnections,
                 &RoadData,
                 &mut Collider,
             ),
-            Changed<SplineConnections>,
+            Changed<SegmentConnections>,
         >,
     ) {
         for (mesh_handle, segment, connections, road_data, mut collider) in &mut changed_roads {

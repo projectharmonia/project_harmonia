@@ -24,9 +24,9 @@ use super::player_camera::CameraCaster;
 use crate::core::GameState;
 use ruler::RulerPlugin;
 
-pub(super) struct SplinePlugin;
+pub(super) struct SegmentPlugin;
 
-impl Plugin for SplinePlugin {
+impl Plugin for SegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RulerPlugin)
             .add_plugins(MovingPointPlugin)
@@ -40,16 +40,16 @@ impl Plugin for SplinePlugin {
     }
 }
 
-impl SplinePlugin {
-    /// Updates [`SplineConnections`] between segments.
+impl SegmentPlugin {
+    /// Updates [`SegmentConnections`] between segments.
     pub(super) fn update_connections(
-        mut segments: Query<(Entity, &Visibility, &Segment, &mut SplineConnections)>,
+        mut segments: Query<(Entity, &Visibility, &Segment, &mut SegmentConnections)>,
         children: Query<&Children>,
         changed_segments: Query<
             (Entity, &Parent, &Visibility, &Segment),
             (
                 Or<(Changed<Segment>, Changed<Visibility>)>,
-                With<SplineConnections>,
+                With<SegmentConnections>,
             ),
         >,
     ) {
@@ -83,12 +83,12 @@ impl SplinePlugin {
                     trace!(
                         "connecting `{from:?}` for `{segment_entity}` to `{to:?}` for `{other_entity}`"
                     );
-                    taken_connections.get_mut(from).push(SplineConnection {
+                    taken_connections.get_mut(from).push(SegmentConnection {
                         entity: other_entity,
                         segment: other_segment,
                         kind: to,
                     });
-                    other_connections.get_mut(to).push(SplineConnection {
+                    other_connections.get_mut(to).push(SegmentConnection {
                         entity: segment_entity,
                         segment,
                         kind: from,
@@ -104,13 +104,13 @@ impl SplinePlugin {
 
     fn cleanup_connections(
         trigger: Trigger<OnRemove, Segment>,
-        mut segments: Query<&mut SplineConnections>,
+        mut segments: Query<&mut SegmentConnections>,
     ) {
         disconnect_all(trigger.entity(), segments.as_query_lens());
     }
 }
 
-/// Removes all spline connections for the given entity.
+/// Removes all segment connections for the given entity.
 ///
 /// During the process, the component will be taken from
 /// the entity to avoid mutability issues.
@@ -118,8 +118,8 @@ impl SplinePlugin {
 /// Returns the taken component back for memory reuse.
 fn disconnect_all(
     disconnect_entity: Entity,
-    mut segments: QueryLens<&mut SplineConnections>,
-) -> SplineConnections {
+    mut segments: QueryLens<&mut SegmentConnections>,
+) -> SegmentConnections {
     debug!("removing connections for segment `{disconnect_entity}`");
 
     let mut segments = segments.query();
@@ -135,7 +135,7 @@ fn disconnect_all(
                 let point_connections = other_connections.get_mut(other_kind);
                 if let Some(index) = point_connections
                     .iter()
-                    .position(|&SplineConnection { entity, .. }| entity == disconnect_entity)
+                    .position(|&SegmentConnection { entity, .. }| entity == disconnect_entity)
                 {
                     point_connections.remove(index);
                     break; // A segment can connect to a single point of another segment, so stop at the first match.
@@ -317,7 +317,7 @@ impl Segment {
         world
             .commands()
             .entity(entity)
-            .insert(SplineConnections::default());
+            .insert(SegmentConnections::default());
     }
 }
 
@@ -353,12 +353,12 @@ impl Sub<Vec2> for Segment {
 
 /// Dynamically updated component with precalculated connected entities for each segment point.
 #[derive(Component, Default)]
-pub(crate) struct SplineConnections {
-    start: Vec<SplineConnection>,
-    end: Vec<SplineConnection>,
+pub(crate) struct SegmentConnections {
+    start: Vec<SegmentConnection>,
+    end: Vec<SegmentConnection>,
 }
 
-impl SplineConnections {
+impl SegmentConnections {
     /// Returns closest left and right segments relative to the displacement vector.
     pub(super) fn side_segments(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
         self.get_unified(point_kind).minmax_by_key(|segment| {
@@ -390,14 +390,14 @@ impl SplineConnections {
             })
     }
 
-    fn get(&self, kind: PointKind) -> &[SplineConnection] {
+    fn get(&self, kind: PointKind) -> &[SegmentConnection] {
         match kind {
             PointKind::Start => &self.start,
             PointKind::End => &self.end,
         }
     }
 
-    fn get_mut(&mut self, kind: PointKind) -> &mut Vec<SplineConnection> {
+    fn get_mut(&mut self, kind: PointKind) -> &mut Vec<SegmentConnection> {
         match kind {
             PointKind::Start => &mut self.start,
             PointKind::End => &mut self.end,
@@ -405,7 +405,7 @@ impl SplineConnections {
     }
 }
 
-pub(crate) struct SplineConnection {
+pub(crate) struct SegmentConnection {
     entity: Entity,
     segment: Segment,
     kind: PointKind,

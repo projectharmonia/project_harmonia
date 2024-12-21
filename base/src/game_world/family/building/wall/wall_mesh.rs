@@ -7,7 +7,7 @@ use itertools::MinMaxResult;
 use super::{triangulator::Triangulator, Aperture, Apertures};
 use crate::{
     dynamic_mesh::DynamicMesh,
-    game_world::segment::{PointKind, Segment, SplineConnections},
+    game_world::segment::{PointKind, Segment, SegmentConnections},
 };
 
 const WIDTH: f32 = 0.15;
@@ -17,7 +17,7 @@ pub(crate) const HALF_WIDTH: f32 = WIDTH / 2.0;
 pub(super) fn generate(
     mesh: &mut DynamicMesh,
     segment: Segment,
-    connections: &SplineConnections,
+    connections: &SegmentConnections,
     apertures: &Apertures,
     triangulator: &mut Triangulator,
 ) {

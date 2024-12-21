@@ -30,7 +30,7 @@ use navigation::NavigationPlugin;
 use object::ObjectPlugin;
 use picking::PickingPlugin;
 use player_camera::PlayerCameraPlugin;
-use segment::SplinePlugin;
+use segment::SegmentPlugin;
 
 pub(super) struct GameWorldPlugin;
 
@@ -39,7 +39,7 @@ impl Plugin for GameWorldPlugin {
         app.add_plugins((
             ActorPlugin,
             CityPlugin,
-            SplinePlugin,
+            SegmentPlugin,
             FamilyPlugin,
             HighlightingPlugin,
             NavigationPlugin,

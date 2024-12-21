@@ -15,7 +15,7 @@ use bevy::{
 use bevy_mod_billboard::{prelude::*, BillboardDepth, BillboardLockAxis};
 use itertools::MinMaxResult;
 
-use super::{PointKind, Segment, SplineConnections};
+use super::{PointKind, Segment, SegmentConnections};
 use crate::game_world::{family::building::BuildingMode, player_camera::PlayerCamera};
 
 pub(super) struct RulerPlugin;
@@ -50,7 +50,7 @@ impl RulerPlugin {
     fn draw(
         mut ruler_gizmos: Gizmos<RulerConfig>,
         mut angle_gizmos: Gizmos<AngleConfig>,
-        segments: Query<(Ref<Segment>, &SplineConnections, &Ruler)>,
+        segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler)>,
         cameras: Query<&Transform, With<PlayerCamera>>,
         mut text: Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
     ) {
@@ -130,7 +130,7 @@ fn draw_angle(
     angle_gizmos: &mut Gizmos<AngleConfig>,
     text: &mut Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
     segment: &Ref<Segment>,
-    connections: &SplineConnections,
+    connections: &SegmentConnections,
     ruler: Ruler,
     segment_disp: Vec2,
     camera_rotation: Quat,

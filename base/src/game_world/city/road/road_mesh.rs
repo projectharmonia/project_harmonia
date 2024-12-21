@@ -6,7 +6,7 @@ use itertools::MinMaxResult;
 
 use crate::{
     dynamic_mesh::DynamicMesh,
-    game_world::segment::{PointKind, Segment, SplineConnections},
+    game_world::segment::{PointKind, Segment, SegmentConnections},
 };
 
 /// Small offset to avoid Z-fighting with the ground.
@@ -15,7 +15,7 @@ const HEIGHT: f32 = 0.001;
 pub(super) fn generate(
     mesh: &mut DynamicMesh,
     segment: Segment,
-    connections: &SplineConnections,
+    connections: &SegmentConnections,
     half_width: f32,
 ) {
     mesh.clear();

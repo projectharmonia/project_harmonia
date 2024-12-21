@@ -18,7 +18,7 @@ use crate::{
             PendingCommand,
         },
         navigation::Obstacle,
-        segment::{PointKind, Segment, SplineConnections, SplinePlugin},
+        segment::{PointKind, Segment, SegmentConnections, SegmentPlugin},
         Layer,
     },
 };
@@ -48,7 +48,7 @@ impl Plugin for WallPlugin {
                     Self::apply_command
                         .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
-                    Self::update_meshes.after(SplinePlugin::update_connections),
+                    Self::update_meshes.after(SegmentPlugin::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
@@ -96,11 +96,11 @@ impl WallPlugin {
             (
                 &Handle<Mesh>,
                 Ref<Segment>,
-                &SplineConnections,
+                &SegmentConnections,
                 &mut Apertures,
                 &mut Collider,
             ),
-            Or<(Changed<SplineConnections>, Changed<Apertures>)>,
+            Or<(Changed<SegmentConnections>, Changed<Apertures>)>,
         >,
     ) {
         for (mesh_handle, segment, connections, mut apertures, mut collider) in &mut changed_walls {
