@@ -73,6 +73,7 @@ impl TaskMenuPlugin {
                 })
                 .insert((
                     TaskMenu(mem::take(&mut available_tasks.tasks)),
+                    StateScoped(FamilyMode::Life),
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
