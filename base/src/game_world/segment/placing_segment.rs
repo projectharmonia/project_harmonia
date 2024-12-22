@@ -1,13 +1,17 @@
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 
 use super::{CameraCaster, PointKind, Segment};
-use crate::game_world::{city::CityMode, family::building::BuildingMode};
+use crate::{
+    game_world::{city::CityMode, family::building::BuildingMode},
+    settings::Settings,
+};
 
 pub(super) struct PlacingSegmentPlugin;
 
 impl Plugin for PlacingSegmentPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_input_context::<PlacingSegment>().add_systems(
             Update,
             Self::update_position
                 .run_if(in_state(BuildingMode::Walls).or_else(in_state(CityMode::Roads))),
@@ -51,3 +55,33 @@ pub(crate) struct PlacingSegment {
     pub(crate) point_kind: PointKind,
     pub(crate) snap_offset: f32,
 }
+
+impl InputContext for PlacingSegment {
+    const PRIORITY: isize = 1;
+
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
+
+        ctx.bind::<DeleteSegment>()
+            .to((&settings.keyboard.delete, GamepadButtonType::North));
+        ctx.bind::<CancelSegment>()
+            .to((KeyCode::Escape, GamepadButtonType::East));
+        ctx.bind::<ConfirmSegment>()
+            .to((MouseButton::Left, GamepadButtonType::South));
+
+        ctx
+    }
+}
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+pub(crate) struct DeleteSegment;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+pub(crate) struct CancelSegment;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+pub(crate) struct ConfirmSegment;

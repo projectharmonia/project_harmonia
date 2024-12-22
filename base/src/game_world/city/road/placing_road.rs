@@ -17,19 +17,20 @@ use crate::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
-        segment::{placing_segment::PlacingSegment, PointKind, Segment},
+        segment::{
+            placing_segment::{CancelSegment, ConfirmSegment, DeleteSegment, PlacingSegment},
+            PointKind, Segment,
+        },
         Layer,
     },
     ghost::Ghost,
-    settings::Settings,
 };
 
 pub(super) struct PlacingRoadPlugin;
 
 impl Plugin for PlacingRoadPlugin {
     fn build(&self, app: &mut App) {
-        app.add_input_context::<PlacingRoad>()
-            .observe(Self::pick)
+        app.observe(Self::pick)
             .observe(Self::spawn)
             .observe(Self::delete)
             .observe(Self::cancel)
@@ -162,7 +163,7 @@ impl PlacingRoadPlugin {
     }
 
     fn delete(
-        _trigger: Trigger<Completed<DeleteRoad>>,
+        _trigger: Trigger<Completed<DeleteSegment>>,
         city_mode: Option<Res<State<CityMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
@@ -194,7 +195,7 @@ impl PlacingRoadPlugin {
     }
 
     fn cancel(
-        _trigger: Trigger<Completed<CancelRoad>>,
+        _trigger: Trigger<Completed<CancelSegment>>,
         city_mode: Option<Res<State<CityMode>>>,
         mut commands: Commands,
         placing_roads: Query<Entity, With<PlacingRoad>>,
@@ -210,7 +211,7 @@ impl PlacingRoadPlugin {
     }
 
     fn confirm(
-        _trigger: Trigger<Completed<ConfirmRoad>>,
+        _trigger: Trigger<Completed<ConfirmSegment>>,
         city_mode: Option<Res<State<CityMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
@@ -318,33 +319,3 @@ enum PlacingRoad {
     Spawning(AssetId<RoadInfo>),
     EditPoint { entity: Entity },
 }
-
-impl InputContext for PlacingRoad {
-    const PRIORITY: isize = 1;
-
-    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
-        let mut ctx = ContextInstance::default();
-        let settings = world.resource::<Settings>();
-
-        ctx.bind::<DeleteRoad>()
-            .to((&settings.keyboard.delete, GamepadButtonType::North));
-        ctx.bind::<CancelRoad>()
-            .to((KeyCode::Escape, GamepadButtonType::East));
-        ctx.bind::<ConfirmRoad>()
-            .to((MouseButton::Left, GamepadButtonType::South));
-
-        ctx
-    }
-}
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct CancelRoad;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct DeleteRoad;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct ConfirmRoad;

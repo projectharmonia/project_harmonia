@@ -17,19 +17,21 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
-        segment::{placing_segment::PlacingSegment, ruler::Ruler, PointKind, Segment},
+        segment::{
+            placing_segment::{CancelSegment, ConfirmSegment, DeleteSegment, PlacingSegment},
+            ruler::Ruler,
+            PointKind, Segment,
+        },
         Layer,
     },
     ghost::Ghost,
-    settings::Settings,
 };
 
 pub(super) struct PlacingWallPlugin;
 
 impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_input_context::<PlacingWall>()
-            .observe(Self::pick)
+        app.observe(Self::pick)
             .observe(Self::spawn)
             .observe(Self::delete)
             .observe(Self::cancel)
@@ -148,7 +150,7 @@ impl PlacingWallPlugin {
     }
 
     fn delete(
-        _trigger: Trigger<Completed<DeleteWall>>,
+        _trigger: Trigger<Completed<DeleteSegment>>,
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
@@ -180,7 +182,7 @@ impl PlacingWallPlugin {
     }
 
     fn cancel(
-        _trigger: Trigger<Completed<CancelWall>>,
+        _trigger: Trigger<Completed<CancelSegment>>,
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         placing_walls: Query<Entity, With<PlacingWall>>,
@@ -196,7 +198,7 @@ impl PlacingWallPlugin {
     }
 
     fn confirm(
-        _trigger: Trigger<Completed<ConfirmWall>>,
+        _trigger: Trigger<Completed<ConfirmSegment>>,
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
@@ -299,33 +301,3 @@ enum PlacingWall {
     Spawning,
     EditingPoint { entity: Entity },
 }
-
-impl InputContext for PlacingWall {
-    const PRIORITY: isize = 1;
-
-    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
-        let mut ctx = ContextInstance::default();
-        let settings = world.resource::<Settings>();
-
-        ctx.bind::<DeleteWall>()
-            .to((&settings.keyboard.delete, GamepadButtonType::North));
-        ctx.bind::<CancelWall>()
-            .to((KeyCode::Escape, GamepadButtonType::East));
-        ctx.bind::<ConfirmWall>()
-            .to((MouseButton::Left, GamepadButtonType::South));
-
-        ctx
-    }
-}
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct DeleteWall;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct CancelWall;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct ConfirmWall;
