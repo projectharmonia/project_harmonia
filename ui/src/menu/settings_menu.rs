@@ -435,6 +435,13 @@ fn setup_keyboard_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                 &keyboard.delete,
                 settings_field!(keyboard.delete),
             );
+            setup_action_row(
+                parent,
+                theme,
+                "Free placement",
+                &keyboard.free_placement,
+                settings_field!(keyboard.free_placement),
+            );
         });
 }
 

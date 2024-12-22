@@ -416,3 +416,12 @@ pub enum PointKind {
     Start,
     End,
 }
+
+impl PointKind {
+    pub(super) fn inverse(self) -> Self {
+        match self {
+            PointKind::Start => PointKind::End,
+            PointKind::End => PointKind::Start,
+        }
+    }
+}

@@ -126,6 +126,7 @@ pub struct KeyboardSettings {
     pub zoom_in: Vec<KeyCode>,
     pub zoom_out: Vec<KeyCode>,
     pub delete: Vec<KeyCode>,
+    pub free_placement: Vec<KeyCode>,
 }
 
 impl KeyboardSettings {
@@ -139,6 +140,7 @@ impl KeyboardSettings {
         self.zoom_in.clear();
         self.zoom_out.clear();
         self.delete.clear();
+        self.free_placement.clear();
     }
 }
 
@@ -154,6 +156,7 @@ impl Default for KeyboardSettings {
             zoom_in: vec![KeyCode::Equal, KeyCode::NumpadAdd],
             zoom_out: vec![KeyCode::Minus, KeyCode::NumpadSubtract],
             delete: vec![KeyCode::Delete, KeyCode::Backspace],
+            free_placement: vec![KeyCode::AltLeft, KeyCode::AltRight],
         }
     }
 }
