@@ -1,4 +1,4 @@
-pub(super) mod moving_point;
+pub(super) mod placing_segment;
 pub(super) mod ruler;
 
 use std::{
@@ -17,11 +17,11 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use itertools::{Itertools, MinMaxResult};
-use moving_point::MovingPointPlugin;
 use serde::{Deserialize, Serialize};
 
 use super::player_camera::CameraCaster;
 use crate::core::GameState;
+use placing_segment::PlacingSegmentPlugin;
 use ruler::RulerPlugin;
 
 pub(super) struct SegmentPlugin;
@@ -29,7 +29,7 @@ pub(super) struct SegmentPlugin;
 impl Plugin for SegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RulerPlugin)
-            .add_plugins(MovingPointPlugin)
+            .add_plugins(PlacingSegmentPlugin)
             .register_type::<Segment>()
             .replicate::<Segment>()
             .observe(Self::cleanup_connections)

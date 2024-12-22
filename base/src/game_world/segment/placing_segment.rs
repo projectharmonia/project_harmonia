@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use super::{CameraCaster, PointKind, Segment};
 use crate::game_world::{city::CityMode, family::building::BuildingMode};
 
-pub(super) struct MovingPointPlugin;
+pub(super) struct PlacingSegmentPlugin;
 
-impl Plugin for MovingPointPlugin {
+impl Plugin for PlacingSegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
@@ -15,13 +15,13 @@ impl Plugin for MovingPointPlugin {
     }
 }
 
-impl MovingPointPlugin {
+impl PlacingSegmentPlugin {
     fn update_position(
         camera_caster: CameraCaster,
-        mut moving_segments: Query<(&mut Segment, &Parent, &MovingPoint)>,
-        segments: Query<(&Parent, &Segment), Without<MovingPoint>>,
+        mut placing_segments: Query<(&mut Segment, &Parent, &PlacingSegment)>,
+        segments: Query<(&Parent, &Segment), Without<PlacingSegment>>,
     ) {
-        let Ok((mut segment, moving_parent, moving_point)) = moving_segments.get_single_mut()
+        let Ok((mut segment, moving_parent, placing_segment)) = placing_segments.get_single_mut()
         else {
             return;
         };
@@ -35,16 +35,19 @@ impl MovingPointPlugin {
             .iter()
             .filter(|(parent, _)| *parent == moving_parent)
             .flat_map(|(_, segment)| segment.points())
-            .find(|vertex| vertex.distance(point) < moving_point.snap_offset)
+            .find(|vertex| vertex.distance(point) < placing_segment.snap_offset)
             .unwrap_or(point);
 
-        trace!("updating `{:?}` to `{snapped_point:?}`", moving_point.kind);
-        segment.set_point(moving_point.kind, snapped_point);
+        trace!(
+            "updating `{:?}` to `{snapped_point:?}`",
+            placing_segment.point_kind
+        );
+        segment.set_point(placing_segment.point_kind, snapped_point);
     }
 }
 
 #[derive(Component)]
-pub(crate) struct MovingPoint {
-    pub(crate) kind: PointKind,
+pub(crate) struct PlacingSegment {
+    pub(crate) point_kind: PointKind,
     pub(crate) snap_offset: f32,
 }

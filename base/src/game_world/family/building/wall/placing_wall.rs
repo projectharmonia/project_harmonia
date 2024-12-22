@@ -17,7 +17,7 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         picking::{Clicked, Picked},
-        segment::{moving_point::MovingPoint, ruler::Ruler, PointKind, Segment},
+        segment::{placing_segment::PlacingSegment, ruler::Ruler, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
@@ -80,8 +80,8 @@ impl PlacingWallPlugin {
                 PlacingWallBundle::new(
                     PlacingWall::EditingPoint { entity },
                     segment,
-                    MovingPoint {
-                        kind,
+                    PlacingSegment {
+                        point_kind: kind,
                         snap_offset: 0.5,
                     },
                     wall_material.0.clone(),
@@ -120,8 +120,8 @@ impl PlacingWallPlugin {
             parent.spawn(PlacingWallBundle::new(
                 PlacingWall::Spawning,
                 Segment::splat(snapped_point),
-                MovingPoint {
-                    kind: PointKind::End,
+                PlacingSegment {
+                    point_kind: PointKind::End,
                     snap_offset: 0.5,
                 },
                 wall_material.0.clone(),
@@ -200,13 +200,13 @@ impl PlacingWallPlugin {
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &Segment, &MovingPoint)>,
+        mut placing_walls: Query<(Entity, &Parent, &PlacingWall, &Segment, &PlacingSegment)>,
     ) {
         if !observer_in_state(building_mode, BuildingMode::Walls) {
             return;
         }
 
-        let Ok((entity, parent, &placing_wall, &segment, moving_point)) =
+        let Ok((entity, parent, &placing_wall, &segment, placing_segment)) =
             placing_walls.get_single_mut()
         else {
             return;
@@ -219,10 +219,10 @@ impl PlacingWallPlugin {
                 segment,
             }),
             PlacingWall::EditingPoint { entity } => {
-                let point = segment.point(moving_point.kind);
+                let point = segment.point(placing_segment.point_kind);
                 history.push_pending(WallCommand::EditPoint {
                     entity,
-                    kind: moving_point.kind,
+                    kind: placing_segment.point_kind,
                     point,
                 })
             }
@@ -240,7 +240,7 @@ struct PlacingWallBundle {
     name: Name,
     placing_wall: PlacingWall,
     segment: Segment,
-    moving_point: MovingPoint,
+    placing_segment: PlacingSegment,
     picked: Picked,
     ruler: Ruler,
     alpha: AlphaColor,
@@ -256,7 +256,7 @@ impl PlacingWallBundle {
     fn new(
         placing_wall: PlacingWall,
         segment: Segment,
-        moving_point: MovingPoint,
+        placing_segment: PlacingSegment,
         material: Handle<StandardMaterial>,
         mesh: Handle<Mesh>,
     ) -> Self {
@@ -268,7 +268,7 @@ impl PlacingWallBundle {
             name: Name::new("Placing wall"),
             placing_wall,
             segment,
-            moving_point,
+            placing_segment,
             picked: Picked,
             ruler: Default::default(),
             alpha: AlphaColor(WHITE.into()),

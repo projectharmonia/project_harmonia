@@ -17,7 +17,7 @@ use crate::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         picking::Clicked,
-        segment::{moving_point::MovingPoint, PointKind, Segment},
+        segment::{placing_segment::PlacingSegment, PointKind, Segment},
         Layer,
     },
     ghost::Ghost,
@@ -68,7 +68,7 @@ impl PlacingRoadPlugin {
         let info = roads_info.get(&info_handle).unwrap();
 
         let point = trigger.event().xz();
-        let kind = if segment.start.distance(point) < info.half_width {
+        let point_kind = if segment.start.distance(point) < info.half_width {
             PointKind::Start
         } else if segment.end.distance(point) < info.half_width {
             PointKind::End
@@ -76,7 +76,7 @@ impl PlacingRoadPlugin {
             return;
         };
 
-        info!("picking `{kind:?}` for `{entity}`");
+        info!("picking `{point_kind:?}` for `{entity}`");
         commands.entity(**parent).with_children(|parent| {
             parent.spawn((
                 Ghost::new(entity),
@@ -84,8 +84,8 @@ impl PlacingRoadPlugin {
                     PlacingRoad::EditPoint { entity },
                     info.half_width,
                     segment,
-                    MovingPoint {
-                        kind,
+                    PlacingSegment {
+                        point_kind,
                         snap_offset: info.half_width,
                     },
                     material.clone(),
@@ -134,8 +134,8 @@ impl PlacingRoadPlugin {
                 PlacingRoad::Spawning(placing_id.0),
                 info.half_width,
                 Segment::splat(snapped_point),
-                MovingPoint {
-                    kind: PointKind::End,
+                PlacingSegment {
+                    point_kind: PointKind::End,
                     snap_offset: info.half_width,
                 },
                 asset_server.load(info.material.clone()),
@@ -215,13 +215,13 @@ impl PlacingRoadPlugin {
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        mut placing_roads: Query<(Entity, &Parent, &Segment, &PlacingRoad, &MovingPoint)>,
+        mut placing_roads: Query<(Entity, &Parent, &Segment, &PlacingRoad, &PlacingSegment)>,
     ) {
         if !observer_in_state(city_mode, CityMode::Roads) {
             return;
         }
 
-        let Ok((entity, parent, &segment, &placing_road, moving_point)) =
+        let Ok((entity, parent, &segment, &placing_road, placing_segment)) =
             placing_roads.get_single_mut()
         else {
             return;
@@ -240,10 +240,10 @@ impl PlacingRoadPlugin {
                 })
             }
             PlacingRoad::EditPoint { entity } => {
-                let point = segment.point(moving_point.kind);
+                let point = segment.point(placing_segment.point_kind);
                 history.push_pending(RoadCommand::EditPoint {
                     entity,
-                    kind: moving_point.kind,
+                    kind: placing_segment.point_kind,
                     point,
                 })
             }
@@ -268,7 +268,7 @@ struct PlacingRoadBundle {
     placing_road: PlacingRoad,
     road_data: RoadData,
     segment: Segment,
-    moving_point: MovingPoint,
+    placing_segment: PlacingSegment,
     state_scoped: StateScoped<RoadTool>,
     alpha: AlphaColor,
     collider: Collider,
@@ -282,7 +282,7 @@ impl PlacingRoadBundle {
         placing_road: PlacingRoad,
         half_width: f32,
         segment: Segment,
-        moving_point: MovingPoint,
+        placing_segment: PlacingSegment,
         material: Handle<StandardMaterial>,
         mesh: Handle<Mesh>,
     ) -> Self {
@@ -295,7 +295,7 @@ impl PlacingRoadBundle {
             road_data: RoadData { half_width },
             placing_road,
             segment,
-            moving_point,
+            placing_segment,
             state_scoped: StateScoped(tool),
             alpha: AlphaColor(WHITE.into()),
             collider: Default::default(),
