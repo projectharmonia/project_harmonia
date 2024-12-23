@@ -13,7 +13,6 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_billboard::{prelude::*, BillboardDepth, BillboardLockAxis};
-use itertools::MinMaxResult;
 
 use super::{PointKind, Segment, SegmentConnections};
 use crate::game_world::{family::building::BuildingMode, player_camera::PlayerCamera};
@@ -146,24 +145,14 @@ fn draw_angle(
             PointKind::End => -segment_disp,
         };
 
-        let angle = match connections.side_angles(point_disp, point_kind) {
-            MinMaxResult::NoElements => {
-                if segment.is_changed() {
-                    // Remove the text in case the segment is still exists, but don't have any angles.
-                    let (_, mut text) = text.get_mut(angle_entity).unwrap();
-                    let text = &mut text.sections[0].value;
-                    text.clear();
-                }
-                continue;
+        let Some(angle) = connections.min_angle(point_kind, point_disp) else {
+            if segment.is_changed() {
+                // Remove the text in case the segment is still exists, but don't have any angles.
+                let (_, mut text) = text.get_mut(angle_entity).unwrap();
+                let text = &mut text.sections[0].value;
+                text.clear();
             }
-            MinMaxResult::OneElement(angle) => angle,
-            MinMaxResult::MinMax(angle1, angle2) => {
-                if angle1.abs() < angle2.abs() {
-                    angle1
-                } else {
-                    angle2
-                }
-            }
+            continue;
         };
 
         let start_angle = point_disp.angle_between(Vec2::X);

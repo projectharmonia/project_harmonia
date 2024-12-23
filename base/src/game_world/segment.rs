@@ -2,6 +2,7 @@ pub(super) mod placing_segment;
 pub(super) mod ruler;
 
 use std::{
+    cmp::Ordering,
     f32::consts::PI,
     mem,
     ops::{Add, Sub},
@@ -371,11 +372,13 @@ impl SegmentConnections {
         })
     }
 
-    /// Returns angles between closest left and right segments relative to the displacement vector.
-    pub(super) fn side_angles(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<f32> {
+    /// Returns minimum angle for a point relative to the displacement vector.
+    ///
+    /// Angles compared by their absolute value.
+    pub(super) fn min_angle(&self, point_kind: PointKind, disp: Vec2) -> Option<f32> {
         self.get_unified(point_kind)
             .map(|segment| segment.displacement().angle_between(disp))
-            .minmax_by_key(|&angle| if angle < 0.0 { angle + 2.0 * PI } else { angle })
+            .min_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap_or(Ordering::Equal))
     }
 
     /// Returns iterator over segments that with unified direction based on point type.
