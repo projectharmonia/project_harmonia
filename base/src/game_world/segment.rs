@@ -361,7 +361,7 @@ pub(crate) struct SegmentConnections {
 
 impl SegmentConnections {
     /// Returns closest left and right segments relative to the displacement vector.
-    pub(super) fn side_segments(&self, disp: Vec2, point_kind: PointKind) -> MinMaxResult<Segment> {
+    pub(super) fn side_segments(&self, point_kind: PointKind, disp: Vec2) -> MinMaxResult<Segment> {
         self.get_unified(point_kind).minmax_by_key(|segment| {
             let angle = segment.displacement().angle_between(disp);
             if angle < 0.0 {

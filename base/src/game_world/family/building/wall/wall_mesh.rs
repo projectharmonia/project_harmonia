@@ -32,11 +32,11 @@ pub(super) fn generate(
     let width_disp = disp.perp().normalize() * HALF_WIDTH;
     let rotation_mat = Mat2::from_angle(angle);
 
-    let start_connections = connections.side_segments(disp, PointKind::Start);
+    let start_connections = connections.side_segments(PointKind::Start, disp);
     let (start_left, start_right) =
         segment.offset_points(width_disp, HALF_WIDTH, start_connections);
 
-    let end_connections = connections.side_segments(-disp, PointKind::End);
+    let end_connections = connections.side_segments(PointKind::End, -disp);
     let (end_right, end_left) =
         segment
             .inverse()
