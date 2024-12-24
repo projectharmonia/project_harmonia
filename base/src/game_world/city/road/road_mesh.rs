@@ -20,7 +20,7 @@ pub(super) fn generate(
 ) {
     mesh.clear();
 
-    if segment.start == segment.end {
+    if segment.is_zero() {
         return;
     }
 
@@ -136,7 +136,7 @@ fn generate_end_connection(
 }
 
 pub(super) fn generate_collider(segment: Segment, half_width: f32) -> Collider {
-    if segment.start == segment.end {
+    if segment.is_zero() {
         return Default::default();
     }
 

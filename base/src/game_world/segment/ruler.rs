@@ -54,6 +54,10 @@ impl RulerPlugin {
         mut text: Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
     ) {
         for (segment, connections, &ruler) in &segments {
+            if segment.is_zero() {
+                continue;
+            }
+
             let camera_transform = cameras.single();
             let segment_disp = segment.displacement();
 

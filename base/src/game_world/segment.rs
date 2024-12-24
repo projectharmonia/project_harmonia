@@ -223,6 +223,10 @@ impl Segment {
         }
     }
 
+    pub(super) fn is_zero(&self) -> bool {
+        self.start == self.end
+    }
+
     /// Calculates displacement vector of the segment.
     pub(super) fn displacement(&self) -> Vec2 {
         self.end - self.start

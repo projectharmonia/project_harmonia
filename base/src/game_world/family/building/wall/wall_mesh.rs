@@ -23,7 +23,7 @@ pub(super) fn generate(
 ) {
     mesh.clear();
 
-    if segment.start == segment.end {
+    if segment.is_zero() {
         return;
     }
 
@@ -295,7 +295,7 @@ fn generate_end_connection(mesh: &mut DynamicMesh, segment: Segment, rotation_ma
 /// Clippings split the collider into separate cuboids.
 /// We generate a trimesh since navigation doesn't support compound shapes.
 pub(super) fn generate_collider(segment: Segment, apertures: &Apertures) -> Collider {
-    if segment.start == segment.end {
+    if segment.is_zero() {
         return Default::default();
     }
 
