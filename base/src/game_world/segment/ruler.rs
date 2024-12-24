@@ -122,7 +122,7 @@ fn draw_len(
 
     let text = &mut text.sections[0].value;
     text.clear();
-    write!(text, "{:.2} m", segment.len()).unwrap();
+    write!(text, "{:.2} m", segment_disp.length()).unwrap();
 }
 
 fn draw_angle(
