@@ -1,7 +1,9 @@
+use std::f32::consts::FRAC_PI_4;
+
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 
-use super::{CameraCaster, PointKind, Segment};
+use super::{CameraCaster, PointKind, Segment, SegmentConnections};
 use crate::{
     game_world::{city::CityMode, family::building::BuildingMode},
     settings::Settings,
@@ -23,10 +25,17 @@ impl PlacingSegmentPlugin {
     fn update_position(
         camera_caster: CameraCaster,
         instances: Res<ContextInstances>,
-        mut placing_segments: Query<(Entity, &mut Segment, &Parent, &PlacingSegment)>,
+        mut placing_segments: Query<(
+            Entity,
+            &mut Segment,
+            &SegmentConnections,
+            &Parent,
+            &PlacingSegment,
+        )>,
         segments: Query<(&Parent, &Segment), Without<PlacingSegment>>,
     ) {
-        let Ok((entity, mut segment, moving_parent, placing)) = placing_segments.get_single_mut()
+        let Ok((entity, mut segment, connections, moving_parent, placing)) =
+            placing_segments.get_single_mut()
         else {
             return;
         };
@@ -42,28 +51,55 @@ impl PlacingSegmentPlugin {
             .filter(|(parent, _)| *parent == moving_parent)
             .flat_map(|(_, segment)| segment.points())
             .find(|point| point.distance(new_point) < placing.snap_offset)
-            .unwrap_or_else(|| round(&instances, entity, *segment, *placing, new_point));
+            .unwrap_or_else(|| {
+                round_placement(
+                    &instances,
+                    entity,
+                    *segment,
+                    connections,
+                    *placing,
+                    new_point,
+                )
+            });
 
         trace!("updating `{:?}` to `{new_point:?}`", placing.point_kind);
         segment.set_point(placing.point_kind, new_point);
     }
 }
 
-fn round(
+fn round_placement(
     instances: &ContextInstances,
     entity: Entity,
     segment: Segment,
+    connections: &SegmentConnections,
     placing: PlacingSegment,
     point: Vec2,
 ) -> Vec2 {
     let ctx = instances.get::<PlacingSegment>(entity).unwrap();
-    let action = ctx.action::<FreeSegmentPlacement>().unwrap();
-    if action.state() == ActionState::Fired {
+    let free_placement = ctx.action::<FreeSegmentPlacement>().unwrap();
+    if free_placement.state() == ActionState::Fired {
         // Use raw result.
         return point;
     }
 
+    let origin_kind = placing.point_kind.inverse();
     let origin = segment.point(placing.point_kind.inverse());
+    if origin == point {
+        return point;
+    }
+
+    let ordinal_placement = ctx.action::<OrdinalSegmentPlacement>().unwrap();
+    let snap_angle = if ordinal_placement.state() == ActionState::Fired {
+        FRAC_PI_4
+    } else {
+        5.0_f32.to_radians()
+    };
+
+    let rounded_point = round_angle(connections, origin, point, origin_kind, snap_angle);
+    round_len(origin, rounded_point)
+}
+
+fn round_len(origin: Vec2, point: Vec2) -> Vec2 {
     const SNAP_LEN: f32 = 0.1;
 
     let disp = point - origin;
@@ -81,6 +117,34 @@ fn round(
 
     let snapped_len = len + adjustment;
     origin + disp.normalize() * snapped_len
+}
+
+fn round_angle(
+    connections: &SegmentConnections,
+    origin: Vec2,
+    point: Vec2,
+    origin_kind: PointKind,
+    snap_angle: f32,
+) -> Vec2 {
+    let disp = point - origin;
+    let angle = connections
+        .min_angle(origin_kind, disp)
+        .unwrap_or_else(|| -disp.angle_between(Vec2::X));
+
+    let remainder = angle.abs() % snap_angle;
+    if remainder == 0.0 {
+        return point;
+    }
+
+    let adjustment = if remainder < snap_angle / 2.0 {
+        -remainder
+    } else {
+        snap_angle - remainder
+    };
+
+    let rotation = Mat2::from_angle(adjustment * angle.signum());
+
+    rotation * disp + origin
 }
 
 #[derive(Component, Clone, Copy)]
@@ -106,6 +170,10 @@ impl InputContext for PlacingSegment {
             &settings.keyboard.free_placement,
             GamepadButtonType::LeftTrigger2,
         ));
+        ctx.bind::<OrdinalSegmentPlacement>().to((
+            &settings.keyboard.ordinal_placement,
+            GamepadButtonType::RightTrigger2,
+        ));
 
         ctx
     }
@@ -126,3 +194,7 @@ pub(crate) struct ConfirmSegment;
 #[derive(Debug, InputAction)]
 #[input_action(output = bool)]
 struct FreeSegmentPlacement;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+struct OrdinalSegmentPlacement;

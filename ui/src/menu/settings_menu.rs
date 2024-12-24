@@ -442,6 +442,13 @@ fn setup_keyboard_tab(parent: &mut ChildBuilder, theme: &Theme, settings: &Setti
                 &keyboard.free_placement,
                 settings_field!(keyboard.free_placement),
             );
+            setup_action_row(
+                parent,
+                theme,
+                "Ordinal placement",
+                &keyboard.ordinal_placement,
+                settings_field!(keyboard.ordinal_placement),
+            );
         });
 }
 
