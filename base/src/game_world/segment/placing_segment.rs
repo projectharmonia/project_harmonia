@@ -115,8 +115,13 @@ fn round_len(origin: Vec2, point: Vec2) -> Vec2 {
         SNAP_LEN - remainder
     };
 
-    let snapped_len = len + adjustment;
-    origin + disp.normalize() * snapped_len
+    let new_point = point + disp.normalize() * adjustment;
+    trace!(
+        "rounding len to {} by changing {point} to {new_point}",
+        len + adjustment
+    );
+
+    new_point
 }
 
 fn round_angle(
@@ -143,8 +148,13 @@ fn round_angle(
     };
 
     let rotation = Mat2::from_angle(adjustment * angle.signum());
+    let new_point = origin + rotation * disp;
+    trace!(
+        "rounding angle to {} by changing {point} to {new_point}",
+        (angle + adjustment * angle.signum()).to_degrees()
+    );
 
-    rotation * disp + origin
+    new_point
 }
 
 #[derive(Component, Clone, Copy)]
