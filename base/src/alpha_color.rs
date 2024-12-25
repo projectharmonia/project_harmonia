@@ -31,9 +31,10 @@ impl AlphaColorPlugin {
         let mut iter = material_handles
             .iter_many_mut(iter::once(entity).chain(children.iter_descendants(entity)));
         while let Some(mut material_handle) = iter.fetch_next() {
-            let material = materials
-                .get(&*material_handle)
-                .expect("material handle should be valid");
+            let Some(material) = materials.get(&*material_handle) else {
+                // Skip non-loaded, their alpha color will be updated only after full scene loading anyway.
+                return;
+            };
 
             // If color matches, assume that we don't need any update.
             if material.base_color == *alpha {
