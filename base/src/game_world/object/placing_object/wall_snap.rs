@@ -71,7 +71,7 @@ impl WallSnapPlugin {
                 WallSnap::Outside { .. } => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
-            let angle = disp.angle_between(Vec2::X * sign);
+            let angle = -sign * disp.to_angle();
             transform.translation.x = snap_point.x;
             transform.translation.z = snap_point.y;
             if rotation_limit.is_none() {

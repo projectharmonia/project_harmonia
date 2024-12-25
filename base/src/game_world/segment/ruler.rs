@@ -118,7 +118,7 @@ fn draw_len(
     text_transform.translation = Vec3::new(middle.x, 0.0, middle.y) + text_offset;
 
     // Rotate perpendicular to the segment and select the side closest to the camera.
-    let mut angle = segment.displacement().angle_between(Vec2::X);
+    let mut angle = -segment.displacement().to_angle();
     if sign.is_sign_positive() {
         angle += PI;
     }
@@ -159,7 +159,7 @@ fn draw_angle(
             continue;
         };
 
-        let start_angle = point_disp.angle_between(Vec2::X);
+        let start_angle = -point_disp.to_angle();
         angle_gizmos.arc_3d(
             angle,
             1.0,

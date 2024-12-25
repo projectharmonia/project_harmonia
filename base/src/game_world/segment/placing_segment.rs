@@ -134,7 +134,7 @@ fn round_angle(
     let disp = point - origin;
     let angle = connections
         .min_angle(origin_kind, disp)
-        .unwrap_or_else(|| -disp.angle_between(Vec2::X));
+        .unwrap_or_else(|| disp.to_angle());
 
     let remainder = angle.abs() % snap_angle;
     if remainder == 0.0 {
