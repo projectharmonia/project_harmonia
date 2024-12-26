@@ -49,11 +49,11 @@ impl RulerPlugin {
     fn draw(
         mut ruler_gizmos: Gizmos<RulerConfig>,
         mut angle_gizmos: Gizmos<AngleConfig>,
-        segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler)>,
+        segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler, &Transform)>,
         cameras: Query<&Transform, With<PlayerCamera>>,
-        mut text: Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
+        mut text: Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
     ) {
-        for (segment, connections, &ruler) in &segments {
+        for (segment, connections, &ruler, segment_transform) in &segments {
             if segment.is_zero() {
                 continue;
             }
@@ -78,6 +78,7 @@ impl RulerPlugin {
                 ruler,
                 segment_disp,
                 camera_transform.rotation,
+                segment_transform.rotation,
             );
         }
     }
@@ -85,7 +86,7 @@ impl RulerPlugin {
 
 fn draw_len(
     ruler_gizmos: &mut Gizmos<RulerConfig>,
-    text: &mut Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
+    text: &mut Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
     segment: &Ref<Segment>,
     ruler: Ruler,
     segment_disp: Vec2,
@@ -112,17 +113,14 @@ fn draw_len(
 
     let (mut text_transform, mut text) = text.get_mut(ruler.len_entity).unwrap();
 
-    // Place on the center of the segment.
-    let middle = segment.start.lerp(segment.end, 0.5);
-    let text_offset = sign * 4.0 * Vec3::new(offset.x, 0.0, offset.y);
-    text_transform.translation = Vec3::new(middle.x, 0.0, middle.y) + text_offset;
+    // Place it at the center of the segment with an offset from the side closest to the camera.
+    let text_pos = Vec3::X * segment.len() / 2.0;
+    let text_offset = sign * Vec3::Z;
+    text_transform.translation = text_pos + text_offset;
 
-    // Rotate perpendicular to the segment and select the side closest to the camera.
-    let mut angle = -segment.displacement().to_angle();
-    if sign.is_sign_positive() {
-        angle += PI;
-    }
-    text_transform.rotation = Quat::from_euler(EulerRot::YXZ, angle, FRAC_PI_2, 0.0);
+    // Rotate from the side closest to the camera.
+    let angle = if sign.is_sign_positive() { PI } else { 0.0 };
+    text_transform.rotation = Quat::from_euler(EulerRot::XYZ, FRAC_PI_2, 0.0, angle);
 
     let text = &mut text.sections[0].value;
     text.clear();
@@ -131,12 +129,13 @@ fn draw_len(
 
 fn draw_angle(
     angle_gizmos: &mut Gizmos<AngleConfig>,
-    text: &mut Query<(&mut Transform, &mut Text), Without<PlayerCamera>>,
+    text: &mut Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
     segment: &Ref<Segment>,
     connections: &SegmentConnections,
     ruler: Ruler,
     segment_disp: Vec2,
     camera_rotation: Quat,
+    segment_rotation: Quat,
 ) {
     for (angle_entity, point_kind) in ruler
         .angle_entities
@@ -144,12 +143,12 @@ fn draw_angle(
         .zip([PointKind::Start, PointKind::End])
     {
         let point = segment.point(point_kind);
-        let point_disp = match point_kind {
-            PointKind::Start => segment_disp,
-            PointKind::End => -segment_disp,
+        let sign = match point_kind {
+            PointKind::Start => 1.0,
+            PointKind::End => -1.0,
         };
 
-        let Some(angle) = connections.min_angle(point_kind, point_disp) else {
+        let Some(angle) = connections.min_angle(point_kind, sign * segment_disp) else {
             if segment.is_changed() {
                 // Remove the text in case the segment is still exists, but don't have any angles.
                 let (_, mut text) = text.get_mut(angle_entity).unwrap();
@@ -159,12 +158,11 @@ fn draw_angle(
             continue;
         };
 
-        let start_angle = -point_disp.to_angle();
         angle_gizmos.arc_3d(
             angle,
             1.0,
             Vec3::new(point.x, 0.0, point.y),
-            Quat::from_rotation_y(start_angle),
+            segment_rotation,
             WHITE,
         );
 
@@ -176,12 +174,20 @@ fn draw_angle(
         let (mut text_transform, mut text) = text.get_mut(angle_entity).unwrap();
 
         // Place on the arc center.
-        let text_offset = Quat::from_rotation_y(start_angle + angle / 2.0) * (1.5 * Vec3::X);
-        text_transform.translation = Vec3::new(point.x, 0.0, point.y) + text_offset;
+        let text_pos = match point_kind {
+            PointKind::Start => Vec3::ZERO,
+            PointKind::End => Vec3::X * segment.len(),
+        };
+        let mut text_angle = angle / 2.0;
+        if point_kind == PointKind::End {
+            text_angle += PI;
+        }
+        let text_offset = Quat::from_rotation_y(text_angle) * (1.5 * Vec3::X);
+        text_transform.translation = text_pos + text_offset;
 
         // Rotate towards camera.
-        let (y, ..) = camera_rotation.to_euler(EulerRot::YXZ);
-        text_transform.rotation = Quat::from_euler(EulerRot::YXZ, y, FRAC_PI_2, PI);
+        let (yaw, ..) = camera_rotation.to_euler(EulerRot::YXZ);
+        text_transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw + angle, FRAC_PI_2, 0.0);
 
         let text = &mut text.sections[0].value;
         text.clear();

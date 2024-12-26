@@ -2,9 +2,7 @@ pub mod placing_road;
 pub(crate) mod road_mesh;
 
 use avian3d::prelude::*;
-use bevy::{
-    asset::AssetPath, ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling,
-};
+use bevy::{asset::AssetPath, ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -75,7 +73,6 @@ impl RoadPlugin {
                 RoadData::new(info),
                 Collider::default(),
                 CollisionLayers::new(Layer::Road, [Layer::Wall, Layer::PlacingWall]),
-                NoFrustumCulling,
                 PbrBundle {
                     material: asset_server.load(info.material.clone()),
                     mesh: meshes.add(DynamicMesh::create_empty()),

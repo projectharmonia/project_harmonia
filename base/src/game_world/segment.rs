@@ -36,12 +36,20 @@ impl Plugin for SegmentPlugin {
             .observe(Self::cleanup_connections)
             .add_systems(
                 PostUpdate,
-                Self::update_connections.run_if(in_state(GameState::InGame)),
+                (Self::update_transform, Self::update_connections)
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }
 
 impl SegmentPlugin {
+    fn update_transform(mut changed_segments: Query<(&mut Transform, &Segment), Changed<Segment>>) {
+        for (mut transform, segment) in &mut changed_segments {
+            transform.translation = Vec3::new(segment.start.x, 0.0, segment.start.y);
+            transform.rotation = Quat::from_rotation_y(-segment.displacement().to_angle());
+        }
+    }
+
     /// Updates [`SegmentConnections`] between segments.
     pub(super) fn update_connections(
         mut segments: Query<(Entity, &Visibility, &Segment, &mut SegmentConnections)>,
@@ -304,7 +312,7 @@ impl Segment {
     }
 
     /// Returns distance from start to end.
-    fn len(&self) -> f32 {
+    pub(super) fn len(&self) -> f32 {
         self.start.distance(self.end)
     }
 

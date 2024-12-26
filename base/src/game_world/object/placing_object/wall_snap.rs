@@ -41,26 +41,29 @@ impl WallSnapPlugin {
     }
 
     fn snap(
-        walls: Query<&Segment, With<Wall>>,
-        mut placing_objects: Query<(
-            &mut Transform,
-            &mut PlacingObjectState,
-            &mut ObjectRotationLimit,
-            &WallSnap,
-        )>,
+        walls: Query<(&Segment, &Transform), With<Wall>>,
+        mut placing_objects: Query<
+            (
+                &mut Transform,
+                &mut PlacingObjectState,
+                &mut ObjectRotationLimit,
+                &WallSnap,
+            ),
+            Without<Wall>,
+        >,
     ) {
-        let Ok((mut transform, mut state, mut rotation_limit, snap)) =
+        let Ok((mut object_transform, mut state, mut rotation_limit, snap)) =
             placing_objects.get_single_mut()
         else {
             return;
         };
 
         const SNAP_DELTA: f32 = 1.0;
-        let object_point = transform.translation.xz();
-        if let Some((wall, wall_point)) = walls
+        let object_point = object_transform.translation.xz();
+        if let Some((wall, wall_transform, wall_point)) = walls
             .iter()
-            .map(|wall| (wall, wall.closest_point(object_point)))
-            .find(|(_, point)| point.distance(object_point) <= SNAP_DELTA)
+            .map(|(wall, transform)| (wall, transform, wall.closest_point(object_point)))
+            .find(|(.., point)| point.distance(object_point) <= SNAP_DELTA)
         {
             trace!("snapping to wall");
             const GAP: f32 = 0.03; // A small gap between the object and wall to avoid collision.
@@ -71,13 +74,12 @@ impl WallSnapPlugin {
                 WallSnap::Outside { .. } => sign * disp.perp().normalize() * (HALF_WIDTH + GAP),
             };
             let snap_point = wall_point + offset;
-            let angle = -sign * disp.to_angle();
-            transform.translation.x = snap_point.x;
-            transform.translation.z = snap_point.y;
+            object_transform.translation.x = snap_point.x;
+            object_transform.translation.z = snap_point.y;
             if rotation_limit.is_none() {
                 // Apply rotation only for newly snapped objects.
-                debug!("applying rotation {angle}");
-                transform.rotation = Quat::from_rotation_y(angle);
+                debug!("applying rotation");
+                object_transform.rotation = wall_transform.rotation;
                 **rotation_limit = Some(PI);
                 if snap.required() {
                     debug!("allowing placing");

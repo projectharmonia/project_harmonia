@@ -93,14 +93,12 @@ impl WallMountPlugin {
                         let mut aperture = apertures.remove(object_entity);
 
                         aperture.distance = distance;
-                        aperture.translation = translation;
 
                         apertures.insert(aperture);
                     } else {
                         trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
                         apertures.insert(Aperture {
                             object_entity,
-                            translation,
                             distance,
                             cutout: wall_mount.cutout.clone(),
                             hole: wall_mount.hole,
@@ -119,7 +117,6 @@ impl WallMountPlugin {
                     trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
                     apertures.insert(Aperture {
                         object_entity,
-                        translation,
                         distance,
                         cutout: wall_mount.cutout.clone(),
                         hole: wall_mount.hole,

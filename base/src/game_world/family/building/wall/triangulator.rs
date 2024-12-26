@@ -6,15 +6,10 @@ pub(crate) struct Triangulator {
     earcut: Earcut<f32>,
     hole_indices: Vec<u32>,
     indices: Vec<u32>,
-    inverse_winding: bool,
 }
 
 impl Triangulator {
-    pub(crate) fn set_inverse_winding(&mut self, inverse_winding: bool) {
-        self.inverse_winding = inverse_winding;
-    }
-
-    pub(crate) fn triangulate(&mut self, positions: &[[f32; 3]]) -> &[u32] {
+    pub(crate) fn triangulate(&mut self, positions: &[[f32; 3]], inverse_winding: bool) -> &[u32] {
         self.earcut.earcut(
             positions.iter().map(|&[x, y, _]| [x, y]),
             &self.hole_indices,
@@ -23,7 +18,7 @@ impl Triangulator {
 
         self.hole_indices.clear();
 
-        if self.inverse_winding {
+        if inverse_winding {
             for triangle in self.indices.chunks_exact_mut(3) {
                 triangle.swap(0, 2);
             }

@@ -3,7 +3,7 @@ mod triangulator;
 pub(crate) mod wall_mesh;
 
 use avian3d::prelude::*;
-use bevy::{ecs::entity::MapEntities, prelude::*, render::view::NoFrustumCulling};
+use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter};
@@ -78,7 +78,6 @@ impl WallPlugin {
                         Layer::PlacingRoad,
                     ],
                 ),
-                NoFrustumCulling,
                 Obstacle,
                 PbrBundle {
                     material: wall_material.0.clone(),
@@ -270,9 +269,6 @@ impl Apertures {
 pub(crate) struct Aperture {
     /// The entity that cut this aperture.
     pub(crate) object_entity: Entity,
-
-    /// Position of the aperture.
-    pub(crate) translation: Vec3,
 
     /// Distance to the beginning of the wall.
     ///

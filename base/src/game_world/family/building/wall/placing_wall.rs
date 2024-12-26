@@ -3,7 +3,6 @@ use bevy::{
     color::palettes::css::{RED, WHITE},
     math::Vec3Swizzles,
     prelude::*,
-    render::view::NoFrustumCulling,
 };
 use bevy_enhanced_input::prelude::*;
 
@@ -250,7 +249,6 @@ struct PlacingWallBundle {
     apertures: Apertures,
     collider: Collider,
     collision_layers: CollisionLayers,
-    no_culling: NoFrustumCulling,
     pbr_bundle: PbrBundle,
 }
 
@@ -286,7 +284,6 @@ impl PlacingWallBundle {
                     Layer::PlacingRoad,
                 ],
             ),
-            no_culling: NoFrustumCulling,
             pbr_bundle: PbrBundle {
                 material,
                 mesh,
