@@ -3,6 +3,7 @@ use bevy::{
     color::palettes::css::{RED, WHITE},
     math::Vec3Swizzles,
     prelude::*,
+    render::view::NoFrustumCulling,
 };
 use bevy_enhanced_input::prelude::*;
 
@@ -243,6 +244,9 @@ struct PlacingWallBundle {
     segment: Segment,
     placing_segment: PlacingSegment,
     picked: Picked,
+    // Looks like AABB is not recalculated when we edit the mesh.
+    // But we don't need to cull currently placed wall anyway.
+    no_culling: NoFrustumCulling,
     ruler: Ruler,
     alpha: AlphaColor,
     state_scoped: StateScoped<WallTool>,
@@ -270,6 +274,7 @@ impl PlacingWallBundle {
             segment,
             placing_segment,
             picked: Picked,
+            no_culling: NoFrustumCulling,
             ruler: Default::default(),
             alpha: AlphaColor(WHITE.into()),
             state_scoped: StateScoped(tool),

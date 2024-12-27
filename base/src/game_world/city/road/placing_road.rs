@@ -3,6 +3,7 @@ use bevy::{
     color::palettes::css::{RED, WHITE},
     math::Vec3Swizzles,
     prelude::*,
+    render::view::NoFrustumCulling,
 };
 use bevy_enhanced_input::prelude::*;
 
@@ -269,6 +270,9 @@ struct PlacingRoadBundle {
     road_data: RoadData,
     segment: Segment,
     placing_segment: PlacingSegment,
+    // Looks like AABB is not recalculated when we edit the mesh.
+    // But we don't need to cull currently placed road anyway.
+    no_culling: NoFrustumCulling,
     state_scoped: StateScoped<RoadTool>,
     alpha: AlphaColor,
     collider: Collider,
@@ -295,6 +299,7 @@ impl PlacingRoadBundle {
             placing_road,
             segment,
             placing_segment,
+            no_culling: NoFrustumCulling,
             state_scoped: StateScoped(tool),
             alpha: AlphaColor(WHITE.into()),
             collider: Default::default(),
