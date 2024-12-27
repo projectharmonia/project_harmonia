@@ -143,12 +143,12 @@ fn draw_angle(
         .zip([PointKind::Start, PointKind::End])
     {
         let point = segment.point(point_kind);
-        let sign = match point_kind {
-            PointKind::Start => 1.0,
-            PointKind::End => -1.0,
+        let point_disp = match point_kind {
+            PointKind::Start => segment_disp,
+            PointKind::End => -segment_disp,
         };
 
-        let Some(angle) = connections.min_angle(point_kind, sign * segment_disp) else {
+        let Some(angle) = connections.min_angle(point_kind, point_disp) else {
             if segment.is_changed() {
                 // Remove the text in case the segment is still exists, but don't have any angles.
                 let (_, mut text) = text.get_mut(angle_entity).unwrap();
@@ -158,11 +158,15 @@ fn draw_angle(
             continue;
         };
 
+        let point_rotation = match point_kind {
+            PointKind::Start => Default::default(),
+            PointKind::End => Quat::from_rotation_y(PI), // Inverse Y rotation.
+        };
         angle_gizmos.arc_3d(
             angle,
             1.0,
             Vec3::new(point.x, 0.0, point.y),
-            segment_rotation,
+            segment_rotation * point_rotation,
             WHITE,
         );
 
@@ -187,7 +191,8 @@ fn draw_angle(
 
         // Rotate towards camera.
         let (yaw, ..) = camera_rotation.to_euler(EulerRot::YXZ);
-        text_transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw + angle, FRAC_PI_2, 0.0);
+        text_transform.rotation =
+            segment_rotation.inverse() * Quat::from_euler(EulerRot::YXZ, PI + yaw, FRAC_PI_2, 0.0);
 
         let text = &mut text.sections[0].value;
         text.clear();
