@@ -148,7 +148,7 @@ fn draw_angle(
             PointKind::End => -segment_disp,
         };
 
-        let Some(angle) = connections.min_angle(point_kind, point_disp) else {
+        let Some(mut angle) = connections.min_angle(point_kind, point_disp) else {
             if segment.is_changed() {
                 // Remove the text in case the segment is still exists, but don't have any angles.
                 let (_, mut text) = text.get_mut(angle_entity).unwrap();
@@ -157,6 +157,11 @@ fn draw_angle(
             }
             continue;
         };
+
+        // If the angle is close to -PI, draw it as +PI to avoid jittering.
+        if angle + PI <= 0.001 {
+            angle = PI;
+        }
 
         let point_rotation = match point_kind {
             PointKind::Start => Default::default(),
