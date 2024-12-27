@@ -292,7 +292,7 @@ impl Segment {
                     .unwrap_or_else(|| self.start + width_disp);
                 let right = (self - width_disp)
                     .line_intersection(other_segment.inverse() + other_width)
-                    .unwrap_or_else(|| self.start + width_disp);
+                    .unwrap_or_else(|| self.start - width_disp);
 
                 (left, right)
             }
@@ -304,7 +304,7 @@ impl Segment {
                 let min_width = min_segment.displacement().perp().normalize() * half_width;
                 let right = (self - width_disp)
                     .line_intersection(min_segment.inverse() + min_width)
-                    .unwrap_or_else(|| self.start + width_disp);
+                    .unwrap_or_else(|| self.start - width_disp);
 
                 (left, right)
             }
