@@ -41,7 +41,7 @@ impl Plugin for RulerPlugin {
                     ..Default::default()
                 },
             )
-            .add_systems(Update, Self::draw.run_if(in_state(BuildingMode::Walls)));
+            .add_systems(PostUpdate, Self::draw.run_if(in_state(BuildingMode::Walls)));
     }
 }
 
