@@ -90,9 +90,9 @@ fn draw_len(
     segment: &Ref<Segment>,
     ruler: Ruler,
     segment_disp: Vec2,
-    camera_pos: Vec2,
+    camera_transform: Vec2,
 ) {
-    let camera_disp = camera_pos - segment.start;
+    let camera_disp = camera_transform - segment.start;
 
     let offset = segment_disp.perp().normalize_or_zero() * 0.25;
     let sign = segment_disp.perp_dot(camera_disp).signum();
