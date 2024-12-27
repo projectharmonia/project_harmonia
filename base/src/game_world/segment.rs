@@ -242,21 +242,17 @@ impl Segment {
 
     /// Returns the intersection point of lines constructed from segments.
     pub(super) fn line_intersection(&self, other: Self) -> Option<Vec2> {
-        let slope1 = self.slope();
-        let slope2 = other.slope();
+        let disp = self.displacement();
+        let other_disp = other.displacement();
 
-        if slope1 == slope2 {
-            return None; // Parallel lines, no intersection point
+        let determinant = disp.perp_dot(other_disp);
+        if determinant == 0.0 {
+            // Lines are parallel or collinear.
+            return None;
         }
 
-        let start1 = self.start;
-        let start2 = other.start;
-
-        let x =
-            ((slope1 * start1.x) - (slope2 * start2.x) + start2.y - start1.y) / (slope1 - slope2);
-        let y = slope1 * (x - start1.x) + start1.y;
-
-        Some(Vec2 { x, y })
+        let t = (other.start - self.start).perp_dot(other_disp) / determinant;
+        Some(self.start + t * disp)
     }
 
     /// Returns `true` if two segments intersect.
@@ -319,11 +315,6 @@ impl Segment {
     // Returns start and end points.
     pub(super) fn points(&self) -> [Vec2; 2] {
         [self.start, self.end]
-    }
-
-    /// Calculates the slope (Δy/Δx).
-    fn slope(&self) -> f32 {
-        (self.end.y - self.start.y) / (self.end.x - self.start.x)
     }
 
     fn on_insert(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
