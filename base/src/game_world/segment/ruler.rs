@@ -27,7 +27,7 @@ impl Plugin for RulerPlugin {
                 GizmoConfig {
                     line_width: 100.0,
                     line_perspective: true,
-                    line_style: GizmoLineStyle::Dotted,
+                    line_style: GizmoLineStyle::Dotted, // TODO 0.16: Use dashed.
                     depth_bias: -1.0,
                     ..Default::default()
                 },
