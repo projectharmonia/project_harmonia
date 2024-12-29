@@ -137,6 +137,7 @@ impl CityPlugin {
                 DirectionalLightBundle {
                     directional_light: DirectionalLight {
                         shadows_enabled: true,
+                        color: Color::linear_rgb(0.913, 0.855, 0.761),
                         ..Default::default()
                     },
                     transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),

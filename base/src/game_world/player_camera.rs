@@ -2,10 +2,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
     asset::AssetPath,
-    core_pipeline::{
-        bloom::BloomSettings, experimental::taa::TemporalAntiAliasBundle, prepass::NormalPrepass,
-        tonemapping::Tonemapping,
-    },
+    core_pipeline::{experimental::taa::TemporalAntiAliasBundle, prepass::NormalPrepass},
     ecs::system::SystemParam,
     pbr::ScreenSpaceAmbientOcclusionSettings,
     prelude::*,
@@ -116,7 +113,6 @@ pub(super) struct PlayerCameraBundle {
     player_camera: PlayerCamera,
     camera_3d_bundle: Camera3dBundle,
     taa_bundle: TemporalAntiAliasBundle,
-    bloom: BloomSettings,
     environment_map: EnvironmentMapLight,
 
     /// Needed for SSAO.
@@ -134,7 +130,6 @@ impl PlayerCameraBundle {
             spring_arm: Default::default(),
             player_camera: PlayerCamera,
             camera_3d_bundle: Camera3dBundle {
-                tonemapping: Tonemapping::AcesFitted,
                 camera: Camera {
                     hdr: true,
                     ..Default::default()
@@ -144,11 +139,10 @@ impl PlayerCameraBundle {
             taa_bundle: Default::default(),
             ssao_settings: Default::default(),
             normal_prepass: Default::default(),
-            bloom: BloomSettings::default(),
             environment_map: EnvironmentMapLight {
                 diffuse_map: environment_map.handle(EnvironmentMap::Diffuse),
                 specular_map: environment_map.handle(EnvironmentMap::Specular),
-                intensity: 1750.0,
+                intensity: 800.0,
             },
         }
     }
