@@ -5,7 +5,6 @@ pub mod family;
 pub mod highlighting;
 pub mod navigation;
 pub mod object;
-pub mod picking;
 mod player_camera;
 mod segment;
 
@@ -20,7 +19,7 @@ use bevy::{
 use bevy_replicon::prelude::*;
 use serde::de::DeserializeSeed;
 
-use super::{core::GameState, game_paths::GamePaths, message::error_message};
+use super::{core::GameState, error_message::error_message, game_paths::GamePaths};
 use actor::{Actor, ActorPlugin};
 use city::CityPlugin;
 use commands_history::CommandHistoryPlugin;
@@ -28,7 +27,6 @@ use family::FamilyPlugin;
 use highlighting::HighlightingPlugin;
 use navigation::NavigationPlugin;
 use object::ObjectPlugin;
-use picking::PickingPlugin;
 use player_camera::PlayerCameraPlugin;
 use segment::SegmentPlugin;
 
@@ -44,32 +42,18 @@ impl Plugin for GameWorldPlugin {
             HighlightingPlugin,
             NavigationPlugin,
             ObjectPlugin,
-            PickingPlugin,
             PlayerCameraPlugin,
             CommandHistoryPlugin,
         ))
         .add_sub_state::<WorldState>()
         .enable_state_scoped_entities::<WorldState>()
-        .add_event::<GameSave>()
-        .add_event::<GameLoad>()
+        .add_observer(Self::save.pipe(error_message))
+        .add_observer(Self::load.pipe(error_message))
         .add_systems(
             PreUpdate,
             Self::start_game
                 .after(ClientSet::Receive)
                 .run_if(client_just_connected),
-        )
-        .add_systems(
-            SpawnScene,
-            Self::load
-                .pipe(error_message)
-                .run_if(on_event::<GameLoad>())
-                .before(bevy::scene::scene_spawner_system),
-        )
-        .add_systems(
-            PostUpdate,
-            Self::save
-                .pipe(error_message)
-                .run_if(on_event::<GameSave>()),
         )
         .add_systems(OnExit(GameState::InGame), Self::cleanup);
     }
@@ -78,6 +62,7 @@ impl Plugin for GameWorldPlugin {
 impl GameWorldPlugin {
     /// Saves world to disk with the name from [`WorldName`] resource.
     fn save(
+        _trigger: Trigger<GameSave>,
         world: &World,
         world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
@@ -93,7 +78,7 @@ impl GameWorldPlugin {
         // Extract components that we don't replicate, but serialize.
         let mut scene = DynamicSceneBuilder::from_world(world)
             .deny_all()
-            .allow::<Transform>()
+            .allow_component::<Transform>()
             .extract_entities(actors.iter())
             .build();
 
@@ -110,9 +95,10 @@ impl GameWorldPlugin {
 
     /// Loads world from disk with the name from [`WorldName`] resource.
     fn load(
+        _trigger: Trigger<GameLoad>,
+        mut commands: Commands,
         mut scene_spawner: ResMut<SceneSpawner>,
         mut scenes: ResMut<Assets<DynamicScene>>,
-        mut game_state: ResMut<NextState<GameState>>,
         world_name: Res<WorldName>,
         game_paths: Res<GamePaths>,
         registry: Res<AppTypeRegistry>,
@@ -127,25 +113,20 @@ impl GameWorldPlugin {
         let scene_deserializer = SceneDeserializer {
             type_registry: &registry.read(),
         };
-        let mut scene = scene_deserializer
+        let scene = scene_deserializer
             .deserialize(&mut deserializer)
             .with_context(|| format!("unable to deserialize {world_path:?}"))?;
 
-        // All saved entities should have `Replicated` component.
-        for entity in &mut scene.entities {
-            entity.components.push(Replicated.clone_value());
-        }
-
         scene_spawner.spawn_dynamic(scenes.add(scene));
-        game_state.set(GameState::InGame);
+        commands.set_state(GameState::InGame);
 
         Ok(())
     }
 
-    fn start_game(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
+    fn start_game(mut commands: Commands) {
         info!("joining replicated world");
         commands.insert_resource(WorldName::default());
-        game_state.set(GameState::InGame);
+        commands.set_state(GameState::InGame);
     }
 
     fn cleanup(mut commands: Commands) {
@@ -177,9 +158,12 @@ pub enum WorldState {
     Family,
 }
 
-#[derive(PhysicsLayer)]
+#[derive(PhysicsLayer, Default)]
 pub(super) enum Layer {
+    #[default]
+    None,
     Ground,
+    Actor,
     Object,
     PlacingObject,
     Wall,

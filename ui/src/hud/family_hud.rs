@@ -6,22 +6,24 @@ mod tasks_node;
 
 use bevy::prelude::*;
 use project_harmonia_base::{
-    asset::info::object_info::ObjectInfo,
+    asset::manifest::object_manifest::ObjectManifest,
     game_world::{
-        actor::SelectedActor,
+        actor::{
+            task::{ActiveTask, Task},
+            SelectedActor,
+        },
         family::{Budget, FamilyMembers, FamilyMode, FamilyPlugin, SelectedFamily},
         WorldState,
     },
 };
 use project_harmonia_widgets::{
-    button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
+    button::{ButtonKind, TabContent, Toggled},
     theme::Theme,
 };
 use strum::IntoEnumIterator;
 
 use building_hud::BuildingHudPlugin;
 use info_node::InfoNodePlugin;
-use members_node::MembersNodePlugin;
 use portrait_node::PortraitNodePlugin;
 use tasks_node::TasksNodePlugin;
 
@@ -33,16 +35,11 @@ impl Plugin for FamilyHudPlugin {
             TasksNodePlugin,
             InfoNodePlugin,
             PortraitNodePlugin,
-            MembersNodePlugin,
             BuildingHudPlugin,
         ))
         .add_systems(
             OnEnter(WorldState::Family),
             Self::setup.after(FamilyPlugin::select),
-        )
-        .add_systems(
-            Update,
-            Self::set_family_mode.run_if(in_state(WorldState::Family)),
         );
     }
 }
@@ -52,62 +49,61 @@ impl FamilyHudPlugin {
         mut commands: Commands,
         mut tab_commands: Commands,
         theme: Res<Theme>,
-        objects_info: Res<Assets<ObjectInfo>>,
-        families: Query<(&Budget, &FamilyMembers), With<SelectedFamily>>,
-        actors: Query<Entity, With<SelectedActor>>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        object_manifests: Res<Assets<ObjectManifest>>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        actor_children: Single<&Children, With<SelectedActor>>,
+        selected_family: Single<(&Budget, &FamilyMembers), With<SelectedFamily>>,
+        selected_entity: Single<Entity, With<SelectedActor>>,
+        tasks: Query<(Entity, Has<ActiveTask>), With<Task>>,
     ) {
         debug!("showing family hud");
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(*root_entity).with_children(|parent| {
             parent
                 .spawn((
+                    PickingBehavior::IGNORE,
                     StateScoped(WorldState::Family),
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            ..Default::default()
-                        },
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                 ))
                 .with_children(|parent| {
                     let tabs_entity = parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Node {
                                 position_type: PositionType::Absolute,
                                 right: Val::Px(0.0),
                                 padding: theme.padding.normal,
                                 ..Default::default()
                             },
-                            background_color: theme.panel_color.into(),
-                            ..Default::default()
-                        })
+                            theme.panel_background,
+                        ))
                         .id();
 
                     for mode in FamilyMode::iter() {
                         let content_entity = parent
-                            .spawn(NodeBundle {
-                                style: Style {
+                            .spawn((
+                                Node {
                                     width: Val::Percent(100.0),
                                     ..Default::default()
                                 },
-                                ..Default::default()
-                            })
+                                PickingBehavior::IGNORE,
+                            ))
                             .with_children(|parent| match mode {
                                 FamilyMode::Life => {
-                                    tasks_node::setup(parent, &theme);
+                                    tasks_node::setup(parent, &theme, *actor_children, &tasks);
 
-                                    let (&budget, members) = families.single();
+                                    let (&budget, members) = *selected_family;
                                     portrait_node::setup(parent, &theme, budget);
-                                    members_node::setup(parent, &theme, members, actors.single());
+                                    members_node::setup(parent, &theme, members, *selected_entity);
                                     info_node::setup(parent, &mut tab_commands, &theme);
                                 }
                                 FamilyMode::Building => building_hud::setup(
                                     parent,
                                     &mut tab_commands,
                                     &theme,
-                                    &objects_info,
+                                    &object_manifests,
                                 ),
                             })
                             .id();
@@ -115,26 +111,25 @@ impl FamilyHudPlugin {
                         tab_commands
                             .spawn((
                                 mode,
+                                ButtonKind::Symbol,
                                 TabContent(content_entity),
-                                ExclusiveButton,
                                 Toggled(mode == Default::default()),
-                                TextButtonBundle::symbol(&theme, mode.glyph()),
                             ))
-                            .set_parent(tabs_entity);
+                            .with_child(Text::new(mode.glyph()))
+                            .set_parent(tabs_entity)
+                            .observe(Self::set_family_mode);
                     }
                 });
         });
     }
 
     fn set_family_mode(
-        mut family_mode: ResMut<NextState<FamilyMode>>,
-        buttons: Query<(Ref<Toggled>, &FamilyMode), Changed<Toggled>>,
+        trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        buttons: Query<&FamilyMode>,
     ) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 && !toggled.is_added() {
-                info!("changing family mode to `{mode:?}`");
-                family_mode.set(mode);
-            }
-        }
+        let mode = *buttons.get(trigger.entity()).unwrap();
+        info!("changing family mode to `{mode:?}`");
+        commands.set_state(mode);
     }
 }

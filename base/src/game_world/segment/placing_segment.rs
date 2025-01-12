@@ -16,7 +16,8 @@ impl Plugin for PlacingSegmentPlugin {
         app.add_input_context::<PlacingSegment>().add_systems(
             Update,
             Self::update_position
-                .run_if(in_state(BuildingMode::Walls).or_else(in_state(CityMode::Roads))),
+                .never_param_warn()
+                .run_if(in_state(BuildingMode::Walls).or(in_state(CityMode::Roads))),
         );
     }
 }
@@ -25,7 +26,7 @@ impl PlacingSegmentPlugin {
     fn update_position(
         camera_caster: CameraCaster,
         instances: Res<ContextInstances>,
-        mut placing_segments: Query<(
+        placing_segment: Single<(
             Entity,
             &mut Segment,
             &SegmentConnections,
@@ -34,11 +35,8 @@ impl PlacingSegmentPlugin {
         )>,
         segments: Query<(&Parent, &Segment), Without<PlacingSegment>>,
     ) {
-        let Ok((entity, mut segment, connections, moving_parent, placing)) =
-            placing_segments.get_single_mut()
-        else {
-            return;
-        };
+        let (entity, mut segment, connections, moving_parent, placing) =
+            placing_segment.into_inner();
 
         let Some(mut new_point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
             return;
@@ -158,6 +156,7 @@ fn round_angle(
 }
 
 #[derive(Component, Clone, Copy)]
+#[require(Segment)]
 pub(crate) struct PlacingSegment {
     pub(crate) point_kind: PointKind,
     pub(crate) snap_offset: f32,
@@ -171,18 +170,18 @@ impl InputContext for PlacingSegment {
         let settings = world.resource::<Settings>();
 
         ctx.bind::<DeleteSegment>()
-            .to((&settings.keyboard.delete, GamepadButtonType::North));
+            .to((&settings.keyboard.delete, GamepadButton::North));
         ctx.bind::<CancelSegment>()
-            .to((KeyCode::Escape, GamepadButtonType::East));
+            .to((KeyCode::Escape, GamepadButton::East));
         ctx.bind::<ConfirmSegment>()
-            .to((MouseButton::Left, GamepadButtonType::South));
+            .to((MouseButton::Left, GamepadButton::South));
         ctx.bind::<FreeSegmentPlacement>().to((
             &settings.keyboard.free_placement,
-            GamepadButtonType::LeftTrigger2,
+            GamepadButton::LeftTrigger2,
         ));
         ctx.bind::<OrdinalSegmentPlacement>().to((
             &settings.keyboard.ordinal_placement,
-            GamepadButtonType::RightTrigger2,
+            GamepadButton::RightTrigger2,
         ));
 
         ctx

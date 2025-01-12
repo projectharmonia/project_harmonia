@@ -1,103 +1,161 @@
-use bevy::{
-    prelude::*,
-    scene::{self, SceneInstanceReady},
-};
-use bevy_mod_outline::{InheritOutlineBundle, OutlineBundle, OutlineVolume};
+use avian3d::prelude::*;
+use bevy::{prelude::*, scene::SceneInstanceReady};
+use bevy_mod_outline::{InheritOutline, OutlineVolume};
 
-use super::picking::{Hovered, Picked, Unhovered};
-use crate::core::GameState;
+use super::{
+    city::CityMode,
+    family::{building::BuildingMode, FamilyMode},
+    Layer,
+};
 
 pub(super) struct HighlightingPlugin;
 
 impl Plugin for HighlightingPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<LastHighlighted>()
-            .observe(Self::enable)
-            .observe(Self::disable)
-            .observe(Self::clear)
+        app.init_resource::<Highlighting>()
+            .add_observer(Self::show)
+            .add_observer(Self::hide)
+            .add_observer(Self::init_scene)
+            .add_observer(Self::enable)
+            .add_observer(Self::disable)
+            .add_systems(OnEnter(BuildingMode::Objects), Self::highlight_objects)
+            .add_systems(OnEnter(CityMode::Objects), Self::highlight_objects)
             .add_systems(
-                SpawnScene,
-                Self::init_scene
-                    .run_if(in_state(GameState::InGame))
-                    .after(scene::scene_spawner_system),
-            );
+                OnEnter(FamilyMode::Life),
+                Self::highlight_actors_and_objects,
+            )
+            .add_systems(OnExit(BuildingMode::Objects), Self::disable_highlighting)
+            .add_systems(OnExit(CityMode::Objects), Self::disable_highlighting)
+            .add_systems(OnExit(FamilyMode::Life), Self::disable_highlighting);
     }
 }
 
 impl HighlightingPlugin {
+    fn highlight_objects(mut highlighting: ResMut<Highlighting>) {
+        highlighting.mask = Layer::Object.into();
+        debug!("enabling highlighting for `{:?}`", highlighting.mask);
+    }
+
+    fn highlight_actors_and_objects(mut highlighting: ResMut<Highlighting>) {
+        highlighting.mask = [Layer::Actor, Layer::Object].into();
+        debug!("enabling highlighting for `{:?}`", highlighting.mask);
+    }
+
+    fn disable_highlighting(mut highlighting: ResMut<Highlighting>) {
+        debug!("disabling highlighting");
+        highlighting.mask = LayerMask::NONE;
+    }
+
     /// Initializes scene children with [`InheritOutlineBundle`] to let toggle only top-level entity.
     fn init_scene(
+        trigger: Trigger<SceneInstanceReady>,
         mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
-        scenes: Query<Entity, With<OutlineVolume>>,
+        scenes: Query<(), With<OutlineVolume>>,
         children: Query<&Children>,
     ) {
-        for scene_entity in scenes.iter_many(ready_events.read().map(|event| event.parent)) {
-            debug!("initializing outline for scene `{scene_entity}`");
-            for child_entity in children.iter_descendants(scene_entity) {
-                commands
-                    .entity(child_entity)
-                    .insert(InheritOutlineBundle::default());
+        if scenes.get(trigger.entity()).is_err() {
+            return;
+        }
+
+        debug!("initializing outline for scene `{}`", trigger.entity());
+        for child_entity in children.iter_descendants(trigger.entity()) {
+            commands.entity(child_entity).insert(InheritOutline);
+        }
+    }
+
+    fn show(
+        trigger: Trigger<Pointer<Over>>,
+        mut highlighting: ResMut<Highlighting>,
+        disabler: Query<(), With<HighlightDisabler>>,
+        mut volumes: Query<(&mut OutlineVolume, &CollisionLayers)>,
+    ) {
+        let Ok((mut outline, layers)) = volumes.get_mut(trigger.entity()) else {
+            return;
+        };
+
+        if !highlighting.mask.has_all(layers.memberships) {
+            debug!(
+                "ignoring highlighting for `{}` due to layers mismatch",
+                trigger.entity()
+            );
+            return;
+        }
+
+        highlighting.last_hovered = Some(trigger.entity());
+        if disabler.is_empty() {
+            debug!("showing highlighting for `{}`", trigger.entity());
+            outline.visible = true;
+        }
+    }
+
+    fn hide(
+        trigger: Trigger<Pointer<Out>>,
+        mut volumes: Query<&mut OutlineVolume>,
+        mut highlighting: ResMut<Highlighting>,
+    ) {
+        let Ok(mut outline) = volumes.get_mut(trigger.entity()) else {
+            return;
+        };
+
+        highlighting.last_hovered = None;
+        if outline.visible {
+            debug!("hiding highlighting for `{}`", trigger.entity());
+            outline.visible = false;
+        }
+    }
+
+    fn disable(
+        _trigger: Trigger<OnAdd, HighlightDisabler>,
+        mut volumes: Query<&mut OutlineVolume>,
+        mut highlighting: ResMut<Highlighting>,
+    ) {
+        if let Some(entity) = highlighting.last_hovered {
+            if let Ok(mut outline) = volumes.get_mut(entity) {
+                debug!("disabling highlighting for `{entity}`");
+                outline.visible = true;
+            } else {
+                highlighting.last_hovered = None;
             }
         }
     }
 
     fn enable(
-        trigger: Trigger<Hovered>,
-        mut last_hovered: ResMut<LastHighlighted>,
+        _trigger: Trigger<OnRemove, HighlightDisabler>,
+        mut highlighting: ResMut<Highlighting>,
         mut volumes: Query<&mut OutlineVolume>,
     ) {
-        if let Ok(mut outline) = volumes.get_mut(trigger.entity()) {
-            debug!("enabling highlighting for `{}`", trigger.entity());
-            outline.visible = true;
-            **last_hovered = Some(trigger.entity());
-        }
-    }
-
-    fn disable(
-        trigger: Trigger<Unhovered>,
-        mut volumes: Query<&mut OutlineVolume>,
-        mut last_hovered: ResMut<LastHighlighted>,
-    ) {
-        **last_hovered = None;
-        if let Ok(mut outline) = volumes.get_mut(trigger.entity()) {
-            debug!("disabling highlighting for `{}`", trigger.entity());
-            outline.visible = false;
-        }
-    }
-
-    fn clear(
-        _trigger: Trigger<OnRemove, Picked>,
-        mut last_hovered: ResMut<LastHighlighted>,
-        mut volumes: Query<&mut OutlineVolume>,
-    ) {
-        if let Some(entity) = **last_hovered {
+        if let Some(entity) = highlighting.last_hovered {
             if let Ok(mut outline) = volumes.get_mut(entity) {
-                debug!("clearing highlighting for `{entity}`");
+                debug!("enabling highlighting for `{entity}`");
                 outline.visible = true;
-                **last_hovered = Some(entity);
+            } else {
+                highlighting.last_hovered = None;
             }
         }
     }
 }
 
-/// Stores last highlighted entity to cleanup when picking is disabled.
-#[derive(Resource, Default, Deref, DerefMut)]
-struct LastHighlighted(Option<Entity>);
+pub(super) const HIGHLIGHTING_VOLUME: OutlineVolume = OutlineVolume {
+    visible: false,
+    colour: Color::srgba(1.0, 1.0, 1.0, 0.3),
+    width: 3.0,
+};
 
-pub(crate) trait OutlineHighlightingExt {
-    fn highlighting() -> Self;
+#[derive(Resource)]
+struct Highlighting {
+    mask: LayerMask,
+    last_hovered: Option<Entity>,
 }
 
-impl OutlineHighlightingExt for OutlineBundle {
-    fn highlighting() -> Self {
+impl Default for Highlighting {
+    fn default() -> Self {
         Self {
-            outline: OutlineVolume {
-                visible: false,
-                colour: Color::srgba(1.0, 1.0, 1.0, 0.3),
-                width: 3.0,
-            },
-            ..Default::default()
+            mask: LayerMask::NONE,
+            last_hovered: None,
         }
     }
 }
+
+/// Highlighting will be disabled if any entity with this component is present.
+#[derive(Component, Default)]
+pub(super) struct HighlightDisabler;

@@ -2,13 +2,12 @@ mod alpha_color;
 pub mod asset;
 mod combined_scene_collider;
 pub mod common_conditions;
-mod component_commands;
 pub mod core;
 mod dynamic_mesh;
+pub mod error_message;
 pub mod game_paths;
 pub mod game_world;
 mod ghost;
-pub mod message;
 pub mod network;
 pub mod settings;
 
@@ -20,7 +19,7 @@ use combined_scene_collider::SceneColliderConstructorPlugin;
 use core::CorePlugin;
 use game_paths::GamePathsPlugin;
 use game_world::GameWorldPlugin;
-use message::ErrorReportPlugin;
+use ghost::GhostPlugin;
 use settings::SettingsPlugin;
 
 pub struct CorePlugins;
@@ -33,8 +32,8 @@ impl PluginGroup for CorePlugins {
             .add(AlphaColorPlugin)
             .add(SceneColliderConstructorPlugin)
             .add(GameWorldPlugin)
-            .add(ErrorReportPlugin)
             .add(GamePathsPlugin)
             .add(SettingsPlugin)
+            .add(GhostPlugin)
     }
 }

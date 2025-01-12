@@ -1,11 +1,63 @@
 use avian3d::prelude::*;
-use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
-    prelude::*,
-};
+use bevy::prelude::*;
+
+pub(super) struct GhostPlugin;
+
+impl Plugin for GhostPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(Self::init).add_observer(Self::cleanup);
+    }
+}
+
+impl GhostPlugin {
+    fn init(
+        trigger: Trigger<OnAdd, Ghost>,
+        ghosts: Query<&mut Ghost>,
+        mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
+    ) {
+        let ghost = ghosts.get(trigger.entity()).unwrap();
+        let (mut visibility, collision_layers) = targets.get_mut(ghost.original_entity).unwrap();
+
+        *visibility = Visibility::Hidden;
+        debug!(
+            "changing visibility to `{:?}` for `{}`",
+            *visibility, ghost.original_entity
+        );
+
+        if let Some(mut collision_layers) = collision_layers {
+            if ghost.filters != LayerMask::NONE {
+                collision_layers.filters.remove(ghost.filters);
+            }
+        }
+    }
+
+    fn cleanup(
+        trigger: Trigger<OnRemove, Ghost>,
+        ghosts: Query<&mut Ghost>,
+        mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
+    ) {
+        let ghost = ghosts.get(trigger.entity()).unwrap();
+        let Ok((mut visibility, collision_layers)) = targets.get_mut(ghost.original_entity) else {
+            // If entity missing visibility, consider it despawned.
+            return;
+        };
+
+        *visibility = Visibility::Inherited;
+        debug!(
+            "changing visibility to `{:?}` for `{}`",
+            *visibility, ghost.original_entity
+        );
+
+        if let Some(mut collision_layers) = collision_layers {
+            if ghost.filters != LayerMask::NONE {
+                collision_layers.filters.add(ghost.filters);
+            }
+        }
+    }
+}
 
 /// Entity that displayed instead of the original.
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub(super) struct Ghost {
     /// Entity to which the ghost corresponds.
     ///
@@ -27,47 +79,5 @@ impl Ghost {
     pub(super) fn with_filters(mut self, remove_filters: impl Into<LayerMask>) -> Self {
         self.filters = remove_filters.into();
         self
-    }
-}
-
-impl Component for Ghost {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks
-            .on_add(|mut world, targeted_entity, _component_id| {
-                let ghost = *world.get::<Self>(targeted_entity).unwrap();
-                if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
-                    *visibility = Visibility::Hidden;
-                    debug!(
-                        "changing visibility to `{:?}` for `{}`",
-                        *visibility, ghost.original_entity
-                    );
-                }
-                if ghost.filters != LayerMask::NONE {
-                    if let Some(mut collision_layers) =
-                        world.get_mut::<CollisionLayers>(ghost.original_entity)
-                    {
-                        collision_layers.filters.remove(ghost.filters);
-                    }
-                }
-            })
-            .on_remove(|mut world, targeted_entity, _component_id| {
-                let ghost = *world.get::<Self>(targeted_entity).unwrap();
-                if let Some(mut visibility) = world.get_mut::<Visibility>(ghost.original_entity) {
-                    *visibility = Visibility::Inherited;
-                    debug!(
-                        "changing visibility to `{:?}` for `{}`",
-                        *visibility, ghost.original_entity
-                    );
-                }
-                if ghost.filters != LayerMask::NONE {
-                    if let Some(mut collision_layers) =
-                        world.get_mut::<CollisionLayers>(ghost.original_entity)
-                    {
-                        collision_layers.filters.add(ghost.filters);
-                    }
-                }
-            });
     }
 }

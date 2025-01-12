@@ -1,24 +1,16 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
-use strum::{EnumIter, IntoEnumIterator};
 
-use project_harmonia_base::game_world::{
-    commands_history::CommandsHistory, family::FamilyMode, WorldState,
-};
-use project_harmonia_widgets::{button::TextButtonBundle, click::Click, theme::Theme};
+use project_harmonia_base::game_world::commands_history::CommandsHistory;
+use project_harmonia_widgets::{button::ButtonKind, theme::Theme};
 
 pub(super) struct ToolsNodePlugin;
 
 impl Plugin for ToolsNodePlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<ToolsNode>()
-            .observe(Self::undo)
-            .observe(Self::redo)
-            .add_systems(
-                Update,
-                Self::apply_history_action
-                    .run_if(in_state(FamilyMode::Building).or_else(in_state(WorldState::City))),
-            );
+            .add_observer(Self::undo)
+            .add_observer(Self::redo);
     }
 }
 
@@ -31,58 +23,41 @@ impl ToolsNodePlugin {
         history.redo();
     }
 
-    fn apply_history_action(
-        mut history: CommandsHistory,
-        mut click_events: EventReader<Click>,
-        buttons: Query<&HistoryButton>,
-    ) {
-        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            match button {
-                HistoryButton::Undo => history.undo(),
-                HistoryButton::Redo => history.redo(),
-            }
-        }
+    fn click_undo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
+        history.undo();
+    }
+
+    fn click_redo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
+        history.redo();
     }
 }
 
 pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
     parent
         .spawn((
-            NodeBundle {
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    left: Val::Percent(50.0),
-                    padding: theme.padding.normal,
-                    ..Default::default()
-                },
-                background_color: theme.panel_color.into(),
+            ToolsNode,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                padding: theme.padding.normal,
                 ..Default::default()
             },
-            ToolsNode,
+            theme.panel_background,
         ))
         .with_children(|parent| {
-            for button in HistoryButton::iter() {
-                parent.spawn((button, TextButtonBundle::symbol(theme, button.glyph())));
-            }
+            parent
+                .spawn(ButtonKind::Symbol)
+                .with_child(Text::new("↩"))
+                .observe(ToolsNodePlugin::click_undo);
+            parent
+                .spawn(ButtonKind::Symbol)
+                .with_child(Text::new("↪"))
+                .observe(ToolsNodePlugin::click_redo);
         });
 }
 
-#[derive(Component, EnumIter, Clone, Copy)]
-enum HistoryButton {
-    Undo,
-    Redo,
-}
-
-impl HistoryButton {
-    fn glyph(&self) -> &'static str {
-        match self {
-            HistoryButton::Undo => "↩",
-            HistoryButton::Redo => "↪",
-        }
-    }
-}
-
 #[derive(Component)]
+#[require(Name(|| Name::new("Tools node")), Node)]
 struct ToolsNode;
 
 impl InputContext for ToolsNode {
@@ -91,11 +66,11 @@ impl InputContext for ToolsNode {
 
         ctx.bind::<Redo>()
             .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL | ModKeys::SHIFT))
-            .to(GamepadButtonType::RightTrigger)
+            .to(GamepadButton::RightTrigger)
             .with_conditions(Pulse::new(0.3));
         ctx.bind::<Undo>()
             .to(KeyCode::KeyZ.with_mod_keys(ModKeys::CONTROL))
-            .to(GamepadButtonType::LeftTrigger)
+            .to(GamepadButton::LeftTrigger)
             .with_conditions(Pulse::new(0.3));
 
         ctx

@@ -8,7 +8,7 @@ mod root;
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use camera_2d::Camera2dPlugin;
-use error_dialog::MessageBoxPlugin;
+use error_dialog::ErrorDialogPlugin;
 use hud::HudPlugin;
 use menu::MenuPlugin;
 use preview::PreviewPlugin;
@@ -21,7 +21,7 @@ impl PluginGroup for UiPlugins {
         PluginGroupBuilder::start::<Self>()
             .add(Camera2dPlugin)
             .add(MenuPlugin)
-            .add(MessageBoxPlugin)
+            .add(ErrorDialogPlugin)
             .add(HudPlugin)
             .add(PreviewPlugin)
             .add(RootPlugin)

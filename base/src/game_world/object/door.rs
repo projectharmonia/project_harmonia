@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::{
     asset::{
         self,
-        info::{MapPaths, ReflectMapPaths},
+        manifest::{MapPaths, ReflectMapPaths},
     },
     core::GameState,
     game_world::{actor::Actor, navigation::NavPath, segment::Segment},
@@ -17,26 +17,17 @@ pub(super) struct DoorPlugin;
 impl Plugin for DoorPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Door>()
-            .observe(Self::cleanup_passing_actors)
+            .add_observer(Self::cleanup_passing_actors)
             .add_systems(
                 Update,
-                (
-                    Self::init,
-                    (Self::update_passing_actors, Self::play_animation).chain(),
-                )
+                (Self::update_passing_actors, Self::play_animation)
+                    .chain()
                     .run_if(in_state(GameState::InGame)),
             );
     }
 }
 
 impl DoorPlugin {
-    fn init(mut commands: Commands, objects: Query<Entity, (With<Door>, Without<DoorState>)>) {
-        for entity in &objects {
-            debug!("initializing door for `{entity}`");
-            commands.entity(entity).insert(DoorState::default());
-        }
-    }
-
     /// Updates which actors going to intersect door via navigation paths.
     fn update_passing_actors(
         mut doors: Query<(&Parent, &mut DoorState, &Transform, &Door)>,
@@ -121,7 +112,9 @@ impl DoorPlugin {
 
                     let (graph, animation_index) =
                         AnimationGraph::from_clip(asset_server.load(door.open_animation.clone()));
-                    commands.entity(entity).insert(graphs.add(graph));
+                    commands
+                        .entity(entity)
+                        .insert(AnimationGraphHandle(graphs.add(graph)));
                     door_state.animation_index = Some(animation_index);
                     animation_player.play(animation_index).set_speed(speed);
                 }
@@ -148,6 +141,7 @@ impl DoorPlugin {
 /// Will trigger open animation when an actor passes through.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component, MapPaths)]
+#[require(DoorState)]
 pub(crate) struct Door {
     half_width: f32,
     /// Distance on which animation will be triggered.

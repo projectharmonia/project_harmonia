@@ -1,51 +1,35 @@
-use std::{fmt::Display, mem};
+use std::mem;
 
 use bevy::prelude::*;
 use bevy_simple_text_input::TextInputValue;
-use strum::{Display, EnumIter, IntoEnumIterator};
 
 use project_harmonia_base::{
     core::GameState,
     game_world::{
         actor::SelectedActor,
-        city::{ActiveCity, City, CityBundle},
+        city::{ActiveCity, City},
         family::{Family, FamilyDelete, FamilyMembers},
         WorldName, WorldState,
     },
 };
 use project_harmonia_widgets::{
-    button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
-    click::Click,
+    button::{ButtonKind, TabContent, Toggled},
     dialog::Dialog,
-    dialog::DialogBundle,
-    label::LabelBundle,
-    text_edit::TextEditBundle,
+    label::LabelKind,
+    text_edit::TextEdit,
     theme::Theme,
 };
+use strum::{EnumIter, IntoEnumIterator};
 
 pub(super) struct WorldMenuPlugin;
 
 impl Plugin for WorldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::remove_entity_nodes::<Family>)
-            .observe(Self::remove_entity_nodes::<City>)
-            .add_systems(OnEnter(WorldState::World), Self::setup)
-            .add_systems(
-                Update,
-                (
-                    Self::handle_family_clicks,
-                    Self::handle_city_clicks,
-                    Self::handle_exit_clicks,
-                    Self::handle_create_clicks,
-                    Self::handle_city_dialog_clicks,
-                )
-                    .run_if(in_state(WorldState::World)),
-            )
-            .add_systems(
-                PostUpdate,
-                (Self::create_family_nodes, Self::create_city_nodes)
-                    .run_if(in_state(WorldState::World)),
-            );
+        app.add_observer(Self::remove_entity_nodes::<Family>)
+            .add_observer(Self::remove_entity_nodes::<City>)
+            .add_observer(Self::create_family_nodes)
+            .add_observer(Self::create_city_nodes)
+            .add_systems(OnEnter(WorldState::World), Self::setup);
     }
 }
 
@@ -55,68 +39,67 @@ impl WorldMenuPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         world_name: Res<WorldName>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
         families: Query<(Entity, &Name), With<Family>>,
         cities: Query<(Entity, &Name), With<City>>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(*root_entity).with_children(|parent| {
             info!("entering world menu");
             parent
                 .spawn((
                     StateScoped(WorldState::World),
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::FlexStart,
-                            padding: theme.padding.global,
-                            ..Default::default()
-                        },
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::FlexStart,
+                        padding: theme.padding.global,
                         ..Default::default()
                     },
                 ))
                 .with_children(|parent| {
-                    parent.spawn(LabelBundle::large(&theme, world_name.0.clone()));
+                    parent.spawn((LabelKind::Large, Text::new(world_name.0.clone())));
 
                     let tabs_entity = parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                justify_content: JustifyContent::Center,
-                                ..Default::default()
-                            },
+                        .spawn(Node {
+                            justify_content: JustifyContent::Center,
                             ..Default::default()
                         })
                         .id();
 
                     for tab in WorldTab::iter() {
                         let content_entity = parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    width: Val::Percent(100.0),
-                                    height: Val::Percent(100.0),
-                                    flex_direction: FlexDirection::Column,
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::FlexStart,
-                                    padding: theme.padding.normal,
-                                    row_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
+                            .spawn(Node {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::FlexStart,
+                                padding: theme.padding.normal,
+                                row_gap: theme.gap.normal,
                                 ..Default::default()
                             })
                             .with_children(|parent| match tab {
                                 WorldTab::Families => {
                                     for (entity, name) in &families {
-                                        setup_entity_node::<FamilyButton>(
-                                            parent, &theme, entity, name,
+                                        setup_entity_node(
+                                            setup_family_buttons,
+                                            parent,
+                                            &theme,
+                                            entity,
+                                            name,
                                         );
                                     }
                                 }
                                 WorldTab::Cities => {
                                     for (entity, name) in &cities {
-                                        setup_entity_node::<CityButton>(
-                                            parent, &theme, entity, name,
+                                        setup_entity_node(
+                                            setup_city_buttons,
+                                            parent,
+                                            &theme,
+                                            entity,
+                                            name,
                                         );
                                     }
                                 }
@@ -126,209 +109,196 @@ impl WorldMenuPlugin {
                         tab_commands
                             .spawn((
                                 tab,
+                                ButtonKind::Normal,
                                 TabContent(content_entity),
-                                ExclusiveButton,
                                 Toggled(tab == Default::default()),
-                                TextButtonBundle::normal(&theme, tab.to_string()),
                             ))
+                            .with_child(Text::new(tab.text()))
                             .set_parent(tabs_entity);
                     }
 
                     parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Percent(100.0),
-                                justify_content: JustifyContent::FlexStart,
-                                ..Default::default()
-                            },
+                        .spawn(Node {
+                            width: Val::Percent(100.0),
+                            justify_content: JustifyContent::FlexStart,
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn((
-                                ExitWorldButton,
-                                TextButtonBundle::normal(&theme, "Exit world"),
-                            ));
-                            parent.spawn(NodeBundle {
-                                style: Style {
-                                    width: Val::Percent(100.0),
-                                    ..Default::default()
-                                },
+                            parent
+                                .spawn(ButtonKind::Normal)
+                                .with_child(Text::new("Exit world"))
+                                .observe(Self::exit_world);
+                            parent.spawn(Node {
+                                width: Val::Percent(100.0),
                                 ..Default::default()
                             });
                             parent
-                                .spawn((NewEntityButton, TextButtonBundle::normal(&theme, "New")));
+                                .spawn(ButtonKind::Normal)
+                                .with_child(Text::new("Create"))
+                                .observe(Self::create);
                         });
                 });
         });
     }
 
     fn create_family_nodes(
+        trigger: Trigger<OnAdd, Family>,
         mut commands: Commands,
         theme: Res<Theme>,
-        families: Query<(Entity, &Name), Added<Family>>,
+        families: Query<&Name>,
         tabs: Query<(&TabContent, &WorldTab)>,
-        nodes: Query<&WorldEntity>,
+        nodes: Query<&WorldEntity, With<WorldNode>>,
     ) {
-        for (entity, name) in &families {
-            let (tab_content, _) = tabs
-                .iter()
-                .find(|(_, &tab)| tab == WorldTab::Families)
-                .expect("tab with families should be spawned on state enter");
-            if nodes.iter().all(|world_entity| world_entity.0 != entity) {
-                debug!("creating button for family '{name}'");
-                commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<FamilyButton>(parent, &theme, entity, name);
-                });
-            }
+        let Some((tab_content, _)) = tabs.iter().find(|(_, &tab)| tab == WorldTab::Families) else {
+            return;
+        };
+
+        let name = families.get(trigger.entity()).unwrap();
+        if nodes.iter().all(|&entity| *entity != trigger.entity()) {
+            debug!("creating button for family '{name}'");
+            commands.entity(**tab_content).with_children(|parent| {
+                setup_entity_node(setup_family_buttons, parent, &theme, trigger.entity(), name);
+            });
         }
     }
 
     fn create_city_nodes(
+        trigger: Trigger<OnAdd, City>,
         mut commands: Commands,
         theme: Res<Theme>,
-        cities: Query<(Entity, &Name), Added<City>>,
+        cities: Query<&Name>,
         tabs: Query<(&TabContent, &WorldTab)>,
-        nodes: Query<&WorldEntity>,
+        nodes: Query<&WorldEntity, With<WorldNode>>,
     ) {
-        for (entity, name) in &cities {
-            let (tab_content, _) = tabs
-                .iter()
-                .find(|(_, &tab)| tab == WorldTab::Cities)
-                .expect("tab with cities should be spawned on state enter");
-            if !nodes.iter().any(|world_entity| world_entity.0 == entity) {
-                debug!("creating button for city '{name}'");
-                commands.entity(tab_content.0).with_children(|parent| {
-                    setup_entity_node::<CityButton>(parent, &theme, entity, name);
+        let Some((tab_content, _)) = tabs.iter().find(|(_, &tab)| tab == WorldTab::Cities) else {
+            return;
+        };
+
+        let name = cities.get(trigger.entity()).unwrap();
+        if nodes.iter().all(|&entity| *entity != trigger.entity()) {
+            debug!("creating button for city '{name}'");
+            commands.entity(**tab_content).with_children(|parent| {
+                setup_entity_node(setup_city_buttons, parent, &theme, trigger.entity(), name);
+            });
+        }
+    }
+
+    fn play_family(
+        trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        buttons: Query<&WorldEntity>,
+        families: Query<&FamilyMembers>,
+    ) {
+        let world_entity = **buttons
+            .get(trigger.entity())
+            .expect("family button should reference world entity node");
+        let members = families
+            .get(world_entity)
+            .expect("world entity node should reference a family");
+        let actor_entity = *members
+            .first()
+            .expect("family always have at least one member");
+
+        info!("starting playing for family `{world_entity}`");
+        commands.entity(actor_entity).insert(SelectedActor);
+        commands.set_state(WorldState::Family);
+    }
+
+    fn delete_family(
+        trigger: Trigger<Pointer<Click>>,
+        mut delete_events: EventWriter<FamilyDelete>,
+        buttons: Query<&WorldEntity>,
+    ) {
+        let world_entity = **buttons
+            .get(trigger.entity())
+            .expect("family button should reference world entity node");
+
+        info!("deleting family `{world_entity}`");
+        delete_events.send(FamilyDelete(world_entity));
+    }
+
+    fn edit_city(
+        trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        buttons: Query<&WorldEntity>,
+    ) {
+        let world_entity = **buttons
+            .get(trigger.entity())
+            .expect("city button should reference world entity node");
+
+        info!("starting editing city `{world_entity}`");
+        commands.entity(world_entity).insert(ActiveCity);
+        commands.set_state(WorldState::City);
+    }
+
+    fn delete_city(
+        trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        buttons: Query<&WorldEntity>,
+    ) {
+        let world_entity = **buttons
+            .get(trigger.entity())
+            .expect("city button should reference world entity node");
+
+        // TODO: use event for despawn, otherwise client will despawn the city locally.
+        info!("deleting city `{world_entity}`");
+        commands.entity(world_entity).despawn();
+    }
+
+    fn exit_world(_trigger: Trigger<Pointer<Click>>, mut commands: Commands) {
+        commands.set_state(GameState::Menu);
+    }
+
+    fn create(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        theme: Res<Theme>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        tabs: Query<(&Toggled, &WorldTab)>,
+    ) {
+        let current_tab = tabs
+            .iter()
+            .find_map(|(toggled, world_tab)| toggled.0.then_some(world_tab))
+            .expect("one tab should always be active");
+
+        info!("starting creation for `{current_tab:?}`");
+        match current_tab {
+            WorldTab::Families => commands.set_state(WorldState::FamilyEditor),
+            WorldTab::Cities => {
+                commands.entity(*root_entity).with_children(|parent| {
+                    setup_create_city_dialog(parent, &theme);
                 });
             }
         }
     }
 
-    fn handle_family_clicks(
+    fn confirm_city_creation(
+        _trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut delete_events: EventWriter<FamilyDelete>,
-        mut click_events: EventReader<Click>,
-        mut world_state: ResMut<NextState<WorldState>>,
-        buttons: Query<(&WorldEntityNode, &FamilyButton)>,
-        nodes: Query<&WorldEntity>,
-        families: Query<&FamilyMembers>,
+        mut city_name: Single<&mut TextInputValue, With<CityNameEdit>>,
+        dialog_entity: Single<Entity, With<Dialog>>,
     ) {
-        for (entity_node, family_button) in
-            buttons.iter_many(click_events.read().map(|event| event.0))
-        {
-            let world_entity = nodes
-                .get(entity_node.0)
-                .expect("family button should reference world entity node");
-            match family_button {
-                FamilyButton::Play => {
-                    let members = families
-                        .get(world_entity.0)
-                        .expect("world entity node should reference a family");
-                    let actor_entity = *members
-                        .first()
-                        .expect("family always have at least one member");
-
-                    info!("starting playing for family `{}`", world_entity.0);
-                    commands.entity(actor_entity).insert(SelectedActor);
-                    world_state.set(WorldState::Family);
-                }
-                FamilyButton::Delete => {
-                    info!("deleting family `{:?}`", world_entity.0);
-                    delete_events.send(FamilyDelete(world_entity.0));
-                }
-            }
-        }
+        info!("creating new city");
+        commands.spawn((City, Name::new(mem::take(&mut city_name.0))));
+        commands.entity(*dialog_entity).despawn_recursive();
     }
 
-    fn handle_city_clicks(
+    fn cancel_city_creation(
+        _trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        mut world_state: ResMut<NextState<WorldState>>,
-        buttons: Query<(&WorldEntityNode, &CityButton)>,
-        nodes: Query<&WorldEntity>,
+        dialog_entity: Single<Entity, With<Dialog>>,
     ) {
-        for (entity_node, family_button) in
-            buttons.iter_many(click_events.read().map(|event| event.0))
-        {
-            let world_entity = nodes
-                .get(entity_node.0)
-                .expect("family button should reference world entity node");
-            // TODO: use event for despawn, otherwise client will despawn the city locally.
-            match family_button {
-                CityButton::Edit => {
-                    info!("starting editing city `{:?}`", world_entity.0);
-                    commands.entity(world_entity.0).insert(ActiveCity);
-                    world_state.set(WorldState::City);
-                }
-                CityButton::Delete => {
-                    info!("deleting city `{:?}`", world_entity.0);
-                    commands.entity(world_entity.0).despawn();
-                }
-            }
-        }
-    }
-
-    fn handle_exit_clicks(
-        mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<(), With<ExitWorldButton>>,
-    ) {
-        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            game_state.set(GameState::Menu);
-        }
-    }
-
-    fn handle_create_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        mut world_state: ResMut<NextState<WorldState>>,
-        theme: Res<Theme>,
-        buttons: Query<(), With<NewEntityButton>>,
-        tabs: Query<(&Toggled, &WorldTab)>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
-    ) {
-        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            let current_tab = tabs
-                .iter()
-                .find_map(|(toggled, world_tab)| toggled.0.then_some(world_tab))
-                .expect("one tab should always be active");
-
-            match current_tab {
-                WorldTab::Families => world_state.set(WorldState::FamilyEditor),
-                WorldTab::Cities => {
-                    commands.entity(roots.single()).with_children(|parent| {
-                        setup_create_city_dialog(parent, &theme);
-                    });
-                }
-            }
-        }
-    }
-
-    fn handle_city_dialog_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        buttons: Query<&CityDialogButton>,
-        mut text_edits: Query<&mut TextInputValue, With<CityNameEdit>>,
-        dialogs: Query<Entity, With<Dialog>>,
-    ) {
-        for &dialog_button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            if dialog_button == CityDialogButton::Create {
-                info!("creating new city");
-                let mut city_name = text_edits.single_mut();
-                commands.spawn(CityBundle::new(mem::take(&mut city_name.0)));
-            }
-            commands.entity(dialogs.single()).despawn_recursive();
-        }
+        commands.entity(*dialog_entity).despawn_recursive();
     }
 
     fn remove_entity_nodes<C: Component>(
         trigger: Trigger<OnRemove, C>,
         mut commands: Commands,
-        nodes: Query<(Entity, &WorldEntity)>,
+        nodes: Query<(Entity, &WorldEntity), With<WorldNode>>,
     ) {
         if let Some((entity, _)) = nodes
             .iter()
-            .find(|(_, world_entity)| world_entity.0 == trigger.entity())
+            .find(|(_, &world_entity)| *world_entity == trigger.entity())
         {
             debug!(
                 "removing node `{entity}` for despawned entity `{}`",
@@ -339,142 +309,132 @@ impl WorldMenuPlugin {
     }
 }
 
-fn setup_entity_node<E>(
+fn setup_entity_node(
+    buttons: fn(&mut ChildBuilder, WorldEntity),
     parent: &mut ChildBuilder,
     theme: &Theme,
     entity: Entity,
     label: impl Into<String>,
-) where
-    E: IntoEnumIterator + Clone + Copy + Component + Display,
-{
+) {
     parent
         .spawn((
             WorldEntity(entity),
-            NodeBundle {
-                style: Style {
-                    padding: theme.padding.normal,
-                    column_gap: theme.gap.normal,
-                    ..Default::default()
-                },
-                background_color: theme.panel_color.into(),
+            WorldNode,
+            Node {
+                padding: theme.padding.normal,
+                column_gap: theme.gap.normal,
                 ..Default::default()
             },
+            theme.panel_background,
         ))
         .with_children(|parent| {
-            let node_entity = parent.parent_entity();
-
             parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        ..Default::default()
-                    },
+                .spawn(Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     ..Default::default()
                 })
                 .with_children(|parent| {
-                    parent.spawn(LabelBundle::large(theme, label));
+                    parent.spawn((LabelKind::Large, Text::new(label)));
                 });
             parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: theme.gap.normal,
                     ..Default::default()
                 })
                 .with_children(|parent| {
-                    for button in E::iter() {
-                        parent.spawn((
-                            button,
-                            WorldEntityNode(node_entity),
-                            TextButtonBundle::normal(theme, button.to_string()),
-                        ));
-                    }
+                    (buttons)(parent, WorldEntity(entity));
                 });
         });
+}
+
+fn setup_family_buttons(parent: &mut ChildBuilder, world_entity: WorldEntity) {
+    parent
+        .spawn((ButtonKind::Normal, world_entity))
+        .with_child(Text::new("Play"))
+        .observe(WorldMenuPlugin::play_family);
+    parent
+        .spawn((ButtonKind::Normal, world_entity))
+        .with_child(Text::new("Delete"))
+        .observe(WorldMenuPlugin::delete_family);
+}
+
+fn setup_city_buttons(parent: &mut ChildBuilder, world_entity: WorldEntity) {
+    parent
+        .spawn((ButtonKind::Normal, world_entity))
+        .with_child(Text::new("Edit"))
+        .observe(WorldMenuPlugin::edit_city);
+    parent
+        .spawn((ButtonKind::Normal, world_entity))
+        .with_child(Text::new("Delete"))
+        .observe(WorldMenuPlugin::delete_city);
 }
 
 fn setup_create_city_dialog(parent: &mut ChildBuilder, theme: &Theme) {
-    parent
-        .spawn(DialogBundle::new(theme))
-        .with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        padding: theme.padding.normal,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    background_color: theme.panel_color.into(),
+    parent.spawn(Dialog).with_children(|parent| {
+        parent
+            .spawn((
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    padding: theme.padding.normal,
+                    row_gap: theme.gap.normal,
                     ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(theme, "Create city"));
-                    parent.spawn((CityNameEdit, TextEditBundle::new(theme, "New city")));
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                column_gap: theme.gap.normal,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            for dialog_button in CityDialogButton::iter() {
-                                parent.spawn((
-                                    dialog_button,
-                                    TextButtonBundle::normal(theme, dialog_button.to_string()),
-                                ));
-                            }
-                        });
-                });
-        });
+                },
+                theme.panel_background,
+            ))
+            .with_children(|parent| {
+                parent.spawn((LabelKind::Normal, Text::new("Create city")));
+                parent.spawn((
+                    CityNameEdit,
+                    // HACK: For some reason it can't be required component, it messes the edit.
+                    TextEdit,
+                    TextInputValue("New city".to_string()),
+                ));
+                parent
+                    .spawn(Node {
+                        column_gap: theme.gap.normal,
+                        ..Default::default()
+                    })
+                    .with_children(|parent| {
+                        parent
+                            .spawn(ButtonKind::Normal)
+                            .with_child(Text::new("Create"))
+                            .observe(WorldMenuPlugin::confirm_city_creation);
+                        parent
+                            .spawn(ButtonKind::Normal)
+                            .with_child(Text::new("Cancel"))
+                            .observe(WorldMenuPlugin::cancel_city_creation);
+                    });
+            });
+    });
 }
 
-#[derive(Clone, Component, Copy, Default, Display, EnumIter, PartialEq)]
+#[derive(Clone, Component, Copy, Default, PartialEq, Debug, EnumIter)]
 enum WorldTab {
     #[default]
     Families,
     Cities,
 }
 
-#[derive(Component, EnumIter, Clone, Copy, Display)]
-enum FamilyButton {
-    Play,
-    Delete,
-}
-
-#[derive(Component, EnumIter, Clone, Copy, Display)]
-enum CityButton {
-    Edit,
-    Delete,
+impl WorldTab {
+    fn text(self) -> &'static str {
+        match self {
+            WorldTab::Families => "Families",
+            WorldTab::Cities => "Cities",
+        }
+    }
 }
 
 /// References family or city depending on a node.
-#[derive(Component)]
+#[derive(Component, Clone, Copy, Deref)]
 struct WorldEntity(Entity);
 
-/// References family node for [`FamilyButton`] or city node for [`CityButton`].
 #[derive(Component)]
-struct WorldEntityNode(Entity);
-
-/// Button that creates family or city depending on the selected [`WorldTab`].
-#[derive(Component)]
-struct NewEntityButton;
-
-#[derive(Component)]
-struct ExitWorldButton;
-
-#[derive(Clone, Component, Copy, Display, EnumIter, PartialEq)]
-enum CityDialogButton {
-    Create,
-    Cancel,
-}
+#[require(Node)]
+struct WorldNode;
 
 #[derive(Component)]
 struct CityNameEdit;

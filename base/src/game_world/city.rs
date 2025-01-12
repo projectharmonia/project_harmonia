@@ -7,18 +7,13 @@ use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use bevy_atmosphere::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 use vleue_navigator::prelude::*;
 
-use super::{
-    actor::SelectedActor,
-    player_camera::{EnvironmentMap, PlayerCameraBundle},
-    WorldState,
-};
+use super::{actor::SelectedActor, WorldState};
 use crate::{
-    asset::collection::Collection,
     core::GameState,
-    game_world::{actor::ACTOR_RADIUS, Layer},
+    game_world::{actor::ACTOR_RADIUS, player_camera::PlayerCamera, Layer},
 };
 use road::RoadPlugin;
 
@@ -32,18 +27,16 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .replicate_group::<(City, Name)>()
             .init_resource::<PlacedCities>()
-            .add_systems(OnEnter(WorldState::City), Self::init_activated)
+            .add_observer(Self::init)
+            .add_observer(Self::activate)
+            .add_systems(OnEnter(WorldState::Family), Self::activate_by_actor)
             .add_systems(
-                OnEnter(WorldState::Family),
-                (Self::activate_by_actor, Self::init_activated).chain(),
+                OnExit(WorldState::City),
+                Self::deactivate.never_param_warn(),
             )
-            .add_systems(OnExit(WorldState::City), Self::deactivate)
-            .add_systems(OnExit(WorldState::Family), Self::deactivate)
             .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
+                OnExit(WorldState::Family),
+                Self::deactivate.never_param_warn(),
             )
             .add_systems(OnExit(GameState::InGame), Self::cleanup);
     }
@@ -56,18 +49,30 @@ pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 impl CityPlugin {
     /// Inserts [`TransformBundle`] and places cities next to each other.
     fn init(
+        trigger: Trigger<OnAdd, City>,
         ground_mesh: Local<GroundMesh>,
         mut commands: Commands,
         asset_server: Res<AssetServer>,
         mut placed_citites: ResMut<PlacedCities>,
-        added_cities: Query<Entity, (With<City>, Without<Transform>)>,
+        mut cities: Query<(&mut Transform, &mut CityNavMesh)>,
     ) {
-        for entity in &added_cities {
-            debug!("initializing city `{entity}`");
+        debug!("initializing city `{}`", trigger.entity());
+        let (mut transform, mut nav_mesh) = cities.get_mut(trigger.entity()).unwrap();
+        transform.translation = Vec3::X * CITY_SIZE * **placed_citites as f32;
 
-            let navmesh_entity = commands
-                .spawn(NavMeshBundle {
-                    settings: NavMeshSettings {
+        commands.entity(trigger.entity()).with_children(|parent| {
+            parent.spawn((
+                Ground,
+                Mesh3d(ground_mesh.0.clone()),
+                MeshMaterial3d::<StandardMaterial>(
+                    asset_server.load("base/ground/spring_grass/spring_glass.ron"),
+                ),
+            ));
+
+            nav_mesh.0 = parent
+                .spawn((
+                    ManagedNavMesh::from_id(**placed_citites as u128),
+                    NavMeshSettings {
                         fixed: Triangulation::from_outer_edges(&[
                             Vec2::new(-HALF_CITY_SIZE, -HALF_CITY_SIZE),
                             Vec2::new(HALF_CITY_SIZE, -HALF_CITY_SIZE),
@@ -80,88 +85,54 @@ impl CityPlugin {
                         default_search_delta: 0.2, // To avoid agents stuck on namesh edges.
                         ..Default::default()
                     },
-                    transform: Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
-                    update_mode: NavMeshUpdateMode::Direct,
-                    ..NavMeshBundle::with_unique_id(placed_citites.0 as u128)
-                })
-                .id();
-
-            let transform =
-                Transform::from_translation(Vec3::X * CITY_SIZE * placed_citites.0 as f32);
-            commands
-                .entity(entity)
-                .insert((
-                    StateScoped(GameState::InGame),
-                    CityNavMesh(navmesh_entity),
-                    SpatialBundle {
-                        transform,
-                        visibility: Visibility::Hidden,
-                        ..Default::default()
-                    },
+                    Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
+                    NavMeshUpdateMode::Direct,
                 ))
-                .add_child(navmesh_entity)
-                .with_children(|parent| {
-                    parent.spawn(GroundBundle {
-                        pbr_bundle: PbrBundle {
-                            mesh: ground_mesh.0.clone(),
-                            material: asset_server
-                                .load("base/ground/spring_grass/spring_glass.ron"),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    });
-                });
-            placed_citites.0 += 1;
-        }
-    }
-
-    fn activate_by_actor(mut commands: Commands, actors: Query<&Parent, With<SelectedActor>>) {
-        let entity = **actors.single();
-        info!("activating city `{entity}`");
-        commands.entity(entity).insert(ActiveCity);
-    }
-
-    fn init_activated(
-        mut commands: Commands,
-        world_state: Res<State<WorldState>>,
-        environment_map: Res<Collection<EnvironmentMap>>,
-        mut activated_cities: Query<(Entity, &mut Visibility), Added<ActiveCity>>,
-    ) {
-        let (entity, mut visibility) = activated_cities.single_mut();
-        debug!("initializing activated city `{entity}`");
-        *visibility = Visibility::Visible;
-        commands.entity(entity).with_children(|parent| {
-            parent.spawn((
-                Name::new("Sun"),
-                StateScoped(**world_state),
-                DirectionalLightBundle {
-                    directional_light: DirectionalLight {
-                        shadows_enabled: true,
-                        color: Color::linear_rgb(0.913, 0.855, 0.761),
-                        ..Default::default()
-                    },
-                    transform: Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-                    ..Default::default()
-                },
-            ));
-            parent.spawn((
-                Name::new("Player camera"),
-                StateScoped(**world_state),
-                PlayerCameraBundle::new(&environment_map),
-                AtmosphereCamera::default(),
-            ));
+                .id();
         });
+
+        **placed_citites += 1;
+    }
+
+    fn activate(
+        trigger: Trigger<OnAdd, ActiveCity>,
+        mut commands: Commands,
+        mut active_cities: Query<&mut Visibility>,
+    ) {
+        debug!("activating city `{}`", trigger.entity());
+
+        let mut visibility = active_cities.get_mut(trigger.entity()).unwrap();
+        *visibility = Visibility::Visible;
+
+        commands.entity(trigger.entity()).with_children(|parent| {
+            parent.spawn((
+                Sun,
+                Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ));
+            parent.spawn((PlayerCamera, AtmosphereCamera::default()));
+        });
+    }
+
+    fn activate_by_actor(
+        mut commands: Commands,
+        actor_parent: Single<&Parent, With<SelectedActor>>,
+    ) {
+        info!("activating selected actor's city `{}`", ***actor_parent);
+        commands.entity(***actor_parent).insert(ActiveCity);
     }
 
     fn deactivate(
         mut commands: Commands,
-        mut active_cities: Query<(Entity, &mut Visibility), With<ActiveCity>>,
+        active_city: Single<(Entity, &mut Visibility), With<ActiveCity>>,
+        sun_entity: Single<Entity, With<Sun>>,
+        camera_entity: Single<Entity, With<PlayerCamera>>,
     ) {
-        if let Ok((entity, mut visibility)) = active_cities.get_single_mut() {
-            info!("deactivating city `{entity}`");
-            *visibility = Visibility::Hidden;
-            commands.entity(entity).remove::<ActiveCity>();
-        }
+        let (city_entity, mut visibility) = active_city.into_inner();
+        info!("deactivating city `{city_entity}`");
+        *visibility = Visibility::Hidden;
+        commands.entity(city_entity).remove::<ActiveCity>();
+        commands.entity(*sun_entity).despawn();
+        commands.entity(*camera_entity).despawn();
     }
 
     /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
@@ -194,9 +165,7 @@ impl FromWorld for GroundMesh {
     }
 }
 
-#[derive(
-    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
-)]
+#[derive(Clone, Component, Copy, Debug, Default, EnumIter, Eq, Hash, PartialEq, SubStates)]
 #[source(WorldState = WorldState::City)]
 pub enum CityMode {
     #[default]
@@ -213,28 +182,20 @@ impl CityMode {
     }
 }
 
-#[derive(Bundle, Default)]
-pub struct CityBundle {
-    name: Name,
-    city: City,
-    replication: Replicated,
-}
-
-impl CityBundle {
-    pub fn new(name: String) -> Self {
-        Self {
-            name: Name::new(name),
-            city: City,
-            replication: Replicated,
-        }
-    }
-}
-
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
+#[require(
+    Name,
+    Replicated,
+    Transform,
+    Visibility(|| Visibility::Hidden),
+    CityNavMesh(|| CityNavMesh(Entity::PLACEHOLDER)),
+    StateScoped<GameState>(|| StateScoped(GameState::InGame)),
+)]
 pub struct City;
 
 #[derive(Component)]
+#[require(City)]
 pub struct ActiveCity;
 
 /// Points to assigned navmesh for a city.
@@ -245,29 +206,26 @@ pub(super) struct CityNavMesh(Entity);
 ///
 /// The number increases when a city is placed, but does not decrease
 /// when it is removed to assign a unique position to new each city.
-#[derive(Default, Resource)]
+#[derive(Default, Resource, Deref, DerefMut)]
 struct PlacedCities(usize);
 
-#[derive(Bundle)]
-struct GroundBundle {
-    name: Name,
-    collider: Collider,
-    collision_layers: CollisionLayers,
-    ground: Ground,
-    pbr_bundle: PbrBundle,
-}
-
-impl Default for GroundBundle {
-    fn default() -> Self {
-        Self {
-            name: Name::new("Ground"),
-            collider: Collider::cuboid(CITY_SIZE, 0.0, CITY_SIZE),
-            collision_layers: CollisionLayers::new(Layer::Ground, LayerMask::ALL),
-            ground: Ground,
-            pbr_bundle: Default::default(),
-        }
-    }
-}
+#[derive(Component)]
+#[require(
+    Name(|| Name::new("Ground")),
+    Mesh3d,
+    MeshMaterial3d<StandardMaterial>,
+    Collider(|| Collider::cuboid(CITY_SIZE, 0.0, CITY_SIZE)),
+    CollisionLayers(|| CollisionLayers::new(Layer::Ground, LayerMask::ALL)),
+)]
+pub(super) struct Ground;
 
 #[derive(Component)]
-pub(super) struct Ground;
+#[require(
+    Name(|| Name::new("Sun")),
+    DirectionalLight(|| DirectionalLight {
+        shadows_enabled: true,
+        color: Color::linear_rgb(0.913, 0.855, 0.761),
+        ..Default::default()
+    }),
+)]
+struct Sun;

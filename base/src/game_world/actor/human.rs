@@ -1,5 +1,3 @@
-use std::mem;
-
 use bevy::{asset::AssetPath, ecs::reflect::ReflectBundle, prelude::*};
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
@@ -7,15 +5,13 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use super::{
-    needs::{Bladder, Energy, Fun, Hunger, Hygiene, Need, NeedBundle, Social},
-    Actor, ActorBundle, FirstName, LastName, ReflectActorBundle, Sex,
+    needs::{Bladder, Energy, Fun, Hunger, Hygiene, Need, Social},
+    FirstName, LastName, Sex,
 };
 use crate::{
     asset::collection::{AssetCollection, Collection},
-    core::GameState,
-    game_world::{
-        family::{editor::EditableActor, FamilyScene},
-        WorldState,
+    game_world::family::editor::{
+        ActorBundle, EditorFirstName, EditorLastName, EditorSex, FamilyScene, ReflectActorBundle,
     },
 };
 
@@ -27,76 +23,68 @@ impl Plugin for HumanPlugin {
             .replicate::<Human>()
             .register_type::<HumanBundle>()
             .init_resource::<Collection<HumanScene>>()
+            .add_observer(Self::init_needs)
             .add_systems(
-                PreUpdate,
-                (
-                    Self::update_sex.after(ClientSet::Receive),
-                    Self::init_needs.after(ClientSet::SyncHierarchy),
-                )
-                    .run_if(in_state(GameState::InGame)),
+                Update,
+                (Self::update_sex::<EditorSex>, Self::update_sex::<Sex>),
             )
             .add_systems(
                 PostUpdate,
-                Self::fill_scene
-                    .run_if(resource_added::<FamilyScene>)
-                    .run_if(in_state(WorldState::FamilyEditor)),
+                Self::fill_scene.run_if(resource_added::<FamilyScene>),
             );
     }
 }
 
 impl HumanPlugin {
     fn init_needs(
+        trigger: Trigger<OnAdd, Children>,
         mut commands: Commands,
-        actors: Query<(Entity, Option<&Children>), (Added<Human>, With<Actor>)>,
+        actors: Query<&Children, With<Human>>,
         need: Query<(), With<Need>>,
     ) {
-        for (entity, children) in &actors {
-            if need
-                .iter_many(children.into_iter().flatten())
-                .next()
-                .is_none()
-            {
-                debug!("initializing human `{entity}`");
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn(NeedBundle::<Bladder>::default());
-                    parent.spawn(NeedBundle::<Energy>::default());
-                    parent.spawn(NeedBundle::<Fun>::default());
-                    parent.spawn(NeedBundle::<Hunger>::default());
-                    parent.spawn(NeedBundle::<Hygiene>::default());
-                    parent.spawn(NeedBundle::<Social>::default());
-                });
-            }
+        let Ok(children) = actors.get(trigger.entity()) else {
+            return;
+        };
+
+        if need.iter_many(children).next().is_none() {
+            debug!("initializing human needs `{}`", trigger.entity());
+            commands.entity(trigger.entity()).with_children(|parent| {
+                parent.spawn(Bladder);
+                parent.spawn(Energy);
+                parent.spawn(Fun);
+                parent.spawn(Hunger);
+                parent.spawn(Hygiene);
+                parent.spawn(Social);
+            });
         }
     }
 
-    fn update_sex(
-        mut commands: Commands,
+    fn update_sex<C: Component + Into<HumanScene> + Copy>(
         human_scenes: Res<Collection<HumanScene>>,
-        actors: Query<(Entity, &Sex), (Changed<Sex>, With<Human>)>,
+        mut actors: Query<(Entity, &C, &mut SceneRoot), Changed<C>>,
     ) {
-        for (entity, &sex) in &actors {
+        for (entity, &sex, mut scene_root) in &mut actors {
             debug!("initializing sex for human `{entity}`");
-            commands
-                .entity(entity)
-                .insert(human_scenes.handle(sex.into()));
+            **scene_root = human_scenes.handle(sex.into());
         }
     }
 
     /// Fills [`FamilyScene`] with editing human actors.
     fn fill_scene(
         mut family_scene: ResMut<FamilyScene>,
-        mut actors: Query<(&mut FirstName, &mut LastName, &Sex), With<EditableActor>>,
+        actors: Query<(&EditorFirstName, &EditorLastName, &EditorSex), With<EditorHuman>>,
     ) {
-        for (mut first_name, mut last_name, &sex) in &mut actors {
+        for (first_name, last_name, &sex) in &actors {
             debug!(
                 "adding human '{} {}' to family scene '{}'",
                 first_name.0, last_name.0, family_scene.name
             );
-            family_scene.actors.push(Box::new(HumanBundle::new(
-                mem::take(&mut first_name),
-                mem::take(&mut last_name),
-                sex,
-            )));
+            family_scene.actors.push(Box::new(HumanBundle {
+                first_name: first_name.clone().into(),
+                last_name: last_name.clone().into(),
+                sex: sex.into(),
+                human: Human,
+            }));
         }
     }
 }
@@ -105,6 +93,9 @@ impl HumanPlugin {
 #[reflect(Component)]
 pub(crate) struct Human;
 
+#[derive(Component, Default)]
+pub(crate) struct EditorHuman;
+
 #[derive(Bundle, Default, Reflect)]
 #[reflect(Bundle, ActorBundle)]
 struct HumanBundle {
@@ -112,17 +103,6 @@ struct HumanBundle {
     last_name: LastName,
     sex: Sex,
     human: Human,
-}
-
-impl HumanBundle {
-    fn new(first_name: FirstName, last_name: LastName, sex: Sex) -> Self {
-        Self {
-            first_name,
-            last_name,
-            sex,
-            human: Human,
-        }
-    }
 }
 
 impl ActorBundle for HumanBundle {
@@ -155,6 +135,15 @@ impl From<Sex> for HumanScene {
         match value {
             Sex::Male => Self::Male,
             Sex::Female => Self::Female,
+        }
+    }
+}
+
+impl From<EditorSex> for HumanScene {
+    fn from(value: EditorSex) -> Self {
+        match value {
+            EditorSex::Male => Self::Male,
+            EditorSex::Female => Self::Female,
         }
     }
 }

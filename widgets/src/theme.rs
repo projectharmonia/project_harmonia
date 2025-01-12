@@ -11,7 +11,7 @@ impl Plugin for ThemePlugin {
 
 impl ThemePlugin {
     fn set_clear_color(mut commands: Commands, theme: Res<Theme>) {
-        commands.insert_resource(ClearColor(theme.background_color));
+        commands.insert_resource(ClearColor(theme.background_color.0));
     }
 }
 
@@ -19,15 +19,15 @@ impl ThemePlugin {
 pub struct Theme {
     pub button: ButtonTheme,
     pub label: LabelTheme,
-    pub text_edit: TextEditTheme,
     pub checkbox: CheckboxTheme,
+    pub text_edit: TextEditTheme,
+    pub progress_bar: ProgressBarTheme,
     pub gap: GapTheme,
     pub padding: PaddingTheme,
-    pub progress_bar: ProgressBarTheme,
-    pub background_color: Color,
-    pub modal_color: Color,
-    pub panel_color: Color,
-    pub popup_color: Color,
+    pub modal_background: BackgroundColor,
+    pub popup_background: BackgroundColor,
+    pub panel_background: BackgroundColor,
+    pub background_color: BackgroundColor,
 }
 
 impl FromWorld for Theme {
@@ -37,117 +37,82 @@ impl FromWorld for Theme {
         let symbol_handle = asset_server.load("base/fonts/NotoEmoji-Regular.ttf");
         Self {
             button: ButtonTheme {
-                normal: Style {
+                normal: TextButtonTheme {
                     width: Val::Px(160.0),
                     height: Val::Px(35.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
+                    font: text_handle.clone(),
+                    font_size: 20.0,
+                    color: Color::srgb(0.9, 0.9, 0.9).into(),
                 },
-                large: Style {
+                large: TextButtonTheme {
                     width: Val::Px(180.0),
                     height: Val::Px(50.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
+                    font: text_handle.clone(),
+                    font_size: 25.0,
+                    color: Color::srgb(0.9, 0.9, 0.9).into(),
                 },
-                symbol: Style {
+                symbol: TextButtonTheme {
                     width: Val::Px(30.0),
                     height: Val::Px(30.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
+                    font: symbol_handle.clone(),
+                    font_size: 20.0,
+                    color: Color::srgb(0.9, 0.9, 0.9).into(),
                 },
-                image_button: Style {
+                image: ImageButtonTheme {
                     width: Val::Px(55.0),
                     height: Val::Px(55.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
+                    image_width: Val::Px(45.0),
+                    image_height: Val::Px(45.0),
                 },
-                image: Style {
-                    width: Val::Px(45.0),
-                    height: Val::Px(45.0),
-                    ..Default::default()
-                },
-                normal_text: TextStyle {
-                    font: text_handle.clone(),
-                    font_size: 25.0,
-                    color: Color::srgb(0.9, 0.9, 0.9),
-                },
-                large_text: TextStyle {
-                    font: text_handle.clone(),
-                    font_size: 30.0,
-                    color: Color::srgb(0.9, 0.9, 0.9),
-                },
-                symbol_text: TextStyle {
-                    font: symbol_handle.clone(),
-                    font_size: 25.0,
-                    color: Color::srgb(0.9, 0.9, 0.9),
-                },
-                normal_color: Color::srgb(0.15, 0.15, 0.15),
-                hovered_color: Color::srgb(0.25, 0.25, 0.25),
-                pressed_color: Color::srgb(0.35, 0.75, 0.35),
-                hovered_pressed_color: Color::srgb(0.25, 0.65, 0.25),
+                normal_background: Color::srgb(0.15, 0.15, 0.15).into(),
+                hovered_background: Color::srgb(0.25, 0.25, 0.25).into(),
+                pressed_background: Color::srgb(0.35, 0.75, 0.35).into(),
+                hovered_pressed_background: Color::srgb(0.25, 0.65, 0.25).into(),
             },
             label: LabelTheme {
-                small: TextStyle {
+                small: LabelTextTheme {
                     font: text_handle.clone(),
-                    font_size: 17.0,
-                    color: Color::srgb(0.1, 0.1, 0.1),
+                    font_size: 12.0,
+                    color: Color::srgb(0.1, 0.1, 0.1).into(),
                 },
-                normal: TextStyle {
+                normal: LabelTextTheme {
                     font: text_handle.clone(),
-                    font_size: 25.0,
-                    color: Color::srgb(0.1, 0.1, 0.1),
-                },
-                large: TextStyle {
-                    font: text_handle.clone(),
-                    font_size: 35.0,
-                    color: Color::srgb(0.1, 0.1, 0.1),
-                },
-                symbol: TextStyle {
-                    font: symbol_handle,
                     font_size: 20.0,
-                    color: Color::srgb(0.1, 0.1, 0.1),
+                    color: Color::srgb(0.1, 0.1, 0.1).into(),
                 },
-            },
-            text_edit: TextEditTheme {
-                style: Style {
-                    min_width: Val::Px(200.0),
-                    border: UiRect::all(Val::Px(5.0)),
-                    padding: UiRect::all(Val::Px(5.0)),
-                    ..Default::default()
+                large: LabelTextTheme {
+                    font: text_handle.clone(),
+                    font_size: 30.0,
+                    color: Color::srgb(0.1, 0.1, 0.1).into(),
                 },
-                text: TextStyle {
-                    font: text_handle,
-                    font_size: 25.0,
-                    color: Color::srgb(0.9, 0.9, 0.9),
+                symbol: LabelTextTheme {
+                    font: symbol_handle,
+                    font_size: 15.0,
+                    color: Color::srgb(0.1, 0.1, 0.1).into(),
                 },
-                background_color: Color::srgb(0.15, 0.15, 0.15),
-                active_border: Color::srgb(0.35, 0.75, 0.35),
-                inactive_border: Color::srgb(0.35, 0.35, 0.35),
             },
             checkbox: CheckboxTheme {
-                node: Style {
-                    column_gap: Val::Px(10.0),
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                button: Style {
-                    width: Val::Px(20.0),
-                    height: Val::Px(20.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                tick: Style {
-                    width: Val::Px(14.0),
-                    height: Val::Px(14.0),
-                    ..Default::default()
-                },
-                tick_color: Color::srgb(0.35, 0.75, 0.35),
+                column_gap: Val::Px(10.0),
+                button_width: Val::Px(20.0),
+                button_height: Val::Px(20.0),
+                tick_width: Val::Px(14.0),
+                tick_height: Val::Px(14.0),
+                tick_color: Color::srgb(0.35, 0.75, 0.35).into(),
+            },
+            text_edit: TextEditTheme {
+                min_width: Val::Px(200.0),
+                border: UiRect::all(Val::Px(5.0)),
+                padding: UiRect::all(Val::Px(5.0)),
+                font: text_handle,
+                font_size: 20.0,
+                text_color: Color::srgb(0.9, 0.9, 0.9).into(),
+                background_color: Color::srgb(0.15, 0.15, 0.15).into(),
+                active_border: Color::srgb(0.35, 0.75, 0.35).into(),
+                inactive_border: Color::srgb(0.35, 0.35, 0.35).into(),
+            },
+            progress_bar: ProgressBarTheme {
+                background_color: Color::srgb(0.5, 0.5, 0.5).into(),
+                fill_color: Color::srgb(0.35, 0.75, 0.35).into(),
             },
             gap: GapTheme {
                 normal: Val::Px(10.0),
@@ -157,53 +122,77 @@ impl FromWorld for Theme {
                 normal: UiRect::all(Val::Px(8.0)),
                 global: UiRect::all(Val::Px(15.0)),
             },
-            progress_bar: ProgressBarTheme {
-                background_color: Color::srgb(0.5, 0.5, 0.5),
-                fill_color: Color::srgb(0.35, 0.75, 0.35),
-            },
-            background_color: Color::srgb(0.9, 0.9, 0.9),
-            modal_color: Color::srgba(0.0, 0.0, 0.0, 0.0), // TODO: Make gray when we will have multiple UI roots.
-            panel_color: Color::srgb(0.8, 0.8, 0.8),
-            popup_color: Color::srgb(0.75, 0.75, 0.75),
+            modal_background: Color::srgba(1.0, 1.0, 1.0, 0.3).into(),
+            popup_background: Color::srgb(0.75, 0.75, 0.75).into(),
+            panel_background: Color::srgb(0.8, 0.8, 0.8).into(),
+            background_color: Color::srgb(0.9, 0.9, 0.9).into(),
         }
     }
 }
 
 pub struct ButtonTheme {
-    pub normal: Style,
-    pub large: Style,
-    pub symbol: Style,
-    pub image_button: Style,
-    pub image: Style,
-    pub normal_text: TextStyle,
-    pub large_text: TextStyle,
-    pub symbol_text: TextStyle,
-    pub normal_color: Color,
-    pub hovered_color: Color,
-    pub pressed_color: Color,
-    pub hovered_pressed_color: Color,
+    pub normal: TextButtonTheme,
+    pub large: TextButtonTheme,
+    pub symbol: TextButtonTheme,
+    pub image: ImageButtonTheme,
+    pub normal_background: BackgroundColor,
+    pub hovered_background: BackgroundColor,
+    pub pressed_background: BackgroundColor,
+    pub hovered_pressed_background: BackgroundColor,
+}
+
+pub struct TextButtonTheme {
+    pub width: Val,
+    pub height: Val,
+    pub font: Handle<Font>,
+    pub font_size: f32,
+    pub color: TextColor,
+}
+
+pub struct ImageButtonTheme {
+    pub width: Val,
+    pub height: Val,
+    pub image_width: Val,
+    pub image_height: Val,
 }
 
 pub struct LabelTheme {
-    pub small: TextStyle,
-    pub normal: TextStyle,
-    pub large: TextStyle,
-    pub symbol: TextStyle,
+    pub small: LabelTextTheme,
+    pub normal: LabelTextTheme,
+    pub large: LabelTextTheme,
+    pub symbol: LabelTextTheme,
 }
 
-pub struct TextEditTheme {
-    pub style: Style,
-    pub text: TextStyle,
-    pub background_color: Color,
-    pub inactive_border: Color,
-    pub active_border: Color,
+pub struct LabelTextTheme {
+    pub font: Handle<Font>,
+    pub font_size: f32,
+    pub color: TextColor,
 }
 
 pub struct CheckboxTheme {
-    pub node: Style,
-    pub button: Style,
-    pub tick: Style,
-    pub tick_color: Color,
+    pub column_gap: Val,
+    pub button_width: Val,
+    pub button_height: Val,
+    pub tick_width: Val,
+    pub tick_height: Val,
+    pub tick_color: BackgroundColor,
+}
+
+pub struct TextEditTheme {
+    pub min_width: Val,
+    pub border: UiRect,
+    pub padding: UiRect,
+    pub font: Handle<Font>,
+    pub font_size: f32,
+    pub text_color: TextColor,
+    pub background_color: BackgroundColor,
+    pub inactive_border: BorderColor,
+    pub active_border: BorderColor,
+}
+
+pub struct ProgressBarTheme {
+    pub background_color: BackgroundColor,
+    pub fill_color: BackgroundColor,
 }
 
 pub struct GapTheme {
@@ -214,9 +203,4 @@ pub struct GapTheme {
 pub struct PaddingTheme {
     pub normal: UiRect,
     pub global: UiRect,
-}
-
-pub struct ProgressBarTheme {
-    pub background_color: Color,
-    pub fill_color: Color,
 }

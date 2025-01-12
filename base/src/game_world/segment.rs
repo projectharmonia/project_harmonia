@@ -8,14 +8,7 @@ use std::{
     ops::{Add, Sub},
 };
 
-use bevy::{
-    ecs::{
-        component::{ComponentHooks, ComponentId, StorageType},
-        system::QueryLens,
-        world::DeferredWorld,
-    },
-    prelude::*,
-};
+use bevy::{ecs::system::QueryLens, prelude::*};
 use bevy_replicon::prelude::*;
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
@@ -33,7 +26,7 @@ impl Plugin for SegmentPlugin {
             .add_plugins(PlacingSegmentPlugin)
             .register_type::<Segment>()
             .replicate::<Segment>()
-            .observe(Self::cleanup_connections)
+            .add_observer(Self::cleanup_connections)
             .add_systems(
                 PostUpdate,
                 (Self::update_transform, Self::update_connections)
@@ -156,8 +149,9 @@ fn disconnect_all(
     taken_connections
 }
 
-#[derive(Clone, Copy, Default, Deserialize, Reflect, Serialize)]
+#[derive(Component, Clone, Copy, Default, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
+#[require(SegmentConnections)]
 pub(crate) struct Segment {
     pub(super) start: Vec2,
     pub(super) end: Vec2,
@@ -316,21 +310,6 @@ impl Segment {
     pub(super) fn points(&self) -> [Vec2; 2] {
         [self.start, self.end]
     }
-
-    fn on_insert(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
-        world
-            .commands()
-            .entity(entity)
-            .insert(SegmentConnections::default());
-    }
-}
-
-impl Component for Segment {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(Self::on_insert);
-    }
 }
 
 impl Add<Vec2> for Segment {
@@ -366,7 +345,7 @@ impl SegmentConnections {
     /// Returns closest left and right segments relative to the displacement vector.
     pub(super) fn side_segments(&self, point_kind: PointKind, disp: Vec2) -> MinMaxResult<Segment> {
         self.get_unified(point_kind).minmax_by_key(|segment| {
-            let angle = segment.displacement().angle_between(disp);
+            let angle = segment.displacement().angle_to(disp);
             if angle < 0.0 {
                 angle + 2.0 * PI
             } else {
@@ -380,7 +359,7 @@ impl SegmentConnections {
     /// Angles compared by their absolute value.
     pub(super) fn min_angle(&self, point_kind: PointKind, disp: Vec2) -> Option<f32> {
         self.get_unified(point_kind)
-            .map(|segment| segment.displacement().angle_between(disp))
+            .map(|segment| segment.displacement().angle_to(disp))
             .min_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap_or(Ordering::Equal))
     }
 

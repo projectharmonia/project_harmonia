@@ -2,31 +2,42 @@ use bevy::prelude::*;
 
 use crate::theme::Theme;
 
-#[derive(Bundle)]
-pub struct LabelBundle {
-    label: Label,
-    text_bundle: TextBundle,
+pub(super) struct LabelPlugin;
+
+impl Plugin for LabelPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(Self::theme);
+    }
 }
 
-impl LabelBundle {
-    pub fn normal(theme: &Theme, text: impl Into<String>) -> Self {
-        Self {
-            label: Label,
-            text_bundle: TextBundle::from_section(text, theme.label.normal.clone()),
-        }
-    }
+impl LabelPlugin {
+    fn theme(
+        trigger: Trigger<OnAdd, LabelKind>,
+        theme: Res<Theme>,
+        mut labels: Query<(&LabelKind, &mut TextFont, &mut TextColor)>,
+    ) {
+        let (label_kind, mut text_font, mut text_color) = labels
+            .get_mut(trigger.entity())
+            .expect("labels should be spawned with text or span");
 
-    pub fn large(theme: &Theme, text: impl Into<String>) -> Self {
-        Self {
-            label: Label,
-            text_bundle: TextBundle::from_section(text, theme.label.large.clone()),
-        }
-    }
+        let label_theme = match label_kind {
+            LabelKind::Small => &theme.label.small,
+            LabelKind::Normal => &theme.label.normal,
+            LabelKind::Large => &theme.label.large,
+            LabelKind::Symbol => &theme.label.symbol,
+        };
 
-    pub fn symbol(theme: &Theme, text: impl Into<String>) -> Self {
-        Self {
-            label: Label,
-            text_bundle: TextBundle::from_section(text, theme.label.symbol.clone()),
-        }
+        text_font.font = label_theme.font.clone();
+        text_font.font_size = label_theme.font_size;
+        *text_color = label_theme.color;
     }
+}
+
+#[derive(Component)]
+#[require(Name(|| Name::new("Label")))]
+pub enum LabelKind {
+    Small,
+    Normal,
+    Large,
+    Symbol,
 }

@@ -8,7 +8,7 @@ use bevy::{
     ecs::{entity::MapEntities, reflect::ReflectCommandExt},
     prelude::*,
 };
-use bevy_mod_outline::OutlineBundle;
+use bevy_mod_outline::OutlineVolume;
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -18,9 +18,9 @@ use super::{
         CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
         PendingCommand,
     },
-    highlighting::OutlineHighlightingExt,
+    highlighting::HIGHLIGHTING_VOLUME,
 };
-use crate::{asset::info::object_info::ObjectInfo, core::GameState, game_world::Layer};
+use crate::{asset::manifest::object_manifest::ObjectManifest, game_world::Layer};
 use door::DoorPlugin;
 use placing_object::PlacingObjectPlugin;
 use wall_mount::WallMountPlugin;
@@ -33,12 +33,7 @@ impl Plugin for ObjectPlugin {
             .register_type::<Object>()
             .replicate_group::<(Object, Transform)>()
             .add_mapped_client_event::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
-            .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            )
+            .add_observer(Self::init)
             .add_systems(
                 PostUpdate,
                 Self::apply_command
@@ -50,40 +45,37 @@ impl Plugin for ObjectPlugin {
 
 impl ObjectPlugin {
     fn init(
+        trigger: Trigger<OnAdd, Object>,
         mut commands: Commands,
         asset_server: Res<AssetServer>,
-        objects_info: Res<Assets<ObjectInfo>>,
-        spawned_objects: Query<(Entity, &Object), Without<Handle<Scene>>>,
+        manifests: Res<Assets<ObjectManifest>>,
+        mut objects: Query<(&Object, &mut Name, &mut SceneRoot)>,
     ) {
-        for (entity, object) in &spawned_objects {
-            let info_handle = asset_server
-                .get_handle(&object.0)
-                .expect("info should be preloaded");
-            let info = objects_info.get(&info_handle).unwrap();
+        let (object, mut name, mut scene_root) = objects.get_mut(trigger.entity()).unwrap();
+        let Some(manifest_handle) = asset_server.get_handle(&**object) else {
+            error!("'{}' is missing, ignoring", &**object);
+            return;
+        };
 
-            debug!("initializing object '{}' for `{entity}`", object.0);
+        debug!(
+            "initializing object '{}' for `{}`",
+            &**object,
+            trigger.entity()
+        );
 
-            let scene_handle: Handle<Scene> = asset_server.load(info.scene.clone());
-            let mut entity = commands.entity(entity);
-            entity.insert((
-                scene_handle,
-                Name::new(info.general.name.clone()),
-                RigidBody::Kinematic,
-                OutlineBundle::highlighting(),
-                GlobalTransform::default(),
-                VisibilityBundle::default(),
-                CollisionLayers::new(
-                    Layer::Object,
-                    [Layer::PlacingObject, Layer::Wall, Layer::PlacingWall],
-                ),
-            ));
+        let manifest = manifests
+            .get(&manifest_handle)
+            .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**object));
 
-            for component in &info.components {
-                entity.insert_reflect(component.clone_value());
-            }
-            for component in &info.spawn_components {
-                entity.insert_reflect(component.clone_value());
-            }
+        *name = Name::new(manifest.general.name.clone());
+        scene_root.0 = asset_server.load(manifest.scene.clone());
+
+        let mut entity = commands.entity(trigger.entity());
+        for component in &manifest.components {
+            entity.insert_reflect(component.clone_value());
+        }
+        for component in &manifest.spawn_components {
+            entity.insert_reflect(component.clone_value());
         }
     }
 
@@ -98,7 +90,7 @@ impl ObjectPlugin {
             let mut confirmation = CommandConfirmation::new(event.id);
             match event.command {
                 ObjectCommand::Buy {
-                    info_path,
+                    manifest_path,
                     city_entity,
                     translation,
                     rotation,
@@ -108,11 +100,11 @@ impl ObjectPlugin {
                         continue;
                     }
 
-                    info!("`{client_id:?}` buys object {info_path:?}");
+                    info!("`{client_id:?}` buys object {manifest_path:?}");
                     commands.entity(city_entity).with_children(|parent| {
                         let transform =
                             Transform::from_translation(translation).with_rotation(rotation);
-                        let entity = parent.spawn(ObjectBundle::new(info_path, transform)).id();
+                        let entity = parent.spawn((Object(manifest_path), transform)).id();
                         confirmation.entity = Some(entity);
                     });
                 }
@@ -142,34 +134,27 @@ impl ObjectPlugin {
     }
 }
 
-#[derive(Bundle)]
-struct ObjectBundle {
-    object: Object,
-    transform: Transform,
-    parent_sync: ParentSync,
-    replication: Replicated,
-}
-
-impl ObjectBundle {
-    fn new(info_path: AssetPath<'static>, transform: Transform) -> Self {
-        Self {
-            object: Object(info_path),
-            transform,
-            parent_sync: Default::default(),
-            replication: Replicated,
-        }
-    }
-}
-
 /// Contains path to the object info.
-#[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Component, Debug, Default, Reflect, Serialize, Deserialize, Deref)]
 #[reflect(Component)]
-pub(crate) struct Object(AssetPath<'static>);
+#[require(
+    ParentSync,
+    Replicated,
+    SceneRoot,
+    Name,
+    RigidBody(|| RigidBody::Kinematic),
+    OutlineVolume(|| HIGHLIGHTING_VOLUME),
+    CollisionLayers(|| CollisionLayers::new(
+        Layer::Object,
+        [Layer::PlacingObject, Layer::Wall, Layer::PlacingWall],
+    ))
+)]
+pub(crate) struct Object(pub(crate) AssetPath<'static>);
 
 #[derive(Clone, Deserialize, Serialize)]
 enum ObjectCommand {
     Buy {
-        info_path: AssetPath<'static>,
+        manifest_path: AssetPath<'static>,
         city_entity: Entity,
         translation: Vec3,
         rotation: Quat,
@@ -207,11 +192,11 @@ impl PendingCommand for ObjectCommand {
             Self::Sell { entity } => {
                 recorder.record(entity);
                 let entity = world.entity(entity);
-                let info_path = entity.get::<Object>().unwrap().0.clone();
+                let manifest_path = entity.get::<Object>().unwrap().0.clone();
                 let parent = entity.get::<Parent>().unwrap();
                 let transform = entity.get::<Transform>().unwrap();
                 Self::Buy {
-                    info_path,
+                    manifest_path,
                     city_entity: **parent,
                     translation: transform.translation,
                     rotation: transform.rotation,

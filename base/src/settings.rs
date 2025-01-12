@@ -10,59 +10,89 @@ use bevy_enhanced_input::prelude::*;
 use serde::{Deserialize, Serialize};
 use vleue_navigator::prelude::*;
 
-use super::{game_paths::GamePaths, message::error_message};
+use super::{error_message::error_message, game_paths::GamePaths};
 
 pub(super) struct SettingsPlugin;
 
 impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
-        let game_paths = app.world().resource::<GamePaths>();
-
-        app.insert_resource(Settings::read(&game_paths.settings).unwrap_or_default())
-            .add_event::<SettingsApply>()
-            .add_systems(Startup, Self::apply)
-            .add_systems(
-                PostUpdate,
-                (Self::write.pipe(error_message), Self::apply).run_if(on_event::<SettingsApply>()),
-            );
+        app.add_observer(Self::apply.pipe(error_message))
+            .add_systems(Startup, Self::load);
     }
 }
 
 impl SettingsPlugin {
-    fn write(settings: Res<Settings>, game_paths: Res<GamePaths>) -> Result<()> {
-        settings.write(&game_paths.settings)
+    fn load(
+        mut commands: Commands,
+        mut config_store: ResMut<GizmoConfigStore>,
+        mut wireframe_config: ResMut<WireframeConfig>,
+        game_paths: Res<GamePaths>,
+        mut window: Single<&mut Window>,
+    ) {
+        info!("loading settings");
+
+        let settings = Settings::read(&game_paths.settings).unwrap_or_default();
+
+        apply_settings(
+            &mut commands,
+            &mut config_store,
+            &mut wireframe_config,
+            &mut window,
+            &settings,
+        );
+
+        commands.insert_resource(settings);
     }
 
     fn apply(
+        _trigger: Trigger<SettingsApply>,
         mut commands: Commands,
         mut config_store: ResMut<GizmoConfigStore>,
         mut wireframe_config: ResMut<WireframeConfig>,
         settings: Res<Settings>,
-        mut windows: Query<&mut Window>,
-    ) {
+        game_paths: Res<GamePaths>,
+        mut window: Single<&mut Window>,
+    ) -> Result<()> {
         info!("applying settings");
 
-        let mut window = windows.single_mut();
-        if settings.video.fullscreen {
-            window.mode = WindowMode::Fullscreen;
-        } else {
-            window.mode = WindowMode::Windowed;
-        }
+        apply_settings(
+            &mut commands,
+            &mut config_store,
+            &mut wireframe_config,
+            &mut window,
+            &settings,
+        );
 
-        wireframe_config.global = settings.developer.wireframe;
-        config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.colliders;
-        if settings.developer.nav_mesh {
-            commands.insert_resource(NavMeshesDebug(DARK_RED.into()))
-        } else {
-            commands.remove_resource::<NavMeshesDebug>();
-        }
-
-        commands.trigger(RebuildInputContexts);
+        settings.write(&game_paths.settings)
     }
 }
 
+fn apply_settings(
+    commands: &mut Commands,
+    config_store: &mut GizmoConfigStore,
+    wireframe_config: &mut WireframeConfig,
+    window: &mut Window,
+    settings: &Settings,
+) {
+    if settings.video.fullscreen {
+        window.mode = WindowMode::Fullscreen(MonitorSelection::Current);
+    } else {
+        window.mode = WindowMode::Windowed;
+    }
+
+    wireframe_config.global = settings.developer.wireframe;
+    config_store.config_mut::<PhysicsGizmos>().0.enabled = settings.developer.colliders;
+    if settings.developer.nav_mesh {
+        commands.insert_resource(NavMeshesDebug(DARK_RED.into()))
+    } else {
+        commands.remove_resource::<NavMeshesDebug>();
+    }
+
+    commands.trigger(RebuildInputContexts);
+}
+
 /// An event that applies the specified settings in the [`Settings`] resource.
-#[derive(Default, Event)]
+#[derive(Event)]
 pub struct SettingsApply;
 
 #[derive(Clone, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]

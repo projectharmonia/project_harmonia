@@ -4,27 +4,28 @@ pub mod editor;
 use std::io::Cursor;
 
 use bevy::{
-    ecs::entity::{EntityMapper, MapEntities},
+    ecs::{
+        entity::{EntityMapper, MapEntities},
+        reflect::ReflectCommandExt,
+    },
     prelude::*,
     reflect::serde::{ReflectDeserializer, ReflectSerializer},
-    utils::HashMap,
 };
 use bevy_replicon::{
-    core::ctx::{ClientSendCtx, ServerReceiveCtx},
+    core::event_registry::ctx::{ClientSendCtx, ServerReceiveCtx},
     prelude::*,
 };
 use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 
 use super::{
-    actor::{Actor, ActorBundle, ReflectActorBundle, SelectedActor},
-    navigation::NavigationBundle,
+    actor::{Actor, SelectedActor},
     WorldState,
 };
-use crate::{component_commands::ComponentCommandsExt, core::GameState};
+use crate::core::GameState;
 use building::BuildingPlugin;
-use editor::EditorPlugin;
+use editor::{EditorPlugin, FamilyScene, ReflectActorBundle};
 
 pub struct FamilyPlugin;
 
@@ -44,15 +45,17 @@ impl Plugin for FamilyPlugin {
             )
             .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
             .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
+            .add_observer(Self::record_new_members)
+            .add_observer(Self::update_members)
             .add_systems(OnEnter(WorldState::Family), Self::select)
-            .add_systems(OnExit(WorldState::Family), Self::deselect)
+            .add_systems(
+                OnExit(WorldState::Family),
+                Self::deselect.never_param_warn(),
+            )
             .add_systems(
                 PreUpdate,
-                (
-                    Self::update_members,
-                    Self::init,
-                    (Self::create, Self::delete).run_if(server_or_singleplayer),
-                )
+                (Self::create, Self::delete)
+                    .run_if(server_or_singleplayer)
                     .after(ClientSet::Receive)
                     .run_if(in_state(GameState::InGame)),
             );
@@ -60,51 +63,21 @@ impl Plugin for FamilyPlugin {
 }
 
 impl FamilyPlugin {
-    fn init(
+    fn record_new_members(
+        trigger: Trigger<OnAdd, Actor>,
         mut commands: Commands,
-        families: Query<Entity, (With<Family>, Without<StateScoped<GameState>>)>,
+        actors: Query<&Actor>,
     ) {
-        for entity in &families {
-            commands
-                .entity(entity)
-                .insert(StateScoped(GameState::InGame));
-        }
+        let actor = actors.get(trigger.entity()).unwrap();
+        commands.trigger_targets(FamilyMemberAdded(trigger.entity()), actor.family_entity);
     }
 
     fn update_members(
-        mut commands: Commands,
-        actors: Query<(Entity, &Actor), Changed<Actor>>,
+        trigger: Trigger<FamilyMemberAdded>,
         mut families: Query<&mut FamilyMembers>,
     ) {
-        let mut new_families = HashMap::<_, Vec<_>>::new();
-        for (actor_entity, actor) in &actors {
-            debug!("updating family for actor `{actor_entity}`");
-
-            // Remove previous.
-            for mut members in &mut families {
-                if let Some(index) = members.iter().position(|&entity| entity == actor_entity) {
-                    members.0.swap_remove(index);
-                    break;
-                }
-            }
-
-            if let Ok(mut family) = families.get_mut(actor.family_entity) {
-                family.0.push(actor_entity);
-            } else {
-                new_families
-                    .entry(actor.family_entity)
-                    .or_default()
-                    .push(actor_entity);
-            }
-        }
-
-        // Apply accumulated `FamilyMembers` at once in case there was no such component otherwise
-        // multiple `FamilyMembers` insertion with a single entity will overwrite each other.
-        for (family_entity, members) in new_families {
-            commands
-                .entity(family_entity)
-                .insert(FamilyMembers(members));
-        }
+        let mut members = families.get_mut(trigger.entity()).unwrap();
+        members.push(**trigger.event())
     }
 
     fn create(
@@ -114,20 +87,12 @@ impl FamilyPlugin {
     ) {
         for FromClient { client_id, event } in create_events.drain() {
             info!("creating new family");
-            let family_entity = commands
-                .spawn(FamilyBundle::new(event.scene.name, event.scene.budget))
-                .id();
+            let family_entity = commands.spawn((Family, Name::new(event.scene.name))).id();
             for actor in event.scene.actors {
                 commands.entity(event.city_entity).with_children(|parent| {
                     parent
-                        .spawn((
-                            ParentSync::default(),
-                            Transform::default(),
-                            NavigationBundle::default(),
-                            Actor { family_entity },
-                            Replicated,
-                        ))
-                        .insert_reflect_bundle(actor.into_reflect());
+                        .spawn(Actor { family_entity })
+                        .insert_reflect(actor.into_partial_reflect());
                 });
             }
             if event.select {
@@ -158,19 +123,18 @@ impl FamilyPlugin {
         }
     }
 
-    pub fn select(mut commands: Commands, actors: Query<&Actor, With<SelectedActor>>) {
-        let actor = actors.single();
-        info!("selecting `{}`", actor.family_entity);
-        commands.entity(actor.family_entity).insert(SelectedFamily);
+    pub fn select(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
+        info!("selecting `{}`", selected_actor.family_entity);
+        commands
+            .entity(selected_actor.family_entity)
+            .insert(SelectedFamily);
     }
 
-    fn deselect(mut commands: Commands, families: Query<&Actor, With<SelectedActor>>) {
-        if let Ok(actor) = families.get_single() {
-            info!("deselecting `{}`", actor.family_entity);
-            commands
-                .entity(actor.family_entity)
-                .remove::<SelectedFamily>();
-        }
+    fn deselect(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
+        info!("deselecting `{}`", selected_actor.family_entity);
+        commands
+            .entity(selected_actor.family_entity)
+            .remove::<SelectedFamily>();
     }
 }
 
@@ -181,10 +145,9 @@ fn serialize_family_spawn(
 ) -> bincode::Result<()> {
     DefaultOptions::new().serialize_into(&mut *cursor, &event.city_entity)?;
     DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.name)?;
-    DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.budget)?;
     DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.actors.len())?;
     for actor in &event.scene.actors {
-        let serializer = ReflectSerializer::new(actor.as_reflect(), ctx.registry);
+        let serializer = ReflectSerializer::new(actor.as_partial_reflect(), ctx.registry);
         DefaultOptions::new().serialize_into(&mut *cursor, &serializer)?;
     }
     DefaultOptions::new().serialize_into(cursor, &event.select)?;
@@ -198,43 +161,46 @@ fn deserialize_family_spawn(
 ) -> bincode::Result<FamilyCreate> {
     let city_entity = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let name = DefaultOptions::new().deserialize_from(&mut *cursor)?;
-    let budget = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let actors_count = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let mut actors = Vec::with_capacity(actors_count);
     for _ in 0..actors_count {
         let mut deserializer =
             bincode::Deserializer::with_reader(&mut *cursor, DefaultOptions::new());
-        let reflect = ReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
-        let type_info = reflect.get_represented_type_info().unwrap();
+        let partial_reflect =
+            ReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
+        let type_info = partial_reflect.get_represented_type_info().unwrap();
         let type_path = type_info.type_path();
         let registration = ctx
             .registry
             .get(type_info.type_id())
             .ok_or_else(|| ErrorKind::Custom(format!("{type_path} is not registered")))?;
+        let from_reflect = ctx
+            .registry
+            .get_type_data::<ReflectFromReflect>(registration.type_id())
+            .unwrap_or_else(|| panic!("`{type_path}` should reflect `FromReflect`"));
+        let reflect = from_reflect
+            .from_reflect(&*partial_reflect)
+            .ok_or_else(|| {
+                ErrorKind::Custom(format!("unable to convert `{type_path}` into actual type"))
+            })?;
         let reflect_actor = registration.data::<ReflectActorBundle>().ok_or_else(|| {
-            ErrorKind::Custom(format!("{type_path} doesn't have reflect(ActorBundle)"))
+            ErrorKind::Custom(format!("`{type_path}` doesn't reflect `ActorBundle`"))
         })?;
         let actor = reflect_actor
             .get_boxed(reflect)
-            .map_err(|_| ErrorKind::Custom(format!("{type_path} is not an ActorBundle")))?;
+            .map_err(|_| ErrorKind::Custom(format!("`{type_path}` is not an `ActorBundle`")))?;
         actors.push(actor);
     }
     let select = DefaultOptions::new().deserialize_from(cursor)?;
 
     Ok(FamilyCreate {
         city_entity,
-        scene: FamilyScene {
-            name,
-            budget,
-            actors,
-        },
+        scene: FamilyScene { name, actors },
         select,
     })
 }
 
-#[derive(
-    SubStates, Component, Clone, Copy, Debug, Eq, Hash, PartialEq, Display, EnumIter, Default,
-)]
+#[derive(SubStates, Component, Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, Default)]
 #[source(WorldState = WorldState::Family)]
 pub enum FamilyMode {
     #[default]
@@ -251,44 +217,45 @@ impl FamilyMode {
     }
 }
 
-#[derive(Bundle)]
-struct FamilyBundle {
-    name: Name,
-    budget: Budget,
-    family: Family,
-    replication: Replicated,
-}
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component)]
+#[require(
+    Name,
+    Budget,
+    Replicated,
+    FamilyMembers,
+    StateScoped<GameState>(|| StateScoped(GameState::InGame))
+)]
+pub struct Family;
 
-impl FamilyBundle {
-    fn new(name: String, budget: Budget) -> Self {
-        Self {
-            name: Name::new(name),
-            budget,
-            family: Family,
-            replication: Replicated,
-        }
+#[derive(Clone, Component, Copy, Debug, Deserialize, Reflect, Serialize, Deref)]
+#[reflect(Component)]
+pub struct Budget(u32);
+
+impl Default for Budget {
+    fn default() -> Self {
+        Self(20_000)
     }
 }
 
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component)]
-pub struct Family;
+/// Contains the entities of all the actors that belong to the family.
+///
+/// Automatically created and updated based on [`Actor`].
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct FamilyMembers(Vec<Entity>);
+
+/// Emitted when an actor spawned.
+///
+/// This additional level of indirection is needed because when an actor spawned from scene,
+/// family entity might not have `FamilyMembers` yet.
+#[derive(Event, Deref)]
+struct FamilyMemberAdded(Entity);
 
 /// Indicates locally controlled family.
 ///
 /// Inserted automatically on [`ActiveActor`] insertion.
 #[derive(Component)]
 pub struct SelectedFamily;
-
-#[derive(Clone, Component, Copy, Default, Debug, Deserialize, Reflect, Serialize, Deref)]
-#[reflect(Component)]
-pub struct Budget(u32);
-
-/// Contains the entities of all the actors that belong to the family.
-///
-/// Automatically created and updated based on [`ActorFamily`].
-#[derive(Component, Default, Deref)]
-pub struct FamilyMembers(Vec<Entity>);
 
 #[derive(Event)]
 pub struct FamilyCreate {
@@ -300,23 +267,6 @@ pub struct FamilyCreate {
 impl MapEntities for FamilyCreate {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
         self.city_entity = entity_mapper.map_entity(self.city_entity);
-    }
-}
-
-#[derive(Default, Resource)]
-pub struct FamilyScene {
-    pub name: String,
-    pub budget: Budget,
-    pub actors: Vec<Box<dyn ActorBundle>>,
-}
-
-impl FamilyScene {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            budget: Default::default(),
-            actors: Default::default(),
-        }
     }
 }
 

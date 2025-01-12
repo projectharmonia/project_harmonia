@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 use project_harmonia_base::game_world::family::building::{wall::WallTool, BuildingMode};
-use project_harmonia_widgets::{
-    button::{ExclusiveButton, TextButtonBundle, Toggled},
-    theme::Theme,
-};
+use project_harmonia_widgets::button::{ButtonKind, ExclusiveButton, Toggled};
 use strum::IntoEnumIterator;
 
 pub(super) struct WallsNodePlugin;
@@ -20,13 +17,13 @@ impl Plugin for WallsNodePlugin {
 
 impl WallsNodePlugin {
     fn set_wall_tool(
-        mut wall_tool: ResMut<NextState<WallTool>>,
+        mut commands: Commands,
         buttons: Query<(Ref<Toggled>, &WallTool), Changed<Toggled>>,
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
                 info!("changing wall tool to `{mode:?}`");
-                wall_tool.set(mode);
+                commands.set_state(mode);
             }
         }
     }
@@ -34,36 +31,32 @@ impl WallsNodePlugin {
     /// Sets tool to the last selected.
     ///
     /// Needed because on swithicng tab the tool resets, but selected button doesn't.
-    fn sync_wall_tool(
-        mut wall_tool: ResMut<NextState<WallTool>>,
-        buttons: Query<(&Toggled, &WallTool)>,
-    ) {
+    fn sync_wall_tool(mut commands: Commands, buttons: Query<(&Toggled, &WallTool)>) {
         for (toggled, &mode) in &buttons {
             if toggled.0 {
                 debug!("syncing wall tool to `{mode:?}`");
-                wall_tool.set(mode);
+                commands.set_state(mode);
             }
         }
     }
 }
 
-pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
+pub(super) fn setup(parent: &mut ChildBuilder) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                ..Default::default()
-            },
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
             ..Default::default()
         })
         .with_children(|parent| {
             for tool in WallTool::iter() {
-                parent.spawn((
-                    tool,
-                    ExclusiveButton,
-                    Toggled(tool == Default::default()),
-                    TextButtonBundle::symbol(theme, tool.glyph()),
-                ));
+                parent
+                    .spawn((
+                        tool,
+                        ButtonKind::Symbol,
+                        ExclusiveButton,
+                        Toggled(tool == Default::default()),
+                    ))
+                    .with_child(Text::new(tool.glyph()));
             }
         });
 }

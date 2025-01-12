@@ -16,14 +16,13 @@ use bevy_enhanced_input::prelude::*;
 
 use crate::{
     alpha_color::{AlphaColor, AlphaColorPlugin},
-    asset::info::object_info::ObjectInfo,
-    common_conditions::observer_in_state,
+    asset::manifest::object_manifest::ObjectManifest,
     game_world::{
         city::CityMode,
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::BuildingMode,
+        highlighting::HighlightDisabler,
         object::{Object, ObjectCommand},
-        picking::{Clicked, Picked},
         player_camera::{CameraCaster, PlayerCamera},
         Layer,
     },
@@ -40,153 +39,139 @@ impl Plugin for PlacingObjectPlugin {
         app.add_plugins(WallSnapPlugin)
             .add_plugins(SideSnapPlugin)
             .add_input_context::<PlacingObject>()
-            .observe(Self::pick)
-            .observe(Self::rotate)
-            .observe(Self::sell)
-            .observe(Self::cancel)
-            .observe(Self::confirm)
-            .observe(Self::ensure_single)
-            .add_systems(
-                PreUpdate,
-                Self::init
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
-            )
+            .add_observer(Self::pick)
+            .add_observer(Self::init)
+            .add_observer(Self::rotate)
+            .add_observer(Self::sell)
+            .add_observer(Self::cancel.never_param_warn())
+            .add_observer(Self::confirm)
             .add_systems(
                 Update,
                 Self::apply_position
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
+                    .never_param_warn()
+                    .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 PostUpdate,
                 Self::update_alpha
+                    .never_param_warn()
                     .before(AlphaColorPlugin::update_materials)
-                    .after(PhysicsSet::StepSimulation)
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
+                    .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
             );
     }
 }
 
 impl PlacingObjectPlugin {
     fn pick(
-        trigger: Trigger<Clicked>,
+        mut trigger: Trigger<Pointer<Click>>,
         city_mode: Option<Res<State<CityMode>>>,
         building_mode: Option<Res<State<BuildingMode>>>,
         mut commands: Commands,
         objects: Query<(Entity, &Parent), With<Object>>,
+        placing_objects: Query<(), With<PlacingObject>>,
     ) {
-        if !observer_in_state(city_mode, CityMode::Objects)
-            && !observer_in_state(building_mode, BuildingMode::Objects)
+        if trigger.event().button != PointerButton::Primary {
+            return;
+        }
+        if city_mode.is_some_and(|mode| **mode != CityMode::Objects)
+            && building_mode.is_some_and(|mode| **mode != BuildingMode::Objects)
         {
             return;
         }
-
-        if let Ok((object_entity, parent)) = objects.get(trigger.entity()) {
-            info!("picking object `{object_entity}`");
-            commands.entity(**parent).with_children(|parent| {
-                parent.spawn(PlacingObject::Moving(object_entity));
-            });
+        if !placing_objects.is_empty() {
+            return;
         }
+        let Ok((object_entity, parent)) = objects.get(trigger.entity()) else {
+            return;
+        };
+        trigger.propagate(false);
+
+        info!("picking object `{object_entity}`");
+        commands.entity(**parent).with_children(|parent| {
+            parent.spawn(PlacingObject::Moving(object_entity));
+        });
     }
 
     /// Inserts necessary components to trigger object initialization.
     fn init(
+        trigger: Trigger<OnAdd, PlacingObject>,
         mut commands: Commands,
         camera_caster: CameraCaster,
-        objects_info: Res<Assets<ObjectInfo>>,
+        objects_manifests: Res<Assets<ObjectManifest>>,
         asset_server: Res<AssetServer>,
-        cameras: Query<&Transform, With<PlayerCamera>>,
-        placing_objects: Query<(Entity, &PlacingObject), Without<PlacingObjectState>>,
-        objects: Query<(&Object, &Transform)>,
+        camera_transform: Single<&Transform, With<PlayerCamera>>,
+        mut placing_objects: Query<
+            (
+                &PlacingObject,
+                &mut SceneRoot,
+                &mut PlacingObjectState,
+                &mut Transform,
+            ),
+            Without<PlayerCamera>,
+        >,
+        objects: Query<(&Object, &Transform), Without<PlacingObject>>,
     ) {
-        let Some((placing_entity, &placing_object)) = placing_objects.iter().last() else {
-            return;
-        };
+        let (&placing_object, mut scene_root, mut state, mut transform) =
+            placing_objects.get_mut(trigger.entity()).unwrap();
 
-        debug!("initializing `{placing_object:?}` for `{placing_entity}`");
+        debug!(
+            "initializing `{placing_object:?}` for `{}`",
+            trigger.entity()
+        );
 
-        let (info, cursor_offset, rotation) = match placing_object {
+        let (manifest, cursor_offset, rotation) = match placing_object {
             PlacingObject::Spawning(id) => {
-                let info = objects_info.get(id).expect("info should be preloaded");
+                let manifest = objects_manifests.get(id).expect("info should be preloaded");
 
                 // Rotate towards camera and round to the nearest cardinal direction.
-                let transform = cameras.single();
-                let (y, ..) = transform.rotation.to_euler(EulerRot::YXZ);
+                let (y, ..) = camera_transform.rotation.to_euler(EulerRot::YXZ);
                 let rounded_angle = (y / FRAC_PI_2).round() * FRAC_PI_2 - PI;
                 let rotation = Quat::from_rotation_y(rounded_angle);
 
-                (info, Vec3::ZERO, rotation)
+                (manifest, Vec3::ZERO, rotation)
             }
             PlacingObject::Moving(object_entity) => {
                 let (object, &transform) = objects
                     .get(object_entity)
                     .expect("moving object should reference a valid object");
 
-                let info_handle = asset_server
-                    .get_handle(&object.0)
+                let manifest_handle = asset_server
+                    .get_handle(&**object)
                     .expect("info should be preloaded");
-                let info = objects_info.get(&info_handle).unwrap();
+                let manifest = objects_manifests.get(&manifest_handle).unwrap();
 
                 let cursor_offset = camera_caster
                     .intersect_ground()
                     .map(|point| transform.translation - point)
                     .unwrap_or(transform.translation);
 
-                (info, cursor_offset, transform.rotation)
+                (manifest, cursor_offset, transform.rotation)
             }
         };
 
-        let scene_handle: Handle<Scene> = asset_server.load(info.scene.clone());
-        let mut placing_entity = commands.entity(placing_entity);
-        placing_entity.insert((
-            Name::new("Placing object"),
-            StateScoped(BuildingMode::Objects),
-            StateScoped(CityMode::Objects),
-            Picked,
-            AlphaColor(WHITE.into()),
-            scene_handle,
-            PlacingObjectState::new(cursor_offset),
-            ObjectRotationLimit::default(),
-            SpatialBundle::from_transform(Transform::from_rotation(rotation)),
-            RigidBody::Kinematic,
-            CollisionLayers::new(
-                Layer::PlacingObject,
-                [
-                    Layer::Object,
-                    Layer::PlacingObject,
-                    Layer::Wall,
-                    Layer::PlacingWall,
-                ],
-            ),
-        ));
+        scene_root.0 = asset_server.load(manifest.scene.clone());
+        transform.rotation = rotation;
+        state.cursor_offset = cursor_offset;
+
+        let mut placing_entity = commands.entity(trigger.entity());
 
         if let PlacingObject::Moving(object_entity) = placing_object {
             placing_entity.insert(Ghost::new(object_entity).with_filters(Layer::PlacingObject));
         }
 
-        for component in &info.components {
+        for component in &manifest.components {
             placing_entity.insert_reflect(component.clone_value());
         }
-        for component in &info.place_components {
+        for component in &manifest.place_components {
             placing_entity.insert_reflect(component.clone_value());
         }
     }
 
     fn rotate(
         trigger: Trigger<Started<RotateObject>>,
-        city_mode: Option<Res<State<CityMode>>>,
-        building_mode: Option<Res<State<BuildingMode>>>,
-        mut placing_objects: Query<(&mut Transform, &ObjectRotationLimit)>,
+        placing_object: Single<(&mut Transform, &ObjectRotationLimit)>,
     ) {
-        if !observer_in_state(city_mode, CityMode::Objects)
-            && !observer_in_state(building_mode, BuildingMode::Objects)
-        {
-            return;
-        }
-
-        let Ok((mut transform, rotation_limit)) = placing_objects.get_single_mut() else {
-            return;
-        };
-
+        let (mut transform, rotation_limit) = placing_object.into_inner();
         let event = trigger.event();
         let angle = rotation_limit.unwrap_or(FRAC_PI_4) * event.value;
         transform.rotation *= Quat::from_axis_angle(Vec3::Y, angle);
@@ -198,68 +183,39 @@ impl PlacingObjectPlugin {
     }
 
     fn sell(
-        _trigger: Trigger<Completed<SellObject>>,
-        city_mode: Option<Res<State<CityMode>>>,
-        building_mode: Option<Res<State<BuildingMode>>>,
+        trigger: Trigger<Completed<SellObject>>,
         mut commands: Commands,
         mut history: CommandsHistory,
-        mut placing_objects: Query<(Entity, &PlacingObject, &mut Transform)>,
+        placing_object: Single<(&PlacingObject, &mut Transform)>,
         objects: Query<&Transform, Without<PlacingObject>>,
     ) {
-        if !observer_in_state(city_mode, CityMode::Objects)
-            && !observer_in_state(building_mode, BuildingMode::Objects)
-        {
-            return;
-        }
-
-        let Ok((placing_entity, &placing_object, mut transform)) = placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
-        info!("selling `{placing_object:?}`");
+        info!("selling `{:?}`", trigger.entity());
+        let (&placing_object, mut transform) = placing_object.into_inner();
         if let PlacingObject::Moving(entity) = placing_object {
             // Set original position until the deletion is confirmed.
             *transform = *objects.get(entity).expect("moving object should exist");
 
             let command_id = history.push_pending(ObjectCommand::Sell { entity });
             commands
-                .entity(placing_entity)
+                .entity(trigger.entity())
                 .insert(PendingDespawn { command_id })
                 .remove::<(PlacingObject, PlacingObjectState)>();
         } else {
-            commands.entity(placing_entity).despawn_recursive();
+            commands.entity(trigger.entity()).despawn_recursive();
         }
     }
 
-    fn cancel(
-        _trigger: Trigger<Completed<CancelObject>>,
-        city_mode: Option<Res<State<CityMode>>>,
-        building_mode: Option<Res<State<BuildingMode>>>,
-        mut commands: Commands,
-        placing_objects: Query<Entity, With<PlacingObject>>,
-    ) {
-        if !observer_in_state(city_mode, CityMode::Objects)
-            && !observer_in_state(building_mode, BuildingMode::Objects)
-        {
-            return;
-        }
-
-        if let Ok(placing_entity) = placing_objects.get_single() {
-            info!("cancelling placing");
-            commands.entity(placing_entity).despawn_recursive();
-        }
+    fn cancel(trigger: Trigger<Completed<CancelObject>>, mut commands: Commands) {
+        info!("cancelling placing");
+        commands.entity(trigger.entity()).despawn_recursive();
     }
 
     fn confirm(
-        _trigger: Trigger<Completed<ConfirmObject>>,
-        city_mode: Option<Res<State<CityMode>>>,
-        building_mode: Option<Res<State<BuildingMode>>>,
+        trigger: Trigger<Completed<ConfirmObject>>,
         mut commands: Commands,
         mut history: CommandsHistory,
         asset_server: Res<AssetServer>,
-        placing_objects: Query<(
-            Entity,
+        placing_object: Single<(
             &Parent,
             &Transform,
             &PlacingObject,
@@ -267,17 +223,7 @@ impl PlacingObjectPlugin {
             &CollidingEntities,
         )>,
     ) {
-        if !observer_in_state(city_mode, CityMode::Objects)
-            && !observer_in_state(building_mode, BuildingMode::Objects)
-        {
-            return;
-        }
-
-        let Ok((entity, parent, translation, &placing_object, state, colliding_entities)) =
-            placing_objects.get_single()
-        else {
-            return;
-        };
+        let (parent, translation, &placing_object, state, colliding_entities) = *placing_object;
 
         if !state.allowed_place || !colliding_entities.is_empty() {
             return;
@@ -285,11 +231,11 @@ impl PlacingObjectPlugin {
 
         let command_id = match placing_object {
             PlacingObject::Spawning(id) => {
-                let info_path = asset_server
+                let manifest_path = asset_server
                     .get_path(id)
-                    .expect("info should always come from file");
+                    .expect("manifest should always come from file");
                 history.push_pending(ObjectCommand::Buy {
-                    info_path: info_path.into_owned(),
+                    manifest_path: manifest_path.into_owned(),
                     city_entity: **parent,
                     translation: translation.translation,
                     rotation: translation.rotation,
@@ -303,7 +249,7 @@ impl PlacingObjectPlugin {
         };
 
         commands
-            .entity(entity)
+            .entity(trigger.entity())
             .insert(PendingDespawn { command_id })
             .remove::<(PlacingObject, PlacingObjectState)>();
 
@@ -312,51 +258,54 @@ impl PlacingObjectPlugin {
 
     fn apply_position(
         camera_caster: CameraCaster,
-        mut placing_objects: Query<(&mut Transform, &PlacingObjectState)>,
+        placing_object: Single<(&mut Transform, &PlacingObjectState)>,
     ) {
-        if let Ok((mut transform, state)) = placing_objects.get_single_mut() {
-            if let Some(point) = camera_caster.intersect_ground() {
-                transform.translation = point + state.cursor_offset;
-            }
+        let (mut transform, state) = placing_object.into_inner();
+        if let Some(point) = camera_caster.intersect_ground() {
+            transform.translation = point + state.cursor_offset;
         }
     }
 
     fn update_alpha(
-        mut placing_objects: Query<
+        placing_object: Single<
             (&mut AlphaColor, &PlacingObjectState, &CollidingEntities),
             Or<(Changed<CollidingEntities>, Changed<PlacingObjectState>)>,
         >,
     ) {
-        let Ok((mut alpha, state, colliding_entities)) = placing_objects.get_single_mut() else {
-            return;
-        };
-
+        let (mut alpha, state, colliding_entities) = placing_object.into_inner();
         if state.allowed_place && colliding_entities.is_empty() {
             **alpha = WHITE.into();
         } else {
             **alpha = RED.into();
         };
     }
-
-    fn ensure_single(
-        trigger: Trigger<OnAdd, PlacingObject>,
-        mut commands: Commands,
-        placing_objects: Query<Entity, With<PlacingObject>>,
-    ) {
-        for entity in placing_objects
-            .iter()
-            .filter(|&entity| entity != trigger.entity())
-        {
-            debug!("removing previous placing object `{entity}`");
-            commands.entity(entity).despawn_recursive();
-        }
-    }
 }
 
 /// Marks an entity as an object that should be moved with cursor to preview spawn position.
 #[derive(Debug, Clone, Copy, Component)]
+#[require(
+    Name(|| Name::new("Placing object")),
+    PlacingObjectState,
+    ObjectRotationLimit,
+    StateScoped::<BuildingMode>(|| StateScoped(BuildingMode::Objects)),
+    StateScoped::<CityMode>(|| StateScoped(CityMode::Objects)),
+    HighlightDisabler,
+    AlphaColor(|| AlphaColor(WHITE.into())),
+    SceneRoot,
+    RigidBody(|| RigidBody::Kinematic),
+    CollidingEntities,
+    CollisionLayers(|| CollisionLayers::new(
+        Layer::PlacingObject,
+        [
+            Layer::Object,
+            Layer::PlacingObject,
+            Layer::Wall,
+            Layer::PlacingWall,
+        ],
+    )),
+)]
 pub enum PlacingObject {
-    Spawning(AssetId<ObjectInfo>),
+    Spawning(AssetId<ObjectManifest>),
     Moving(Entity),
 }
 
@@ -368,19 +317,19 @@ impl InputContext for PlacingObject {
         let settings = world.resource::<Settings>();
 
         ctx.bind::<RotateObject>().to((
-            Biderectional {
+            Bidirectional {
                 positive: &settings.keyboard.rotate_left,
                 negative: &settings.keyboard.rotate_right,
             },
             MouseButton::Right,
-            GamepadButtonType::West,
+            GamepadButton::West,
         ));
         ctx.bind::<SellObject>()
-            .to((&settings.keyboard.delete, GamepadButtonType::North));
+            .to((&settings.keyboard.delete, GamepadButton::North));
         ctx.bind::<CancelObject>()
-            .to((KeyCode::Escape, GamepadButtonType::East));
+            .to((KeyCode::Escape, GamepadButton::East));
         ctx.bind::<ConfirmObject>()
-            .to((MouseButton::Left, GamepadButtonType::South));
+            .to((MouseButton::Left, GamepadButton::South));
 
         ctx
     }
@@ -419,10 +368,10 @@ struct PlacingObjectState {
     allowed_place: bool,
 }
 
-impl PlacingObjectState {
-    fn new(cursor_offset: Vec3) -> Self {
+impl Default for PlacingObjectState {
+    fn default() -> Self {
         Self {
-            cursor_offset,
+            cursor_offset: Default::default(),
             allowed_place: true,
         }
     }

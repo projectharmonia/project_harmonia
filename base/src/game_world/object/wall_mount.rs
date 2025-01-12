@@ -1,6 +1,6 @@
 use avian3d::prelude::*;
 use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
+    ecs::{component::ComponentId, world::DeferredWorld},
     prelude::*,
 };
 
@@ -19,7 +19,7 @@ pub(super) struct WallMountPlugin;
 impl Plugin for WallMountPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<WallMount>()
-            .add_systems(Update, Self::init.run_if(in_state(GameState::InGame)))
+            .add_observer(Self::init)
             .add_systems(
                 PostUpdate,
                 Self::update_apertures
@@ -30,16 +30,13 @@ impl Plugin for WallMountPlugin {
 }
 
 impl WallMountPlugin {
-    /// Additional intializaiton for wall mount objects.
-    fn init(
-        mut commands: Commands,
-        mut objects: Query<(Entity, &mut CollisionLayers), (With<WallMount>, Without<ObjectWall>)>,
-    ) {
-        for (entity, mut collision_layers) in &mut objects {
-            debug!("initializing wall mount for `{entity}`");
-            collision_layers.filters.remove(Layer::Wall);
-            commands.entity(entity).insert(ObjectWall::default());
-        }
+    fn init(trigger: Trigger<OnAdd, WallMount>, mut objects: Query<&mut CollisionLayers>) {
+        let Ok(mut collision_layers) = objects.get_mut(trigger.entity()) else {
+            error!("wall mounts should always have collision");
+            return;
+        };
+
+        collision_layers.filters.remove(Layer::Wall);
     }
 
     /// Updates [`Apertures`] based on spawned objects.
@@ -137,6 +134,7 @@ impl WallMountPlugin {
 /// A component that marks that entity can be placed only on walls or inside them.
 #[derive(Component, Reflect)]
 #[reflect(Component)]
+#[require(ObjectWall)]
 pub(crate) struct WallMount {
     /// Points for an aperture in the wall.
     ///
@@ -148,20 +146,17 @@ pub(crate) struct WallMount {
     hole: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Component)]
+#[component(on_remove = Self::on_remove)]
 struct ObjectWall(Option<Entity>);
 
-impl Component for ObjectWall {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(|mut world, entity, _| {
-            let object_wall = world.get::<Self>(entity).unwrap();
-            if let Some(wall_entity) = object_wall.0 {
-                if let Some(mut apertures) = world.get_mut::<Apertures>(wall_entity) {
-                    apertures.remove(entity);
-                }
+impl ObjectWall {
+    fn on_remove(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
+        let object_wall = world.get::<Self>(entity).unwrap();
+        if let Some(wall_entity) = object_wall.0 {
+            if let Some(mut apertures) = world.get_mut::<Apertures>(wall_entity) {
+                apertures.remove(entity);
             }
-        });
+        }
     }
 }

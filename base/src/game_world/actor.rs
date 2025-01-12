@@ -3,19 +3,26 @@ pub(super) mod human;
 pub mod needs;
 pub mod task;
 
+use std::fmt::Write;
+
 use avian3d::prelude::*;
 use bevy::{
     asset::AssetPath,
     ecs::{entity::MapEntities, reflect::ReflectMapEntities},
     prelude::*,
 };
-use bevy_mod_outline::OutlineBundle;
+use bevy_mod_outline::OutlineVolume;
 use bevy_replicon::prelude::*;
 use num_enum::IntoPrimitive;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 
-use super::{highlighting::OutlineHighlightingExt, WorldState};
+use super::{
+    family::editor::{EditorFirstName, EditorLastName, EditorSex},
+    highlighting::HIGHLIGHTING_VOLUME,
+    navigation::Navigation,
+    Layer, WorldState,
+};
 use crate::{
     asset::collection::{AssetCollection, Collection},
     core::GameState,
@@ -23,7 +30,7 @@ use crate::{
 use animation_state::{AnimationState, AnimationStatePlugin};
 use human::HumanPlugin;
 use needs::NeedsPlugin;
-use task::TaskPlugin;
+use task::{TaskGroups, TaskPlugin};
 
 pub(super) struct ActorPlugin;
 
@@ -41,13 +48,9 @@ impl Plugin for ActorPlugin {
             .replicate::<FirstName>()
             .replicate::<Sex>()
             .replicate::<LastName>()
-            .observe(Self::ensure_single_selection)
-            .add_systems(OnExit(WorldState::Family), Self::remove_selection)
             .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
+                OnExit(WorldState::Family),
+                Self::remove_selection.never_param_warn(),
             )
             .add_systems(
                 PostUpdate,
@@ -60,76 +63,65 @@ const ACTOR_HEIGHT: f32 = 1.8;
 pub(super) const ACTOR_RADIUS: f32 = 0.4;
 
 impl ActorPlugin {
-    fn init(
-        mut commands: Commands,
-        actors: Query<Entity, (With<Actor>, Without<GlobalTransform>)>,
-    ) {
-        for entity in &actors {
-            debug!("initializing actor `{entity}`");
-            commands.entity(entity).insert((
-                AnimationState::default(),
-                GlobalTransform::default(),
-                VisibilityBundle::default(),
-                RigidBody::Kinematic,
-                Collider::capsule_endpoints(
-                    ACTOR_RADIUS,
-                    Vec3::Y * ACTOR_RADIUS,
-                    Vec3::Y * (ACTOR_HEIGHT - ACTOR_RADIUS),
-                ),
-                OutlineBundle::highlighting(),
-            ));
-        }
-    }
-
     fn update_names(
-        mut commands: Commands,
         mut changed_names: Query<
-            (Entity, &FirstName, &LastName),
+            (Entity, &FirstName, &LastName, &mut Name),
             Or<(Changed<FirstName>, Changed<LastName>)>,
         >,
     ) {
-        for (entity, first_name, last_name) in &mut changed_names {
+        for (entity, first_name, last_name, mut name) in &mut changed_names {
             debug!("updating full name for `{entity}`");
-            let mut entity = commands.entity(entity);
-            entity.insert(Name::new(format!("{} {}", first_name.0, last_name.0)));
+            name.mutate(|name| {
+                name.clear();
+                write!(name, "{} {}", first_name.0, last_name.0).unwrap();
+            });
         }
     }
 
-    fn remove_selection(mut commands: Commands, actors: Query<Entity, With<SelectedActor>>) {
-        if let Ok(entity) = actors.get_single() {
-            info!("deselecting actor `{entity}`");
-            commands.entity(entity).remove::<SelectedActor>();
-        }
-    }
-
-    fn ensure_single_selection(
-        trigger: Trigger<OnAdd, SelectedActor>,
+    fn remove_selection(
         mut commands: Commands,
-        actors: Query<Entity, With<SelectedActor>>,
+        selected_entity: Single<Entity, With<SelectedActor>>,
     ) {
-        for actor_entity in actors.iter().filter(|&entity| entity != trigger.entity()) {
-            debug!("deselecting previous actor `{actor_entity}`");
-            commands.entity(actor_entity).remove::<SelectedActor>();
-        }
+        info!("deselecting actor `{}`", *selected_entity);
+        commands.entity(*selected_entity).remove::<SelectedActor>();
     }
 }
 
-#[derive(Clone, Component, Default, Deref, Deserialize, Reflect, Serialize)]
+#[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub struct FirstName(pub String);
 
-#[derive(Clone, Component, Default, Deref, Deserialize, Reflect, Serialize)]
+impl From<EditorFirstName> for FirstName {
+    fn from(value: EditorFirstName) -> Self {
+        Self(value.0)
+    }
+}
+
+#[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
 pub struct LastName(pub String);
 
-#[derive(
-    Display, Clone, EnumIter, Component, Copy, Default, Deserialize, PartialEq, Reflect, Serialize,
-)]
+impl From<EditorLastName> for LastName {
+    fn from(value: EditorLastName) -> Self {
+        Self(value.0)
+    }
+}
+
+#[derive(Clone, Component, Copy, Default, Deserialize, PartialEq, Reflect, Serialize, Debug)]
 #[reflect(Component)]
 pub enum Sex {
     #[default]
     Male,
     Female,
+}
+
+impl From<EditorSex> for Sex {
+    fn from(value: EditorSex) -> Self {
+        match value {
+            EditorSex::Male => Self::Male,
+            EditorSex::Female => Self::Female,
+        }
+    }
 }
 
 /// Indicates locally controlled actor.
@@ -139,6 +131,29 @@ pub struct SelectedActor;
 /// Marks entity as an actor.
 #[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component, MapEntities)]
+#[require(
+    FirstName,
+    LastName,
+    Sex,
+    Replicated,
+    ParentSync,
+    Navigation,
+    Name,
+    AnimationState,
+    SceneRoot,
+    ActorTaskGroups,
+    RigidBody(|| RigidBody::Kinematic),
+    Collider(|| Collider::capsule_endpoints(
+        ACTOR_RADIUS,
+        Vec3::Y * ACTOR_RADIUS,
+        Vec3::Y * (ACTOR_HEIGHT - ACTOR_RADIUS),
+    )),
+    CollisionLayers(|| CollisionLayers::new(
+        Layer::Actor,
+        LayerMask::NONE,
+    )),
+    OutlineVolume(|| HIGHLIGHTING_VOLUME)
+)]
 pub struct Actor {
     pub family_entity: Entity,
 }
@@ -157,11 +172,8 @@ impl MapEntities for Actor {
     }
 }
 
-#[reflect_trait]
-pub trait ActorBundle: Reflect {
-    #[allow(dead_code)]
-    fn glyph(&self) -> &'static str;
-}
+#[derive(Component, Default, Deref, DerefMut)]
+struct ActorTaskGroups(TaskGroups);
 
 #[derive(Clone, Copy, Debug, EnumIter, IntoPrimitive)]
 #[repr(usize)]

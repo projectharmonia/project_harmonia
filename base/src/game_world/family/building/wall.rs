@@ -6,7 +6,7 @@ use avian3d::prelude::*;
 use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 
 use super::BuildingMode;
 use crate::{
@@ -36,12 +36,7 @@ impl Plugin for WallPlugin {
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<CommandRequest<WallCommand>>(ChannelKind::Unordered)
-            .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            )
+            .add_observer(Self::init)
             .add_systems(
                 PostUpdate,
                 (
@@ -57,35 +52,15 @@ impl Plugin for WallPlugin {
 
 impl WallPlugin {
     fn init(
-        mut commands: Commands,
+        trigger: Trigger<OnAdd, Wall>,
         wall_material: Res<WallMaterial>,
         mut meshes: ResMut<Assets<Mesh>>,
-        walls: Query<Entity, (With<Wall>, Without<Handle<Mesh>>)>,
+        mut walls: Query<(&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>)>,
     ) {
-        for entity in &walls {
-            debug!("initializing wall `{entity}`");
-
-            commands.entity(entity).insert((
-                Name::new("Wall"),
-                Apertures::default(),
-                Collider::default(),
-                CollisionLayers::new(
-                    Layer::Wall,
-                    [
-                        Layer::Object,
-                        Layer::PlacingObject,
-                        Layer::Road,
-                        Layer::PlacingRoad,
-                    ],
-                ),
-                Obstacle,
-                PbrBundle {
-                    material: wall_material.0.clone(),
-                    mesh: meshes.add(DynamicMesh::create_empty()),
-                    ..Default::default()
-                },
-            ));
-        }
+        debug!("initializing wall `{}`", trigger.entity());
+        let (mut mesh, mut material) = walls.get_mut(trigger.entity()).unwrap();
+        **mesh = meshes.add(DynamicMesh::create_empty());
+        *material = wall_material.0.clone();
     }
 
     pub(crate) fn update_meshes(
@@ -93,7 +68,7 @@ impl WallPlugin {
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_walls: Query<
             (
-                &Handle<Mesh>,
+                &Mesh3d,
                 Ref<Segment>,
                 &SegmentConnections,
                 &mut Apertures,
@@ -142,7 +117,7 @@ impl WallPlugin {
                 } => {
                     info!("`{client_id:?}` creates wall");
                     commands.entity(city_entity).with_children(|parent| {
-                        let entity = parent.spawn(WallBundle::new(segment)).id();
+                        let entity = parent.spawn((Wall, segment)).id();
                         confirmation.entity = Some(entity);
                     });
                 }
@@ -172,18 +147,16 @@ impl WallPlugin {
 }
 
 #[derive(Resource)]
-struct WallMaterial(Handle<StandardMaterial>);
+struct WallMaterial(MeshMaterial3d<StandardMaterial>);
 
 impl FromWorld for WallMaterial {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
-        Self(asset_server.load("base/walls/brick/brick.ron"))
+        Self(asset_server.load("base/walls/brick/brick.ron").into())
     }
 }
 
-#[derive(
-    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
-)]
+#[derive(Clone, Component, Copy, Debug, Default, EnumIter, Eq, Hash, PartialEq, SubStates)]
 #[source(BuildingMode = BuildingMode::Walls)]
 pub enum WallTool {
     #[default]
@@ -200,27 +173,28 @@ impl WallTool {
     }
 }
 
-#[derive(Bundle)]
-struct WallBundle {
-    wall: Wall,
-    segment: Segment,
-    parent_sync: ParentSync,
-    replication: Replicated,
-}
-
-impl WallBundle {
-    fn new(segment: Segment) -> Self {
-        Self {
-            wall: Wall,
-            segment,
-            parent_sync: Default::default(),
-            replication: Replicated,
-        }
-    }
-}
-
 #[derive(Component, Deserialize, Reflect, Serialize)]
 #[reflect(Component)]
+#[require(
+    Name(|| Name::new("Wall")),
+    Segment,
+    Apertures,
+    ParentSync,
+    Replicated,
+    Collider,
+    Obstacle,
+    Mesh3d,
+    MeshMaterial3d::<StandardMaterial>,
+    CollisionLayers(|| CollisionLayers::new(
+        Layer::Wall,
+        [
+            Layer::Object,
+            Layer::PlacingObject,
+            Layer::Road,
+            Layer::PlacingRoad,
+        ],
+    )),
+)]
 pub(crate) struct Wall;
 
 /// Dynamically updated component with precalculated apertures for wall objects.

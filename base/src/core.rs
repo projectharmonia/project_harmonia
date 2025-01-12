@@ -12,6 +12,7 @@ impl Plugin for CorePlugin {
 #[derive(States, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum GameState {
     #[default]
+    ManifestsLoading,
     Menu,
     InGame,
 }

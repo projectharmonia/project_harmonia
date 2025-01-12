@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 use bevy::prelude::*;
-use bevy_replicon_renet::renet::transport::{
+use bevy_replicon_renet::netcode::{
     ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication,
     ServerConfig,
 };

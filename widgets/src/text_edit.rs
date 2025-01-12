@@ -1,6 +1,7 @@
-use bevy::{prelude::*, ui::UiSystem};
+use bevy::prelude::*;
 use bevy_simple_text_input::{
-    TextInputBundle, TextInputCursorPos, TextInputInactive, TextInputTextStyle, TextInputValue,
+    TextInput, TextInputCursorPos, TextInputInactive, TextInputTextColor, TextInputTextFont,
+    TextInputValue,
 };
 
 use super::theme::Theme;
@@ -10,64 +11,78 @@ pub(super) struct TextEditPlugin;
 
 impl Plugin for TextEditPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, Self::update_borders_color.after(UiSystem::Focus));
+        app.add_observer(Self::theme)
+            .add_systems(PostUpdate, Self::update_border_colors);
     }
 }
 
 impl TextEditPlugin {
-    fn update_borders_color(
+    fn theme(
+        trigger: Trigger<OnAdd, TextEdit>,
+        mut commands: Commands,
         theme: Res<Theme>,
-        interactions: Query<(Entity, &Interaction), Changed<Interaction>>,
-        mut text_inputs: Query<(Entity, &mut TextInputInactive, &mut BorderColor)>,
+        mut text: Query<(
+            &mut Node,
+            &mut BackgroundColor,
+            &mut TextInputTextColor,
+            &mut TextInputTextFont,
+            &mut TextInputCursorPos,
+            &mut TextInputInactive,
+            &TextInputValue,
+        )>,
+        other_edits: Query<(), With<TextEdit>>,
     ) {
-        for (interaction_entity, interaction) in &interactions {
-            if *interaction == Interaction::Pressed {
-                for (input_entity, mut inactive, mut border_color) in &mut text_inputs {
-                    if input_entity == interaction_entity {
-                        inactive.0 = false;
-                        *border_color = theme.text_edit.active_border.into();
-                    } else {
-                        inactive.0 = true;
-                        *border_color = theme.text_edit.inactive_border.into();
-                    }
-                }
+        let (
+            mut node,
+            mut background,
+            mut text_color,
+            mut text_font,
+            mut cursor_pos,
+            mut inactive,
+            text,
+        ) = text.get_mut(trigger.entity()).unwrap();
+
+        node.min_width = theme.text_edit.min_width;
+        node.border = theme.text_edit.border;
+        node.padding = theme.text_edit.padding;
+        *background = theme.text_edit.background_color;
+        text_font.0.font = theme.text_edit.font.clone();
+        text_font.0.font_size = theme.text_edit.font_size;
+        text_color.0 = theme.text_edit.text_color;
+        cursor_pos.0 = text.0.len();
+
+        // Activate if the input is single.
+        // TODO 0.16: iterate only onver neighbors when hierarchy will be available.
+        inactive.0 = other_edits.get_single().is_err();
+        commands.entity(trigger.entity()).observe(Self::activate);
+    }
+
+    fn update_border_colors(
+        theme: Res<Theme>,
+        mut text_inputs: Query<(&TextInputInactive, &mut BorderColor), Changed<TextInputInactive>>,
+    ) {
+        for (inactive, mut border_color) in &mut text_inputs {
+            *border_color = if inactive.0 {
+                theme.text_edit.inactive_border
+            } else {
+                theme.text_edit.active_border
+            };
+        }
+    }
+
+    fn activate(trigger: Trigger<Pointer<Click>>, mut text_inputs: Query<&mut TextInputInactive>) {
+        // Deactivate others.
+        for mut inactive in &mut text_inputs {
+            if !inactive.0 {
+                inactive.0 = true;
             }
         }
+
+        let mut inactive = text_inputs.get_mut(trigger.entity()).unwrap();
+        inactive.0 = false;
     }
 }
 
-#[derive(Bundle)]
-pub struct TextEditBundle {
-    node_bundle: NodeBundle,
-    text_input_bundle: TextInputBundle,
-}
-
-impl TextEditBundle {
-    pub fn new(theme: &Theme, text: impl Into<String>) -> Self {
-        let text = text.into();
-        Self {
-            node_bundle: NodeBundle {
-                style: theme.text_edit.style.clone(),
-                border_color: theme.text_edit.active_border.into(),
-                background_color: theme.text_edit.background_color.into(),
-                ..Default::default()
-            },
-            text_input_bundle: TextInputBundle {
-                text_style: TextInputTextStyle(theme.text_edit.text.clone()),
-                cursor_pos: TextInputCursorPos(text.len()),
-                value: TextInputValue(text),
-                ..Default::default()
-            },
-        }
-    }
-
-    pub fn empty(theme: &Theme) -> Self {
-        Self::new(theme, String::new())
-    }
-
-    pub fn inactive(mut self, theme: &Theme) -> Self {
-        self.text_input_bundle.inactive.0 = true;
-        self.node_bundle.border_color = theme.text_edit.inactive_border.into();
-        self
-    }
-}
+#[derive(Component, Default)]
+#[require(TextInput, TextInputCursorPos)]
+pub struct TextEdit;

@@ -5,54 +5,84 @@ use std::{
 };
 
 use bevy::{
-    asset::AssetPath,
+    asset::{io::Reader, AssetLoader, AssetPath, AsyncReadExt, LoadContext},
     prelude::*,
-    reflect::{serde::TypedReflectDeserializer, TypeRegistry},
-    scene::ron::{self, error::SpannedResult},
+    reflect::{serde::TypedReflectDeserializer, TypeRegistry, TypeRegistryArc},
+    scene::ron,
 };
 use serde::{
     de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer,
 };
-use strum::{Display, IntoStaticStr, VariantNames};
+use strum::{IntoStaticStr, VariantNames};
 
-use super::{GeneralInfo, Info, ReflectMapPaths};
+use super::{GeneralManifest, ManifestFormat, MapPaths, ReflectMapPaths};
 use crate::asset;
 
-#[derive(TypePath, Asset)]
-pub struct ObjectInfo {
-    pub general: GeneralInfo,
-    pub scene: AssetPath<'static>,
-    pub category: ObjectCategory,
-    pub preview_translation: Vec3,
-    pub components: Vec<Box<dyn Reflect>>,
-    pub place_components: Vec<Box<dyn Reflect>>,
-    pub spawn_components: Vec<Box<dyn Reflect>>,
+pub struct ObjectLoader {
+    registry: TypeRegistryArc,
 }
 
-impl Info for ObjectInfo {
-    const EXTENSION: &'static str = "object.ron";
-
-    fn from_str(
-        data: &str,
-        options: ron::Options,
-        registry: &TypeRegistry,
-        dir: Option<&Path>,
-    ) -> SpannedResult<Self> {
-        let mut info = options.from_str_seed(data, ObjectInfoDeserializer { registry, dir })?;
-        if let Some(dir) = dir {
-            asset::change_parent_dir(&mut info.scene, dir);
+impl FromWorld for ObjectLoader {
+    fn from_world(world: &mut World) -> Self {
+        Self {
+            registry: world.resource::<AppTypeRegistry>().0.clone(),
         }
-
-        Ok(info)
     }
 }
 
-/// Fields of [`ObjectInfo`] for manual deserialization.
+impl AssetLoader for ObjectLoader {
+    type Asset = ObjectManifest;
+    type Settings = ();
+    type Error = anyhow::Error;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut string = String::new();
+        reader.read_to_string(&mut string).await?;
+
+        let dir = load_context.path().parent();
+        let seed = ObjectManifestDeserializer {
+            registry: &self.registry.read(),
+            dir,
+        };
+
+        let manifest = ron::Options::default().from_str_seed(&string, seed)?;
+
+        Ok(manifest)
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        ManifestFormat::Object.extensions()
+    }
+}
+
+#[derive(TypePath, Asset)]
+pub struct ObjectManifest {
+    pub general: GeneralManifest,
+    pub scene: AssetPath<'static>,
+    pub category: ObjectCategory,
+    pub preview_translation: Vec3,
+    pub components: Vec<Box<dyn PartialReflect>>,
+    pub place_components: Vec<Box<dyn PartialReflect>>,
+    pub spawn_components: Vec<Box<dyn PartialReflect>>,
+}
+
+impl MapPaths for ObjectManifest {
+    fn map_paths(&mut self, dir: &Path) {
+        asset::change_parent_dir(&mut self.scene, dir);
+    }
+}
+
+/// Fields of [`ObjectManifest`] for manual deserialization.
 #[derive(Deserialize, VariantNames, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 #[serde(field_identifier, rename_all = "snake_case")]
-enum ObjectInfoField {
+enum ObjectManifestField {
     General,
     Scene,
     Category,
@@ -62,7 +92,7 @@ enum ObjectInfoField {
     SpawnComponents,
 }
 
-#[derive(Clone, Component, Copy, Deserialize, Display, PartialEq)]
+#[derive(Clone, Component, Copy, Deserialize, PartialEq)]
 pub enum ObjectCategory {
     Rocks,
     Foliage,
@@ -109,25 +139,25 @@ impl ObjectCategory {
     }
 }
 
-pub(super) struct ObjectInfoDeserializer<'a> {
-    registry: &'a TypeRegistry,
-    dir: Option<&'a Path>,
+pub(super) struct ObjectManifestDeserializer<'a> {
+    pub(super) registry: &'a TypeRegistry,
+    pub(super) dir: Option<&'a Path>,
 }
 
-impl<'de> DeserializeSeed<'de> for ObjectInfoDeserializer<'_> {
-    type Value = ObjectInfo;
+impl<'de> DeserializeSeed<'de> for ObjectManifestDeserializer<'_> {
+    type Value = ObjectManifest;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_struct(
             any::type_name::<Self::Value>(),
-            ObjectInfoField::VARIANTS,
+            ObjectManifestField::VARIANTS,
             self,
         )
     }
 }
 
-impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
-    type Value = ObjectInfo;
+impl<'de> Visitor<'de> for ObjectManifestDeserializer<'_> {
+    type Value = ObjectManifest;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -143,56 +173,62 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
         let mut spawn_components = None;
         while let Some(key) = map.next_key()? {
             match key {
-                ObjectInfoField::General => {
+                ObjectManifestField::General => {
                     if general.is_some() {
-                        return Err(de::Error::duplicate_field(ObjectInfoField::General.into()));
+                        return Err(de::Error::duplicate_field(
+                            ObjectManifestField::General.into(),
+                        ));
                     }
                     general = Some(map.next_value()?);
                 }
-                ObjectInfoField::Scene => {
+                ObjectManifestField::Scene => {
                     if scene.is_some() {
-                        return Err(de::Error::duplicate_field(ObjectInfoField::General.into()));
+                        return Err(de::Error::duplicate_field(
+                            ObjectManifestField::General.into(),
+                        ));
                     }
                     scene = Some(map.next_value()?);
                 }
-                ObjectInfoField::Category => {
+                ObjectManifestField::Category => {
                     if category.is_some() {
-                        return Err(de::Error::duplicate_field(ObjectInfoField::Category.into()));
+                        return Err(de::Error::duplicate_field(
+                            ObjectManifestField::Category.into(),
+                        ));
                     }
                     category = Some(map.next_value()?);
                 }
-                ObjectInfoField::PreviewTranslation => {
+                ObjectManifestField::PreviewTranslation => {
                     if preview_translation.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectInfoField::PreviewTranslation.into(),
+                            ObjectManifestField::PreviewTranslation.into(),
                         ));
                     }
                     preview_translation = Some(map.next_value()?);
                 }
-                ObjectInfoField::Components => {
+                ObjectManifestField::Components => {
                     if components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectInfoField::Components.into(),
+                            ObjectManifestField::Components.into(),
                         ));
                     }
                     components = Some(
                         map.next_value_seed(ComponentsDeserializer::new(self.registry, self.dir))?,
                     );
                 }
-                ObjectInfoField::PlaceComponents => {
+                ObjectManifestField::PlaceComponents => {
                     if place_components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectInfoField::PlaceComponents.into(),
+                            ObjectManifestField::PlaceComponents.into(),
                         ));
                     }
                     place_components = Some(
                         map.next_value_seed(ComponentsDeserializer::new(self.registry, self.dir))?,
                     );
                 }
-                ObjectInfoField::SpawnComponents => {
+                ObjectManifestField::SpawnComponents => {
                     if spawn_components.is_some() {
                         return Err(de::Error::duplicate_field(
-                            ObjectInfoField::SpawnComponents.into(),
+                            ObjectManifestField::SpawnComponents.into(),
                         ));
                     }
                     spawn_components = Some(
@@ -203,17 +239,19 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
         }
 
         let general =
-            general.ok_or_else(|| de::Error::missing_field(ObjectInfoField::General.into()))?;
-        let scene = scene.ok_or_else(|| de::Error::missing_field(ObjectInfoField::Scene.into()))?;
-        let category =
-            category.ok_or_else(|| de::Error::missing_field(ObjectInfoField::Category.into()))?;
-        let preview_translation = preview_translation
-            .ok_or_else(|| de::Error::missing_field(ObjectInfoField::PreviewTranslation.into()))?;
+            general.ok_or_else(|| de::Error::missing_field(ObjectManifestField::General.into()))?;
+        let scene =
+            scene.ok_or_else(|| de::Error::missing_field(ObjectManifestField::Scene.into()))?;
+        let category = category
+            .ok_or_else(|| de::Error::missing_field(ObjectManifestField::Category.into()))?;
+        let preview_translation = preview_translation.ok_or_else(|| {
+            de::Error::missing_field(ObjectManifestField::PreviewTranslation.into())
+        })?;
         let components = components.unwrap_or_default();
         let place_components = place_components.unwrap_or_default();
         let spawn_components = spawn_components.unwrap_or_default();
 
-        Ok(ObjectInfo {
+        let mut manifest = ObjectManifest {
             general,
             scene,
             category,
@@ -221,7 +259,13 @@ impl<'de> Visitor<'de> for ObjectInfoDeserializer<'_> {
             components,
             place_components,
             spawn_components,
-        })
+        };
+
+        if let Some(dir) = self.dir {
+            asset::change_parent_dir(&mut manifest.scene, dir);
+        }
+
+        Ok(manifest)
     }
 }
 
@@ -237,7 +281,7 @@ impl<'a> ComponentsDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn PartialReflect>>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_seq(self)
@@ -245,7 +289,7 @@ impl<'de> DeserializeSeed<'de> for ComponentsDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ComponentsDeserializer<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn PartialReflect>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -276,7 +320,7 @@ impl<'a> ShortReflectDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn Reflect>;
+    type Value = Box<dyn PartialReflect>;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_map(self)
@@ -284,7 +328,7 @@ impl<'de> DeserializeSeed<'de> for ShortReflectDeserializer<'_> {
 }
 
 impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
-    type Value = Box<dyn Reflect>;
+    type Value = Box<dyn PartialReflect>;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str(any::type_name::<Self::Value>())
@@ -298,7 +342,7 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .registry
             .get_with_short_type_path(&type_path)
             .ok_or_else(|| de::Error::custom(format!("`{type_path}` is not registered")))?;
-        let mut reflect =
+        let mut partial_reflect =
             map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
 
         if let Some(dir) = self.dir {
@@ -309,14 +353,15 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
                 let from_reflect = self
                     .registry
                     .get_type_data::<ReflectFromReflect>(registration.type_id())
-                    .unwrap_or_else(|| panic!("`{type_path}` should have reflected `FromReflect`"));
+                    .unwrap_or_else(|| panic!("`{type_path}` should reflect `FromReflect`"));
 
-                reflect = from_reflect.from_reflect(&*reflect).unwrap();
+                let mut reflect = from_reflect.from_reflect(&*partial_reflect).unwrap();
                 reflect_map.get_mut(&mut *reflect).unwrap().map_paths(dir);
+                partial_reflect = reflect.into_partial_reflect();
             }
         }
 
-        Ok(reflect)
+        Ok(partial_reflect)
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -328,6 +373,6 @@ impl<'de> Visitor<'de> for ShortReflectDeserializer<'_> {
             .data::<ReflectDefault>()
             .ok_or_else(|| de::Error::custom(format!("`{v}` doesn't have reflect(Default)")))?;
 
-        Ok(reflect_default.default())
+        Ok(reflect_default.default().into_partial_reflect())
     }
 }

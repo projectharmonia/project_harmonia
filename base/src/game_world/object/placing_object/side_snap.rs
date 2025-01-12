@@ -10,33 +10,20 @@ impl Plugin for SideSnapPlugin {
         app.register_type::<SideSnap>()
             .add_systems(
                 Update,
-                (
-                    Self::init,
-                    Self::snap
-                        .after(PlacingObjectPlugin::apply_position)
-                        .before(PlacingObjectPlugin::confirm),
-                )
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
+                Self::snap
+                    .never_param_warn()
+                    .after(PlacingObjectPlugin::apply_position)
+                    .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
             )
             .add_systems(
                 PostUpdate,
                 Self::update_nodes
-                    .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
+                    .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
             );
     }
 }
 
 impl SideSnapPlugin {
-    fn init(
-        mut commands: Commands,
-        objects: Query<Entity, (With<SideSnap>, Without<SideSnapNodes>)>,
-    ) {
-        for entity in &objects {
-            debug!("initializing side snapping for `{entity}`");
-            commands.entity(entity).insert(SideSnapNodes::default());
-        }
-    }
-
     fn update_nodes(
         mut nodes: Query<&mut SideSnapNodes>,
         objects: Query<(Entity, &SideSnap, Ref<Transform>), Without<PlacingObject>>,
@@ -72,16 +59,13 @@ impl SideSnapPlugin {
     }
 
     fn snap(
+        placing_object: Single<(&mut Transform, &SideSnap), With<PlacingObject>>,
         objects: Query<
             (&SideSnap, &Transform, &SideSnapNodes, &Visibility),
             Without<PlacingObject>,
         >,
-        mut placing_objects: Query<(&mut Transform, &SideSnap), With<PlacingObject>>,
     ) {
-        let Ok((mut transform, snap)) = placing_objects.get_single_mut() else {
-            return;
-        };
-
+        let (mut transform, snap) = placing_object.into_inner();
         for (&object_snap, &object_transform, &nodes, visibility) in &objects {
             if visibility == Visibility::Hidden {
                 continue;
@@ -130,6 +114,7 @@ fn connect_nodes(nodes: &mut Query<&mut SideSnapNodes>, left_entity: Entity, rig
 /// Enables attaching objects to other objects.
 #[derive(Component, Reflect, Clone, Copy, Deref)]
 #[reflect(Component)]
+#[require(SideSnapNodes)]
 pub(crate) struct SideSnap {
     half_width: f32,
 }

@@ -6,34 +6,29 @@ pub(super) struct ProgressBarPlugin;
 
 impl Plugin for ProgressBarPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (Self::init, Self::update_progress));
+        app.add_observer(Self::init)
+            .add_systems(PostUpdate, Self::update_progress);
     }
 }
 
 impl ProgressBarPlugin {
     fn init(
+        trigger: Trigger<OnAdd, ProgressBar>,
         mut commands: Commands,
         theme: Res<Theme>,
-        progress_bars: Query<(Entity, &ProgressBar), Added<ProgressBar>>,
+        mut progress_bars: Query<&mut BackgroundColor>,
     ) {
-        for (entity, progress_bar) in &progress_bars {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn(NodeBundle {
-                    style: Style {
-                        width: Val::Percent(progress_bar.0),
-                        ..Default::default()
-                    },
-                    background_color: theme.progress_bar.fill_color.into(),
-                    ..Default::default()
-                });
-            });
-        }
+        let mut background_color = progress_bars.get_mut(trigger.entity()).unwrap();
+        *background_color = theme.progress_bar.background_color;
+
+        commands
+            .entity(trigger.entity())
+            .with_child((Node::default(), theme.progress_bar.fill_color));
     }
 
-    /// Won't be triggered after spawning because button child will be spawned at the next frame.
     fn update_progress(
         progress_bars: Query<(&ProgressBar, &Children), Changed<ProgressBar>>,
-        mut fill_nodes: Query<&mut Style>,
+        mut fill_nodes: Query<&mut Node>,
     ) {
         for (progress_bar, children) in &progress_bars {
             let mut iter = fill_nodes.iter_many_mut(children);
@@ -46,22 +41,5 @@ impl ProgressBarPlugin {
 }
 
 #[derive(Component)]
+#[require(Node)]
 pub struct ProgressBar(pub f32);
-
-#[derive(Bundle)]
-pub struct ProgressBarBundle {
-    progress_bar: ProgressBar,
-    node_bundle: NodeBundle,
-}
-
-impl ProgressBarBundle {
-    pub fn new(theme: &Theme, value: f32) -> Self {
-        Self {
-            progress_bar: ProgressBar(value),
-            node_bundle: NodeBundle {
-                background_color: theme.progress_bar.background_color.into(),
-                ..Default::default()
-            },
-        }
-    }
-}

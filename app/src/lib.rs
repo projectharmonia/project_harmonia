@@ -42,6 +42,7 @@ pub fn main() {
             position_to_transform: false,
             ..Default::default()
         })
+        .insert_resource(Time::<Fixed>::from_hz(30.0))
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
@@ -67,6 +68,7 @@ pub fn main() {
                 .build()
                 .disable::<CcdPlugin>()
                 .disable::<SleepingPlugin>(),
+            PhysicsPickingPlugin,
             PhysicsDebugPlugin::default(),
             TextInputPlugin,
             OutlinePlugin,

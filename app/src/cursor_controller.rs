@@ -7,7 +7,7 @@ impl Plugin for CursorControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<CursorController>()
             .add_systems(Startup, Self::setup)
-            .observe(Self::update_position);
+            .add_observer(Self::update_position);
     }
 }
 
@@ -16,8 +16,7 @@ impl CursorControllerPlugin {
         commands.spawn(CursorController);
     }
 
-    fn update_position(trigger: Trigger<Fired<MoveCursor>>, mut windows: Query<&mut Window>) {
-        let mut window = windows.single_mut();
+    fn update_position(trigger: Trigger<Fired<MoveCursor>>, mut window: Single<&mut Window>) {
         if let Some(cursor_pos) = window.cursor_position() {
             let event = trigger.event();
             window.set_cursor_position(Some(cursor_pos + event.value));
@@ -26,6 +25,7 @@ impl CursorControllerPlugin {
 }
 
 #[derive(Component)]
+#[require(Name(|| Name::new("Cursor controller")))]
 struct CursorController;
 
 impl InputContext for CursorController {
@@ -35,7 +35,7 @@ impl InputContext for CursorController {
         let mut ctx = ContextInstance::default();
         ctx.bind::<MoveCursor>()
             .to(GamepadStick::Left)
-            .with_modifiers((Negate::y(true), Scale::splat(8.0)));
+            .with_modifiers((Negate::y(), Scale::splat(8.0)));
         ctx
     }
 }

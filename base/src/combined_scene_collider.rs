@@ -1,78 +1,71 @@
 use avian3d::prelude::*;
 use bevy::{
     prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
-    scene::{self, SceneInstanceReady},
+    render::{
+        mesh::{Indices, MeshAabb},
+        render_resource::PrimitiveTopology,
+    },
+    scene::SceneInstanceReady,
 };
-
-use crate::core::GameState;
 
 pub(super) struct SceneColliderConstructorPlugin;
 
 impl Plugin for SceneColliderConstructorPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<SceneColliderConstructor>().add_systems(
-            SpawnScene,
-            Self::init
-                .run_if(in_state(GameState::InGame))
-                .after(scene::scene_spawner_system),
-        );
+        app.register_type::<SceneColliderConstructor>()
+            .add_observer(Self::init);
     }
 }
 
 impl SceneColliderConstructorPlugin {
     fn init(
-        mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
+        trigger: Trigger<SceneInstanceReady>,
         meshes: Res<Assets<Mesh>>,
-        scenes: Query<(Entity, &Children, &SceneColliderConstructor)>,
-        scene_meshes: Query<(&Transform, Option<&Handle<Mesh>>, Option<&Children>)>,
+        mut scenes: Query<(&Children, &SceneColliderConstructor, &mut Collider)>,
+        scene_meshes: Query<(&Transform, Option<&Mesh3d>, Option<&Children>)>,
     ) {
-        for (scene_entity, children, constructor) in
-            scenes.iter_many(ready_events.read().map(|event| event.parent))
-        {
-            let mut combined_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
-                .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-                .with_inserted_indices(Indices::U32(Vec::new()));
+        let Ok((children, constructor, mut collider)) = scenes.get_mut(trigger.entity()) else {
+            return;
+        };
 
-            for &child_entity in children {
-                recursive_merge(
-                    &meshes,
-                    &scene_meshes,
-                    child_entity,
-                    Default::default(),
-                    &mut combined_mesh,
-                );
-            }
+        debug!("generating collider for scene `{}`", trigger.entity());
 
-            let collider = match constructor {
-                SceneColliderConstructor::Aabb => {
-                    let aabb = combined_mesh
-                        .compute_aabb()
-                        .expect("object mesh should be in compatible format");
-                    let center: Vec3 = aabb.center.into();
-                    let cuboid = Collider::cuboid(
-                        aabb.half_extents.x * 2.0,
-                        aabb.half_extents.y * 2.0,
-                        aabb.half_extents.z * 2.0,
-                    );
-                    Collider::compound(vec![(center, Rotation::default(), cuboid)])
-                }
-                SceneColliderConstructor::ConvexHull => {
-                    Collider::convex_hull_from_mesh(&combined_mesh)
-                        .expect("object mesh should be in compatible format")
-                }
-            };
+        let mut combined_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
+            .with_inserted_indices(Indices::U32(Vec::new()));
 
-            debug!("inserting collider for `{scene_entity}`");
-            commands.entity(scene_entity).insert(collider);
+        for &child_entity in children {
+            recursive_merge(
+                &meshes,
+                &scene_meshes,
+                child_entity,
+                Default::default(),
+                &mut combined_mesh,
+            );
         }
+
+        *collider = match constructor {
+            SceneColliderConstructor::Aabb => {
+                let aabb = combined_mesh
+                    .compute_aabb()
+                    .expect("object mesh should be in compatible format");
+                let center: Vec3 = aabb.center.into();
+                let cuboid = Collider::cuboid(
+                    aabb.half_extents.x * 2.0,
+                    aabb.half_extents.y * 2.0,
+                    aabb.half_extents.z * 2.0,
+                );
+                Collider::compound(vec![(center, Rotation::default(), cuboid)])
+            }
+            SceneColliderConstructor::ConvexHull => Collider::convex_hull_from_mesh(&combined_mesh)
+                .expect("object mesh should be in compatible format"),
+        };
     }
 }
 
 fn recursive_merge(
     meshes: &Assets<Mesh>,
-    scene_meshes: &Query<(&Transform, Option<&Handle<Mesh>>, Option<&Children>)>,
+    scene_meshes: &Query<(&Transform, Option<&Mesh3d>, Option<&Children>)>,
     current_entity: Entity,
     parent_transform: Transform,
     combined_mesh: &mut Mesh,
@@ -106,6 +99,7 @@ fn recursive_merge(
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
+#[require(Collider)]
 pub(super) enum SceneColliderConstructor {
     Aabb,
     ConvexHull,

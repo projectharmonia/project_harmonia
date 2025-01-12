@@ -10,13 +10,14 @@ use bevy_replicon_renet::{
 use clap::{Args, Parser, Subcommand};
 
 use project_harmonia_base::{
+    core::GameState,
+    error_message::error_message,
     game_world::{
         actor::SelectedActor,
         city::{ActiveCity, City},
         family::FamilyMembers,
         GameLoad, WorldName, WorldState,
     },
-    message::error_message,
     network::{self, DEFAULT_PORT},
 };
 
@@ -28,35 +29,37 @@ pub(super) struct CliPlugin;
 
 impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, Self::apply_subcommand.pipe(error_message))
-            .add_systems(
-                Update,
-                Self::quick_load.pipe(error_message).run_if(
-                    in_state(WorldState::World)
-                        // HACK: wait for family members initialiaztion.
-                        // They initialized in `PreUpdate`, but state transitions happens later.
-                        // Can be removed after switching to hooks.
-                        .and_then(any_with_component::<FamilyMembers>)
-                        .and_then(run_once()),
-                ),
-            );
+        app.add_systems(
+            OnExit(GameState::ManifestsLoading),
+            Self::apply_subcommand.pipe(error_message),
+        )
+        .add_systems(
+            PostUpdate,
+            Self::quick_load
+                .pipe(error_message)
+                .run_if(in_state(GameState::InGame).and(run_once)),
+        );
     }
 }
 
 impl CliPlugin {
     fn apply_subcommand(
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoad>,
         cli: Res<Cli>,
         network_channels: Res<RepliconChannels>,
     ) -> Result<()> {
         if let Some(subcommand) = &cli.subcommand {
             match subcommand {
                 GameCommand::Play(world_load) => {
-                    load_events.send_default();
+                    info!("selecting world '{}' from CLI", world_load.world_name);
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
+                    commands.trigger(GameLoad);
                 }
                 GameCommand::Host { world_load, port } => {
+                    info!(
+                        "hosting world '{}' on port {port} from CLI",
+                        world_load.world_name
+                    );
                     let server = RenetServer::new(ConnectionConfig {
                         server_channels_config: network_channels.get_server_configs(),
                         client_channels_config: network_channels.get_client_configs(),
@@ -68,10 +71,10 @@ impl CliPlugin {
                     commands.insert_resource(server);
                     commands.insert_resource(transport);
                     commands.insert_resource(WorldName(world_load.world_name.clone()));
-
-                    load_events.send_default();
+                    commands.trigger(GameLoad);
                 }
                 GameCommand::Join { ip, port } => {
+                    info!("joining world at {ip}:{port} from CLI");
                     let client = RenetClient::new(ConnectionConfig {
                         server_channels_config: network_channels.get_server_configs(),
                         client_channels_config: network_channels.get_client_configs(),
@@ -91,7 +94,6 @@ impl CliPlugin {
 
     fn quick_load(
         mut commands: Commands,
-        mut world_state: ResMut<NextState<WorldState>>,
         cli: Res<Cli>,
         cities: Query<(Entity, &Name), With<City>>,
         families: Query<(&Name, &FamilyMembers)>,
@@ -99,25 +101,27 @@ impl CliPlugin {
         if let Some(quick_load) = cli.quick_load() {
             match quick_load {
                 QuickLoad::City { name } => {
+                    info!("selecting city '{name}' from CLI");
                     let (entity, _) = cities
                         .iter()
                         .find(|(_, city_name)| city_name.as_str() == name)
-                        .with_context(|| format!("unable to find city named {name}"))?;
+                        .with_context(|| format!("unable to find city named '{name}'"))?;
 
                     commands.entity(entity).insert(ActiveCity);
-                    world_state.set(WorldState::City);
+                    commands.set_state(WorldState::City);
                 }
                 QuickLoad::Family { name } => {
+                    info!("selecting family '{name}' from CLI");
                     let (_, members) = families
                         .iter()
                         .find(|(family_name, _)| family_name.as_str() == name)
-                        .with_context(|| format!("unable to find family named {name}"))?;
+                        .with_context(|| format!("unable to find family named '{name}'"))?;
 
                     let entity = *members
                         .first()
                         .expect("family should contain at least one actor");
                     commands.entity(entity).insert(SelectedActor);
-                    world_state.set(WorldState::Family);
+                    commands.set_state(WorldState::Family);
                 }
             }
         }

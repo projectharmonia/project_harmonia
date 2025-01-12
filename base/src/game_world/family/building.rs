@@ -1,10 +1,10 @@
 pub mod wall;
 
 use bevy::prelude::*;
-use strum::{Display, EnumIter};
-use wall::WallPlugin;
+use strum::EnumIter;
 
 use super::FamilyMode;
+use wall::WallPlugin;
 
 pub(super) struct BuildingPlugin;
 
@@ -16,9 +16,7 @@ impl Plugin for BuildingPlugin {
     }
 }
 
-#[derive(
-    Clone, Copy, Component, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
-)]
+#[derive(Clone, Copy, Component, Debug, Default, EnumIter, Eq, Hash, PartialEq, SubStates)]
 #[source(FamilyMode = FamilyMode::Building)]
 pub enum BuildingMode {
     #[default]

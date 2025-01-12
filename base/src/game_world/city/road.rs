@@ -5,10 +5,10 @@ use avian3d::prelude::*;
 use bevy::{asset::AssetPath, ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 
 use crate::{
-    asset::info::road_info::RoadInfo,
+    asset::manifest::road_manifest::RoadManifest,
     core::GameState,
     dynamic_mesh::DynamicMesh,
     game_world::{
@@ -34,12 +34,7 @@ impl Plugin for RoadPlugin {
             .register_type::<RoadData>()
             .replicate::<Road>()
             .add_mapped_client_event::<CommandRequest<RoadCommand>>(ChannelKind::Unordered)
-            .add_systems(
-                PreUpdate,
-                Self::init
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            )
+            .add_observer(Self::init)
             .add_systems(
                 PostUpdate,
                 (
@@ -55,38 +50,40 @@ impl Plugin for RoadPlugin {
 
 impl RoadPlugin {
     fn init(
-        mut commands: Commands,
+        trigger: Trigger<OnAdd, Road>,
         asset_server: Res<AssetServer>,
         mut meshes: ResMut<Assets<Mesh>>,
-        roads_info: Res<Assets<RoadInfo>>,
-        roads: Query<(Entity, &Road), Without<Handle<Mesh>>>,
+        manifests: Res<Assets<RoadManifest>>,
+        mut roads: Query<(
+            &Road,
+            &mut RoadData,
+            &mut Mesh3d,
+            &mut MeshMaterial3d<StandardMaterial>,
+        )>,
     ) {
-        for (entity, road) in &roads {
-            let info_handle = asset_server
-                .get_handle(&road.0)
-                .expect("info should be preloaded");
-            let info = roads_info.get(&info_handle).unwrap();
-            debug!("initializing road '{}' for `{entity}`", road.0);
+        let (road, mut road_data, mut mesh, mut material) =
+            roads.get_mut(trigger.entity()).unwrap();
+        let Some(manifest_handle) = asset_server.get_handle(&**road) else {
+            error!("'{}' is missing, ignoring", &**road);
+            return;
+        };
 
-            commands.entity(entity).insert((
-                Name::new("Road"),
-                RoadData::new(info),
-                Collider::default(),
-                CollisionLayers::new(Layer::Road, [Layer::Wall, Layer::PlacingWall]),
-                PbrBundle {
-                    material: asset_server.load(info.material.clone()),
-                    mesh: meshes.add(DynamicMesh::create_empty()),
-                    ..Default::default()
-                },
-            ));
-        }
+        debug!("initializing road '{}' for `{}`", &**road, trigger.entity());
+
+        let manifest = manifests
+            .get(&manifest_handle)
+            .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**road));
+
+        road_data.half_width = manifest.half_width;
+        **mesh = meshes.add(DynamicMesh::create_empty());
+        **material = asset_server.load(manifest.material.clone());
     }
 
     fn update_meshes(
         mut meshes: ResMut<Assets<Mesh>>,
         mut changed_roads: Query<
             (
-                &Handle<Mesh>,
+                &Mesh3d,
                 Ref<Segment>,
                 &SegmentConnections,
                 &RoadData,
@@ -124,14 +121,12 @@ impl RoadPlugin {
             match event.command {
                 RoadCommand::Create {
                     city_entity,
-                    info_path,
+                    manifest_path,
                     segment,
                 } => {
                     info!("`{client_id:?}` spawns road");
                     commands.entity(city_entity).with_children(|parent| {
-                        let entity = parent
-                            .spawn(RoadBundle::new(info_path.clone(), segment))
-                            .id();
+                        let entity = parent.spawn((Road(manifest_path.clone()), segment)).id();
                         confirmation.entity = Some(entity);
                     });
                 }
@@ -160,9 +155,7 @@ impl RoadPlugin {
     }
 }
 
-#[derive(
-    Clone, Component, Copy, Debug, Default, Display, EnumIter, Eq, Hash, PartialEq, SubStates,
-)]
+#[derive(Clone, Component, Copy, Debug, Default, EnumIter, Eq, Hash, PartialEq, SubStates)]
 #[source(CityMode = CityMode::Roads)]
 pub enum RoadTool {
     #[default]
@@ -179,50 +172,34 @@ impl RoadTool {
     }
 }
 
-#[derive(Bundle)]
-struct RoadBundle {
-    road: Road,
-    segment: Segment,
-    parent_sync: ParentSync,
-    replication: Replicated,
-}
-
-impl RoadBundle {
-    fn new(info_path: AssetPath<'static>, segment: Segment) -> Self {
-        Self {
-            road: Road(info_path),
-            segment,
-            parent_sync: Default::default(),
-            replication: Replicated,
-        }
-    }
-}
-
-/// Stores path to the road info.
-#[derive(Component, Deserialize, Reflect, Serialize)]
+/// Stores path to the road manifest.
+#[derive(Component, Deserialize, Reflect, Serialize, Deref)]
 #[reflect(Component)]
+#[require(
+    Name(|| Name::new("Road")),
+    Segment,
+    ParentSync,
+    Replicated,
+    RoadData,
+    Mesh3d,
+    MeshMaterial3d::<StandardMaterial>,
+    Collider,
+    CollisionLayers(|| CollisionLayers::new(Layer::Road, [Layer::Wall, Layer::PlacingWall])),
+)]
 struct Road(AssetPath<'static>);
 
-/// Stores road information needed at runtime from [`RoadInfo`].
-#[derive(Component, Reflect)]
+/// Stores road information needed at runtime from [`RoadManifest`].
+#[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 struct RoadData {
     half_width: f32,
-}
-
-impl RoadData {
-    fn new(info: &RoadInfo) -> Self {
-        Self {
-            half_width: info.half_width,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 enum RoadCommand {
     Create {
         city_entity: Entity,
-        info_path: AssetPath<'static>,
+        manifest_path: AssetPath<'static>,
         segment: Segment,
     },
     EditPoint {
@@ -264,7 +241,7 @@ impl PendingCommand for RoadCommand {
                 let city_entity = **entity.get::<Parent>().unwrap();
                 Self::Create {
                     city_entity,
-                    info_path: road.0.clone(),
+                    manifest_path: road.0.clone(),
                     segment,
                 }
             }

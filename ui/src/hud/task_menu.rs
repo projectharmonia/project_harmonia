@@ -1,134 +1,110 @@
-use std::mem;
-
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 
 use project_harmonia_base::game_world::{
-    actor::{
-        task::{AvailableTasks, Task, TaskRequest},
-        SelectedActor,
-    },
+    actor::task::{AvailableTasks, TaskSelect},
     family::FamilyMode,
 };
-use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, label::LabelBundle, theme::Theme,
-};
+use project_harmonia_widgets::{button::ButtonKind, label::LabelKind, theme::Theme};
 
 pub(super) struct TaskMenuPlugin;
 
 impl Plugin for TaskMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<TaskMenu>()
-            .observe(Self::close)
-            .add_systems(
-                Update,
-                Self::request_task.run_if(in_state(FamilyMode::Life)),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::open
-                    .run_if(resource_exists::<AvailableTasks>)
-                    .run_if(in_state(FamilyMode::Life)),
-            );
+            .add_observer(Self::close.never_param_warn())
+            .add_observer(Self::open.never_param_warn());
     }
 }
 
 impl TaskMenuPlugin {
+    // TODO 0.16: listen for `AvailableTasks` insertion when hierarchy will be available.
     fn open(
+        trigger: Trigger<OnAdd, Parent>,
         mut commands: Commands,
-        mut available_tasks: ResMut<AvailableTasks>,
         theme: Res<Theme>,
-        task_menus: Query<Entity, With<TaskMenu>>,
+        menu_entity: Option<Single<Entity, With<TaskMenu>>>,
+        window: Single<&Window>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        available_tasks: Query<(&Parent, Option<&Children>), With<AvailableTasks>>,
         names: Query<&Name>,
-        windows: Query<&Window>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        tasks: Query<(Entity, &Name)>,
     ) {
-        commands.remove_resource::<AvailableTasks>();
-        if let Ok(entity) = task_menus.get_single() {
+        let Ok((parent, children)) = available_tasks.get(trigger.entity()) else {
+            return;
+        };
+
+        if let Some(menu_entity) = menu_entity {
             info!("closing previous task menu");
-            commands.entity(entity).despawn_recursive();
+            commands.entity(*menu_entity).despawn_recursive();
         }
 
-        if available_tasks.tasks.is_empty() {
+        let Some(children) = children else {
+            debug!("no available tasks found");
             return;
-        }
+        };
+
+        let name = names.get(**parent).map(|name| &**name).unwrap_or_default();
 
         info!("showing task menu");
-        let name = names
-            .get(available_tasks.entity)
-            .expect("task entity should have a name");
-        let cursor_pos = windows.single().cursor_position().unwrap_or_default();
-        commands.entity(roots.single()).with_children(|parent| {
+        let cursor_pos = window.cursor_position().unwrap_or_default();
+        commands.entity(*root_entity).with_children(|parent| {
             parent
                 .spawn_empty()
                 .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(&theme, name));
+                    parent.spawn((LabelKind::Normal, Text::new(name)));
 
-                    for (index, task) in available_tasks.tasks.iter().enumerate() {
-                        parent.spawn((
-                            TaskMenuIndex(index),
-                            TextButtonBundle::normal(&theme, task.name()),
-                        ));
+                    for (task_entity, task_name) in tasks.iter_many(children) {
+                        parent
+                            .spawn(TaskButton { task_entity })
+                            .with_child(Text::new(task_name))
+                            .observe(Self::request_task);
                     }
                 })
                 .insert((
-                    TaskMenu(mem::take(&mut available_tasks.tasks)),
-                    StateScoped(FamilyMode::Life),
-                    NodeBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            left: Val::Px(cursor_pos.x),
-                            top: Val::Px(cursor_pos.y),
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            padding: theme.padding.normal,
-                            row_gap: theme.gap.normal,
-                            ..Default::default()
-                        },
-                        background_color: theme.panel_color.into(),
+                    TaskMenu,
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(cursor_pos.x),
+                        top: Val::Px(cursor_pos.y),
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        padding: theme.padding.normal,
+                        row_gap: theme.gap.normal,
                         ..Default::default()
                     },
+                    theme.panel_background,
                 ));
         });
     }
 
     fn request_task(
+        trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut send_requests: EventWriter<TaskRequest>,
-        mut click_events: EventReader<Click>,
-        buttons: Query<&TaskMenuIndex>,
-        mut task_menus: Query<(Entity, &mut TaskMenu)>,
-        active_actors: Query<Entity, With<SelectedActor>>,
+        buttons: Query<&TaskButton>,
+        menu_entity: Single<Entity, With<TaskMenu>>,
     ) {
-        for task_index in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            let (menu_entity, mut task_menu) = task_menus.single_mut();
-            let task = task_menu.swap_remove(task_index.0);
+        let button = buttons.get(trigger.entity()).unwrap();
+        info!("selecting task `{}`", trigger.entity());
 
-            info!("selecting task '{}'", task.name());
-            send_requests.send(TaskRequest {
-                entity: active_actors.single(),
-                task,
-            });
-
-            commands.entity(menu_entity).despawn_recursive();
-        }
+        commands.trigger_targets(TaskSelect, button.task_entity);
+        commands.entity(*menu_entity).despawn_recursive();
     }
 
     fn close(
         _trigger: Trigger<Completed<CloseTaskMenu>>,
         mut commands: Commands,
-        task_menus: Query<Entity, With<TaskMenu>>,
+        menu_entity: Single<Entity, With<TaskMenu>>,
     ) {
-        if let Ok(entity) = task_menus.get_single() {
-            info!("closing task menu");
-            commands.entity(entity).despawn_recursive();
-        }
+        info!("closing task menu");
+        commands.entity(*menu_entity).despawn_recursive();
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
-struct TaskMenu(Vec<Box<dyn Task>>);
+#[derive(Component)]
+#[require(StateScoped::<FamilyMode>(|| StateScoped(FamilyMode::Life)))]
+struct TaskMenu;
 
 impl InputContext for TaskMenu {
     const PRIORITY: isize = 1;
@@ -136,7 +112,7 @@ impl InputContext for TaskMenu {
     fn context_instance(_world: &World, _entity: Entity) -> ContextInstance {
         let mut ctx = ContextInstance::default();
         ctx.bind::<CloseTaskMenu>()
-            .to((KeyCode::Escape, GamepadButtonType::East));
+            .to((KeyCode::Escape, GamepadButton::East));
         ctx
     }
 }
@@ -146,4 +122,7 @@ impl InputContext for TaskMenu {
 struct CloseTaskMenu;
 
 #[derive(Component)]
-struct TaskMenuIndex(usize);
+#[require(Name(|| Name::new("Task button")), ButtonKind(|| ButtonKind::Normal))]
+struct TaskButton {
+    task_entity: Entity,
+}

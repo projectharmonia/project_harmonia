@@ -2,30 +2,15 @@ mod friendly;
 mod linked_task;
 mod move_here;
 
-use std::{fmt::Debug, io::Cursor};
+use std::any;
 
-use bevy::{
-    ecs::{entity::MapEntities, reflect::ReflectCommandExt},
-    prelude::*,
-    reflect::serde::{ReflectDeserializer, ReflectSerializer},
-};
-use bevy_replicon::{
-    core::ctx::{ClientSendCtx, ServerReceiveCtx},
-    prelude::*,
-};
-use bincode::{DefaultOptions, ErrorKind, Options};
+use bevy::{ecs::entity::MapEntities, prelude::*, reflect::GetTypeRegistration};
+use bevy_replicon::prelude::*;
 use bitflags::bitflags;
-use serde::{de::DeserializeSeed, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{
-    common_conditions::observer_in_state,
-    game_world::{
-        actor::{animation_state::AnimationState, Actor},
-        family::FamilyMode,
-        navigation::NavDestination,
-        picking::Clicked,
-    },
-};
+use super::{animation_state::AnimationState, Actor, ActorTaskGroups, SelectedActor};
+use crate::game_world::{city::ActiveCity, family::FamilyMode, navigation::NavDestination};
 use friendly::FriendlyPlugins;
 use linked_task::LinkedTaskPlugin;
 use move_here::MoveHerePlugin;
@@ -35,79 +20,73 @@ pub(super) struct TaskPlugin;
 impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((FriendlyPlugins, LinkedTaskPlugin, MoveHerePlugin))
-            .register_type::<TaskState>()
-            .replicate::<TaskState>()
-            .observe(Self::list)
+            .replicate::<ActiveTask>()
             .add_client_event::<TaskCancel>(ChannelKind::Unordered)
-            .add_client_event_with(
-                ChannelKind::Unordered,
-                serialize_task_request,
-                deserialize_task_request,
-            )
+            .add_observer(Self::spawn_available.never_param_warn())
+            .add_observer(Self::cleanup)
             .add_systems(
                 PreUpdate,
-                (Self::request, Self::cancel)
+                Self::cancel
                     .after(ClientSet::Receive)
                     .run_if(server_or_singleplayer),
             )
             .add_systems(
                 PostUpdate,
-                (Self::despawn_cancelled, Self::activate_queued).run_if(server_or_singleplayer),
+                Self::activate_queued.run_if(server_or_singleplayer),
             );
     }
 }
 
 impl TaskPlugin {
-    fn list(
-        trigger: Trigger<Clicked>,
+    fn spawn_available(
+        mut trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        family_mode: Option<Res<State<FamilyMode>>>,
+        family_mode: Res<State<FamilyMode>>,
+        city_transform: Single<&GlobalTransform, With<ActiveCity>>,
+        tasks_entity: Option<Single<Entity, With<AvailableTasks>>>,
     ) {
-        if !observer_in_state(family_mode, FamilyMode::Life) {
+        if trigger.event().button != PointerButton::Primary {
             return;
         }
-
-        commands.insert_resource(AvailableTasks::new(trigger.entity()));
-        commands.trigger_targets(ListTasks(**trigger.event()), trigger.entity());
-    }
-
-    fn request(
-        mut commands: Commands,
-        mut request_events: ResMut<Events<FromClient<TaskRequest>>>,
-        actors: Query<(), With<Actor>>,
-    ) {
-        for FromClient { client_id, event } in request_events.drain() {
-            if actors.get(event.entity).is_ok() {
-                info!("`{client_id:?}` requests task '{}'", event.task.name());
-                commands.entity(event.entity).with_children(|parent| {
-                    parent
-                        .spawn(TaskBundle::new(&*event.task))
-                        .insert_reflect(event.task.into_reflect());
-                });
-            } else {
-                error!("entity {:?} is not an actor", event.entity);
-            }
+        if *family_mode != FamilyMode::Life {
+            return;
         }
+        let Some(mut click_point) = trigger.event().hit.position else {
+            // Consider only world clicking.
+            return;
+        };
+        trigger.propagate(false);
+        debug!("generating available tasks");
+
+        click_point = city_transform
+            .affine()
+            .inverse()
+            .transform_point3(click_point);
+
+        // Remove previous.
+        if let Some(tasks_entity) = tasks_entity {
+            commands.entity(*tasks_entity).despawn();
+        }
+
+        commands.entity(trigger.entity()).with_children(|parent| {
+            parent.spawn(AvailableTasks {
+                interaction_entity: trigger.entity(),
+                click_point,
+            });
+        });
     }
 
     fn activate_queued(
-        mut tasks: Query<(Entity, &TaskGroups, &mut TaskState)>,
-        actors: Query<&Children, With<Actor>>,
+        mut commands: Commands,
+        tasks: Query<(Entity, &Name, &TaskGroups), Without<ActiveTask>>,
+        mut actors: Query<(&Children, &mut ActorTaskGroups)>,
     ) {
-        for children in &actors {
-            let current_groups = tasks
-                .iter_many(children)
-                .filter(|(.., &task_state)| task_state != TaskState::Queued)
-                .map(|(_, &groups, _)| groups)
-                .reduce(|acc, groups| acc & groups)
-                .unwrap_or_default();
-
-            let mut iter = tasks.iter_many_mut(children);
-            while let Some((entity, groups, mut task_state)) = iter.fetch_next() {
-                if *task_state == TaskState::Queued && !groups.intersects(current_groups) {
-                    *task_state = TaskState::Active;
-                    debug!("setting `{task_state:?}` for `{entity}`");
-                    break;
+        for (children, mut actor_groups) in &mut actors {
+            for (entity, name, &groups) in tasks.iter_many(children) {
+                if !groups.intersects(**actor_groups) {
+                    debug!("activating '{name}' for `{entity}`");
+                    actor_groups.insert(groups);
+                    commands.entity(entity).insert(ActiveTask);
                 }
             }
         }
@@ -116,139 +95,62 @@ impl TaskPlugin {
     fn cancel(
         mut commands: Commands,
         mut cancel_events: EventReader<FromClient<TaskCancel>>,
-        mut tasks: Query<&mut TaskState>,
+        tasks: Query<(), With<Task>>,
     ) {
         for FromClient { client_id, event } in cancel_events.read() {
-            if let Ok(mut task_state) = tasks.get_mut(event.0) {
-                info!("`{client_id:?}` cancels task `{:?}`", event.0);
-                match *task_state {
-                    TaskState::Queued => commands.entity(event.0).despawn(),
-                    TaskState::Active => *task_state = TaskState::Cancelled,
-                    TaskState::Cancelled => (),
-                }
+            if tasks.get(**event).is_ok() {
+                info!("`{client_id:?}` cancels task `{}`", **event);
+                commands.entity(**event).despawn();
             } else {
-                error!("entity {:?} is not a task", event.0);
+                error!("task {:?} is not active", **event);
             }
         }
     }
 
-    fn despawn_cancelled(
-        mut commands: Commands,
-        tasks: Query<(Entity, &Parent, &TaskGroups, &TaskState), Changed<TaskState>>,
-        mut actors: Query<(&mut NavDestination, &mut AnimationState)>,
+    fn cleanup(
+        trigger: Trigger<OnRemove, TaskGroups>,
+        tasks: Query<(&Parent, &TaskGroups), With<ActiveTask>>,
+        mut actors: Query<(
+            &mut ActorTaskGroups,
+            &mut NavDestination,
+            &mut AnimationState,
+        )>,
     ) {
-        for (entity, parent, groups, &task_state) in &tasks {
-            if task_state == TaskState::Cancelled {
-                debug!("despawning cancelled task `{entity}`");
-                let (mut dest, mut animation_state) = actors
-                    .get_mut(**parent)
-                    .expect("actor should have animaition state");
+        let (parent, &task_groups) = tasks.get(trigger.entity()).unwrap();
+        let Ok((mut actor_groups, mut dest, mut animation_state)) = actors.get_mut(**parent) else {
+            return;
+        };
 
-                if groups.contains(TaskGroups::LEGS) {
-                    debug!("cancelling task navigation");
-                    **dest = None;
-                }
+        debug!("removing `{:?}` from actor `{}`", task_groups, **parent);
+        actor_groups.remove(task_groups);
 
-                animation_state.stop_montage();
-
-                commands.entity(entity).despawn();
-            }
+        if task_groups.contains(TaskGroups::LEGS) {
+            debug!("cancelling task navigation");
+            **dest = None;
         }
+
+        animation_state.stop_montage();
     }
 }
 
-fn serialize_task_request(
-    ctx: &mut ClientSendCtx,
-    event: &TaskRequest,
-    cursor: &mut Cursor<Vec<u8>>,
-) -> bincode::Result<()> {
-    let serializer = ReflectSerializer::new(event.task.as_reflect(), ctx.registry);
-    DefaultOptions::new().serialize_into(&mut *cursor, &event.entity)?;
-    DefaultOptions::new().serialize_into(cursor, &serializer)?;
-
-    Ok(())
-}
-
-fn deserialize_task_request(
-    ctx: &mut ServerReceiveCtx,
-    cursor: &mut Cursor<&[u8]>,
-) -> bincode::Result<TaskRequest> {
-    let entity = DefaultOptions::new().deserialize_from(&mut *cursor)?;
-    let mut deserializer = bincode::Deserializer::with_reader(cursor, DefaultOptions::new());
-    let reflect = ReflectDeserializer::new(ctx.registry).deserialize(&mut deserializer)?;
-    let type_info = reflect.get_represented_type_info().unwrap();
-    let type_path = type_info.type_path();
-    let registration = ctx
-        .registry
-        .get(type_info.type_id())
-        .ok_or_else(|| ErrorKind::Custom(format!("{type_path} is not registered")))?;
-    let reflect_task = registration
-        .data::<ReflectTask>()
-        .ok_or_else(|| ErrorKind::Custom(format!("{type_path} doesn't have reflect(Task)")))?;
-    let task = reflect_task
-        .get_boxed(reflect)
-        .map_err(|_| ErrorKind::Custom(format!("{type_path} is not a Task")))?;
-
-    Ok(TaskRequest { entity, task })
-}
-
-/// Stores available tasks for an entity, triggered by [`ListTasks`].
-#[derive(Resource)]
+#[derive(Component)]
+/// Stores available tasks for an entity, triggered by picking.
 pub struct AvailableTasks {
-    pub entity: Entity,
-    pub tasks: Vec<Box<dyn Task>>,
+    // TODO 0.16: Use `Parent` when hierarchy will be accessible in observers.
+    interaction_entity: Entity,
+    click_point: Vec3,
 }
 
-impl AvailableTasks {
-    fn new(entity: Entity) -> Self {
-        Self {
-            entity,
-            tasks: Default::default(),
-        }
-    }
+#[derive(Component, Default)]
+#[require(Name, TaskGroups, ParentSync, Replicated)]
+pub struct Task;
 
-    fn add<T: Task>(&mut self, task: T) {
-        self.tasks.push(Box::new(task));
-    }
-}
-
-/// Event that all possible tasks for an entity clicked at location.
-///
-/// All tasks needs to be stored in [`AvailableTasks`]
-#[derive(Event, Deref, DerefMut)]
-struct ListTasks(pub Vec3);
-
-#[derive(Bundle)]
-struct TaskBundle {
-    groups: TaskGroups,
-    state: TaskState,
-    parent_sync: ParentSync,
-    replication: Replicated,
-}
-
-impl TaskBundle {
-    fn new(task: &dyn Task) -> Self {
-        Self {
-            groups: task.groups(),
-            state: Default::default(),
-            parent_sync: Default::default(),
-            replication: Replicated,
-        }
-    }
-}
-
-#[derive(Clone, Component, Copy, Debug, Default, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(Component)]
-pub enum TaskState {
-    #[default]
-    Queued,
-    Active,
-    Cancelled,
-}
+#[derive(Component, Serialize, Deserialize)]
+pub struct ActiveTask;
 
 bitflags! {
-    #[derive(Default, Component, Clone, Copy)]
-    pub struct TaskGroups: u8 {
+    #[derive(Default, Component, Clone, Copy, Debug)]
+    pub(super) struct TaskGroups: u8 {
         const LEFT_HAND = 0b00000001;
         const RIGHT_HAND = 0b00000010;
         const BOTH_HANDS = Self::LEFT_HAND.bits() | Self::RIGHT_HAND.bits();
@@ -256,34 +158,155 @@ bitflags! {
     }
 }
 
-#[reflect_trait]
-pub trait Task: Reflect {
-    fn name(&self) -> &str;
-    fn groups(&self) -> TaskGroups {
-        TaskGroups::default()
-    }
-}
+/// An event for selecting a task from menu.
+#[derive(Deserialize, Event, Serialize)]
+pub struct TaskSelect;
 
 /// An event of canceling the specified task.
 ///
 /// Emitted by players.
-#[derive(Deserialize, Event, Serialize)]
+#[derive(Deserialize, Event, Serialize, Deref)]
 pub struct TaskCancel(pub Entity);
 
-impl MapEntities for TaskCancel {
-    fn map_entities<T: EntityMapper>(&mut self, mapper: &mut T) {
-        self.0 = mapper.map_entity(self.0);
+#[derive(Event, Clone, Copy, Serialize, Deserialize)]
+pub struct TaskRequest<C> {
+    pub entity: Entity,
+    pub task: C,
+}
+
+impl<C> MapEntities for TaskRequest<C> {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.entity = entity_mapper.map_entity(self.entity);
     }
 }
 
-#[derive(Event)]
-pub struct TaskRequest {
+#[derive(Event, Clone, Copy, Serialize, Deserialize)]
+pub struct MappedTaskRequest<C> {
     pub entity: Entity,
-    pub task: Box<dyn Task>,
+    pub task: C,
 }
 
-impl MapEntities for TaskRequest {
-    fn map_entities<T: EntityMapper>(&mut self, mapper: &mut T) {
-        self.entity = mapper.map_entity(self.entity);
+impl<C: MapEntities> MapEntities for MappedTaskRequest<C> {
+    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
+        self.entity = entity_mapper.map_entity(self.entity);
+        self.task.map_entities(entity_mapper);
+    }
+}
+
+trait Request<C> {
+    fn new(entity: Entity, task: C) -> Self;
+    fn entity(&self) -> Entity;
+    fn take_task(self) -> C;
+}
+
+impl<C> Request<C> for TaskRequest<C> {
+    fn new(entity: Entity, task: C) -> Self {
+        Self { entity, task }
+    }
+
+    fn entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn take_task(self) -> C {
+        self.task
+    }
+}
+
+impl<C> Request<C> for MappedTaskRequest<C> {
+    fn new(entity: Entity, task: C) -> Self {
+        Self { entity, task }
+    }
+
+    fn entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn take_task(self) -> C {
+        self.task
+    }
+}
+
+pub(super) trait TaskAppExt {
+    fn add_task<C>(&mut self) -> &mut Self
+    where
+        C: Component + GetTypeRegistration + Copy + Serialize + DeserializeOwned;
+
+    fn add_mapped_task<C>(&mut self) -> &mut Self
+    where
+        C: Component + GetTypeRegistration + Copy + Serialize + DeserializeOwned + MapEntities;
+}
+
+impl TaskAppExt for App {
+    fn add_task<C>(&mut self) -> &mut Self
+    where
+        C: Component + GetTypeRegistration + Copy + Serialize + DeserializeOwned,
+    {
+        self.register_type::<C>()
+            .replicate::<C>()
+            .add_client_event::<TaskRequest<C>>(ChannelKind::Ordered)
+            .add_observer(request::<TaskRequest<C>, _>)
+            .add_systems(
+                PreUpdate,
+                queue::<TaskRequest<C>, _>
+                    .after(ClientSet::Receive)
+                    .run_if(server_or_singleplayer),
+            )
+    }
+
+    fn add_mapped_task<C>(&mut self) -> &mut Self
+    where
+        C: Component + GetTypeRegistration + Copy + Serialize + DeserializeOwned + MapEntities,
+    {
+        self.register_type::<C>()
+            .replicate_mapped::<C>()
+            .add_mapped_client_event::<MappedTaskRequest<C>>(ChannelKind::Ordered)
+            .add_observer(request::<MappedTaskRequest<C>, _>)
+            .add_systems(
+                PreUpdate,
+                queue::<MappedTaskRequest<C>, _>
+                    .after(ClientSet::Receive)
+                    .run_if(server_or_singleplayer),
+            )
+    }
+}
+
+fn request<R, C>(
+    trigger: Trigger<TaskSelect>,
+    mut commands: Commands,
+    mut request_events: EventWriter<R>,
+    tasks: Query<(&Name, &C)>,
+    tasks_entity: Single<Entity, With<AvailableTasks>>,
+    selected_entity: Single<Entity, With<SelectedActor>>,
+) where
+    R: Request<C> + Event,
+    C: Component + Copy,
+{
+    let Ok((name, &task)) = tasks.get(trigger.entity()) else {
+        return;
+    };
+
+    info!("selecting `{name}`");
+    request_events.send(R::new(*selected_entity, task));
+    commands.entity(*tasks_entity).despawn_recursive();
+}
+
+fn queue<R, C>(
+    mut commands: Commands,
+    mut request_events: EventReader<FromClient<R>>,
+    actors: Query<(), With<Actor>>,
+) where
+    R: Request<C> + Copy + Event,
+    C: Component + Copy,
+{
+    for FromClient { client_id, event } in request_events.read() {
+        if actors.get(event.entity()).is_ok() {
+            info!("`{client_id:?}` requests task `{}`", any::type_name::<C>());
+            commands.entity(event.entity()).with_children(|parent| {
+                parent.spawn(event.take_task());
+            });
+        } else {
+            error!("entity {:?} is not an actor", event.entity());
+        }
     }
 }

@@ -7,9 +7,9 @@ use project_harmonia_base::game_world::{
     WorldState,
 };
 use project_harmonia_widgets::{
-    button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
-    label::LabelBundle,
-    progress_bar::{ProgressBar, ProgressBarBundle},
+    button::{ButtonKind, TabContent, Toggled},
+    label::LabelKind,
+    progress_bar::ProgressBar,
     theme::Theme,
 };
 use strum::{EnumIter, IntoEnumIterator};
@@ -18,7 +18,7 @@ pub(super) struct InfoNodePlugin;
 
 impl Plugin for InfoNodePlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::cleanup_need_bars).add_systems(
+        app.add_observer(Self::cleanup_need_bars).add_systems(
             Update,
             Self::update_need_bars.run_if(in_state(WorldState::Family)),
         );
@@ -28,13 +28,12 @@ impl Plugin for InfoNodePlugin {
 impl InfoNodePlugin {
     fn update_need_bars(
         mut commands: Commands,
-        theme: Res<Theme>,
+        selected_actor: Single<(&Children, Ref<SelectedActor>)>,
         needs: Query<(Entity, &NeedGlyph, Ref<Need>)>,
-        actors: Query<(&Children, Ref<SelectedActor>)>,
         tabs: Query<(&TabContent, &InfoTab)>,
         mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
     ) {
-        let (children, selected_actor) = actors.single();
+        let (children, selected_actor) = selected_actor.into_inner();
         let (tab_content, _) = tabs
             .iter()
             .find(|(_, &tab)| tab == InfoTab::Needs)
@@ -57,8 +56,8 @@ impl InfoNodePlugin {
             } else {
                 trace!("creating bar with `{need:?}` for `{entity}`");
                 commands.entity(tab_content.0).with_children(|parent| {
-                    parent.spawn(LabelBundle::symbol(&theme, glyph.0));
-                    parent.spawn((BarNeed(entity), ProgressBarBundle::new(&theme, need.0)));
+                    parent.spawn((LabelKind::Symbol, Text::new(glyph.0)));
+                    parent.spawn((BarNeed(entity), ProgressBar(need.0)));
                 });
             }
         }
@@ -81,35 +80,31 @@ impl InfoNodePlugin {
 
 pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, theme: &Theme) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::ColumnReverse,
-                position_type: PositionType::Absolute,
-                align_self: AlignSelf::FlexEnd,
-                right: Val::Px(0.0),
-                ..Default::default()
-            },
+        .spawn(Node {
+            flex_direction: FlexDirection::ColumnReverse,
+            position_type: PositionType::Absolute,
+            align_self: AlignSelf::FlexEnd,
+            right: Val::Px(0.0),
             ..Default::default()
         })
         .with_children(|parent| {
             let tabs_entity = parent
-                .spawn(NodeBundle {
-                    style: Style {
+                .spawn((
+                    Node {
                         padding: theme.padding.normal,
                         align_self: AlignSelf::FlexEnd,
                         ..Default::default()
                     },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                })
+                    theme.panel_background,
+                ))
                 .id();
 
             for (index, tab) in InfoTab::iter().enumerate() {
                 let content_entity = match tab {
-                    InfoTab::Skills => parent.spawn(NodeBundle::default()).id(),
+                    InfoTab::Skills => parent.spawn(Node::default()).id(),
                     InfoTab::Needs => parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Node {
                                 display: Display::Grid,
                                 width: Val::Px(400.0),
                                 column_gap: theme.gap.normal,
@@ -123,21 +118,19 @@ pub(super) fn setup(parent: &mut ChildBuilder, tab_commands: &mut Commands, them
                                 ],
                                 ..Default::default()
                             },
-                            background_color: theme.panel_color.into(),
-
-                            ..Default::default()
-                        })
+                            theme.panel_background,
+                        ))
                         .id(),
                 };
 
                 tab_commands
                     .spawn((
                         tab,
+                        ButtonKind::Symbol,
                         TabContent(content_entity),
-                        ExclusiveButton,
                         Toggled(index == 0),
-                        TextButtonBundle::symbol(theme, tab.glyph()),
                     ))
+                    .with_child(Text::new(tab.glyph()))
                     .set_parent(tabs_entity);
             }
         });

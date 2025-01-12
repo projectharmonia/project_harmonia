@@ -1,19 +1,19 @@
 pub(super) mod collection;
-pub mod info;
+pub mod manifest;
 pub(super) mod material;
 
 use std::path::Path;
 
 use bevy::{asset::AssetPath, prelude::*};
 
-use info::InfoPlugins;
+use manifest::ManifestPlugin;
 use material::MaterialPlugin;
 
 pub(super) struct AssetPlugin;
 
 impl Plugin for AssetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((MaterialPlugin, InfoPlugins));
+        app.add_plugins((MaterialPlugin, ManifestPlugin));
     }
 }
 

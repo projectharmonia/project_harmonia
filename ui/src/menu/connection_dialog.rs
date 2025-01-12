@@ -3,18 +3,21 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::RenetClient;
 
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
+    button::ButtonKind, dialog::Dialog, label::LabelKind, theme::Theme,
 };
 
 pub(super) struct ConnectionDialogPlugin;
 
 impl Plugin for ConnectionDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, Self::read_clicks).add_systems(
+        app.add_systems(
             Update,
             (
                 Self::show.run_if(client_started_connecting),
-                Self::close.run_if(client_just_disconnected.or_else(client_just_connected)),
+                Self::close
+                    // Dialog may not be created if the connection happens instantly.
+                    .never_param_warn()
+                    .run_if(client_just_disconnected.or(client_just_connected)),
             ),
         );
     }
@@ -24,57 +27,45 @@ impl ConnectionDialogPlugin {
     fn show(
         mut commands: Commands,
         theme: Res<Theme>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
     ) {
         info!("showing connection dialog");
-        commands.entity(roots.single()).with_children(|parent| {
-            parent
-                .spawn((ConnectionDialog, DialogBundle::new(&theme)))
-                .with_children(|parent| {
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Column,
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
-                                padding: theme.padding.normal,
-                                row_gap: theme.gap.normal,
-                                ..Default::default()
-                            },
-                            background_color: theme.panel_color.into(),
+        commands.entity(*root_entity).with_children(|parent| {
+            parent.spawn(ConnectionDialog).with_children(|parent| {
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            parent.spawn(LabelBundle::normal(&theme, "Connecting to server"));
-                            parent
-                                .spawn((CancelButton, TextButtonBundle::normal(&theme, "Cancel")));
-                        });
-                });
+                        },
+                        theme.panel_background,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((LabelKind::Normal, Text::new("Connecting to server")));
+                        parent
+                            .spawn(ButtonKind::Normal)
+                            .with_child(Text::new("Cancel"))
+                            .observe(Self::cancel);
+                    });
+            });
         });
     }
 
-    fn read_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        buttons: Query<(), With<CancelButton>>,
-    ) {
-        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            info!("cancelling connection");
-            commands.remove_resource::<RenetClient>();
-        }
+    fn cancel(_trigger: Trigger<Pointer<Click>>, mut commands: Commands) {
+        info!("cancelling connection");
+        commands.remove_resource::<RenetClient>();
     }
 
-    fn close(mut commands: Commands, dialogs: Query<Entity, With<ConnectionDialog>>) {
-        if let Ok(entity) = dialogs.get_single() {
-            // Dialog may not be created if the connection happens instantly.
-            info!("closing connection dialog");
-            commands.entity(entity).despawn_recursive();
-        }
+    fn close(mut commands: Commands, dialog_entity: Single<Entity, With<ConnectionDialog>>) {
+        info!("closing connection dialog");
+        commands.entity(*dialog_entity).despawn_recursive();
     }
 }
 
 #[derive(Component)]
-struct CancelButton;
-
-#[derive(Component)]
+#[require(Dialog)]
 struct ConnectionDialog;

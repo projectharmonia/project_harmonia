@@ -1,11 +1,8 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
-    asset::AssetPath,
-    core_pipeline::{experimental::taa::TemporalAntiAliasBundle, prepass::NormalPrepass},
-    ecs::system::SystemParam,
-    pbr::ScreenSpaceAmbientOcclusionSettings,
-    prelude::*,
+    asset::AssetPath, core_pipeline::experimental::taa::TemporalAntiAliasing,
+    ecs::system::SystemParam, pbr::ScreenSpaceAmbientOcclusion, prelude::*,
 };
 use bevy_enhanced_input::prelude::*;
 use num_enum::IntoPrimitive;
@@ -13,7 +10,7 @@ use strum::EnumIter;
 
 use crate::{
     asset::collection::{AssetCollection, Collection},
-    common_conditions::{in_any_state, observer_in_state},
+    common_conditions::in_any_state,
     game_world::WorldState,
     settings::Settings,
 };
@@ -24,9 +21,10 @@ impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<EnvironmentMap>>()
             .add_input_context::<PlayerCamera>()
-            .observe(Self::pan)
-            .observe(Self::zoom)
-            .observe(Self::rotate)
+            .add_observer(Self::init)
+            .add_observer(Self::pan)
+            .add_observer(Self::zoom)
+            .add_observer(Self::rotate)
             .add_systems(
                 Update,
                 Self::apply_transform.run_if(in_any_state([
@@ -39,17 +37,29 @@ impl Plugin for PlayerCameraPlugin {
 }
 
 impl PlayerCameraPlugin {
+    fn init(
+        trigger: Trigger<OnAdd, PlayerCamera>,
+        mut cameras: Query<&mut EnvironmentMapLight>,
+        environment_map: Res<Collection<EnvironmentMap>>,
+    ) {
+        debug!("initializing player camera");
+        let mut env_light = cameras.get_mut(trigger.entity()).unwrap();
+        env_light.diffuse_map = environment_map.handle(EnvironmentMap::Diffuse);
+        env_light.specular_map = environment_map.handle(EnvironmentMap::Specular);
+        env_light.intensity = 800.0;
+    }
+
     fn pan(
         trigger: Trigger<Fired<PanCamera>>,
-        world_state: Option<Res<State<WorldState>>>,
-        mut cameras: Query<(&mut OrbitOrigin, &Transform, &SpringArm), With<PlayerCamera>>,
+        world_state: Res<State<WorldState>>,
+        camera: Single<(&mut OrbitOrigin, &Transform, &SpringArm)>,
     ) {
-        if observer_in_state(world_state, WorldState::FamilyEditor) {
+        if *world_state == WorldState::FamilyEditor {
             return;
         }
 
         // Calculate direction without camera's tilt.
-        let (mut orbit_origin, transform, spring_arm) = cameras.single_mut();
+        let (mut orbit_origin, transform, spring_arm) = camera.into_inner();
         let forward = transform.forward();
         let camera_dir = Vec3::new(forward.x, 0.0, forward.z).normalize();
         let rotation = Quat::from_rotation_arc(Vec3::NEG_Z, camera_dir);
@@ -65,24 +75,19 @@ impl PlayerCameraPlugin {
         **orbit_origin += rotation * movement * arm_multiplier;
     }
 
-    fn zoom(
-        trigger: Trigger<Fired<ZoomCamera>>,
-        mut cameras: Query<&mut SpringArm, With<PlayerCamera>>,
-    ) {
+    fn zoom(trigger: Trigger<Fired<ZoomCamera>>, mut spring_arm: Single<&mut SpringArm>) {
         let event = trigger.event();
-        let mut spring_arm = cameras.single_mut();
         // Limit to prevent clipping into the ground.
-        **spring_arm = (**spring_arm - event.value).max(0.2);
+        ***spring_arm = (***spring_arm - event.value).max(0.2);
     }
 
     fn rotate(
         trigger: Trigger<Fired<RotateCamera>>,
-        mut cameras: Query<&mut OrbitRotation, With<PlayerCamera>>,
         settings: Res<Settings>,
+        mut rotation: Single<&mut OrbitRotation>,
     ) {
         let event = trigger.event();
-        let mut rotation = cameras.single_mut();
-        **rotation += event.value;
+        ***rotation += event.value;
 
         let max_y = if settings.developer.free_camera_rotation {
             PI // To avoid flipping when the camera is under ground.
@@ -93,64 +98,116 @@ impl PlayerCameraPlugin {
         rotation.y = rotation.y.clamp(min_y, max_y);
     }
 
-    fn apply_transform(
-        mut cameras: Query<
-            (&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm),
-            With<PlayerCamera>,
-        >,
-    ) {
-        let (mut transform, orbit_origin, orbit_rotation, spring_arm) = cameras.single_mut();
+    fn apply_transform(camera: Single<(&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm)>) {
+        let (mut transform, orbit_origin, orbit_rotation, spring_arm) = camera.into_inner();
         transform.translation = orbit_rotation.sphere_pos() * **spring_arm + **orbit_origin;
         transform.look_at(**orbit_origin, Vec3::Y);
     }
 }
 
-#[derive(Bundle)]
-pub(super) struct PlayerCameraBundle {
-    orbit_origin: OrbitOrigin,
-    orbit_rotation: OrbitRotation,
-    spring_arm: SpringArm,
-    player_camera: PlayerCamera,
-    camera_3d_bundle: Camera3dBundle,
-    taa_bundle: TemporalAntiAliasBundle,
-    environment_map: EnvironmentMapLight,
+#[derive(Component)]
+#[require(
+    OrbitOrigin,
+    OrbitRotation,
+    SpringArm,
+    Name(|| Name::new("Player camera")),
+    Camera3d,
+    Msaa(|| Msaa::Off),
+    Camera(|| Camera { hdr: true, ..Default::default() }),
+    TemporalAntiAliasing,
+    EnvironmentMapLight,
+    ScreenSpaceAmbientOcclusion
+)]
+pub(super) struct PlayerCamera;
 
-    /// Needed for SSAO.
-    ///
-    /// The bundle can't be included because TAA and SSAO bundles both contain [`DepthPrepass`].
-    normal_prepass: NormalPrepass,
-    ssao_settings: ScreenSpaceAmbientOcclusionSettings,
-}
+impl InputContext for PlayerCamera {
+    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
+        let mut ctx = ContextInstance::default();
+        let settings = world.resource::<Settings>();
 
-impl PlayerCameraBundle {
-    pub(super) fn new(environment_map: &Collection<EnvironmentMap>) -> Self {
-        Self {
-            orbit_origin: Default::default(),
-            orbit_rotation: Default::default(),
-            spring_arm: Default::default(),
-            player_camera: PlayerCamera,
-            camera_3d_bundle: Camera3dBundle {
-                camera: Camera {
-                    hdr: true,
-                    ..Default::default()
+        ctx.bind::<EnableCameraRotation>().to(MouseButton::Middle);
+        ctx.bind::<EnablePanCamera>()
+            .to((MouseButton::Right, GamepadButton::East));
+
+        ctx.bind::<PanCamera>()
+            .to((
+                Cardinal {
+                    north: &settings.keyboard.camera_forward,
+                    east: &settings.keyboard.camera_left,
+                    south: &settings.keyboard.camera_backward,
+                    west: &settings.keyboard.camera_right,
                 },
-                ..Default::default()
-            },
-            taa_bundle: Default::default(),
-            ssao_settings: Default::default(),
-            normal_prepass: Default::default(),
-            environment_map: EnvironmentMapLight {
-                diffuse_map: environment_map.handle(EnvironmentMap::Diffuse),
-                specular_map: environment_map.handle(EnvironmentMap::Specular),
-                intensity: 800.0,
-            },
-        }
+                (
+                    GamepadAxis::LeftStickX,
+                    GamepadAxis::LeftStickY.with_modifiers(SwizzleAxis::YXZ),
+                )
+                    .with_conditions_each(Chord::<EnablePanCamera>::default()),
+                Input::mouse_motion()
+                    .with_modifiers((
+                        Negate::y(),
+                        AccumulateBy::<EnablePanCamera>::default(),
+                        Scale::splat(0.003),
+                    ))
+                    .with_conditions(Chord::<EnablePanCamera>::default()),
+            ))
+            .with_modifiers((DeadZone::default(), Scale::splat(0.7), DeltaLerp::default()));
+
+        ctx.bind::<RotateCamera>()
+            .to((
+                Bidirectional {
+                    positive: &settings.keyboard.rotate_right,
+                    negative: &settings.keyboard.rotate_left,
+                },
+                GamepadStick::Right,
+                Input::mouse_motion()
+                    .with_modifiers(Negate::all())
+                    .with_modifiers(Scale::splat(0.08))
+                    .with_conditions(Chord::<EnableCameraRotation>::default()),
+            ))
+            .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
+
+        ctx.bind::<ZoomCamera>()
+            .to((
+                Bidirectional {
+                    positive: &settings.keyboard.zoom_in,
+                    negative: &settings.keyboard.zoom_out,
+                },
+                Bidirectional {
+                    positive: GamepadAxis::RightZ,
+                    negative: GamepadAxis::LeftZ,
+                }
+                .with_modifiers_each(Scale::splat(0.1)),
+                Input::mouse_wheel().with_modifiers(SwizzleAxis::YXZ),
+            ))
+            .with_modifiers(DeltaLerp::default());
+
+        ctx
     }
 }
 
+#[derive(Debug, InputAction)]
+#[input_action(output = Vec2)]
+struct PanCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = f32)]
+struct ZoomCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = Vec2)]
+struct RotateCamera;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+struct EnableCameraRotation;
+
+#[derive(Debug, InputAction)]
+#[input_action(output = bool)]
+struct EnablePanCamera;
+
 #[derive(Clone, Copy, Debug, EnumIter, IntoPrimitive)]
 #[repr(usize)]
-pub(super) enum EnvironmentMap {
+enum EnvironmentMap {
     Diffuse,
     Specular,
 }
@@ -198,131 +255,32 @@ impl Default for SpringArm {
     }
 }
 
-#[derive(Component)]
-pub(super) struct PlayerCamera;
-
-impl InputContext for PlayerCamera {
-    fn context_instance(world: &World, _entity: Entity) -> ContextInstance {
-        let mut ctx = ContextInstance::default();
-        let settings = world.resource::<Settings>();
-
-        ctx.bind::<EnableCameraRotation>().to(MouseButton::Middle);
-        ctx.bind::<EnablePanCamera>()
-            .to((MouseButton::Right, GamepadButtonType::East));
-
-        ctx.bind::<PanCamera>()
-            .to((
-                Cardinal {
-                    north: &settings.keyboard.camera_forward,
-                    east: &settings.keyboard.camera_left,
-                    south: &settings.keyboard.camera_backward,
-                    west: &settings.keyboard.camera_right,
-                },
-                // TODO 0.15: replace with condition on set.
-                (
-                    GamepadAxisType::LeftStickX
-                        .with_conditions(Chord::<EnablePanCamera>::default()),
-                    GamepadAxisType::LeftStickY
-                        .with_modifiers(SwizzleAxis::YXZ)
-                        .with_conditions(Chord::<EnablePanCamera>::default()),
-                ),
-                Input::mouse_motion()
-                    .with_modifiers((
-                        Negate::y(true),
-                        AccumulateBy::<EnablePanCamera>::default(),
-                        Scale::splat(0.003),
-                    ))
-                    .with_conditions(Chord::<EnablePanCamera>::default()),
-            ))
-            .with_modifiers((DeadZone::default(), Scale::splat(0.7), DeltaLerp::default()));
-
-        ctx.bind::<RotateCamera>()
-            .to((
-                Biderectional {
-                    positive: &settings.keyboard.rotate_right,
-                    negative: &settings.keyboard.rotate_left,
-                },
-                GamepadStick::Right,
-                Input::mouse_motion()
-                    .with_modifiers(Negate::all(true))
-                    .with_modifiers(Scale::splat(0.08))
-                    .with_conditions(Chord::<EnableCameraRotation>::default()),
-            ))
-            .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
-
-        ctx.bind::<ZoomCamera>()
-            .to((
-                Biderectional {
-                    positive: &settings.keyboard.zoom_in,
-                    negative: &settings.keyboard.zoom_out,
-                },
-                // TODO 0.15: scale set.
-                Biderectional {
-                    positive: GamepadAxisType::RightZ.with_modifiers(Scale::splat(0.1)),
-                    negative: GamepadAxisType::LeftZ.with_modifiers(Scale::splat(0.1)),
-                },
-                Input::mouse_wheel().with_modifiers(SwizzleAxis::YXZ),
-            ))
-            .with_modifiers(DeltaLerp::default());
-
-        ctx
-    }
-}
-
-#[derive(Debug, InputAction)]
-#[input_action(output = Vec2)]
-struct PanCamera;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = f32)]
-struct ZoomCamera;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = Vec2)]
-struct RotateCamera;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct EnableCameraRotation;
-
-#[derive(Debug, InputAction)]
-#[input_action(output = bool)]
-struct EnablePanCamera;
-
 /// A helper to cast rays from [`PlayerCamera`].
 #[derive(SystemParam)]
 pub(super) struct CameraCaster<'w, 's> {
-    windows: Query<'w, 's, &'static Window>,
+    window: Single<'w, &'static Window>,
     cities: Query<'w, 's, &'static GlobalTransform>,
-    cameras: Query<
-        'w,
-        's,
-        (&'static Parent, &'static GlobalTransform, &'static Camera),
-        With<PlayerCamera>,
+    camera: Option<
+        Single<
+            'w,
+            (&'static Parent, &'static GlobalTransform, &'static Camera),
+            With<PlayerCamera>,
+        >,
     >,
 }
 
 impl CameraCaster<'_, '_> {
-    pub(super) fn ray(&self) -> Option<Ray3d> {
-        let (_, &transform, camera) = self.cameras.get_single().ok()?;
-        self.ray_from(transform, camera)
-    }
-
     pub(super) fn intersect_ground(&self) -> Option<Vec3> {
-        let (parent, &transform, camera) = self.cameras.get_single().ok()?;
-        let ray = self.ray_from(transform, camera)?;
+        let (parent, &transform, camera) = self.camera.as_deref()?;
+        let cursor_pos = self.window.cursor_position()?;
+        let ray = camera.viewport_to_world(&transform, cursor_pos).ok()?;
         let distance = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))?;
         let global_point = ray.get_point(distance);
-        let city_transform = self.cities.get(**parent).unwrap();
+        let city_transform = self.cities.get(***parent).unwrap();
         let local_point = city_transform
             .affine()
             .inverse()
             .transform_point3(global_point);
         Some(local_point)
-    }
-
-    fn ray_from(&self, transform: GlobalTransform, camera: &Camera) -> Option<Ray3d> {
-        let cursor_pos = self.windows.single().cursor_position()?;
-        camera.viewport_to_world(&transform, cursor_pos)
     }
 }

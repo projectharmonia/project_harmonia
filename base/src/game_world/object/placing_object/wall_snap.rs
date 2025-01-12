@@ -16,33 +16,32 @@ pub(super) struct WallSnapPlugin;
 
 impl Plugin for WallSnapPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<WallSnap>().add_systems(
-            Update,
-            (
-                Self::init_placing,
-                Self::snap.after(PlacingObjectPlugin::apply_position),
-            )
-                .chain()
-                .run_if(in_state(CityMode::Objects).or_else(in_state(BuildingMode::Objects))),
-        );
+        app.register_type::<WallSnap>()
+            .add_observer(Self::init_placing)
+            .add_systems(
+                Update,
+                Self::snap
+                    .never_param_warn()
+                    .after(PlacingObjectPlugin::apply_position)
+                    .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
+            );
     }
 }
 
 impl WallSnapPlugin {
     fn init_placing(
+        trigger: Trigger<OnAdd, WallSnap>,
         mut placing_objects: Query<(&mut PlacingObjectState, &WallSnap), Added<WallSnap>>,
     ) {
-        if let Ok((mut placing_object, snap)) = placing_objects.get_single_mut() {
-            if snap.required() {
-                debug!("disabling placing until snapped");
-                placing_object.allowed_place = false;
-            }
+        let (mut placing_object, snap) = placing_objects.get_mut(trigger.entity()).unwrap();
+        if snap.required() {
+            debug!("disabling placing until snapped");
+            placing_object.allowed_place = false;
         }
     }
 
     fn snap(
-        walls: Query<(&Segment, &Transform), With<Wall>>,
-        mut placing_objects: Query<
+        placing_object: Single<
             (
                 &mut Transform,
                 &mut PlacingObjectState,
@@ -51,14 +50,11 @@ impl WallSnapPlugin {
             ),
             Without<Wall>,
         >,
+        walls: Query<(&Segment, &Transform), With<Wall>>,
     ) {
-        let Ok((mut object_transform, mut state, mut rotation_limit, snap)) =
-            placing_objects.get_single_mut()
-        else {
-            return;
-        };
-
         const SNAP_DELTA: f32 = 1.0;
+        let (mut object_transform, mut state, mut rotation_limit, snap) =
+            placing_object.into_inner();
         let object_point = object_transform.translation.xz();
         if let Some((wall, wall_transform, wall_point)) = walls
             .iter()

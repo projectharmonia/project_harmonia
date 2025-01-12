@@ -1,68 +1,61 @@
 use bevy::prelude::*;
 
-use project_harmonia_base::message::Message;
+use project_harmonia_base::error_message::ErrorMessage;
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, dialog::DialogBundle, label::LabelBundle, theme::Theme,
+    button::ButtonKind, dialog::Dialog, label::LabelKind, theme::Theme,
 };
 
-pub(super) struct MessageBoxPlugin;
+pub(super) struct ErrorDialogPlugin;
 
-impl Plugin for MessageBoxPlugin {
+impl Plugin for ErrorDialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (Self::show, Self::close));
+        app.add_observer(Self::show);
     }
 }
 
-impl MessageBoxPlugin {
+impl ErrorDialogPlugin {
     fn show(
+        trigger: Trigger<ErrorMessage>,
         mut commands: Commands,
-        mut messages: EventReader<Message>,
         theme: Res<Theme>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        for message in messages.read() {
-            info!("showing dialog");
-            commands.entity(roots.single()).with_children(|parent| {
+        info!("showing error dialog");
+        commands.entity(*root_entity).with_children(|parent| {
+            parent.spawn(Dialog).with_children(|parent| {
                 parent
-                    .spawn((MessageBox, DialogBundle::new(&theme)))
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        theme.panel_background,
+                    ))
                     .with_children(|parent| {
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    flex_direction: FlexDirection::Column,
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    padding: theme.padding.normal,
-                                    row_gap: theme.gap.normal,
-                                    ..Default::default()
-                                },
-                                background_color: theme.panel_color.into(),
-                                ..Default::default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(LabelBundle::normal(&theme, message.0.clone()));
-                                parent.spawn((OkButton, TextButtonBundle::normal(&theme, "Ok")));
-                            });
-                    });
+                        parent.spawn((LabelKind::Normal, Text::new(&**trigger)));
+                        parent.spawn(ButtonKind::Normal).with_child(Text::new("Ok"));
+                    })
+                    .observe(Self::close);
             });
-        }
+        });
     }
 
     fn close(
+        trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        buttons: Query<(), With<OkButton>>,
-        message_boxes: Query<Entity, With<MessageBox>>,
+        dialogs: Query<(), With<Dialog>>,
+        parents: Query<&Parent>,
     ) {
-        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            info!("closing dialog");
-            commands.entity(message_boxes.single()).despawn_recursive();
-        }
+        let entity = parents
+            .iter_ancestors(trigger.entity())
+            .find(|entity| dialogs.get(*entity).is_ok())
+            .expect("button should be a part of the error dialog");
+
+        info!("closing error dialog");
+        commands.entity(entity).despawn_recursive();
     }
 }
-
-#[derive(Component)]
-struct OkButton;
-
-#[derive(Component)]
-struct MessageBox;

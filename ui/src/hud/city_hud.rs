@@ -2,14 +2,14 @@ mod roads_node;
 
 use bevy::prelude::*;
 use project_harmonia_base::{
-    asset::info::{
-        object_info::{ObjectCategory, ObjectInfo},
-        road_info::RoadInfo,
+    asset::manifest::{
+        object_manifest::{ObjectCategory, ObjectManifest},
+        road_manifest::RoadManifest,
     },
     game_world::{city::CityMode, WorldState},
 };
 use project_harmonia_widgets::{
-    button::{ExclusiveButton, TabContent, TextButtonBundle, Toggled},
+    button::{ButtonKind, TabContent, Toggled},
     theme::Theme,
 };
 use strum::IntoEnumIterator;
@@ -36,21 +36,19 @@ impl CityHudPlugin {
         mut tab_commands: Commands,
         theme: Res<Theme>,
         asset_server: Res<AssetServer>,
-        objects_info: Res<Assets<ObjectInfo>>,
-        roads_info: Res<Assets<RoadInfo>>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        object_manifests: Res<Assets<ObjectManifest>>,
+        road_manifests: Res<Assets<RoadManifest>>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
     ) {
         debug!("showing city HUD");
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(*root_entity).with_children(|parent| {
             parent
                 .spawn((
                     StateScoped(WorldState::City),
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            ..Default::default()
-                        },
+                    PickingBehavior::IGNORE,
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..Default::default()
                     },
                 ))
@@ -58,37 +56,35 @@ impl CityHudPlugin {
                     tools_node::setup(parent, &theme);
 
                     let tabs_entity = parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Node {
                                 flex_direction: FlexDirection::Column,
                                 align_self: AlignSelf::FlexEnd,
                                 padding: theme.padding.normal,
                                 ..Default::default()
                             },
-                            background_color: theme.panel_color.into(),
-                            ..Default::default()
-                        })
+                            theme.panel_background,
+                        ))
                         .id();
 
                     for mode in CityMode::iter() {
                         let content_entity = parent
-                            .spawn(NodeBundle {
-                                style: Style {
+                            .spawn((
+                                Node {
                                     align_self: AlignSelf::FlexEnd,
                                     padding: theme.padding.normal,
                                     column_gap: theme.gap.normal,
                                     ..Default::default()
                                 },
-                                background_color: theme.panel_color.into(),
-                                ..Default::default()
-                            })
+                                theme.panel_background,
+                            ))
                             .with_children(|parent| match mode {
                                 CityMode::Objects => {
                                     objects_node::setup(
                                         parent,
                                         &mut tab_commands,
                                         &theme,
-                                        &objects_info,
+                                        &object_manifests,
                                         ObjectCategory::CITY_CATEGORIES,
                                     );
                                 }
@@ -97,7 +93,7 @@ impl CityHudPlugin {
                                     &mut tab_commands,
                                     &asset_server,
                                     &theme,
-                                    &roads_info,
+                                    &road_manifests,
                                 ),
                             })
                             .id();
@@ -105,11 +101,11 @@ impl CityHudPlugin {
                         tab_commands
                             .spawn((
                                 mode,
+                                ButtonKind::Symbol,
                                 TabContent(content_entity),
-                                ExclusiveButton,
                                 Toggled(mode == Default::default()),
-                                TextButtonBundle::symbol(&theme, mode.glyph()),
                             ))
+                            .with_child(Text::new(mode.glyph()))
                             .set_parent(tabs_entity);
                     }
                 });
@@ -117,13 +113,13 @@ impl CityHudPlugin {
     }
 
     fn set_city_mode(
-        mut city_mode: ResMut<NextState<CityMode>>,
+        mut commands: Commands,
         buttons: Query<(Ref<Toggled>, &CityMode), Changed<Toggled>>,
     ) {
         for (toggled, &mode) in &buttons {
             if toggled.0 && !toggled.is_added() {
                 info!("changing city mode to `{mode:?}`");
-                city_mode.set(mode);
+                commands.set_state(mode);
             }
         }
     }

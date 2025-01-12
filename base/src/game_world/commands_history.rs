@@ -4,9 +4,11 @@ use std::{
 };
 
 use bevy::{
-    ecs::{entity::MapEntities, system::SystemParam},
+    ecs::{
+        entity::{EntityHashMap, MapEntities},
+        system::SystemParam,
+    },
     prelude::*,
-    utils::EntityHashMap,
 };
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -71,7 +73,7 @@ impl CommandsHistory<'_, '_> {
     /// Like [`Commands::push`], but can be reverted with [`Self::undo`].
     #[allow(dead_code)]
     pub(super) fn push<C: ReversibleCommand + 'static>(&mut self, command: C) {
-        self.commands.add(move |world: &mut World| {
+        self.commands.queue(move |world: &mut World| {
             world.resource_scope(|world, mut buffer: Mut<HistoryBuffer>| {
                 buffer.apply(
                     Box::new(command),
@@ -88,7 +90,7 @@ impl CommandsHistory<'_, '_> {
     /// See also [`CommandConfirmation`].
     pub(super) fn push_pending<C: PendingCommand + 'static>(&mut self, command: C) -> CommandId {
         let id = self.ids.next();
-        self.commands.add(move |world: &mut World| {
+        self.commands.queue(move |world: &mut World| {
             world.resource_scope(|world, mut buffer: Mut<HistoryBuffer>| {
                 buffer.apply_pending(
                     id,
@@ -105,7 +107,7 @@ impl CommandsHistory<'_, '_> {
 
     /// Reverses the last executed command if exists.
     pub fn undo(&mut self) {
-        self.commands.add(|world: &mut World| {
+        self.commands.queue(|world: &mut World| {
             world.resource_scope(|world, mut buffer: Mut<HistoryBuffer>| {
                 buffer.apply_reverse(Stack::Redo, world);
             })
@@ -114,7 +116,7 @@ impl CommandsHistory<'_, '_> {
 
     /// Re-applies the last undone command if exists.
     pub fn redo(&mut self) {
-        self.commands.add(|world: &mut World| {
+        self.commands.queue(|world: &mut World| {
             world.resource_scope(|world, mut buffer: Mut<HistoryBuffer>| {
                 buffer.apply_reverse(Stack::Undo { new: false }, world);
             })
@@ -404,7 +406,7 @@ impl CommandConfirmation {
 pub(super) struct CommandId(u8);
 
 #[derive(Deref, DerefMut, Default)]
-pub(super) struct CommandEntityMapper(EntityHashMap<Entity, Entity>);
+pub(super) struct CommandEntityMapper(EntityHashMap<Entity>);
 
 impl EntityMapper for CommandEntityMapper {
     fn map_entity(&mut self, entity: Entity) -> Entity {

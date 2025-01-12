@@ -1,10 +1,7 @@
 pub(super) mod following;
 pub(super) mod path_debug;
 
-use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use path_debug::PathDebugPlugin;
 use serde::{Deserialize, Serialize};
@@ -18,9 +15,9 @@ pub(super) struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((FollowingPlugin, PathDebugPlugin))
-            .register_type::<NavSettings>()
+            .register_type::<Navigation>()
             .register_type::<NavDestination>()
-            .replicate::<NavSettings>()
+            .replicate::<Navigation>()
             .replicate::<NavDestination>()
             .replicate::<NavPath>()
             .add_systems(
@@ -38,7 +35,7 @@ impl NavigationPlugin {
     /// Updates path on navmesh changes.
     fn update_paths(
         mut navmeshes: ResMut<Assets<NavMesh>>,
-        city_navmeshes: Query<(&Handle<NavMesh>, &Parent, &NavMeshStatus), Changed<NavMeshStatus>>,
+        city_navmeshes: Query<(&ManagedNavMesh, &Parent, &NavMeshStatus), Changed<NavMeshStatus>>,
         children: Query<&Children>,
         mut agents: Query<(
             Entity,
@@ -83,7 +80,7 @@ impl NavigationPlugin {
     fn generate_paths(
         mut navmeshes: ResMut<Assets<NavMesh>>,
         cities: Query<&CityNavMesh>,
-        city_navmeshes: Query<&Handle<NavMesh>>,
+        city_navmeshes: Query<&ManagedNavMesh>,
         mut agents: Query<
             (
                 Entity,
@@ -130,14 +127,14 @@ impl NavigationPlugin {
         time: Res<Time>,
         mut agents: Query<(
             Entity,
-            &NavSettings,
+            &Navigation,
             &NavPath,
             &mut NavPathIndex,
             &mut NavDestination,
             &mut Transform,
         )>,
     ) {
-        for (entity, &nav_settings, path, mut path_index, mut dest, mut transform) in &mut agents {
+        for (entity, &navigation, path, mut path_index, mut dest, mut transform) in &mut agents {
             if dest.is_none() || path.is_empty() {
                 continue;
             }
@@ -145,9 +142,9 @@ impl NavigationPlugin {
             let target_index = **path_index + 1;
             if let Some(passed_points) = move_agent(
                 &mut transform,
-                nav_settings,
+                navigation,
                 &path[target_index..],
-                time.delta_seconds(),
+                time.delta_secs(),
             ) {
                 if passed_points != 0 {
                     **path_index += passed_points;
@@ -166,7 +163,7 @@ impl NavigationPlugin {
 }
 
 /// Marks an entity with [`Collider`] as a navigation mesh affector.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Obstacle;
 
 /// Moves the agent along a path.
@@ -180,16 +177,16 @@ pub struct Obstacle;
 /// If the path is completed, returns [`None`].
 fn move_agent(
     transform: &mut Transform,
-    nav_settings: NavSettings,
+    navigation: Navigation,
     path: &[Vec3],
     delta: f32,
 ) -> Option<usize> {
-    let movement_step = nav_settings.speed * delta;
+    let movement_step = navigation.speed * delta;
     let (passed_points, &target_point) = path.iter().enumerate().find(|&(index, &point)| {
         const EPSILON: f32 = 0.1;
         let tolerance = if index == path.len() - 1 {
             // Apply the desired offset for the last point.
-            nav_settings.offset.unwrap_or(EPSILON)
+            navigation.offset.unwrap_or(EPSILON)
         } else {
             EPSILON
         };
@@ -208,17 +205,11 @@ fn move_agent(
     Some(passed_points)
 }
 
-#[derive(Bundle, Default)]
-pub(super) struct NavigationBundle {
-    nav_settings: NavSettings,
-    dest: NavDestination,
-    path: NavPath,
-}
-
 /// Navigation parameters.
 #[derive(Component, Clone, Copy, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
-pub(super) struct NavSettings {
+#[require(NavDestination, NavPath)]
+pub(super) struct Navigation {
     /// Movement speed.
     speed: f32,
 
@@ -226,7 +217,7 @@ pub(super) struct NavSettings {
     offset: Option<f32>,
 }
 
-impl NavSettings {
+impl Navigation {
     pub(super) fn new(speed: f32) -> Self {
         Self {
             speed,
@@ -249,31 +240,10 @@ impl NavSettings {
 /// Changing this component to [`Some`] will trigger [`NavPath`] calculation.
 /// Calculation could take more then one frame if navigation mesh updates and until then [`NavPath`] will be cleared.
 /// If set to [`None`], just clears [`NavPath`].
-#[derive(Reflect, Deref, DerefMut, Default, Serialize, Deserialize)]
+#[derive(Component, Reflect, Deref, DerefMut, Default, Serialize, Deserialize)]
 #[reflect(Component)]
+#[require(NavPath, NavPathIndex)]
 pub(super) struct NavDestination(Option<Vec3>);
-
-// TODO 0.15: Replace with required components.
-impl Component for NavDestination {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_add(|mut world, targeted_entity, _component_id| {
-            if world.get::<NavPathIndex>(targeted_entity).is_none() {
-                world
-                    .commands()
-                    .entity(targeted_entity)
-                    .insert(NavPathIndex::default());
-            }
-            if world.get::<NavPath>(targeted_entity).is_none() {
-                world
-                    .commands()
-                    .entity(targeted_entity)
-                    .insert(NavPath::default());
-            }
-        });
-    }
-}
 
 /// Calculated navigation path.
 ///

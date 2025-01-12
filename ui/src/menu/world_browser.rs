@@ -1,4 +1,4 @@
-use std::{fs, mem, net::Ipv4Addr};
+use std::{fs, net::Ipv4Addr};
 
 use anyhow::{Context, Result};
 use bevy::prelude::*;
@@ -8,39 +8,24 @@ use bevy_replicon_renet::{
     RenetChannelsExt,
 };
 use bevy_simple_text_input::TextInputValue;
-use strum::{Display, EnumIter, IntoEnumIterator};
 
 use super::MenuState;
 use project_harmonia_base::{
     core::GameState,
+    error_message::error_message,
     game_paths::GamePaths,
     game_world::{GameLoad, WorldName},
-    message::error_message,
     network::{self, DEFAULT_PORT},
 };
 use project_harmonia_widgets::{
-    button::TextButtonBundle, click::Click, dialog::Dialog, dialog::DialogBundle,
-    label::LabelBundle, text_edit::TextEditBundle, theme::Theme,
+    button::ButtonKind, dialog::Dialog, label::LabelKind, text_edit::TextEdit, theme::Theme,
 };
 
 pub(super) struct WorldBrowserPlugin;
 
 impl Plugin for WorldBrowserPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(MenuState::WorldBrowser), Self::setup)
-            .add_systems(
-                Update,
-                (
-                    Self::handle_world_clicks,
-                    Self::handle_host_dialog_clicks.pipe(error_message),
-                    Self::handle_remove_dialog_clicks.pipe(error_message),
-                    Self::handle_back_clicks,
-                    Self::handle_world_browser_clicks,
-                    Self::handle_create_dialog_clicks,
-                    Self::handle_join_dialog_clicks.pipe(error_message),
-                )
-                    .run_if(in_state(MenuState::WorldBrowser)),
-            );
+        app.add_systems(OnEnter(MenuState::WorldBrowser), Self::setup);
     }
 }
 
@@ -49,40 +34,34 @@ impl WorldBrowserPlugin {
         mut commands: Commands,
         theme: Res<Theme>,
         game_paths: Res<GamePaths>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
     ) {
         info!("entering world browser");
-        commands.entity(roots.single()).with_children(|parent| {
+        commands.entity(*root_entity).with_children(|parent| {
             parent
                 .spawn((
                     StateScoped(MenuState::WorldBrowser),
-                    NodeBundle {
-                        style: Style {
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::FlexStart,
+                        padding: theme.padding.global,
+                        ..Default::default()
+                    },
+                ))
+                .with_children(|parent| {
+                    parent.spawn((LabelKind::Large, Text::new("World browser")));
+                    parent
+                        .spawn(Node {
                             width: Val::Percent(100.0),
                             height: Val::Percent(100.0),
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             justify_content: JustifyContent::FlexStart,
-                            padding: theme.padding.global,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    },
-                ))
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::large(&theme, "World browser"));
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Percent(100.0),
-                                height: Val::Percent(100.0),
-                                flex_direction: FlexDirection::Column,
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::FlexStart,
-                                padding: theme.padding.normal,
-                                row_gap: theme.gap.normal,
-                                ..Default::default()
-                            },
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -96,513 +75,451 @@ impl WorldBrowserPlugin {
                         });
 
                     parent
-                        .spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Percent(100.0),
-                                justify_content: JustifyContent::FlexStart,
-                                column_gap: theme.gap.normal,
-                                ..Default::default()
-                            },
+                        .spawn(Node {
+                            width: Val::Percent(100.0),
+                            justify_content: JustifyContent::FlexStart,
+                            column_gap: theme.gap.normal,
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn((BackButton, TextButtonBundle::normal(&theme, "Back")));
-                            parent.spawn(NodeBundle {
-                                style: Style {
-                                    width: Val::Percent(100.0),
-                                    ..Default::default()
-                                },
+                            parent
+                                .spawn(ButtonKind::Normal)
+                                .with_child(Text::new("Back"))
+                                .observe(Self::back);
+                            parent.spawn(Node {
+                                width: Val::Percent(100.0),
                                 ..Default::default()
                             });
-                            for button in WorldBrowserButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(&theme, button.to_string()),
-                                ));
-                            }
+                            parent
+                                .spawn(ButtonKind::Normal)
+                                .with_child(Text::new("Create"))
+                                .observe(Self::create);
+                            parent
+                                .spawn(ButtonKind::Normal)
+                                .with_child(Text::new("Join"))
+                                .observe(Self::join);
                         });
                 });
         });
     }
 
-    fn handle_world_clicks(
+    fn play(
+        trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoad>,
-        mut click_events: EventReader<Click>,
-        theme: Res<Theme>,
-        buttons: Query<(&WorldButton, &WorldNode)>,
+        buttons: Query<&WorldNode>,
         labels: Query<&Text>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
     ) {
-        for (world_button, &world_node) in
-            buttons.iter_many(click_events.read().map(|event| event.0))
-        {
-            let world_name = labels
-                .get(world_node.label_entity)
-                .expect("world label should contain text");
-            match world_button {
-                WorldButton::Play => {
-                    commands.insert_resource(WorldName(world_name.sections[0].value.clone()));
-                    load_events.send_default();
-                }
-                WorldButton::Host => {
-                    commands.entity(roots.single()).with_children(|parent| {
-                        setup_host_world_dialog(
-                            parent,
-                            &theme,
-                            world_node,
-                            &world_name.sections[0].value,
-                        );
-                    });
-                }
-                WorldButton::Remove => {
-                    commands.entity(roots.single()).with_children(|parent| {
-                        setup_remove_world_dialog(
-                            parent,
-                            &theme,
-                            world_node,
-                            &world_name.sections[0].value,
-                        );
-                    });
-                }
-            }
-        }
+        let world_node = buttons.get(trigger.entity()).unwrap();
+        let world_name = labels
+            .get(world_node.label_entity)
+            .expect("world label should contain text");
+
+        commands.insert_resource(WorldName(world_name.0.clone()));
+        commands.trigger(GameLoad);
     }
 
-    fn handle_host_dialog_clicks(
+    fn host(
+        trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        mut load_events: EventWriter<GameLoad>,
-        mut click_events: EventReader<Click>,
-        network_channels: Res<RepliconChannels>,
-        dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
-        buttons: Query<&HostDialogButton>,
-        text_edits: Query<&TextInputValue, With<PortEdit>>,
-        mut labels: Query<&mut Text>,
-    ) -> Result<()> {
-        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            let (dialog_entity, world_node) = dialogs.single();
-            match button {
-                HostDialogButton::Host => {
-                    let server = RenetServer::new(ConnectionConfig {
-                        server_channels_config: network_channels.get_server_configs(),
-                        client_channels_config: network_channels.get_client_configs(),
-                        ..Default::default()
-                    });
-                    let port = text_edits.single();
-                    let transport = network::create_server(port.0.parse()?)
-                        .context("unable to create server")?;
-
-                    commands.insert_resource(server);
-                    commands.insert_resource(transport);
-
-                    let mut world_name = labels
-                        .get_mut(world_node.label_entity)
-                        .expect("world label should contain text");
-                    commands
-                        .insert_resource(WorldName(mem::take(&mut world_name.sections[0].value)));
-
-                    load_events.send_default();
-                }
-                HostDialogButton::Cancel => info!("cancelling hosting"),
-            }
-            commands.entity(dialog_entity).despawn_recursive();
-        }
-
-        Ok(())
-    }
-
-    fn handle_remove_dialog_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        game_paths: Res<GamePaths>,
-        dialogs: Query<(Entity, &WorldNode), With<Dialog>>,
-        buttons: Query<&RemoveDialogButton>,
-        labels: Query<&Text>,
-    ) -> Result<()> {
-        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            let (dialog_entity, world_node) = dialogs.single();
-            let world_name = labels
-                .get(world_node.label_entity)
-                .expect("world label should contain text");
-            match button {
-                RemoveDialogButton::Remove => {
-                    let world_path = game_paths.world_path(&world_name.sections[0].value);
-                    fs::remove_file(&world_path)
-                        .with_context(|| format!("unable to remove {world_path:?}"))?;
-                    commands.entity(world_node.node_entity).despawn_recursive();
-                }
-                RemoveDialogButton::Cancel => info!("cancelling removal"),
-            }
-            commands.entity(dialog_entity).despawn_recursive();
-        }
-
-        Ok(())
-    }
-
-    fn handle_back_clicks(
-        mut click_events: EventReader<Click>,
-        mut menu_state: ResMut<NextState<MenuState>>,
-        buttons: Query<(), With<BackButton>>,
-    ) {
-        for _ in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            menu_state.set(MenuState::MainMenu);
-        }
-    }
-
-    fn handle_world_browser_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
         theme: Res<Theme>,
-        buttons: Query<&WorldBrowserButton>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        buttons: Query<&WorldNode>,
+        labels: Query<&Text>,
     ) {
-        for button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            commands
-                .entity(roots.single())
-                .with_children(|parent| match button {
-                    WorldBrowserButton::Create => setup_create_world_dialog(parent, &theme),
-                    WorldBrowserButton::Join => setup_join_world_dialog(parent, &theme),
-                });
-        }
-    }
+        let &world_node = buttons.get(trigger.entity()).unwrap();
+        let world_name = labels
+            .get(world_node.label_entity)
+            .expect("world label should contain text");
 
-    fn handle_create_dialog_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        mut game_state: ResMut<NextState<GameState>>,
-        buttons: Query<&CreateDialogButton>,
-        mut text_edits: Query<&mut TextInputValue, With<WorldNameEdit>>,
-        dialogs: Query<Entity, With<Dialog>>,
-    ) {
-        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            match button {
-                CreateDialogButton::Create => {
-                    let mut world_name = text_edits.single_mut();
-                    commands.insert_resource(WorldName(mem::take(&mut world_name.0)));
-                    game_state.set(GameState::InGame);
-                }
-                CreateDialogButton::Cancel => info!("cancelling creation"),
-            }
-            commands.entity(dialogs.single()).despawn_recursive();
-        }
-    }
-
-    fn handle_join_dialog_clicks(
-        mut commands: Commands,
-        mut click_events: EventReader<Click>,
-        network_channels: Res<RepliconChannels>,
-        buttons: Query<&JoinDialogButton>,
-        port_edits: Query<&TextInputValue, With<PortEdit>>,
-        ip_edits: Query<&TextInputValue, With<IpEdit>>,
-        dialogs: Query<Entity, With<Dialog>>,
-    ) -> Result<()> {
-        for &button in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            match button {
-                JoinDialogButton::Join => {
-                    let client = RenetClient::new(ConnectionConfig {
-                        server_channels_config: network_channels.get_server_configs(),
-                        client_channels_config: network_channels.get_client_configs(),
-                        ..Default::default()
-                    });
-                    let ip = ip_edits.single();
-                    let port = port_edits.single();
-                    let transport = network::create_client(ip.0.parse()?, port.0.parse()?)
-                        .context("unable to create connection")?;
-
-                    commands.insert_resource(client);
-                    commands.insert_resource(transport);
-                    commands.entity(dialogs.single()).despawn_recursive(); // Despawn only on transport creation.
-                }
-                JoinDialogButton::Cancel => {
-                    info!("cancelling join");
-                    commands.entity(dialogs.single()).despawn_recursive();
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
-fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<String>) {
-    parent
-        .spawn(NodeBundle {
-            style: Style {
-                padding: theme.padding.normal,
-                column_gap: theme.gap.normal,
-                ..Default::default()
-            },
-            background_color: theme.panel_color.into(),
-            ..Default::default()
-        })
-        .with_children(|parent| {
-            let node_entity = parent.parent_entity();
-            let label_entity = parent.spawn(LabelBundle::large(theme, label)).id();
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .add_child(label_entity);
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    for button in WorldButton::iter() {
+        commands.entity(*root_entity).with_children(|parent| {
+            info!("showing host dialog");
+            parent.spawn((Dialog, world_node)).with_children(|parent| {
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        theme.panel_background,
+                    ))
+                    .with_children(|parent| {
                         parent.spawn((
-                            button,
-                            WorldNode {
-                                label_entity,
-                                node_entity,
-                            },
-                            TextButtonBundle::normal(theme, button.to_string()),
+                            LabelKind::Normal,
+                            Text::new(format!("Host {}", &**world_name)),
                         ));
-                    }
-                });
-        });
-}
 
-fn setup_host_world_dialog(
-    parent: &mut ChildBuilder,
-    theme: &Theme,
-    world_node: WorldNode,
-    world_name: &str,
-) {
-    info!("showing host dialog");
-    parent
-        .spawn((DialogBundle::new(theme), world_node))
-        .with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        padding: theme.padding.normal,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(theme, format!("Host {world_name}")));
-
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        parent
+                            .spawn(Node {
                                 column_gap: theme.gap.normal,
                                 justify_content: JustifyContent::Center,
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            parent.spawn(LabelBundle::normal(theme, "Port:"));
-                            parent.spawn((
-                                PortEdit,
-                                TextEditBundle::new(theme, DEFAULT_PORT.to_string()),
-                            ));
-                        });
+                            })
+                            .with_children(|parent| {
+                                parent.spawn((LabelKind::Normal, Text::new("Port:")));
+                                parent.spawn((PortEdit, TextInputValue(DEFAULT_PORT.to_string())));
+                            });
 
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        parent
+                            .spawn(Node {
                                 column_gap: theme.gap.normal,
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            for button in HostDialogButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(theme, button.to_string()),
-                                ));
-                            }
-                        });
-                });
+                            })
+                            .with_children(|parent| {
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Host"))
+                                    .observe(Self::confirm_host.pipe(error_message));
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Cancel"))
+                                    .observe(Self::cancel_host);
+                            });
+                    });
+            });
         });
-}
+    }
 
-fn setup_remove_world_dialog(
-    parent: &mut ChildBuilder,
-    theme: &Theme,
-    world_node: WorldNode,
-    world_name: &str,
-) {
-    info!("showing remove dialog");
-    parent
-        .spawn((DialogBundle::new(theme), world_node))
-        .with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        padding: theme.padding.normal,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(
-                        theme,
-                        format!("Are you sure you want to remove world {world_name}?",),
-                    ));
+    fn remove(
+        trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        theme: Res<Theme>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        buttons: Query<&WorldNode>,
+        labels: Query<&Text>,
+    ) {
+        let &world_node = buttons.get(trigger.entity()).unwrap();
+        let world_name = labels
+            .get(world_node.label_entity)
+            .expect("world label should contain text");
 
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+        commands.entity(*root_entity).with_children(|parent| {
+            info!("showing remove dialog");
+            parent.spawn((Dialog, world_node)).with_children(|parent| {
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        theme.panel_background,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((
+                            LabelKind::Normal,
+                            Text::new(format!(
+                                "Are you sure you want to remove world {}?",
+                                &**world_name
+                            )),
+                        ));
+
+                        parent
+                            .spawn(Node {
                                 column_gap: theme.gap.normal,
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            for button in RemoveDialogButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(theme, button.to_string()),
-                                ));
-                            }
-                        });
-                });
+                            })
+                            .with_children(|parent| {
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Remove"))
+                                    .observe(Self::confirm_remove.pipe(error_message));
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Cancel"))
+                                    .observe(Self::cancel_remove);
+                            });
+                    });
+            });
         });
-}
+    }
 
-fn setup_create_world_dialog(parent: &mut ChildBuilder, theme: &Theme) {
-    info!("showing create dialog");
-    parent
-        .spawn(DialogBundle::new(theme))
-        .with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        padding: theme.padding.normal,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(theme, "Create world"));
-                    parent.spawn((WorldNameEdit, TextEditBundle::new(theme, "New world")));
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+    fn confirm_host(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        network_channels: Res<RepliconChannels>,
+        dialog: Single<(Entity, &WorldNode), With<Dialog>>,
+        port: Single<&TextInputValue, With<PortEdit>>,
+        labels: Query<&Text>,
+    ) -> Result<()> {
+        let (dialog_entity, world_node) = *dialog;
+
+        let server = RenetServer::new(ConnectionConfig {
+            server_channels_config: network_channels.get_server_configs(),
+            client_channels_config: network_channels.get_client_configs(),
+            ..Default::default()
+        });
+        let transport =
+            network::create_server(port.0.parse()?).context("unable to create server")?;
+
+        commands.insert_resource(server);
+        commands.insert_resource(transport);
+
+        let world_name = labels
+            .get(world_node.label_entity)
+            .expect("world label should contain text");
+        commands.insert_resource(WorldName(world_name.0.clone()));
+        commands.trigger(GameLoad);
+
+        commands.entity(dialog_entity).despawn_recursive();
+
+        Ok(())
+    }
+
+    fn cancel_host(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) {
+        commands.entity(*dialog_entity).despawn_recursive();
+    }
+
+    fn confirm_remove(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        game_paths: Res<GamePaths>,
+        dialogs: Single<(Entity, &WorldNode), With<Dialog>>,
+        labels: Query<&Text>,
+    ) -> Result<()> {
+        let (dialog_entity, world_node) = *dialogs;
+
+        let world_name = labels
+            .get(world_node.label_entity)
+            .expect("world label should contain text");
+        let world_path = game_paths.world_path(world_name);
+        fs::remove_file(&world_path).with_context(|| format!("unable to remove {world_path:?}"))?;
+
+        commands.entity(world_node.node_entity).despawn_recursive();
+        commands.entity(dialog_entity).despawn_recursive();
+
+        Ok(())
+    }
+
+    fn cancel_remove(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) {
+        info!("cancelling removal");
+        commands.entity(*dialog_entity).despawn_recursive();
+    }
+
+    fn back(_trigger: Trigger<Pointer<Click>>, mut commands: Commands) {
+        commands.set_state(MenuState::MainMenu);
+    }
+
+    fn create(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        theme: Res<Theme>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+    ) {
+        commands.entity(*root_entity).with_children(|parent| {
+            info!("showing create dialog");
+            parent.spawn(Dialog).with_children(|parent| {
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        theme.panel_background,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((LabelKind::Normal, Text::new("Create world")));
+                        parent.spawn((TextEdit, TextInputValue("New world".to_string())));
+                        parent
+                            .spawn(Node {
                                 column_gap: theme.gap.normal,
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            for button in CreateDialogButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(theme, button.to_string()),
-                                ));
-                            }
-                        });
-                });
+                            })
+                            .with_children(|parent| {
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Create"))
+                                    .observe(Self::confirm_create);
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Cancel"))
+                                    .observe(Self::cancel_create);
+                            });
+                    });
+            });
         });
-}
+    }
 
-fn setup_join_world_dialog(parent: &mut ChildBuilder, theme: &Theme) {
-    info!("showing join dialog");
-    parent
-        .spawn(DialogBundle::new(theme))
-        .with_children(|parent| {
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        padding: theme.padding.normal,
-                        row_gap: theme.gap.normal,
-                        ..Default::default()
-                    },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(LabelBundle::normal(theme, "Join world"));
+    fn join(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        theme: Res<Theme>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+    ) {
+        commands.entity(*root_entity).with_children(|parent| {
+            info!("showing join dialog");
+            parent.spawn(Dialog).with_children(|parent| {
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            padding: theme.padding.normal,
+                            row_gap: theme.gap.normal,
+                            ..Default::default()
+                        },
+                        theme.panel_background,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((LabelKind::Normal, Text::new("Join world")));
 
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        parent
+                            .spawn(Node {
                                 display: Display::Grid,
                                 column_gap: theme.gap.normal,
                                 row_gap: theme.gap.normal,
                                 grid_template_columns: vec![GridTrack::auto(); 2],
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            parent.spawn(LabelBundle::normal(theme, "IP:"));
-                            parent.spawn((
-                                IpEdit,
-                                TextEditBundle::new(theme, Ipv4Addr::LOCALHOST.to_string()),
-                            ));
+                            })
+                            .with_children(|parent| {
+                                parent.spawn((LabelKind::Normal, Text::new("IP:")));
+                                parent.spawn((
+                                    IpEdit,
+                                    TextInputValue(Ipv4Addr::LOCALHOST.to_string()),
+                                ));
 
-                            parent.spawn(LabelBundle::normal(theme, "Port:"));
-                            parent.spawn((
-                                PortEdit,
-                                TextEditBundle::new(theme, DEFAULT_PORT.to_string())
-                                    .inactive(theme),
-                            ));
-                        });
+                                parent.spawn((LabelKind::Normal, Text::new("Port:")));
+                                parent.spawn((PortEdit, TextInputValue(DEFAULT_PORT.to_string())));
+                            });
 
-                    parent
-                        .spawn(NodeBundle {
-                            style: Style {
+                        parent
+                            .spawn(Node {
                                 column_gap: theme.gap.normal,
                                 ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|parent| {
-                            for button in JoinDialogButton::iter() {
-                                parent.spawn((
-                                    button,
-                                    TextButtonBundle::normal(theme, button.to_string()),
-                                ));
-                            }
-                        });
+                            })
+                            .with_children(|parent| {
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Join"))
+                                    .observe(Self::confirm_join.pipe(error_message));
+                                parent
+                                    .spawn(ButtonKind::Normal)
+                                    .with_child(Text::new("Cancel"))
+                                    .observe(Self::cancel_join);
+                            });
+                    });
+            });
+        });
+    }
+
+    fn confirm_create(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        world_name: Single<&TextInputValue>,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) {
+        commands.insert_resource(WorldName(world_name.0.clone()));
+        commands.set_state(GameState::InGame);
+        commands.entity(*dialog_entity).despawn_recursive();
+    }
+
+    fn cancel_create(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) {
+        info!("cancelling creation");
+        commands.entity(*dialog_entity).despawn_recursive();
+    }
+
+    fn confirm_join(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        network_channels: Res<RepliconChannels>,
+        port: Single<&TextInputValue, With<PortEdit>>,
+        ip: Single<&TextInputValue, With<IpEdit>>,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) -> Result<()> {
+        let client = RenetClient::new(ConnectionConfig {
+            server_channels_config: network_channels.get_server_configs(),
+            client_channels_config: network_channels.get_client_configs(),
+            ..Default::default()
+        });
+        let transport = network::create_client(port.0.parse()?, ip.0.parse()?)
+            .context("unable to create connection")?;
+
+        commands.insert_resource(client);
+        commands.insert_resource(transport);
+        commands.entity(*dialog_entity).despawn_recursive(); // Despawn only on transport creation.
+
+        Ok(())
+    }
+
+    fn cancel_join(
+        _trigger: Trigger<Pointer<Click>>,
+        mut commands: Commands,
+        dialog_entity: Single<Entity, With<Dialog>>,
+    ) {
+        info!("cancelling join");
+        commands.entity(*dialog_entity).despawn_recursive();
+    }
+}
+
+fn setup_world_node(parent: &mut ChildBuilder, theme: &Theme, label: impl Into<String>) {
+    parent
+        .spawn((
+            Node {
+                padding: theme.padding.normal,
+                column_gap: theme.gap.normal,
+                ..Default::default()
+            },
+            theme.panel_background,
+        ))
+        .with_children(|parent| {
+            let node_entity = parent.parent_entity();
+            let label_entity = parent.spawn((LabelKind::Large, Text::new(label))).id();
+            let world_node = WorldNode {
+                label_entity,
+                node_entity,
+            };
+
+            parent
+                .spawn(Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    ..Default::default()
+                })
+                .add_child(label_entity);
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: theme.gap.normal,
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent
+                        .spawn((ButtonKind::Normal, world_node))
+                        .with_child(Text::new("Play"))
+                        .observe(WorldBrowserPlugin::play);
+                    parent
+                        .spawn((ButtonKind::Normal, world_node))
+                        .with_child(Text::new("Host"))
+                        .observe(WorldBrowserPlugin::host);
+                    parent
+                        .spawn((ButtonKind::Normal, world_node))
+                        .with_child(Text::new("Remove"))
+                        .observe(WorldBrowserPlugin::remove);
                 });
         });
-}
-
-#[derive(Component, EnumIter, Clone, Copy, Display)]
-enum WorldButton {
-    Play,
-    Host,
-    Remove,
-}
-
-#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
-enum RemoveDialogButton {
-    Remove,
-    Cancel,
 }
 
 /// Associated world node entities.
@@ -613,37 +530,9 @@ struct WorldNode {
 }
 
 #[derive(Component)]
-struct BackButton;
-
-#[derive(Component, EnumIter, Clone, Copy, Display)]
-enum WorldBrowserButton {
-    Create,
-    Join,
-}
-
-#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
-enum CreateDialogButton {
-    Create,
-    Cancel,
-}
-
-#[derive(Component)]
-struct WorldNameEdit;
-
-#[derive(Component)]
+#[require(TextEdit)]
 struct PortEdit;
 
 #[derive(Component)]
+#[require(TextEdit)]
 struct IpEdit;
-
-#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
-enum HostDialogButton {
-    Host,
-    Cancel,
-}
-
-#[derive(Component, EnumIter, Clone, Copy, Display, PartialEq)]
-enum JoinDialogButton {
-    Join,
-    Cancel,
-}

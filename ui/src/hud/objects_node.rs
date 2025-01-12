@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::preview::Preview;
 use project_harmonia_base::{
-    asset::info::object_info::{ObjectCategory, ObjectInfo},
+    asset::manifest::object_manifest::{ObjectCategory, ObjectManifest},
     game_world::{
         city::{ActiveCity, CityMode},
         family::FamilyMode,
@@ -10,8 +10,9 @@ use project_harmonia_base::{
     },
 };
 use project_harmonia_widgets::{
-    button::{ExclusiveButton, ImageButtonBundle, TabContent, TextButtonBundle, Toggled},
-    popup::PopupBundle,
+    button::{ButtonKind, ExclusiveButton, TabContent, Toggled},
+    label::LabelKind,
+    popup::Popup,
     theme::Theme,
 };
 
@@ -19,79 +20,67 @@ pub(super) struct ObjectsNodePlugin;
 
 impl Plugin for ObjectsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::untoggle).add_systems(
+        app.add_observer(Self::untoggle).add_systems(
             Update,
-            (Self::start_placing, Self::show_popup, Self::reload_buttons)
-                .run_if(in_state(CityMode::Objects).or_else(in_state(FamilyMode::Building))),
+            (Self::show_popup, Self::reload_buttons)
+                .run_if(in_state(CityMode::Objects).or(in_state(FamilyMode::Building))),
         );
     }
 }
 
 impl ObjectsNodePlugin {
     fn start_placing(
+        trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
-        active_cities: Query<Entity, With<ActiveCity>>,
-        buttons: Query<(Entity, &Toggled, &Preview), (Changed<Toggled>, With<ObjectButton>)>,
+        city_entity: Single<Entity, With<ActiveCity>>,
+        placing_entity: Option<Single<Entity, With<PlacingObject>>>,
+        buttons: Query<&ObjectButton>,
     ) {
-        for (button_entity, toggled, &preview) in &buttons {
-            let Preview::Object(id) = preview else {
-                panic!("buttons should contain only object previews");
-            };
+        let id = **buttons.get(trigger.entity()).unwrap();
 
-            if toggled.0 {
-                debug!("starting spawning object `{id:?}`");
-                let placing_entity = commands
-                    .spawn(PlacingObject::Spawning(id))
-                    .set_parent(active_cities.single())
-                    .id();
+        debug!("starting spawning object `{id:?}`");
 
-                commands
-                    .entity(button_entity)
-                    .insert(ButtonPlacingObject(placing_entity));
-            }
+        if let Some(placing_entity) = placing_entity {
+            commands.entity(*placing_entity).despawn_recursive();
         }
+
+        commands.entity(*city_entity).with_children(|parent| {
+            parent.spawn((
+                PlacingObject::Spawning(id),
+                PlacingObjectButton(trigger.entity()),
+            ));
+        });
     }
 
     fn show_popup(
         mut commands: Commands,
-        theme: Res<Theme>,
-        objects_info: Res<Assets<ObjectInfo>>,
-        buttons: Query<
-            (Entity, &Interaction, &Style, &GlobalTransform, &Preview),
-            (Changed<Interaction>, With<ObjectButton>),
-        >,
-        windows: Query<&Window>,
-        roots: Query<Entity, (With<Node>, Without<Parent>)>,
+        manifests: Res<Assets<ObjectManifest>>,
+        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+        buttons: Query<(Entity, &Interaction, &ObjectButton), Changed<Interaction>>,
     ) {
-        for (entity, &interaction, style, transform, &preview) in &buttons {
-            let Preview::Object(id) = preview else {
-                continue;
-            };
+        for (button_entity, &interaction, &button) in &buttons {
             if interaction != Interaction::Hovered {
                 continue;
             }
 
-            let info = objects_info.get(id).unwrap();
-            commands.entity(roots.single()).with_children(|parent| {
+            let manifest = manifests.get(*button).unwrap();
+            info!("showing popup for object '{}'", manifest.general.name);
+            commands.entity(*root_entity).with_children(|parent| {
                 parent
-                    .spawn(PopupBundle::new(
-                        &theme,
-                        windows.single(),
-                        entity,
-                        style,
-                        transform,
-                    ))
+                    .spawn(Popup { button_entity })
                     .with_children(|parent| {
-                        parent.spawn(TextBundle::from_sections([
-                            TextSection::new(
-                                info.general.name.clone() + "\n\n",
-                                theme.label.normal.clone(),
-                            ),
-                            TextSection::new(
-                                format!("{}\n{}", info.general.license, info.general.author,),
-                                theme.label.small.clone(),
-                            ),
-                        ]));
+                        parent
+                            .spawn((
+                                LabelKind::Normal,
+                                Text::new(manifest.general.name.clone() + "\n\n"),
+                            ))
+                            .with_child((
+                                LabelKind::Small,
+                                TextSpan::new(format!(
+                                    "{}\n{}",
+                                    manifest.general.license, manifest.general.author,
+                                )),
+                            ));
                     });
             });
         }
@@ -99,64 +88,62 @@ impl ObjectsNodePlugin {
 
     fn reload_buttons(
         mut commands: Commands,
-        mut change_events: EventReader<AssetEvent<ObjectInfo>>,
-        objects_info: Res<Assets<ObjectInfo>>,
-        theme: Res<Theme>,
-        buttons: Query<(Entity, &Preview), With<ObjectButton>>,
+        mut change_events: EventReader<AssetEvent<ObjectManifest>>,
+        manifests: Res<Assets<ObjectManifest>>,
+        buttons: Query<(Entity, &ObjectButton)>,
         categories: Query<(&ObjectCategory, &TabContent)>,
     ) {
         for &event in change_events.read() {
-            if let AssetEvent::Modified { id } = event {
-                debug!("recreating button for asset {id}");
+            let AssetEvent::Modified { id } = event else {
+                continue;
+            };
 
-                for (entity, &preview) in &buttons {
-                    if let Preview::Object(info_id) = preview {
-                        if id == info_id {
-                            commands.entity(entity).despawn_recursive();
-                            break;
-                        }
-                    }
+            debug!("recreating button for asset {id}");
+
+            // Fully remove the button because category may change.
+            for (entity, &button) in &buttons {
+                if id == *button {
+                    commands.entity(entity).despawn_recursive();
+                    break;
                 }
+            }
 
-                let object_info = objects_info
-                    .get(id)
-                    .expect("info should always come from file");
+            let manifest = manifests
+                .get(id)
+                .expect("manifest should always come from file");
 
-                let tab_content = categories.iter().find_map(|(&category, &tab_content)| {
-                    if category == object_info.category {
-                        Some(tab_content)
-                    } else {
-                        None
-                    }
+            let tab_content = categories.iter().find_map(|(&category, &tab_content)| {
+                if category == manifest.category {
+                    Some(tab_content)
+                } else {
+                    None
+                }
+            });
+
+            if let Some(tab_content) = tab_content {
+                commands.entity(tab_content.0).with_children(|parent| {
+                    parent
+                        .spawn(ObjectButton(id))
+                        .with_child(Preview::Object(id))
+                        .observe(Self::start_placing);
                 });
-
-                if let Some(tab_content) = tab_content {
-                    commands.entity(tab_content.0).with_children(|parent| {
-                        parent.spawn(ObjectButtonBundle::new(id, &theme));
-                    });
-                }
             }
         }
     }
 
     fn untoggle(
-        trigger: Trigger<OnRemove, PlacingObject>,
-        mut commands: Commands,
-        mut buttons: Query<(Entity, &mut Toggled, &ButtonPlacingObject)>,
+        trigger: Trigger<OnRemove, PlacingObjectButton>,
+        objects: Query<&PlacingObjectButton>,
+        mut buttons: Query<&mut Toggled>,
     ) {
-        if let Some((button_entity, mut toggled, _)) = buttons
-            .iter_mut()
-            .find(|(.., placing_entity)| placing_entity.0 == trigger.entity())
-        {
+        let placing_button = *objects.get(trigger.entity()).unwrap();
+        if let Ok(mut toggled) = buttons.get_mut(*placing_button) {
             debug!(
-                "untoggling button `{button_entity}` for placing object `{}`",
+                "untoggling button `{}` for placing object `{}`",
+                *placing_button,
                 trigger.entity()
             );
-
-            toggled.0 = false;
-            commands
-                .entity(button_entity)
-                .remove::<ButtonPlacingObject>();
+            **toggled = false
         }
     }
 }
@@ -165,38 +152,35 @@ pub(super) fn setup(
     parent: &mut ChildBuilder,
     tab_commands: &mut Commands,
     theme: &Theme,
-    objects_info: &Assets<ObjectInfo>,
+    manifests: &Assets<ObjectManifest>,
     categories: &[ObjectCategory],
 ) {
     let tabs_entity = parent
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                ..Default::default()
-            },
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
             ..Default::default()
         })
         .id();
 
     for (index, &category) in categories.iter().enumerate() {
         let content_entity = parent
-            .spawn(NodeBundle {
-                style: Style {
-                    display: Display::Grid,
-                    column_gap: theme.gap.normal,
-                    row_gap: theme.gap.normal,
-                    padding: theme.padding.normal,
-                    grid_template_columns: vec![GridTrack::auto(); 8],
-                    ..Default::default()
-                },
+            .spawn(Node {
+                display: Display::Grid,
+                column_gap: theme.gap.normal,
+                row_gap: theme.gap.normal,
+                padding: theme.padding.normal,
+                grid_template_columns: vec![GridTrack::auto(); 8],
                 ..Default::default()
             })
             .with_children(|parent| {
-                for (id, _) in objects_info
+                for (id, _) in manifests
                     .iter()
-                    .filter(|(_, info)| info.category == category)
+                    .filter(|(_, manifest)| manifest.category == category)
                 {
-                    parent.spawn(ObjectButtonBundle::new(id, theme));
+                    parent
+                        .spawn(ObjectButton(id))
+                        .with_child(Preview::Object(id))
+                        .observe(ObjectsNodePlugin::start_placing);
                 }
             })
             .id();
@@ -204,36 +188,18 @@ pub(super) fn setup(
         tab_commands
             .spawn((
                 category,
+                ButtonKind::Symbol,
                 TabContent(content_entity),
-                ExclusiveButton,
                 Toggled(index == 0),
-                TextButtonBundle::symbol(theme, category.glyph()),
             ))
+            .with_child(Text::new(category.glyph()))
             .set_parent(tabs_entity);
     }
 }
 
-#[derive(Component)]
-struct ObjectButton;
+#[derive(Component, Clone, Copy, Deref)]
+#[require(ButtonKind(|| ButtonKind::Image), ExclusiveButton)]
+struct ObjectButton(AssetId<ObjectManifest>);
 
-#[derive(Bundle)]
-struct ObjectButtonBundle {
-    object_button: ObjectButton,
-    preview: Preview,
-    toggled: Toggled,
-    image_button_bundle: ImageButtonBundle,
-}
-
-impl ObjectButtonBundle {
-    fn new(id: AssetId<ObjectInfo>, theme: &Theme) -> Self {
-        Self {
-            object_button: ObjectButton,
-            preview: Preview::Object(id),
-            toggled: Toggled(false),
-            image_button_bundle: ImageButtonBundle::placeholder(theme),
-        }
-    }
-}
-
-#[derive(Component)]
-struct ButtonPlacingObject(Entity);
+#[derive(Component, Clone, Copy, Deref)]
+struct PlacingObjectButton(Entity);

@@ -1,6 +1,5 @@
 pub mod button;
 pub mod checkbox;
-pub mod click;
 pub mod dialog;
 pub mod label;
 pub mod popup;
@@ -12,7 +11,8 @@ use bevy::prelude::*;
 
 use button::ButtonPlugin;
 use checkbox::CheckboxPlugin;
-use click::ClickPlugin;
+use dialog::DialogPlugin;
+use label::LabelPlugin;
 use popup::PopupPlugin;
 use progress_bar::ProgressBarPlugin;
 use text_edit::TextEditPlugin;
@@ -24,8 +24,9 @@ impl Plugin for WidgetsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             ButtonPlugin,
+            DialogPlugin,
+            LabelPlugin,
             CheckboxPlugin,
-            ClickPlugin,
             PopupPlugin,
             ProgressBarPlugin,
             TextEditPlugin,

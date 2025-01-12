@@ -1,113 +1,110 @@
 use bevy::prelude::*;
 
-use project_harmonia_base::game_world::{
-    actor::{
-        task::{TaskCancel, TaskState},
-        SelectedActor,
-    },
-    family::FamilyMode,
-    WorldState,
+use project_harmonia_base::game_world::actor::{
+    task::{ActiveTask, Task, TaskCancel},
+    SelectedActor,
 };
-use project_harmonia_widgets::{button::ImageButtonBundle, click::Click, theme::Theme};
+use project_harmonia_widgets::{button::ButtonKind, theme::Theme};
 
 pub(super) struct TasksNodePlugin;
 
 impl Plugin for TasksNodePlugin {
     fn build(&self, app: &mut App) {
-        app.observe(Self::cleanup).add_systems(
-            Update,
-            (
-                Self::update_nodes,
-                Self::cancel.run_if(in_state(FamilyMode::Life)),
-            )
-                .run_if(in_state(WorldState::Family)),
-        );
+        app.add_observer(Self::change_actor.never_param_warn())
+            .add_observer(Self::add_task.never_param_warn())
+            .add_observer(Self::activate_task.never_param_warn())
+            .add_observer(Self::cleanup);
     }
 }
 
 impl TasksNodePlugin {
-    fn update_nodes(
+    // TODO 0.16: listen for `Task` insertion when hierarchy will be available.
+    fn add_task(
+        trigger: Trigger<OnAdd, Parent>,
         mut commands: Commands,
-        theme: Res<Theme>,
-        actors: Query<(&Children, Ref<SelectedActor>)>,
-        tasks: Query<(Entity, Ref<TaskState>)>,
-        queued_task_nodes: Query<Entity, With<QueuedTasksNode>>,
-        active_task_nodes: Query<Entity, With<ActiveTasksNode>>,
-        buttons: Query<(Entity, &ButtonTask)>,
+        queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
+        actor_entity: Single<Entity, With<SelectedActor>>,
+        tasks: Query<&Parent, With<Task>>,
     ) {
-        let (children, selected_actor) = actors.single();
-
-        if selected_actor.is_added() {
-            commands
-                .entity(queued_task_nodes.single())
-                .despawn_descendants();
-            commands
-                .entity(active_task_nodes.single())
-                .despawn_descendants();
+        let Ok(parent) = tasks.get(trigger.entity()) else {
+            return;
+        };
+        if **parent != *actor_entity {
+            return;
         }
 
-        for (task_entity, state) in tasks
-            .iter_many(children)
-            .filter(|(_, state)| state.is_changed() || selected_actor.is_added())
+        debug!("creating queued task button for `{}`", trigger.entity());
+
+        commands
+            .entity(*queued_node_entity)
+            .with_children(|parent| {
+                spawn_button(parent, trigger.entity());
+            });
+    }
+
+    fn activate_task(
+        trigger: Trigger<OnAdd, ActiveTask>,
+        mut commands: Commands,
+        active_node_entity: Single<Entity, With<ActiveTasksNode>>,
+        buttons: Query<(Entity, &TaskButton)>,
+    ) {
+        if let Some((button_entity, _)) = buttons
+            .iter()
+            .find(|(_, task_button)| task_button.task_entity == trigger.entity())
         {
-            match *state {
-                TaskState::Queued => {
-                    debug!("creating queued task button for `{task_entity}`");
-                    commands
-                        .entity(queued_task_nodes.single())
-                        .with_children(|parent| {
-                            parent.spawn((
-                                ButtonTask(task_entity),
-                                ImageButtonBundle::placeholder(&theme),
-                            ));
-                        });
-                }
-                TaskState::Active => {
-                    if let Some((button_entity, _)) = buttons
-                        .iter()
-                        .find(|(_, button_task)| button_task.0 == task_entity)
-                    {
-                        debug!("turning queued button for `{task_entity}` into active");
-                        commands
-                            .entity(button_entity)
-                            .set_parent(active_task_nodes.single());
-                    } else {
-                        debug!("creating active task button for `{task_entity}`");
-                        commands
-                            .entity(active_task_nodes.single())
-                            .with_children(|parent| {
-                                parent.spawn((
-                                    ButtonTask(task_entity),
-                                    ImageButtonBundle::placeholder(&theme),
-                                ));
-                            });
-                    }
-                }
-                TaskState::Cancelled => {
-                    debug!("marking button for task `{task_entity}` as cancelled")
-                }
+            debug!(
+                "turning queued button for `{}` into active",
+                trigger.entity()
+            );
+            commands
+                .entity(button_entity)
+                .set_parent(*active_node_entity);
+        }
+    }
+
+    fn change_actor(
+        _trigger: Trigger<OnAdd, SelectedActor>,
+        mut commands: Commands,
+        actor_children: Single<&Children, With<SelectedActor>>,
+        queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
+        active_node_entity: Single<Entity, With<ActiveTasksNode>>,
+        tasks: Query<(Entity, Has<ActiveTask>), With<Task>>,
+    ) {
+        debug!("reloading actor task buttons");
+
+        commands.entity(*queued_node_entity).despawn_descendants();
+        commands.entity(*active_node_entity).despawn_descendants();
+
+        for (task_entity, active) in tasks.iter_many(*actor_children) {
+            let node_entity = if active {
+                *active_node_entity
+            } else {
+                *queued_node_entity
             };
+
+            commands.entity(node_entity).with_children(|parent| {
+                spawn_button(parent, task_entity);
+            });
         }
     }
 
     fn cancel(
+        trigger: Trigger<Pointer<Click>>,
         mut cancel_events: EventWriter<TaskCancel>,
-        mut click_events: EventReader<Click>,
-        buttons: Query<&ButtonTask>,
+        buttons: Query<&TaskButton>,
     ) {
-        for button_task in buttons.iter_many(click_events.read().map(|event| event.0)) {
-            cancel_events.send(TaskCancel(button_task.0));
-        }
+        let task_button = buttons.get(trigger.entity()).unwrap();
+        cancel_events.send(TaskCancel(task_button.task_entity));
     }
 
     fn cleanup(
-        trigger: Trigger<OnRemove, TaskState>,
+        trigger: Trigger<OnRemove, Task>,
         mut commands: Commands,
-        buttons: Query<(Entity, &ButtonTask)>,
+        buttons: Query<(Entity, &TaskButton)>,
     ) {
         if let Some((entity, _)) = buttons
             .iter()
-            .find(|(_, button_task)| button_task.0 == trigger.entity())
+            .find(|(_, task_button)| task_button.task_entity == trigger.entity())
         {
             debug!("removing task button `{entity}` for `{}`", trigger.entity());
             commands.entity(entity).despawn_recursive();
@@ -115,20 +112,22 @@ impl TasksNodePlugin {
     }
 }
 
-pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
+pub(super) fn setup(
+    parent: &mut ChildBuilder,
+    theme: &Theme,
+    actor_children: &Children,
+    tasks: &Query<(Entity, Has<ActiveTask>), With<Task>>,
+) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                ..Default::default()
-            },
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn((
-                QueuedTasksNode,
-                NodeBundle {
-                    style: Style {
+            parent
+                .spawn((
+                    QueuedTasksNode,
+                    Node {
                         flex_direction: FlexDirection::ColumnReverse,
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
@@ -136,13 +135,18 @@ pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
                         padding: theme.padding.normal,
                         ..Default::default()
                     },
-                    ..Default::default()
-                },
-            ));
+                ))
+                .with_children(|parent| {
+                    for (task_entity, active) in tasks.iter_many(actor_children) {
+                        if !active {
+                            spawn_button(parent, task_entity);
+                        }
+                    }
+                });
 
             const MAX_TASKS: usize = 4;
             // Image button is a square
-            let Val::Px(width) = theme.button.image_button.width else {
+            let Val::Px(width) = theme.button.image.width else {
                 panic!("button width should be set in pixels");
             };
             let height = width * MAX_TASKS as f32;
@@ -160,10 +164,10 @@ pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
             let min_width = Val::Px(width + left + right);
             let min_height = Val::Px(height + top + bottom);
 
-            parent.spawn((
-                ActiveTasksNode,
-                NodeBundle {
-                    style: Style {
+            parent
+                .spawn((
+                    ActiveTasksNode,
+                    Node {
                         min_width,
                         min_height,
                         flex_direction: FlexDirection::Column,
@@ -171,18 +175,35 @@ pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
                         padding: theme.padding.normal,
                         ..Default::default()
                     },
-                    background_color: theme.panel_color.into(),
-                    ..Default::default()
-                },
-            ));
+                    theme.panel_background,
+                ))
+                .with_children(|parent| {
+                    for (task_entity, active) in tasks.iter_many(actor_children) {
+                        if active {
+                            spawn_button(parent, task_entity);
+                        }
+                    }
+                });
         });
 }
 
+fn spawn_button(parent: &mut ChildBuilder, task_entity: Entity) {
+    parent
+        .spawn(TaskButton { task_entity })
+        .with_child(ImageNode::default())
+        .observe(TasksNodePlugin::cancel);
+}
+
 #[derive(Component)]
+#[require(Name(|| Name::new("Active tasks node")), Node)]
 struct ActiveTasksNode;
 
 #[derive(Component)]
+#[require(Name(|| Name::new("Queued tasks node")), Node)]
 struct QueuedTasksNode;
 
 #[derive(Component, Debug)]
-struct ButtonTask(Entity);
+#[require(ButtonKind(|| ButtonKind::Image))]
+struct TaskButton {
+    task_entity: Entity,
+}

@@ -1,95 +1,85 @@
-use bevy::{
-    animation::RepeatAnimation,
-    prelude::*,
-    scene::{self, SceneInstanceReady},
-    utils::Duration,
-};
+use bevy::{animation::RepeatAnimation, prelude::*, scene::SceneInstanceReady, utils::Duration};
 use strum::EnumCount;
 
 use super::{ActorAnimation, Movement, Sex};
 use crate::{
     asset::collection::Collection,
     core::GameState,
-    game_world::navigation::{NavPath, NavSettings},
+    game_world::navigation::{NavPath, Navigation},
 };
 
 pub(super) struct AnimationStatePlugin;
 
 impl Plugin for AnimationStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<MontageFinished>()
-            .add_systems(
-                SpawnScene,
-                Self::init_scene
-                    .run_if(in_state(GameState::InGame))
-                    .after(scene::scene_spawner_system),
-            )
+        app.add_observer(Self::init_scene)
             .add_systems(PostUpdate, Self::update.run_if(in_state(GameState::InGame)));
     }
 }
 
 impl AnimationStatePlugin {
     fn init_scene(
+        trigger: Trigger<SceneInstanceReady>,
         mut commands: Commands,
-        mut ready_events: EventReader<SceneInstanceReady>,
         mut animation_graphs: ResMut<Assets<AnimationGraph>>,
         actor_animations: Res<Collection<ActorAnimation>>,
-        mut actors: Query<(Entity, &mut AnimationState, &Sex)>,
+        mut actors: Query<(&mut AnimationState, &Sex)>,
         children: Query<&Children>,
         mut players: Query<(Entity, &mut AnimationPlayer)>,
     ) {
-        for parent_entity in ready_events.read().map(|event| event.parent) {
-            let Ok((state_entity, mut state, sex)) = actors.get_mut(parent_entity) else {
-                continue;
+        let Ok((mut state, sex)) = actors.get_mut(trigger.entity()) else {
+            return;
+        };
+
+        if let Some((player_entity, mut player)) = players
+            .iter_many_mut(children.iter_descendants(trigger.entity()))
+            .fetch_next()
+        {
+            debug!(
+                "initializing player `{player_entity}` for state `{}`",
+                trigger.entity()
+            );
+
+            let mut graph = AnimationGraph::new();
+            let idle_handle = actor_animations.handle(ActorAnimation::Idle);
+            let walk_handle = match sex {
+                Sex::Male => actor_animations.handle(ActorAnimation::MaleWalk),
+                Sex::Female => actor_animations.handle(ActorAnimation::FemaleWalk),
+            };
+            let run_handle = match sex {
+                Sex::Male => actor_animations.handle(ActorAnimation::MaleRun),
+                Sex::Female => actor_animations.handle(ActorAnimation::FemaleRun),
             };
 
-            if let Some((player_entity, mut player)) = players
-                .iter_many_mut(children.iter_descendants(state_entity))
-                .fetch_next()
-            {
-                debug!("initializing player `{player_entity}` for state `{state_entity}`");
+            state.nodes[AnimationNode::Idle as usize] =
+                graph.add_clip(idle_handle, 1.0, graph.root);
+            state.nodes[AnimationNode::Walk as usize] =
+                graph.add_clip(walk_handle, 1.0, graph.root);
+            state.nodes[AnimationNode::Run as usize] = graph.add_clip(run_handle, 1.0, graph.root);
+            state.nodes[AnimationNode::Montage as usize] = graph.add_blend(1.0, graph.root);
+            state.player_entity = Some(player_entity);
 
-                let mut graph = AnimationGraph::new();
-                let idle_handle = actor_animations.handle(ActorAnimation::Idle);
-                let walk_handle = match sex {
-                    Sex::Male => actor_animations.handle(ActorAnimation::MaleWalk),
-                    Sex::Female => actor_animations.handle(ActorAnimation::FemaleWalk),
-                };
-                let run_handle = match sex {
-                    Sex::Male => actor_animations.handle(ActorAnimation::MaleRun),
-                    Sex::Female => actor_animations.handle(ActorAnimation::FemaleRun),
-                };
+            let mut transitions = AnimationTransitions::new();
+            transitions.play(
+                &mut player,
+                state.nodes[AnimationNode::Idle as usize],
+                Duration::ZERO,
+            );
 
-                state.nodes[AnimationNode::Idle as usize] =
-                    graph.add_clip(idle_handle, 1.0, graph.root);
-                state.nodes[AnimationNode::Walk as usize] =
-                    graph.add_clip(walk_handle, 1.0, graph.root);
-                state.nodes[AnimationNode::Run as usize] =
-                    graph.add_clip(run_handle, 1.0, graph.root);
-                state.nodes[AnimationNode::Montage as usize] = graph.add_blend(1.0, graph.root);
-                state.player_entity = Some(player_entity);
-
-                let mut transitions = AnimationTransitions::new();
-                transitions.play(
-                    &mut player,
-                    state.nodes[AnimationNode::Idle as usize],
-                    Duration::ZERO,
-                );
-
-                commands
-                    .entity(player_entity)
-                    .insert((transitions, animation_graphs.add(graph)));
-            }
+            commands.entity(player_entity).insert((
+                transitions,
+                AnimationGraphHandle(animation_graphs.add(graph)),
+            ));
         }
     }
 
     fn update(
-        mut finish_events: EventWriter<MontageFinished>,
-        mut actors: Query<(Entity, &mut AnimationState, &NavSettings, Ref<NavPath>)>,
+        mut commands: Commands,
+        mut actors: Query<(Entity, &mut AnimationState, &Navigation, Ref<NavPath>)>,
         mut players: Query<(
             &mut AnimationPlayer,
             &mut AnimationTransitions,
-            &Handle<AnimationGraph>,
+            &AnimationGraphHandle,
         )>,
         mut graphs: ResMut<Assets<AnimationGraph>>,
     ) {
@@ -104,13 +94,13 @@ impl AnimationStatePlugin {
             match &state.montage_state {
                 MontageState::Stopped => trace!("no montage to play"),
                 MontageState::Pending(montage) => {
-                    debug!("applying pending montage");
+                    debug!("applying pending montage for `{actor_entity}`");
                     let graph = graphs
                         .get_mut(handle)
                         .expect("animation graph handle should be valid");
                     let index = state.nodes[AnimationNode::Montage as usize];
                     let node = graph.get_mut(index).expect("montage index should be valid");
-                    node.clip = Some(montage.handle.clone());
+                    node.node_type = AnimationNodeType::Clip(montage.handle.clone());
 
                     transitions
                         .play(&mut player, index, montage.transition_time)
@@ -121,14 +111,15 @@ impl AnimationStatePlugin {
                 }
                 MontageState::Playing => {
                     let index = state.nodes[AnimationNode::Montage as usize];
-                    if player.is_playing_animation(index) {
-                        trace!("playing montage");
+                    let animation = player.animation(index).expect("montage should be active");
+                    if !animation.is_finished() {
+                        trace!("playing montage for `{actor_entity}`");
                         // Continue playing, nothing to update.
                         continue;
                     }
 
-                    debug!("montage finished");
-                    finish_events.send(MontageFinished(actor_entity));
+                    debug!("finished montage for `{actor_entity}`");
+                    commands.trigger_targets(MontageFinished, actor_entity);
                     state.montage_state = MontageState::Stopped;
                 }
             }
@@ -142,7 +133,7 @@ impl AnimationStatePlugin {
             };
 
             if state.current_node != node {
-                debug!("switching current node to `{node:?}`");
+                debug!("switching current node to `{node:?}` for `{actor_entity}`");
                 let index = state.nodes[node as usize];
                 transitions
                     .play(&mut player, index, DEFAULT_TRANSITION_TIME)
@@ -171,7 +162,7 @@ pub(super) struct AnimationState {
 impl AnimationState {
     /// Temporarily overrides the current animation state with a montage.
     ///
-    /// Emits [`MontageFinished`] when the montage completes,
+    /// Triggers [`MontageFinished`] when the montage completes,
     /// then resumes the animation based on the current state.
     pub(super) fn play_montage(&mut self, montage: Montage) {
         self.montage_state = MontageState::Pending(montage);
@@ -216,7 +207,7 @@ impl Montage {
 }
 
 #[derive(Event)]
-pub(super) struct MontageFinished(pub(super) Entity);
+pub(super) struct MontageFinished;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, EnumCount)]
 enum AnimationNode {

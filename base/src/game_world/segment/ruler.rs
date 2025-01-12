@@ -6,10 +6,7 @@ use std::{
 
 use bevy::{
     color::palettes::css::WHITE,
-    ecs::{
-        component::{ComponentHooks, ComponentId, StorageType},
-        world::DeferredWorld,
-    },
+    ecs::{component::ComponentId, world::DeferredWorld},
     prelude::*,
 };
 use bevy_mod_billboard::{prelude::*, BillboardDepth, BillboardLockAxis};
@@ -49,16 +46,18 @@ impl RulerPlugin {
     fn draw(
         mut ruler_gizmos: Gizmos<RulerConfig>,
         mut angle_gizmos: Gizmos<AngleConfig>,
+        camera_transform: Single<&Transform, With<PlayerCamera>>,
         segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler, &Transform)>,
-        cameras: Query<&Transform, With<PlayerCamera>>,
-        mut text: Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
+        mut text: Query<
+            (&mut Transform, &mut BillboardText),
+            (Without<PlayerCamera>, Without<Segment>),
+        >,
     ) {
         for (segment, connections, &ruler, segment_transform) in &segments {
             if segment.is_zero() {
                 continue;
             }
 
-            let camera_transform = cameras.single();
             let segment_disp = segment.displacement();
 
             draw_len(
@@ -86,7 +85,10 @@ impl RulerPlugin {
 
 fn draw_len(
     ruler_gizmos: &mut Gizmos<RulerConfig>,
-    text: &mut Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
+    text: &mut Query<
+        (&mut Transform, &mut BillboardText),
+        (Without<PlayerCamera>, Without<Segment>),
+    >,
     segment: &Ref<Segment>,
     ruler: Ruler,
     segment_disp: Vec2,
@@ -122,14 +124,16 @@ fn draw_len(
     let angle = if sign.is_sign_positive() { PI } else { 0.0 };
     text_transform.rotation = Quat::from_euler(EulerRot::XYZ, FRAC_PI_2, 0.0, angle);
 
-    let text = &mut text.sections[0].value;
-    text.clear();
-    write!(text, "{:.2} m", segment_disp.length()).unwrap();
+    text.0.clear();
+    write!(text.0, "{:.2} m", segment_disp.length()).unwrap();
 }
 
 fn draw_angle(
     angle_gizmos: &mut Gizmos<AngleConfig>,
-    text: &mut Query<(&mut Transform, &mut Text), (Without<PlayerCamera>, Without<Segment>)>,
+    text: &mut Query<
+        (&mut Transform, &mut BillboardText),
+        (Without<PlayerCamera>, Without<Segment>),
+    >,
     segment: &Ref<Segment>,
     connections: &SegmentConnections,
     ruler: Ruler,
@@ -152,8 +156,7 @@ fn draw_angle(
             if segment.is_changed() {
                 // Remove the text in case the segment is still exists, but don't have any angles.
                 let (_, mut text) = text.get_mut(angle_entity).unwrap();
-                let text = &mut text.sections[0].value;
-                text.clear();
+                text.0.clear();
             }
             continue;
         };
@@ -170,8 +173,10 @@ fn draw_angle(
         angle_gizmos.arc_3d(
             angle,
             1.0,
-            Vec3::new(point.x, 0.0, point.y),
-            segment_rotation * point_rotation,
+            Isometry3d::new(
+                Vec3::new(point.x, 0.0, point.y),
+                segment_rotation * point_rotation,
+            ),
             WHITE,
         );
 
@@ -199,9 +204,8 @@ fn draw_angle(
         text_transform.rotation =
             segment_rotation.inverse() * Quat::from_euler(EulerRot::YXZ, PI + yaw, FRAC_PI_2, 0.0);
 
-        let text = &mut text.sections[0].value;
-        text.clear();
-        write!(text, "{:.0}°", angle.abs().to_degrees()).unwrap();
+        text.0.clear();
+        write!(text.0, "{:.0}°", angle.abs().to_degrees()).unwrap();
     }
 }
 
@@ -211,32 +215,29 @@ struct RulerConfig;
 #[derive(GizmoConfigGroup, Default, Reflect)]
 struct AngleConfig;
 
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
+#[component(on_add = Self::on_add)]
 pub(crate) struct Ruler {
     len_entity: Entity,
     angle_entities: [Entity; 2],
 }
 
 impl Ruler {
-    fn on_insert(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
+    fn on_add(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
         let font_handle = world.resource::<RulerFont>().0.clone();
 
         let len_entity = world
             .commands()
             .spawn((
-                BillboardTextBundle {
-                    transform: Transform::from_scale(Vec3::splat(0.005)),
-                    text: Text::from_section(
-                        "",
-                        TextStyle {
-                            font: font_handle.clone(),
-                            font_size: 100.0,
-                            color: WHITE.into(),
-                        },
-                    ),
-                    billboard_depth: BillboardDepth(false),
+                BillboardText::default(),
+                Transform::from_scale(Vec3::splat(0.005)),
+                TextFont {
+                    font: font_handle.clone(),
+                    font_size: 100.0,
                     ..Default::default()
                 },
+                TextColor::WHITE,
+                BillboardDepth(false),
                 BillboardLockAxis {
                     rotation: true,
                     ..Default::default()
@@ -248,19 +249,15 @@ impl Ruler {
             world
                 .commands()
                 .spawn((
-                    BillboardTextBundle {
-                        transform: Transform::from_scale(Vec3::splat(0.005)),
-                        text: Text::from_section(
-                            "",
-                            TextStyle {
-                                font: font_handle.clone(),
-                                font_size: 80.0,
-                                color: WHITE.into(),
-                            },
-                        ),
-                        billboard_depth: BillboardDepth(false),
+                    BillboardText::default(),
+                    Transform::from_scale(Vec3::splat(0.005)),
+                    TextFont {
+                        font: font_handle.clone(),
+                        font_size: 80.0,
                         ..Default::default()
                     },
+                    TextColor::WHITE,
+                    BillboardDepth(false),
                     BillboardLockAxis {
                         rotation: true,
                         ..Default::default()
@@ -277,15 +274,7 @@ impl Ruler {
             .commands()
             .entity(entity)
             .add_child(len_entity)
-            .push_children(&angle_entities);
-    }
-}
-
-impl Component for Ruler {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(Self::on_insert);
+            .add_children(&angle_entities);
     }
 }
 

@@ -16,17 +16,17 @@ repository = "https://github.com/projectharmonia/project_harmonia"
 project_harmonia_base = { path = "base" }
 project_harmonia_ui = { path = "ui" }
 project_harmonia_widgets = { path = "widgets" }
-bevy = { version = "0.14", default-features = false }
-bevy_atmosphere = "0.10"
-bevy_enhanced_input = "0.3"
-bevy_replicon = "0.28.4"
-bevy_replicon_renet = "0.5"
-bevy_mod_outline = "0.8"
-bevy_mod_billboard = "0.7"
-bevy_simple_text_input = "0.9"
-vleue_navigator = { version = "0.10", features = ["avian3d"] }
-avian3d = { version = "0.1", features = ["serialize"] }
-bevy-inspector-egui = "0.27"
+bevy = { version = "0.15", default-features = false }
+bevy_atmosphere = "0.12"
+bevy_enhanced_input = "0.5"
+bevy_replicon = "0.29"
+bevy_replicon_renet = "0.6"
+bevy_mod_outline = "0.9"
+bevy_mod_billboard = { git = "https://github.com/voximity/bevy_mod_billboard", branch = "migrate-0.15" }
+bevy_simple_text_input = "0.10"
+vleue_navigator = { version = "0.11", features = ["avian3d"] }
+avian3d = { version = "0.2", features = ["serialize"] }
+bevy-inspector-egui = "0.28"
 app_dirs2 = "2.5"
 serde = "1.0"
 earcut = "0.4"
