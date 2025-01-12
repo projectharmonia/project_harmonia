@@ -23,8 +23,8 @@ impl AssetLoader for MaterialLoader {
     type Settings = ();
     type Error = anyhow::Error;
 
-    async fn load<'a>(
-        &'a self,
+    async fn load(
+        &self,
         reader: &mut dyn Reader,
         _settings: &Self::Settings,
         load_context: &mut LoadContext<'_>,
