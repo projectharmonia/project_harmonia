@@ -780,12 +780,11 @@ dependencies = [
 
 [[package]]
 name = "bevy_enhanced_input"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "515558d4f9a09a1df1e2e168e5074ff25513ba30a2070f1dbaf18e01c3cb29d4"
+checksum = "0f729f5c4005066934b5016490a7b7f74ac4767b611db04d739a23c1f07b3c4a"
 dependencies = [
  "bevy",
- "bevy_egui",
  "bevy_enhanced_input_macros",
  "bitflags 2.7.0",
  "serde",
@@ -793,9 +792,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_enhanced_input_macros"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5fa149729db7991ee0ffb71c3b1b486b15a187bb7e6b54233c3a89922dfc11a"
+checksum = "0cbb276970282dfa1b3065e4df6b2fc94d7bbe1a1e9081b68f184dd1d5bed80d"
 dependencies = [
  "darling",
  "proc-macro2",

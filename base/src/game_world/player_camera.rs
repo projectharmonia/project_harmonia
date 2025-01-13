@@ -150,7 +150,11 @@ impl InputContext for PlayerCamera {
                     ))
                     .with_conditions(Chord::<EnablePanCamera>::default()),
             ))
-            .with_modifiers((DeadZone::default(), Scale::splat(0.7), DeltaLerp::default()));
+            .with_modifiers((
+                DeadZone::default(),
+                Scale::splat(0.7),
+                SmoothNudge::default(),
+            ));
 
         ctx.bind::<RotateCamera>()
             .to((
@@ -164,7 +168,7 @@ impl InputContext for PlayerCamera {
                     .with_modifiers(Scale::splat(0.08))
                     .with_conditions(Chord::<EnableCameraRotation>::default()),
             ))
-            .with_modifiers((Scale::splat(0.05), DeltaLerp::default()));
+            .with_modifiers((Scale::splat(0.05), SmoothNudge::default()));
 
         ctx.bind::<ZoomCamera>()
             .to((
@@ -179,7 +183,7 @@ impl InputContext for PlayerCamera {
                 .with_modifiers_each(Scale::splat(0.1)),
                 Input::mouse_wheel().with_modifiers(SwizzleAxis::YXZ),
             ))
-            .with_modifiers(DeltaLerp::default());
+            .with_modifiers(SmoothNudge::default());
 
         ctx
     }

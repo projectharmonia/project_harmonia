@@ -73,8 +73,8 @@ fn round_placement(
     placing: PlacingSegment,
     point: Vec2,
 ) -> Vec2 {
-    let ctx = instances.get::<PlacingSegment>(entity).unwrap();
-    let free_placement = ctx.action::<FreeSegmentPlacement>().unwrap();
+    let ctx = instances.context::<PlacingSegment>(entity);
+    let free_placement = ctx.action::<FreeSegmentPlacement>();
     if free_placement.state() == ActionState::Fired {
         // Use raw result.
         return point;
@@ -86,7 +86,7 @@ fn round_placement(
         return point;
     }
 
-    let ordinal_placement = ctx.action::<OrdinalSegmentPlacement>().unwrap();
+    let ordinal_placement = ctx.action::<OrdinalSegmentPlacement>();
     let snap_angle = if ordinal_placement.state() == ActionState::Fired {
         FRAC_PI_4
     } else {

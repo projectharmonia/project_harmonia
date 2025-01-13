@@ -18,7 +18,7 @@ project_harmonia_ui = { path = "ui" }
 project_harmonia_widgets = { path = "widgets" }
 bevy = { version = "0.15", default-features = false }
 bevy_atmosphere = "0.12"
-bevy_enhanced_input = "0.5"
+bevy_enhanced_input = "0.6"
 bevy_replicon = "0.29"
 bevy_replicon_renet = "0.6"
 bevy_mod_outline = "0.9"
