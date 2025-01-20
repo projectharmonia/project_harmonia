@@ -1306,9 +1306,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_simple_text_input"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baa205d211d0811cafff44ec63949069ceab9b67a13ea2cf364fb6d6d85a4d78"
+checksum = "b07acb8f19ebf40f56981dd400e18ab64da32b245c80655e336725e2c13368a3"
 dependencies = [
  "bevy",
 ]
@@ -1583,7 +1583,7 @@ dependencies = [
  "bitflags 2.7.0",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.11.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -5726,7 +5726,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
