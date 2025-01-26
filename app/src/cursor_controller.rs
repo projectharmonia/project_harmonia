@@ -18,8 +18,7 @@ impl CursorControllerPlugin {
 
     fn update_position(trigger: Trigger<Fired<MoveCursor>>, mut window: Single<&mut Window>) {
         if let Some(cursor_pos) = window.cursor_position() {
-            let event = trigger.event();
-            window.set_cursor_position(Some(cursor_pos + event.value));
+            window.set_cursor_position(Some(cursor_pos + trigger.value));
         }
     }
 }

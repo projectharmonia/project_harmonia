@@ -65,8 +65,7 @@ impl PlayerCameraPlugin {
         let rotation = Quat::from_rotation_arc(Vec3::NEG_Z, camera_dir);
 
         // Movement consists of X and -Z components, so swap Y and Z with negation.
-        let event = trigger.event();
-        let mut movement = event.value.extend(0.0).xzy();
+        let mut movement = trigger.value.extend(0.0).xzy();
         movement.z = -movement.z;
 
         // Make speed dependent on camera distance.
@@ -76,9 +75,8 @@ impl PlayerCameraPlugin {
     }
 
     fn zoom(trigger: Trigger<Fired<ZoomCamera>>, mut spring_arm: Single<&mut SpringArm>) {
-        let event = trigger.event();
         // Limit to prevent clipping into the ground.
-        ***spring_arm = (***spring_arm - event.value).max(0.2);
+        ***spring_arm = (***spring_arm - trigger.value).max(0.2);
     }
 
     fn rotate(
@@ -86,8 +84,7 @@ impl PlayerCameraPlugin {
         settings: Res<Settings>,
         mut rotation: Single<&mut OrbitRotation>,
     ) {
-        let event = trigger.event();
-        ***rotation += event.value;
+        ***rotation += trigger.value;
 
         let max_y = if settings.developer.free_camera_rotation {
             PI // To avoid flipping when the camera is under ground.

@@ -77,7 +77,7 @@ impl FamilyPlugin {
         mut families: Query<&mut FamilyMembers>,
     ) {
         let mut members = families.get_mut(trigger.entity()).unwrap();
-        members.push(**trigger.event())
+        members.push(**trigger)
     }
 
     fn create(

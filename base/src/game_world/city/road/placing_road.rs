@@ -57,7 +57,7 @@ impl PlacingRoadPlugin {
         )>,
         placing_roads: Query<(), With<PlacingRoad>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if *road_tool != RoadTool::Move {
@@ -76,7 +76,7 @@ impl PlacingRoadPlugin {
             .expect("manifest should be preloaded");
         let manifest = manifests.get(&manifest_handle).unwrap();
 
-        let point = trigger.event().hit.position.unwrap();
+        let point = trigger.hit.position.unwrap();
         let point_kind = if segment.start.distance(point.xz()) < manifest.half_width {
             PointKind::Start
         } else if segment.end.distance(point.xz()) < manifest.half_width {
@@ -120,7 +120,7 @@ impl PlacingRoadPlugin {
         roads: Query<(&Parent, &Segment), With<Road>>,
         placing_roads: Query<(), With<PlacingRoad>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if *road_tool != RoadTool::Create {
@@ -129,7 +129,7 @@ impl PlacingRoadPlugin {
         if !placing_roads.is_empty() {
             return;
         }
-        let Some(point) = trigger.event().hit.position else {
+        let Some(point) = trigger.hit.position else {
             // Consider only world clicking.
             return;
         };

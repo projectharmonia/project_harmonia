@@ -70,7 +70,7 @@ impl PlacingObjectPlugin {
         objects: Query<(Entity, &Parent), With<Object>>,
         placing_objects: Query<(), With<PlacingObject>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if city_mode.is_some_and(|mode| **mode != CityMode::Objects)
@@ -172,8 +172,7 @@ impl PlacingObjectPlugin {
         placing_object: Single<(&mut Transform, &ObjectRotationLimit)>,
     ) {
         let (mut transform, rotation_limit) = placing_object.into_inner();
-        let event = trigger.event();
-        let angle = rotation_limit.unwrap_or(FRAC_PI_4) * event.value;
+        let angle = rotation_limit.unwrap_or(FRAC_PI_4) * trigger.value;
         transform.rotation *= Quat::from_axis_angle(Vec3::Y, angle);
 
         debug!(

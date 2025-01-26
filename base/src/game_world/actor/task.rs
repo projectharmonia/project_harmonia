@@ -45,13 +45,13 @@ impl TaskPlugin {
         city_transform: Single<&GlobalTransform, With<ActiveCity>>,
         tasks_entity: Option<Single<Entity, With<AvailableTasks>>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if *family_mode != FamilyMode::Life {
             return;
         }
-        let Some(mut click_point) = trigger.event().hit.position else {
+        let Some(mut click_point) = trigger.hit.position else {
             // Consider only world clicking.
             return;
         };

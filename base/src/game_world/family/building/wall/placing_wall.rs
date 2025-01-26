@@ -56,7 +56,7 @@ impl PlacingWallPlugin {
         walls: Query<(Entity, &Parent, &Segment), With<Wall>>,
         placing_walls: Query<(), With<PlacingWall>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if *wall_tool != WallTool::Move {
@@ -71,7 +71,7 @@ impl PlacingWallPlugin {
         trigger.propagate(false);
 
         const PICK_DELTA: f32 = 0.4;
-        let point = trigger.event().hit.position.unwrap();
+        let point = trigger.hit.position.unwrap();
         let point_kind = if segment.start.distance(point.xz()) < PICK_DELTA {
             PointKind::Start
         } else if segment.end.distance(point.xz()) < PICK_DELTA {
@@ -107,7 +107,7 @@ impl PlacingWallPlugin {
         city_entity: Single<Entity, With<ActiveCity>>,
         placing_walls: Query<(), With<PlacingWall>>,
     ) {
-        if trigger.event().button != PointerButton::Primary {
+        if trigger.button != PointerButton::Primary {
             return;
         }
         if *wall_tool != WallTool::Create {
@@ -116,7 +116,7 @@ impl PlacingWallPlugin {
         if !placing_walls.is_empty() {
             return;
         }
-        let Some(point) = trigger.event().hit.position else {
+        let Some(point) = trigger.hit.position else {
             // Consider only world clicking.
             return;
         };
