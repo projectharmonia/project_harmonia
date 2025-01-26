@@ -116,7 +116,9 @@ impl TaskPlugin {
             &mut AnimationState,
         )>,
     ) {
-        let (parent, &task_groups) = tasks.get(trigger.entity()).unwrap();
+        let Ok((parent, &task_groups)) = tasks.get(trigger.entity()) else {
+            return;
+        };
         let Ok((mut actor_groups, mut dest, mut animation_state)) = actors.get_mut(**parent) else {
             return;
         };
