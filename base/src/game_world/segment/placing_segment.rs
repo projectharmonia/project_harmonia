@@ -13,12 +13,14 @@ pub(super) struct PlacingSegmentPlugin;
 
 impl Plugin for PlacingSegmentPlugin {
     fn build(&self, app: &mut App) {
-        app.add_input_context::<PlacingSegment>().add_systems(
-            Update,
-            Self::update_position
-                .never_param_warn()
-                .run_if(in_state(BuildingMode::Walls).or(in_state(CityMode::Roads))),
-        );
+        app.add_input_context::<PlacingSegment>()
+            .add_observer(Self::cancel)
+            .add_systems(
+                Update,
+                Self::update_position
+                    .never_param_warn()
+                    .run_if(in_state(BuildingMode::Walls).or(in_state(CityMode::Roads))),
+            );
     }
 }
 
@@ -62,6 +64,11 @@ impl PlacingSegmentPlugin {
 
         trace!("updating `{:?}` to `{new_point:?}`", placing.point_kind);
         segment.set_point(placing.point_kind, new_point);
+    }
+
+    fn cancel(trigger: Trigger<Completed<CancelSegment>>, mut commands: Commands) {
+        debug!("cancelling placing");
+        commands.entity(trigger.entity()).despawn_recursive();
     }
 }
 

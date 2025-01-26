@@ -16,7 +16,7 @@ use crate::{
         city::{road::RoadCommand, ActiveCity, CityMode},
         commands_history::{CommandsHistory, PendingDespawn},
         segment::{
-            placing_segment::{CancelSegment, ConfirmSegment, DeleteSegment, PlacingSegment},
+            placing_segment::{ConfirmSegment, DeleteSegment, PlacingSegment},
             PointKind, Segment,
         },
         Layer,
@@ -30,6 +30,8 @@ impl Plugin for PlacingRoadPlugin {
     fn build(&self, app: &mut App) {
         app.add_observer(Self::pick.never_param_warn())
             .add_observer(Self::spawn.never_param_warn())
+            .add_observer(Self::delete.never_param_warn())
+            .add_observer(Self::confirm.never_param_warn())
             .add_systems(
                 PostUpdate,
                 Self::update_alpha
@@ -87,24 +89,20 @@ impl PlacingRoadPlugin {
 
         info!("picking `{point_kind:?}` for `{entity}`");
         commands.entity(**parent).with_children(|parent| {
-            parent
-                .spawn((
-                    Ghost::new(entity),
-                    PlacingRoad::EditPoint { entity },
-                    RoadData {
-                        half_width: manifest.half_width,
-                    },
-                    segment,
-                    PlacingSegment {
-                        point_kind,
-                        snap_offset: manifest.half_width,
-                    },
-                    material.clone(),
-                    Mesh3d(meshes.add(DynamicMesh::create_empty())),
-                ))
-                .observe(Self::delete)
-                .observe(Self::cancel.never_param_warn())
-                .observe(Self::confirm);
+            parent.spawn((
+                Ghost::new(entity),
+                PlacingRoad::EditPoint { entity },
+                RoadData {
+                    half_width: manifest.half_width,
+                },
+                segment,
+                PlacingSegment {
+                    point_kind,
+                    snap_offset: manifest.half_width,
+                },
+                material.clone(),
+                Mesh3d(meshes.add(DynamicMesh::create_empty())),
+            ));
         });
     }
 
@@ -153,25 +151,19 @@ impl PlacingRoadPlugin {
 
         info!("spawning new road");
         commands.entity(*city_entity).with_children(|parent| {
-            parent
-                .spawn((
-                    PlacingRoad::Spawning(placing_id.0),
-                    RoadData {
-                        half_width: manifest.half_width,
-                    },
-                    Segment::splat(snapped_point),
-                    PlacingSegment {
-                        point_kind: PointKind::End,
-                        snap_offset: manifest.half_width,
-                    },
-                    Mesh3d(meshes.add(DynamicMesh::create_empty())),
-                    MeshMaterial3d::<StandardMaterial>(
-                        asset_server.load(manifest.material.clone()),
-                    ),
-                ))
-                .observe(Self::delete)
-                .observe(Self::cancel.never_param_warn())
-                .observe(Self::confirm);
+            parent.spawn((
+                PlacingRoad::Spawning(placing_id.0),
+                RoadData {
+                    half_width: manifest.half_width,
+                },
+                Segment::splat(snapped_point),
+                PlacingSegment {
+                    point_kind: PointKind::End,
+                    snap_offset: manifest.half_width,
+                },
+                Mesh3d(meshes.add(DynamicMesh::create_empty())),
+                MeshMaterial3d::<StandardMaterial>(asset_server.load(manifest.material.clone())),
+            ));
         });
     }
 
@@ -211,11 +203,6 @@ impl PlacingRoadPlugin {
         } else {
             commands.entity(trigger.entity()).despawn_recursive();
         }
-    }
-
-    fn cancel(trigger: Trigger<Completed<CancelSegment>>, mut commands: Commands) {
-        debug!("cancelling placing");
-        commands.entity(trigger.entity()).despawn();
     }
 
     fn confirm(

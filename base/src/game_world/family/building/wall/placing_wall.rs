@@ -16,7 +16,7 @@ use crate::{
         commands_history::{CommandsHistory, PendingDespawn},
         family::building::{wall::Apertures, BuildingMode},
         segment::{
-            placing_segment::{CancelSegment, ConfirmSegment, DeleteSegment, PlacingSegment},
+            placing_segment::{ConfirmSegment, DeleteSegment, PlacingSegment},
             ruler::Ruler,
             PointKind, Segment,
         },
@@ -31,9 +31,8 @@ impl Plugin for PlacingWallPlugin {
     fn build(&self, app: &mut App) {
         app.add_observer(Self::pick.never_param_warn())
             .add_observer(Self::spawn.never_param_warn())
-            .add_observer(Self::delete)
-            .add_observer(Self::cancel.never_param_warn())
-            .add_observer(Self::confirm)
+            .add_observer(Self::delete.never_param_warn())
+            .add_observer(Self::confirm.never_param_warn())
             .add_systems(
                 PostUpdate,
                 Self::update_alpha
@@ -183,11 +182,6 @@ impl PlacingWallPlugin {
         } else {
             commands.entity(trigger.entity()).despawn_recursive();
         }
-    }
-
-    fn cancel(trigger: Trigger<Completed<CancelSegment>>, mut commands: Commands) {
-        debug!("cancelling placing");
-        commands.entity(trigger.entity()).despawn_recursive();
     }
 
     fn confirm(
