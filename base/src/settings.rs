@@ -95,7 +95,7 @@ fn apply_settings(
 #[derive(Event)]
 pub struct SettingsApply;
 
-#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Resource, Serialize)]
+#[derive(Clone, Default, Deserialize, Reflect, Resource, Serialize)]
 #[serde(default)]
 pub struct Settings {
     pub video: VideoSettings,
@@ -137,14 +137,14 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Default, Deserialize, Reflect, Serialize)]
 #[serde(default)]
 pub struct VideoSettings {
     /// TODO: Replace with combobox for all window modes.
     pub fullscreen: bool,
 }
 
-#[derive(Clone, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Deserialize, Reflect, Serialize)]
 #[serde(default)]
 pub struct KeyboardSettings {
     pub camera_forward: Vec<KeyCode>,
@@ -193,7 +193,7 @@ impl Default for KeyboardSettings {
     }
 }
 
-#[derive(Clone, Default, Deserialize, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Default, Deserialize, Reflect, Serialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
     pub free_camera_rotation: bool,
