@@ -14,22 +14,23 @@ impl DialogPlugin {
     fn init(
         trigger: Trigger<OnAdd, Dialog>,
         theme: Res<Theme>,
-        mut dialogs: Query<(&mut Node, &mut FocusPolicy, &mut BackgroundColor)>,
+        mut dialogs: Query<&mut BackgroundColor>,
     ) {
-        let (mut node, mut focus_policy, mut background_color) =
-            dialogs.get_mut(trigger.entity()).unwrap();
-
-        node.position_type = PositionType::Absolute;
-        node.width = Val::Percent(100.0);
-        node.height = Val::Percent(100.0);
-        node.align_items = AlignItems::Center;
-        node.justify_content = JustifyContent::Center;
-
-        *focus_policy = FocusPolicy::Block;
+        let mut background_color = dialogs.get_mut(trigger.entity()).unwrap();
         *background_color = theme.modal_background;
     }
 }
 
 #[derive(Component, Default)]
-#[require(Node)]
+#[require(
+    Node(|| Node {
+        position_type: PositionType::Absolute,
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..Default::default()
+    }),
+    FocusPolicy(|| FocusPolicy::Block),
+)]
 pub struct Dialog;
