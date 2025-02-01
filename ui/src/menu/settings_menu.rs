@@ -19,7 +19,7 @@ impl Plugin for SettingsMenuPlugin {
         app.add_observer(Self::setup).add_systems(
             Update,
             (
-                Self::update_mapping_text,
+                Self::update_button_text,
                 Self::read_binding.never_param_warn(),
             )
                 .run_if(any_with_component::<SettingsMenu>),
@@ -103,7 +103,7 @@ impl SettingsMenuPlugin {
         });
     }
 
-    fn update_mapping_text(
+    fn update_button_text(
         buttons: Query<(&KeyButton, &Children), Changed<KeyButton>>,
         mut text: Query<&mut Text>,
     ) {
