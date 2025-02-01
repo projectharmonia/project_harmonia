@@ -22,7 +22,7 @@ impl Plugin for ManifestPlugin {
             .init_asset_loader::<RoadLoader>()
             .add_systems(
                 Update,
-                Self::wait_for_loading.run_if(in_state(GameState::ManifestsLoading)),
+                wait_for_loading.run_if(in_state(GameState::ManifestsLoading)),
             );
     }
 
@@ -32,21 +32,19 @@ impl Plugin for ManifestPlugin {
     }
 }
 
-impl ManifestPlugin {
-    fn wait_for_loading(
-        mut commands: Commands,
-        manifests: Res<AssetManifests>,
-        asset_server: Res<AssetServer>,
-    ) {
-        let objects = manifests.objects.iter().map(|handle| handle.id().untyped());
-        let roads = manifests.roads.iter().map(Into::into);
-        if objects
-            .chain(roads)
-            .all(|handle| asset_server.is_loaded(handle))
-        {
-            info!("finished loading asset manifests");
-            commands.set_state(GameState::Menu);
-        }
+fn wait_for_loading(
+    mut commands: Commands,
+    manifests: Res<AssetManifests>,
+    asset_server: Res<AssetServer>,
+) {
+    let objects = manifests.objects.iter().map(|handle| handle.id().untyped());
+    let roads = manifests.roads.iter().map(Into::into);
+    if objects
+        .chain(roads)
+        .all(|handle| asset_server.is_loaded(handle))
+    {
+        info!("finished loading asset manifests");
+        commands.set_state(GameState::Menu);
     }
 }
 

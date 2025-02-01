@@ -9,27 +9,17 @@ pub(super) struct ToolsNodePlugin;
 impl Plugin for ToolsNodePlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<ToolsNode>()
-            .add_observer(Self::undo)
-            .add_observer(Self::redo);
+            .add_observer(undo)
+            .add_observer(redo);
     }
 }
 
-impl ToolsNodePlugin {
-    fn undo(_trigger: Trigger<Fired<Undo>>, mut history: CommandsHistory) {
-        history.undo();
-    }
+fn undo(_trigger: Trigger<Fired<Undo>>, mut history: CommandsHistory) {
+    history.undo();
+}
 
-    fn redo(_trigger: Trigger<Fired<Redo>>, mut history: CommandsHistory) {
-        history.redo();
-    }
-
-    fn click_undo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
-        history.undo();
-    }
-
-    fn click_redo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
-        history.redo();
-    }
+fn redo(_trigger: Trigger<Fired<Redo>>, mut history: CommandsHistory) {
+    history.redo();
 }
 
 pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
@@ -48,12 +38,20 @@ pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme) {
             parent
                 .spawn(ButtonKind::Symbol)
                 .with_child(Text::new("↩"))
-                .observe(ToolsNodePlugin::click_undo);
+                .observe(click_undo);
             parent
                 .spawn(ButtonKind::Symbol)
                 .with_child(Text::new("↪"))
-                .observe(ToolsNodePlugin::click_redo);
+                .observe(click_redo);
         });
+}
+
+fn click_undo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
+    history.undo();
+}
+
+fn click_redo(_trigger: Trigger<Pointer<Click>>, mut history: CommandsHistory) {
+    history.redo();
 }
 
 #[derive(Component)]

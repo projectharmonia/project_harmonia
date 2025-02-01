@@ -23,69 +23,61 @@ impl Plugin for HumanPlugin {
             .replicate::<Human>()
             .register_type::<HumanBundle>()
             .init_resource::<Collection<HumanScene>>()
-            .add_observer(Self::init_needs)
-            .add_systems(
-                Update,
-                (Self::update_sex::<EditorSex>, Self::update_sex::<Sex>),
-            )
-            .add_systems(
-                PostUpdate,
-                Self::fill_scene.run_if(resource_added::<FamilyScene>),
-            );
+            .add_observer(init_needs)
+            .add_systems(Update, (update_sex::<EditorSex>, update_sex::<Sex>))
+            .add_systems(PostUpdate, fill_scene.run_if(resource_added::<FamilyScene>));
     }
 }
 
-impl HumanPlugin {
-    fn init_needs(
-        trigger: Trigger<OnAdd, Children>,
-        mut commands: Commands,
-        actors: Query<&Children, With<Human>>,
-        need: Query<(), With<Need>>,
-    ) {
-        let Ok(children) = actors.get(trigger.entity()) else {
-            return;
-        };
+fn init_needs(
+    trigger: Trigger<OnAdd, Children>,
+    mut commands: Commands,
+    actors: Query<&Children, With<Human>>,
+    need: Query<(), With<Need>>,
+) {
+    let Ok(children) = actors.get(trigger.entity()) else {
+        return;
+    };
 
-        if need.iter_many(children).next().is_none() {
-            debug!("initializing human needs `{}`", trigger.entity());
-            commands.entity(trigger.entity()).with_children(|parent| {
-                parent.spawn(Bladder);
-                parent.spawn(Energy);
-                parent.spawn(Fun);
-                parent.spawn(Hunger);
-                parent.spawn(Hygiene);
-                parent.spawn(Social);
-            });
-        }
+    if need.iter_many(children).next().is_none() {
+        debug!("initializing human needs `{}`", trigger.entity());
+        commands.entity(trigger.entity()).with_children(|parent| {
+            parent.spawn(Bladder);
+            parent.spawn(Energy);
+            parent.spawn(Fun);
+            parent.spawn(Hunger);
+            parent.spawn(Hygiene);
+            parent.spawn(Social);
+        });
     }
+}
 
-    fn update_sex<C: Component + Into<HumanScene> + Copy>(
-        human_scenes: Res<Collection<HumanScene>>,
-        mut actors: Query<(Entity, &C, &mut SceneRoot), Changed<C>>,
-    ) {
-        for (entity, &sex, mut scene_root) in &mut actors {
-            debug!("initializing sex for human `{entity}`");
-            **scene_root = human_scenes.handle(sex.into());
-        }
+fn update_sex<C: Component + Into<HumanScene> + Copy>(
+    human_scenes: Res<Collection<HumanScene>>,
+    mut actors: Query<(Entity, &C, &mut SceneRoot), Changed<C>>,
+) {
+    for (entity, &sex, mut scene_root) in &mut actors {
+        debug!("initializing sex for human `{entity}`");
+        **scene_root = human_scenes.handle(sex.into());
     }
+}
 
-    /// Fills [`FamilyScene`] with editing human actors.
-    fn fill_scene(
-        mut family_scene: ResMut<FamilyScene>,
-        actors: Query<(&EditorFirstName, &EditorLastName, &EditorSex), With<EditorHuman>>,
-    ) {
-        for (first_name, last_name, &sex) in &actors {
-            debug!(
-                "adding human '{} {}' to family scene '{}'",
-                first_name.0, last_name.0, family_scene.name
-            );
-            family_scene.actors.push(Box::new(HumanBundle {
-                first_name: first_name.clone().into(),
-                last_name: last_name.clone().into(),
-                sex: sex.into(),
-                human: Human,
-            }));
-        }
+/// Fills [`FamilyScene`] with editing human actors.
+fn fill_scene(
+    mut family_scene: ResMut<FamilyScene>,
+    actors: Query<(&EditorFirstName, &EditorLastName, &EditorSex), With<EditorHuman>>,
+) {
+    for (first_name, last_name, &sex) in &actors {
+        debug!(
+            "adding human '{} {}' to family scene '{}'",
+            first_name.0, last_name.0, family_scene.name
+        );
+        family_scene.actors.push(Box::new(HumanBundle {
+            first_name: first_name.clone().into(),
+            last_name: last_name.clone().into(),
+            sex: sex.into(),
+            human: Human,
+        }));
     }
 }
 

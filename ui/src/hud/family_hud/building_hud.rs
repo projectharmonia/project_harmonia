@@ -19,30 +19,18 @@ pub(super) struct BuildingHudPlugin;
 impl Plugin for BuildingHudPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WallsNodePlugin)
-            .add_systems(OnEnter(FamilyMode::Building), Self::sync_building_mode);
+            .add_systems(OnEnter(FamilyMode::Building), sync_building_mode);
     }
 }
 
-impl BuildingHudPlugin {
-    fn set_building_mode(
-        trigger: Trigger<Pointer<Click>>,
-        mut commands: Commands,
-        buttons: Query<&BuildingMode>,
-    ) {
-        let mode = *buttons.get(trigger.entity()).unwrap();
-        info!("changing building mode to `{mode:?}`");
-        commands.set_state(mode);
-    }
-
-    /// Sets building mode to the last selected.
-    ///
-    /// Needed because on swithicng tab the mode resets, but selected button doesn't.
-    fn sync_building_mode(mut commands: Commands, buttons: Query<(&Toggled, &BuildingMode)>) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 {
-                debug!("syncing building mode to `{mode:?}`");
-                commands.set_state(mode);
-            }
+/// Sets building mode to the last selected.
+///
+/// Needed because on swithicng tab the mode resets, but selected button doesn't.
+fn sync_building_mode(mut commands: Commands, buttons: Query<(&Toggled, &BuildingMode)>) {
+    for (toggled, &mode) in &buttons {
+        if toggled.0 {
+            debug!("syncing building mode to `{mode:?}`");
+            commands.set_state(mode);
         }
     }
 }
@@ -101,6 +89,16 @@ pub(super) fn setup(
             ))
             .with_child(Text::new(mode.glyph()))
             .set_parent(tabs_entity)
-            .observe(BuildingHudPlugin::set_building_mode);
+            .observe(set_building_mode);
     }
+}
+
+fn set_building_mode(
+    trigger: Trigger<Pointer<Click>>,
+    mut commands: Commands,
+    buttons: Query<&BuildingMode>,
+) {
+    let mode = *buttons.get(trigger.entity()).unwrap();
+    info!("changing building mode to `{mode:?}`");
+    commands.set_state(mode);
 }

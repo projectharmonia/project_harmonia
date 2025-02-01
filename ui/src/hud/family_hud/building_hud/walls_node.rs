@@ -7,36 +7,31 @@ pub(super) struct WallsNodePlugin;
 
 impl Plugin for WallsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(BuildingMode::Walls), Self::sync_wall_tool)
-            .add_systems(
-                Update,
-                Self::set_wall_tool.run_if(in_state(BuildingMode::Walls)),
-            );
+        app.add_systems(OnEnter(BuildingMode::Walls), sync_wall_tool)
+            .add_systems(Update, set_wall_tool.run_if(in_state(BuildingMode::Walls)));
     }
 }
 
-impl WallsNodePlugin {
-    fn set_wall_tool(
-        mut commands: Commands,
-        buttons: Query<(Ref<Toggled>, &WallTool), Changed<Toggled>>,
-    ) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 && !toggled.is_added() {
-                info!("changing wall tool to `{mode:?}`");
-                commands.set_state(mode);
-            }
+fn set_wall_tool(
+    mut commands: Commands,
+    buttons: Query<(Ref<Toggled>, &WallTool), Changed<Toggled>>,
+) {
+    for (toggled, &mode) in &buttons {
+        if toggled.0 && !toggled.is_added() {
+            info!("changing wall tool to `{mode:?}`");
+            commands.set_state(mode);
         }
     }
+}
 
-    /// Sets tool to the last selected.
-    ///
-    /// Needed because on swithicng tab the tool resets, but selected button doesn't.
-    fn sync_wall_tool(mut commands: Commands, buttons: Query<(&Toggled, &WallTool)>) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 {
-                debug!("syncing wall tool to `{mode:?}`");
-                commands.set_state(mode);
-            }
+/// Sets tool to the last selected.
+///
+/// Needed because on swithicng tab the tool resets, but selected button doesn't.
+fn sync_wall_tool(mut commands: Commands, buttons: Query<(&Toggled, &WallTool)>) {
+    for (toggled, &mode) in &buttons {
+        if toggled.0 {
+            debug!("syncing wall tool to `{mode:?}`");
+            commands.set_state(mode);
         }
     }
 }

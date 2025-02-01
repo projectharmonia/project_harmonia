@@ -27,7 +27,7 @@ use crate::core::GameState;
 use building::BuildingPlugin;
 use editor::{EditorPlugin, FamilyScene, ReflectActorBundle};
 
-pub struct FamilyPlugin;
+pub(super) struct FamilyPlugin;
 
 impl Plugin for FamilyPlugin {
     fn build(&self, app: &mut App) {
@@ -45,16 +45,13 @@ impl Plugin for FamilyPlugin {
             )
             .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
             .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
-            .add_observer(Self::record_new_members)
-            .add_observer(Self::update_members)
-            .add_systems(OnEnter(WorldState::Family), Self::select)
-            .add_systems(
-                OnExit(WorldState::Family),
-                Self::deselect.never_param_warn(),
-            )
+            .add_observer(record_new_members)
+            .add_observer(update_members)
+            .add_systems(OnEnter(WorldState::Family), select)
+            .add_systems(OnExit(WorldState::Family), deselect.never_param_warn())
             .add_systems(
                 PreUpdate,
-                (Self::create, Self::delete)
+                (create, delete)
                     .run_if(server_or_singleplayer)
                     .after(ClientSet::Receive)
                     .run_if(in_state(GameState::InGame)),
@@ -62,80 +59,75 @@ impl Plugin for FamilyPlugin {
     }
 }
 
-impl FamilyPlugin {
-    fn record_new_members(
-        trigger: Trigger<OnAdd, Actor>,
-        mut commands: Commands,
-        actors: Query<&Actor>,
-    ) {
-        let actor = actors.get(trigger.entity()).unwrap();
-        commands.trigger_targets(FamilyMemberAdded(trigger.entity()), actor.family_entity);
-    }
+fn record_new_members(
+    trigger: Trigger<OnAdd, Actor>,
+    mut commands: Commands,
+    actors: Query<&Actor>,
+) {
+    let actor = actors.get(trigger.entity()).unwrap();
+    commands.trigger_targets(FamilyMemberAdded(trigger.entity()), actor.family_entity);
+}
 
-    fn update_members(
-        trigger: Trigger<FamilyMemberAdded>,
-        mut families: Query<&mut FamilyMembers>,
-    ) {
-        let mut members = families.get_mut(trigger.entity()).unwrap();
-        members.push(**trigger)
-    }
+fn update_members(trigger: Trigger<FamilyMemberAdded>, mut families: Query<&mut FamilyMembers>) {
+    let mut members = families.get_mut(trigger.entity()).unwrap();
+    members.push(**trigger)
+}
 
-    fn create(
-        mut commands: Commands,
-        mut created_events: EventWriter<ToClients<SelectedFamilyCreated>>,
-        mut create_events: ResMut<Events<FromClient<FamilyCreate>>>,
-    ) {
-        for FromClient { client_id, event } in create_events.drain() {
-            info!("creating new family");
-            let family_entity = commands.spawn((Family, Name::new(event.scene.name))).id();
-            for actor in event.scene.actors {
-                commands.entity(event.city_entity).with_children(|parent| {
-                    parent
-                        .spawn(Actor { family_entity })
-                        .insert_reflect(actor.into_partial_reflect());
-                });
-            }
-            if event.select {
-                created_events.send(ToClients {
-                    mode: SendMode::Direct(client_id),
-                    event: SelectedFamilyCreated(family_entity),
-                });
-            }
+fn create(
+    mut commands: Commands,
+    mut created_events: EventWriter<ToClients<SelectedFamilyCreated>>,
+    mut create_events: ResMut<Events<FromClient<FamilyCreate>>>,
+) {
+    for FromClient { client_id, event } in create_events.drain() {
+        info!("creating new family");
+        let family_entity = commands.spawn((Family, Name::new(event.scene.name))).id();
+        for actor in event.scene.actors {
+            commands.entity(event.city_entity).with_children(|parent| {
+                parent
+                    .spawn(Actor { family_entity })
+                    .insert_reflect(actor.into_partial_reflect());
+            });
+        }
+        if event.select {
+            created_events.send(ToClients {
+                mode: SendMode::Direct(client_id),
+                event: SelectedFamilyCreated(family_entity),
+            });
         }
     }
+}
 
-    fn delete(
-        mut commands: Commands,
-        mut delete_events: EventReader<FromClient<FamilyDelete>>,
-        families: Query<&mut FamilyMembers>,
-    ) {
-        for family_entity in delete_events.read().map(|event| event.event.0) {
-            match families.get(family_entity) {
-                Ok(members) => {
-                    info!("deleting family `{family_entity}`");
-                    commands.entity(family_entity).despawn();
-                    for &entity in &members.0 {
-                        commands.entity(entity).despawn_recursive();
-                    }
+fn delete(
+    mut commands: Commands,
+    mut delete_events: EventReader<FromClient<FamilyDelete>>,
+    families: Query<&mut FamilyMembers>,
+) {
+    for family_entity in delete_events.read().map(|event| event.event.0) {
+        match families.get(family_entity) {
+            Ok(members) => {
+                info!("deleting family `{family_entity}`");
+                commands.entity(family_entity).despawn();
+                for &entity in &members.0 {
+                    commands.entity(entity).despawn_recursive();
                 }
-                Err(e) => error!("received an invalid family to despawn: {e}"),
             }
+            Err(e) => error!("received an invalid family to despawn: {e}"),
         }
     }
+}
 
-    pub fn select(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
-        info!("selecting `{}`", selected_actor.family_entity);
-        commands
-            .entity(selected_actor.family_entity)
-            .insert(SelectedFamily);
-    }
+pub fn select(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
+    info!("selecting `{}`", selected_actor.family_entity);
+    commands
+        .entity(selected_actor.family_entity)
+        .insert(SelectedFamily);
+}
 
-    fn deselect(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
-        info!("deselecting `{}`", selected_actor.family_entity);
-        commands
-            .entity(selected_actor.family_entity)
-            .remove::<SelectedFamily>();
-    }
+fn deselect(mut commands: Commands, selected_actor: Single<&Actor, With<SelectedActor>>) {
+    info!("deselecting `{}`", selected_actor.family_entity);
+    commands
+        .entity(selected_actor.family_entity)
+        .remove::<SelectedFamily>();
 }
 
 fn serialize_family_spawn(

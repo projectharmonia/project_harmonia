@@ -19,80 +19,77 @@ pub(super) struct RoadsNodePlugin;
 
 impl Plugin for RoadsNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(CityMode::Roads), Self::sync_road_tool)
+        app.add_systems(OnEnter(CityMode::Roads), sync_road_tool)
             .add_systems(
                 Update,
-                (Self::select, Self::show_popup, Self::set_road_tool)
-                    .run_if(in_state(CityMode::Roads)),
+                (select, show_popup, set_road_tool).run_if(in_state(CityMode::Roads)),
             );
     }
 }
 
-impl RoadsNodePlugin {
-    fn select(mut commands: Commands, buttons: Query<(&Toggled, &RoadButton), Changed<Toggled>>) {
-        for (toggled, road_button) in &buttons {
-            if toggled.0 {
-                debug!("selecting road `{:?}` for creation", road_button.0);
-                commands.insert_resource(SpawnRoadId(road_button.0));
-            }
+fn select(mut commands: Commands, buttons: Query<(&Toggled, &RoadButton), Changed<Toggled>>) {
+    for (toggled, road_button) in &buttons {
+        if toggled.0 {
+            debug!("selecting road `{:?}` for creation", road_button.0);
+            commands.insert_resource(SpawnRoadId(road_button.0));
         }
     }
+}
 
-    fn show_popup(
-        mut commands: Commands,
-        manifests: Res<Assets<RoadManifest>>,
-        root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
-        buttons: Query<(Entity, &Interaction, &RoadButton), Changed<Interaction>>,
-    ) {
-        for (button_entity, &interaction, &road_button) in &buttons {
-            if interaction != Interaction::Hovered {
-                continue;
-            }
+fn show_popup(
+    mut commands: Commands,
+    manifests: Res<Assets<RoadManifest>>,
+    root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
+    buttons: Query<(Entity, &Interaction, &RoadButton), Changed<Interaction>>,
+) {
+    for (button_entity, &interaction, &road_button) in &buttons {
+        if interaction != Interaction::Hovered {
+            continue;
+        }
 
-            let manifest = manifests.get(*road_button).unwrap();
-            info!("showing popup for road '{}'", manifest.general.name);
-            commands.entity(*root_entity).with_children(|parent| {
-                parent
-                    .spawn(Popup { button_entity })
-                    .with_children(|parent| {
-                        parent
-                            .spawn((
-                                LabelKind::Normal,
-                                Text::new(manifest.general.name.clone() + "\n\n"),
-                            ))
-                            .with_child((
-                                LabelKind::Small,
-                                TextSpan::new(format!(
-                                    "{}\n{}",
-                                    manifest.general.license, manifest.general.author,
-                                )),
-                            ));
-                    });
-            });
+        let manifest = manifests.get(*road_button).unwrap();
+        info!("showing popup for road '{}'", manifest.general.name);
+        commands.entity(*root_entity).with_children(|parent| {
+            parent
+                .spawn(Popup { button_entity })
+                .with_children(|parent| {
+                    parent
+                        .spawn((
+                            LabelKind::Normal,
+                            Text::new(manifest.general.name.clone() + "\n\n"),
+                        ))
+                        .with_child((
+                            LabelKind::Small,
+                            TextSpan::new(format!(
+                                "{}\n{}",
+                                manifest.general.license, manifest.general.author,
+                            )),
+                        ));
+                });
+        });
+    }
+}
+
+fn set_road_tool(
+    mut commands: Commands,
+    buttons: Query<(Ref<Toggled>, &RoadTool), Changed<Toggled>>,
+) {
+    for (toggled, &mode) in &buttons {
+        if toggled.0 && !toggled.is_added() {
+            info!("changing road tool to `{mode:?}`");
+            commands.set_state(mode);
         }
     }
+}
 
-    fn set_road_tool(
-        mut commands: Commands,
-        buttons: Query<(Ref<Toggled>, &RoadTool), Changed<Toggled>>,
-    ) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 && !toggled.is_added() {
-                info!("changing road tool to `{mode:?}`");
-                commands.set_state(mode);
-            }
-        }
-    }
-
-    /// Sets tool to the last selected.
-    ///
-    /// Needed because on swithicng tab the tool resets, but selected button doesn't.
-    fn sync_road_tool(mut commands: Commands, buttons: Query<(&Toggled, &RoadTool)>) {
-        for (toggled, &mode) in &buttons {
-            if toggled.0 {
-                debug!("syncing road tool to `{mode:?}`");
-                commands.set_state(mode);
-            }
+/// Sets tool to the last selected.
+///
+/// Needed because on swithicng tab the tool resets, but selected button doesn't.
+fn sync_road_tool(mut commands: Commands, buttons: Query<(&Toggled, &RoadTool)>) {
+    for (toggled, &mode) in &buttons {
+        if toggled.0 {
+            debug!("syncing road tool to `{mode:?}`");
+            commands.set_state(mode);
         }
     }
 }

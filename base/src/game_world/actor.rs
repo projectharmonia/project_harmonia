@@ -50,41 +50,33 @@ impl Plugin for ActorPlugin {
             .replicate::<LastName>()
             .add_systems(
                 OnExit(WorldState::Family),
-                Self::remove_selection.never_param_warn(),
+                remove_selection.never_param_warn(),
             )
-            .add_systems(
-                PostUpdate,
-                Self::update_names.run_if(in_state(GameState::InGame)),
-            );
+            .add_systems(PostUpdate, update_names.run_if(in_state(GameState::InGame)));
     }
 }
 
 const ACTOR_HEIGHT: f32 = 1.8;
 pub(super) const ACTOR_RADIUS: f32 = 0.4;
 
-impl ActorPlugin {
-    fn update_names(
-        mut changed_names: Query<
-            (Entity, &FirstName, &LastName, &mut Name),
-            Or<(Changed<FirstName>, Changed<LastName>)>,
-        >,
-    ) {
-        for (entity, first_name, last_name, mut name) in &mut changed_names {
-            debug!("updating full name for `{entity}`");
-            name.mutate(|name| {
-                name.clear();
-                write!(name, "{} {}", first_name.0, last_name.0).unwrap();
-            });
-        }
+fn update_names(
+    mut changed_names: Query<
+        (Entity, &FirstName, &LastName, &mut Name),
+        Or<(Changed<FirstName>, Changed<LastName>)>,
+    >,
+) {
+    for (entity, first_name, last_name, mut name) in &mut changed_names {
+        debug!("updating full name for `{entity}`");
+        name.mutate(|name| {
+            name.clear();
+            write!(name, "{} {}", first_name.0, last_name.0).unwrap();
+        });
     }
+}
 
-    fn remove_selection(
-        mut commands: Commands,
-        selected_entity: Single<Entity, With<SelectedActor>>,
-    ) {
-        info!("deselecting actor `{}`", *selected_entity);
-        commands.entity(*selected_entity).remove::<SelectedActor>();
-    }
+fn remove_selection(mut commands: Commands, selected_entity: Single<Entity, With<SelectedActor>>) {
+    info!("deselecting actor `{}`", *selected_entity);
+    commands.entity(*selected_entity).remove::<SelectedActor>();
 }
 
 #[derive(Clone, Component, Default, Deref, DerefMut, Deserialize, Reflect, Serialize)]

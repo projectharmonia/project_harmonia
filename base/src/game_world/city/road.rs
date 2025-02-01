@@ -17,13 +17,13 @@ use crate::{
             CommandConfirmation, CommandId, CommandRequest, ConfirmableCommand, EntityRecorder,
             PendingCommand,
         },
-        segment::{PointKind, Segment, SegmentConnections, SegmentPlugin},
+        segment::{self, PointKind, Segment, SegmentConnections},
         Layer,
     },
 };
 use placing_road::PlacingRoadPlugin;
 
-pub(crate) struct RoadPlugin;
+pub(super) struct RoadPlugin;
 
 impl Plugin for RoadPlugin {
     fn build(&self, app: &mut App) {
@@ -41,7 +41,7 @@ impl Plugin for RoadPlugin {
                     Self::apply_command
                         .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
-                    Self::update_meshes.after(SegmentPlugin::update_connections),
+                    Self::update_meshes.after(segment::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );

@@ -8,48 +8,45 @@ pub(super) struct AlphaColorPlugin;
 
 impl Plugin for AlphaColorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::init_scene).add_systems(
+        app.add_observer(init_scene).add_systems(
             PostUpdate,
-            Self::update_materials
-                .run_if(in_state(WorldState::City).or(in_state(FamilyMode::Building))),
+            update_materials.run_if(in_state(WorldState::City).or(in_state(FamilyMode::Building))),
         );
     }
 }
 
-impl AlphaColorPlugin {
-    fn init_scene(
-        trigger: Trigger<SceneInstanceReady>,
-        mut materials: ResMut<Assets<StandardMaterial>>,
-        alpha_entities: Query<(Entity, &AlphaColor)>,
-        children: Query<&Children>,
-        mut material_handles: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    ) {
-        if let Ok((entity, &alpha_color)) = alpha_entities.get(trigger.entity()) {
-            apply_alpha_color(
-                &mut materials,
-                &mut material_handles,
-                &children,
-                entity,
-                *alpha_color,
-            );
-        }
+fn init_scene(
+    trigger: Trigger<SceneInstanceReady>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    alpha_entities: Query<(Entity, &AlphaColor)>,
+    children: Query<&Children>,
+    mut material_handles: Query<&mut MeshMaterial3d<StandardMaterial>>,
+) {
+    if let Ok((entity, &alpha_color)) = alpha_entities.get(trigger.entity()) {
+        apply_alpha_color(
+            &mut materials,
+            &mut material_handles,
+            &children,
+            entity,
+            *alpha_color,
+        );
     }
+}
 
-    pub(super) fn update_materials(
-        mut materials: ResMut<Assets<StandardMaterial>>,
-        alpha_entities: Query<(Entity, &AlphaColor), Changed<AlphaColor>>,
-        children: Query<&Children>,
-        mut material_handles: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    ) {
-        for (entity, &alpha_color) in &alpha_entities {
-            apply_alpha_color(
-                &mut materials,
-                &mut material_handles,
-                &children,
-                entity,
-                *alpha_color,
-            );
-        }
+pub(super) fn update_materials(
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    alpha_entities: Query<(Entity, &AlphaColor), Changed<AlphaColor>>,
+    children: Query<&Children>,
+    mut material_handles: Query<&mut MeshMaterial3d<StandardMaterial>>,
+) {
+    for (entity, &alpha_color) in &alpha_entities {
+        apply_alpha_color(
+            &mut materials,
+            &mut material_handles,
+            &children,
+            entity,
+            *alpha_color,
+        );
     }
 }
 

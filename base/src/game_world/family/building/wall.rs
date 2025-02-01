@@ -18,14 +18,14 @@ use crate::{
             PendingCommand,
         },
         navigation::Obstacle,
-        segment::{PointKind, Segment, SegmentConnections, SegmentPlugin},
+        segment::{self, PointKind, Segment, SegmentConnections},
         Layer,
     },
 };
 use placing_wall::PlacingWallPlugin;
 use triangulator::Triangulator;
 
-pub(crate) struct WallPlugin;
+pub(super) struct WallPlugin;
 
 impl Plugin for WallPlugin {
     fn build(&self, app: &mut App) {
@@ -36,113 +36,111 @@ impl Plugin for WallPlugin {
             .register_type::<Wall>()
             .replicate::<Wall>()
             .add_mapped_client_event::<CommandRequest<WallCommand>>(ChannelKind::Unordered)
-            .add_observer(Self::init)
+            .add_observer(init)
             .add_systems(
                 PostUpdate,
                 (
-                    Self::apply_command
+                    apply_command
                         .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
-                    Self::update_meshes.after(SegmentPlugin::update_connections),
+                    update_meshes.after(segment::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
     }
 }
 
-impl WallPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, Wall>,
-        wall_material: Res<WallMaterial>,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut walls: Query<(&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>)>,
-    ) {
-        debug!("initializing wall `{}`", trigger.entity());
-        let (mut mesh, mut material) = walls.get_mut(trigger.entity()).unwrap();
-        **mesh = meshes.add(DynamicMesh::create_empty());
-        *material = wall_material.0.clone();
-    }
+fn init(
+    trigger: Trigger<OnAdd, Wall>,
+    wall_material: Res<WallMaterial>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut walls: Query<(&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>)>,
+) {
+    debug!("initializing wall `{}`", trigger.entity());
+    let (mut mesh, mut material) = walls.get_mut(trigger.entity()).unwrap();
+    **mesh = meshes.add(DynamicMesh::create_empty());
+    *material = wall_material.0.clone();
+}
 
-    pub(crate) fn update_meshes(
-        mut triangulator: Local<Triangulator>,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut changed_walls: Query<
-            (
-                &Mesh3d,
-                Ref<Segment>,
-                &SegmentConnections,
-                &mut Apertures,
-                &mut Collider,
-            ),
-            Or<(Changed<SegmentConnections>, Changed<Apertures>)>,
-        >,
-    ) {
-        for (mesh_handle, segment, connections, mut apertures, mut collider) in &mut changed_walls {
-            let mesh = meshes
-                .get_mut(mesh_handle)
-                .expect("wall handles should be valid");
+pub(crate) fn update_meshes(
+    mut triangulator: Local<Triangulator>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut changed_walls: Query<
+        (
+            &Mesh3d,
+            Ref<Segment>,
+            &SegmentConnections,
+            &mut Apertures,
+            &mut Collider,
+        ),
+        Or<(Changed<SegmentConnections>, Changed<Apertures>)>,
+    >,
+) {
+    for (mesh_handle, segment, connections, mut apertures, mut collider) in &mut changed_walls {
+        let mesh = meshes
+            .get_mut(mesh_handle)
+            .expect("wall handles should be valid");
 
-            trace!("regenerating wall mesh");
-            let mut dyn_mesh = DynamicMesh::take(mesh);
-            wall_mesh::generate(
-                &mut dyn_mesh,
-                *segment,
-                connections,
-                &apertures,
-                &mut triangulator,
-            );
-            dyn_mesh.apply(mesh);
+        trace!("regenerating wall mesh");
+        let mut dyn_mesh = DynamicMesh::take(mesh);
+        wall_mesh::generate(
+            &mut dyn_mesh,
+            *segment,
+            connections,
+            &apertures,
+            &mut triangulator,
+        );
+        dyn_mesh.apply(mesh);
 
-            if apertures.collision_outdated || segment.is_changed() || collider.is_added() {
-                trace!("regenerating wall collision");
-                *collider = wall_mesh::generate_collider(*segment, &apertures);
-                apertures.collision_outdated = false;
-            }
+        if apertures.collision_outdated || segment.is_changed() || collider.is_added() {
+            trace!("regenerating wall collision");
+            *collider = wall_mesh::generate_collider(*segment, &apertures);
+            apertures.collision_outdated = false;
         }
     }
+}
 
-    fn apply_command(
-        mut commands: Commands,
-        mut request_events: EventReader<FromClient<CommandRequest<WallCommand>>>,
-        mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
-        mut walls: Query<&mut Segment, With<Wall>>,
-    ) {
-        for FromClient { client_id, event } in request_events.read().copied() {
-            // TODO: validate if command can be applied.
-            let mut confirmation = CommandConfirmation::new(event.id);
-            match event.command {
-                WallCommand::Create {
-                    city_entity,
-                    segment,
-                } => {
-                    info!("`{client_id:?}` creates wall");
-                    commands.entity(city_entity).with_children(|parent| {
-                        let entity = parent.spawn((Wall, segment)).id();
-                        confirmation.entity = Some(entity);
-                    });
-                }
-                WallCommand::EditPoint {
-                    entity,
-                    kind,
-                    point,
-                } => match walls.get_mut(entity) {
-                    Ok(mut segment) => {
-                        info!("`{client_id:?}` edits `{kind:?}` for wall `{entity}`");
-                        segment.set_point(kind, point);
-                    }
-                    Err(e) => error!("unable to move wall `{entity}`: {e}"),
-                },
-                WallCommand::Delete { entity } => {
-                    info!("`{client_id:?}` removes wall `{entity}`");
-                    commands.entity(entity).despawn();
-                }
+fn apply_command(
+    mut commands: Commands,
+    mut request_events: EventReader<FromClient<CommandRequest<WallCommand>>>,
+    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
+    mut walls: Query<&mut Segment, With<Wall>>,
+) {
+    for FromClient { client_id, event } in request_events.read().copied() {
+        // TODO: validate if command can be applied.
+        let mut confirmation = CommandConfirmation::new(event.id);
+        match event.command {
+            WallCommand::Create {
+                city_entity,
+                segment,
+            } => {
+                info!("`{client_id:?}` creates wall");
+                commands.entity(city_entity).with_children(|parent| {
+                    let entity = parent.spawn((Wall, segment)).id();
+                    confirmation.entity = Some(entity);
+                });
             }
-
-            confirm_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: confirmation,
-            });
+            WallCommand::EditPoint {
+                entity,
+                kind,
+                point,
+            } => match walls.get_mut(entity) {
+                Ok(mut segment) => {
+                    info!("`{client_id:?}` edits `{kind:?}` for wall `{entity}`");
+                    segment.set_point(kind, point);
+                }
+                Err(e) => error!("unable to move wall `{entity}`: {e}"),
+            },
+            WallCommand::Delete { entity } => {
+                info!("`{client_id:?}` removes wall `{entity}`");
+                commands.entity(entity).despawn();
+            }
         }
+
+        confirm_events.send(ToClients {
+            mode: SendMode::Direct(client_id),
+            event: confirmation,
+        });
     }
 }
 

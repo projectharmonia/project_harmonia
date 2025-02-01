@@ -26,90 +26,87 @@ impl Plugin for SegmentPlugin {
             .add_plugins(PlacingSegmentPlugin)
             .register_type::<Segment>()
             .replicate::<Segment>()
-            .add_observer(Self::cleanup_connections)
+            .add_observer(cleanup_connections)
             .add_systems(
                 PostUpdate,
-                (Self::update_transform, Self::update_connections)
-                    .run_if(in_state(GameState::InGame)),
+                (update_transform, update_connections).run_if(in_state(GameState::InGame)),
             );
     }
 }
 
-impl SegmentPlugin {
-    fn update_transform(mut changed_segments: Query<(&mut Transform, &Segment), Changed<Segment>>) {
-        for (mut transform, segment) in &mut changed_segments {
-            transform.translation = Vec3::new(segment.start.x, 0.0, segment.start.y);
-            transform.rotation = Quat::from_rotation_y(-segment.displacement().to_angle());
-        }
+fn update_transform(mut changed_segments: Query<(&mut Transform, &Segment), Changed<Segment>>) {
+    for (mut transform, segment) in &mut changed_segments {
+        transform.translation = Vec3::new(segment.start.x, 0.0, segment.start.y);
+        transform.rotation = Quat::from_rotation_y(-segment.displacement().to_angle());
     }
+}
 
-    /// Updates [`SegmentConnections`] between segments.
-    pub(super) fn update_connections(
-        mut segments: Query<(Entity, &Visibility, &Segment, &mut SegmentConnections)>,
-        children: Query<&Children>,
-        changed_segments: Query<
-            (Entity, &Parent, &Visibility, &Segment),
-            (
-                Or<(Changed<Segment>, Changed<Visibility>)>,
-                With<SegmentConnections>,
-            ),
-        >,
-    ) {
-        for (segment_entity, parent, visibility, &segment) in &changed_segments {
-            let mut taken_connections = disconnect_all(segment_entity, segments.transmute_lens());
+/// Updates [`SegmentConnections`] between segments.
+pub(super) fn update_connections(
+    mut segments: Query<(Entity, &Visibility, &Segment, &mut SegmentConnections)>,
+    children: Query<&Children>,
+    changed_segments: Query<
+        (Entity, &Parent, &Visibility, &Segment),
+        (
+            Or<(Changed<Segment>, Changed<Visibility>)>,
+            With<SegmentConnections>,
+        ),
+    >,
+) {
+    for (segment_entity, parent, visibility, &segment) in &changed_segments {
+        let mut taken_connections = disconnect_all(segment_entity, segments.transmute_lens());
 
-            // If segment have zero length or hidden, exclude it from connections.
-            if segment.start != segment.end && visibility != Visibility::Hidden {
-                // Scan all segments from this lot for possible connections.
-                let mut iter = segments.iter_many_mut(children.get(**parent).unwrap());
-                while let Some((other_entity, visibility, &other_segment, mut other_connections)) =
-                    iter.fetch_next()
-                {
-                    if visibility == Visibility::Hidden || segment_entity == other_entity {
-                        // Don't connect to hidden segments or self.
-                        continue;
-                    }
-
-                    let (from, to) = if segment.start == other_segment.start {
-                        (PointKind::Start, PointKind::Start)
-                    } else if segment.start == other_segment.end {
-                        (PointKind::Start, PointKind::End)
-                    } else if segment.end == other_segment.end {
-                        (PointKind::End, PointKind::End)
-                    } else if segment.end == other_segment.start {
-                        (PointKind::End, PointKind::Start)
-                    } else {
-                        continue;
-                    };
-
-                    trace!(
-                        "connecting `{from:?}` for `{segment_entity}` to `{to:?}` for `{other_entity}`"
-                    );
-                    taken_connections.get_mut(from).push(SegmentConnection {
-                        entity: other_entity,
-                        segment: other_segment,
-                        kind: to,
-                    });
-                    other_connections.get_mut(to).push(SegmentConnection {
-                        entity: segment_entity,
-                        segment,
-                        kind: from,
-                    });
+        // If segment have zero length or hidden, exclude it from connections.
+        if segment.start != segment.end && visibility != Visibility::Hidden {
+            // Scan all segments from this lot for possible connections.
+            let mut iter = segments.iter_many_mut(children.get(**parent).unwrap());
+            while let Some((other_entity, visibility, &other_segment, mut other_connections)) =
+                iter.fetch_next()
+            {
+                if visibility == Visibility::Hidden || segment_entity == other_entity {
+                    // Don't connect to hidden segments or self.
+                    continue;
                 }
+
+                let (from, to) = if segment.start == other_segment.start {
+                    (PointKind::Start, PointKind::Start)
+                } else if segment.start == other_segment.end {
+                    (PointKind::Start, PointKind::End)
+                } else if segment.end == other_segment.end {
+                    (PointKind::End, PointKind::End)
+                } else if segment.end == other_segment.start {
+                    (PointKind::End, PointKind::Start)
+                } else {
+                    continue;
+                };
+
+                trace!(
+                    "connecting `{from:?}` for `{segment_entity}` to `{to:?}` for `{other_entity}`"
+                );
+                taken_connections.get_mut(from).push(SegmentConnection {
+                    entity: other_entity,
+                    segment: other_segment,
+                    kind: to,
+                });
+                other_connections.get_mut(to).push(SegmentConnection {
+                    entity: segment_entity,
+                    segment,
+                    kind: from,
+                });
             }
-
-            // Reinsert updated connections back.
-            let (.., mut connections) = segments.get_mut(segment_entity).unwrap();
-            *connections = taken_connections;
         }
-    }
 
-    fn cleanup_connections(
-        trigger: Trigger<OnRemove, Segment>,
-        mut segments: Query<&mut SegmentConnections>,
-    ) {
-        disconnect_all(trigger.entity(), segments.as_query_lens());
+        // Reinsert updated connections back.
+        let (.., mut connections) = segments.get_mut(segment_entity).unwrap();
+        *connections = taken_connections;
     }
+}
+
+fn cleanup_connections(
+    trigger: Trigger<OnRemove, Segment>,
+    mut segments: Query<&mut SegmentConnections>,
+) {
+    disconnect_all(trigger.entity(), segments.as_query_lens());
 }
 
 /// Removes all segment connections for the given entity.

@@ -6,19 +6,17 @@ pub(super) struct DialogPlugin;
 
 impl Plugin for DialogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::init);
+        app.add_observer(init);
     }
 }
 
-impl DialogPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, Dialog>,
-        theme: Res<Theme>,
-        mut dialogs: Query<&mut BackgroundColor>,
-    ) {
-        let mut background_color = dialogs.get_mut(trigger.entity()).unwrap();
-        *background_color = theme.modal_background;
-    }
+fn init(
+    trigger: Trigger<OnAdd, Dialog>,
+    theme: Res<Theme>,
+    mut dialogs: Query<&mut BackgroundColor>,
+) {
+    let mut background_color = dialogs.get_mut(trigger.entity()).unwrap();
+    *background_color = theme.modal_background;
 }
 
 #[derive(Component, Default)]

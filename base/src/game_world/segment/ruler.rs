@@ -38,48 +38,46 @@ impl Plugin for RulerPlugin {
                     ..Default::default()
                 },
             )
-            .add_systems(PostUpdate, Self::draw.run_if(in_state(BuildingMode::Walls)));
+            .add_systems(PostUpdate, draw.run_if(in_state(BuildingMode::Walls)));
     }
 }
 
-impl RulerPlugin {
-    fn draw(
-        mut ruler_gizmos: Gizmos<RulerConfig>,
-        mut angle_gizmos: Gizmos<AngleConfig>,
-        camera_transform: Single<&Transform, With<PlayerCamera>>,
-        segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler, &Transform)>,
-        mut text: Query<
-            (&mut Transform, &mut BillboardText),
-            (Without<PlayerCamera>, Without<Segment>),
-        >,
-    ) {
-        for (segment, connections, &ruler, segment_transform) in &segments {
-            if segment.is_zero() {
-                continue;
-            }
-
-            let segment_disp = segment.displacement();
-
-            draw_len(
-                &mut ruler_gizmos,
-                &mut text,
-                &segment,
-                ruler,
-                segment_disp,
-                camera_transform.translation.xz(),
-            );
-
-            draw_angle(
-                &mut angle_gizmos,
-                &mut text,
-                &segment,
-                connections,
-                ruler,
-                segment_disp,
-                camera_transform.rotation,
-                segment_transform.rotation,
-            );
+fn draw(
+    mut ruler_gizmos: Gizmos<RulerConfig>,
+    mut angle_gizmos: Gizmos<AngleConfig>,
+    camera_transform: Single<&Transform, With<PlayerCamera>>,
+    segments: Query<(Ref<Segment>, &SegmentConnections, &Ruler, &Transform)>,
+    mut text: Query<
+        (&mut Transform, &mut BillboardText),
+        (Without<PlayerCamera>, Without<Segment>),
+    >,
+) {
+    for (segment, connections, &ruler, segment_transform) in &segments {
+        if segment.is_zero() {
+            continue;
         }
+
+        let segment_disp = segment.displacement();
+
+        draw_len(
+            &mut ruler_gizmos,
+            &mut text,
+            &segment,
+            ruler,
+            segment_disp,
+            camera_transform.translation.xz(),
+        );
+
+        draw_angle(
+            &mut angle_gizmos,
+            &mut text,
+            &segment,
+            connections,
+            ruler,
+            segment_disp,
+            camera_transform.rotation,
+            segment_transform.rotation,
+        );
     }
 }
 

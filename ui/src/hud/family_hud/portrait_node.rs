@@ -11,21 +11,19 @@ impl Plugin for PortraitNodePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            Self::update_budget
+            update_budget
                 .never_param_warn()
                 .run_if(in_state(WorldState::Family)),
         );
     }
 }
 
-impl PortraitNodePlugin {
-    fn update_budget(
-        current_budget: Single<&Budget, (With<SelectedFamily>, Changed<Budget>)>,
-        mut budget_label: Single<&mut Text, With<BudgetLabel>>,
-    ) {
-        debug!("changing budget to `{:?}`", **current_budget);
-        ***budget_label = current_budget.to_string();
-    }
+fn update_budget(
+    current_budget: Single<&Budget, (With<SelectedFamily>, Changed<Budget>)>,
+    mut budget_label: Single<&mut Text, With<BudgetLabel>>,
+) {
+    debug!("changing budget to `{:?}`", **current_budget);
+    ***budget_label = current_budget.to_string();
 }
 
 pub(super) fn setup(parent: &mut ChildBuilder, theme: &Theme, budget: Budget) {

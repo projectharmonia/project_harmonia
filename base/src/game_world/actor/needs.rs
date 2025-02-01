@@ -24,21 +24,19 @@ impl Plugin for NeedsPlugin {
             .replicate::<Need>()
             .add_systems(
                 Update,
-                Self::update_values
+                update_values
                     .run_if(on_timer(Duration::from_secs(1)))
                     .run_if(server_or_singleplayer),
             );
     }
 }
 
-impl NeedsPlugin {
-    fn update_values(mut needs: Query<(&mut Need, &NeedRate)>) {
-        for (mut need, rate) in &mut needs {
-            if need.0 > rate.0 {
-                need.0 += rate.0;
-            } else {
-                need.0 = 0.0;
-            }
+fn update_values(mut needs: Query<(&mut Need, &NeedRate)>) {
+    for (mut need, rate) in &mut needs {
+        if need.0 > rate.0 {
+            need.0 += rate.0;
+        } else {
+            need.0 = 0.0;
         }
     }
 }

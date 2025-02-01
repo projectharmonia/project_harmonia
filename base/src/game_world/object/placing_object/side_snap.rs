@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{PlacingObject, PlacingObjectPlugin};
+use super::PlacingObject;
 use crate::game_world::{city::CityMode, family::building::BuildingMode};
 
 pub(super) struct SideSnapPlugin;
@@ -12,7 +12,7 @@ impl Plugin for SideSnapPlugin {
                 Update,
                 Self::snap
                     .never_param_warn()
-                    .after(PlacingObjectPlugin::apply_position)
+                    .after(super::apply_position)
                     .run_if(in_state(CityMode::Objects).or(in_state(BuildingMode::Objects))),
             )
             .add_systems(

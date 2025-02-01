@@ -9,99 +9,94 @@ use crate::game_world::{
     WorldState,
 };
 
-pub(crate) struct EditorPlugin;
+pub(super) struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::reset_family)
-            .add_observer(Self::show)
-            .add_observer(Self::hide)
-            .add_systems(OnEnter(WorldState::FamilyEditor), Self::setup)
-            .add_systems(
-                Update,
-                Self::play.run_if(in_state(WorldState::FamilyEditor)),
-            )
+        app.add_observer(reset_family)
+            .add_observer(show)
+            .add_observer(hide)
+            .add_systems(OnEnter(WorldState::FamilyEditor), setup)
+            .add_systems(Update, play.run_if(in_state(WorldState::FamilyEditor)))
             .add_systems(
                 PostUpdate,
-                Self::update_names.run_if(in_state(WorldState::FamilyEditor)),
+                update_names.run_if(in_state(WorldState::FamilyEditor)),
             );
     }
 }
 
-impl EditorPlugin {
-    fn setup(mut commands: Commands) {
-        debug!("initializing editor");
-        commands.spawn(EditorFamily).with_children(|parent| {
-            parent.spawn((
-                DirectionalLight {
-                    shadows_enabled: true,
-                    ..Default::default()
-                },
-                Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ));
-            parent.spawn(PlayerCamera);
-            parent.spawn(EditorSelectedActor);
+fn setup(mut commands: Commands) {
+    debug!("initializing editor");
+    commands.spawn(EditorFamily).with_children(|parent| {
+        parent.spawn((
+            DirectionalLight {
+                shadows_enabled: true,
+                ..Default::default()
+            },
+            Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ));
+        parent.spawn(PlayerCamera);
+        parent.spawn(EditorSelectedActor);
+    });
+}
+
+fn play(
+    mut commands: Commands,
+    mut spawn_select_events: EventReader<SelectedFamilyCreated>,
+    families: Query<&FamilyMembers>,
+) {
+    for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
+        info!("starting playing");
+        let actor_entity = *members
+            .first()
+            .expect("family should always have at least one member");
+        commands.entity(actor_entity).insert(SelectedActor);
+        commands.set_state(WorldState::Family);
+    }
+}
+
+fn reset_family(
+    _trigger: Trigger<EditorFamilyReset>,
+    mut commands: Commands,
+    actors: Query<Entity, With<EditorActor>>,
+    family_entity: Single<Entity, With<EditorFamily>>,
+) {
+    info!("resetting family");
+    for entity in &actors {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    // Spawn a new actor for editing.
+    commands.entity(*family_entity).with_children(|parent| {
+        parent.spawn(EditorSelectedActor);
+    });
+}
+
+fn update_names(
+    mut changed_names: Query<
+        (Entity, &EditorFirstName, &EditorLastName, &mut Name),
+        Or<(Changed<EditorFirstName>, Changed<EditorLastName>)>,
+    >,
+) {
+    for (entity, first_name, last_name, mut name) in &mut changed_names {
+        debug!("updating full name for `{entity}`");
+        name.mutate(|name| {
+            name.clear();
+            write!(name, "{} {}", first_name.0, last_name.0).unwrap();
         });
     }
+}
 
-    fn play(
-        mut commands: Commands,
-        mut spawn_select_events: EventReader<SelectedFamilyCreated>,
-        families: Query<&FamilyMembers>,
-    ) {
-        for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
-            info!("starting playing");
-            let actor_entity = *members
-                .first()
-                .expect("family should always have at least one member");
-            commands.entity(actor_entity).insert(SelectedActor);
-            commands.set_state(WorldState::Family);
-        }
-    }
+fn show(trigger: Trigger<OnAdd, EditorSelectedActor>, mut actors: Query<&mut Visibility>) {
+    debug!("showing `{}`", trigger.entity());
+    let mut visibility = actors.get_mut(trigger.entity()).unwrap();
+    *visibility = Visibility::Inherited;
+}
 
-    fn reset_family(
-        _trigger: Trigger<EditorFamilyReset>,
-        mut commands: Commands,
-        actors: Query<Entity, With<EditorActor>>,
-        family_entity: Single<Entity, With<EditorFamily>>,
-    ) {
-        info!("resetting family");
-        for entity in &actors {
-            commands.entity(entity).despawn_recursive();
-        }
-
-        // Spawn a new actor for editing.
-        commands.entity(*family_entity).with_children(|parent| {
-            parent.spawn(EditorSelectedActor);
-        });
-    }
-
-    fn update_names(
-        mut changed_names: Query<
-            (Entity, &EditorFirstName, &EditorLastName, &mut Name),
-            Or<(Changed<EditorFirstName>, Changed<EditorLastName>)>,
-        >,
-    ) {
-        for (entity, first_name, last_name, mut name) in &mut changed_names {
-            debug!("updating full name for `{entity}`");
-            name.mutate(|name| {
-                name.clear();
-                write!(name, "{} {}", first_name.0, last_name.0).unwrap();
-            });
-        }
-    }
-
-    fn show(trigger: Trigger<OnAdd, EditorSelectedActor>, mut actors: Query<&mut Visibility>) {
-        debug!("showing `{}`", trigger.entity());
-        let mut visibility = actors.get_mut(trigger.entity()).unwrap();
-        *visibility = Visibility::Inherited;
-    }
-
-    fn hide(trigger: Trigger<OnRemove, EditorSelectedActor>, mut actors: Query<&mut Visibility>) {
-        let mut visibility = actors.get_mut(trigger.entity()).unwrap();
-        debug!("hiding `{}`", trigger.entity());
-        *visibility = Visibility::Hidden;
-    }
+fn hide(trigger: Trigger<OnRemove, EditorSelectedActor>, mut actors: Query<&mut Visibility>) {
+    let mut visibility = actors.get_mut(trigger.entity()).unwrap();
+    debug!("hiding `{}`", trigger.entity());
+    *visibility = Visibility::Hidden;
 }
 
 /// A root family editor component.

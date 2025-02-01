@@ -18,63 +18,61 @@ pub(super) struct InfoNodePlugin;
 
 impl Plugin for InfoNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::cleanup_need_bars).add_systems(
+        app.add_observer(cleanup_need_bars).add_systems(
             Update,
-            Self::update_need_bars.run_if(in_state(WorldState::Family)),
+            update_need_bars.run_if(in_state(WorldState::Family)),
         );
     }
 }
 
-impl InfoNodePlugin {
-    fn update_need_bars(
-        mut commands: Commands,
-        selected_actor: Single<(&Children, Ref<SelectedActor>)>,
-        needs: Query<(Entity, &NeedGlyph, Ref<Need>)>,
-        tabs: Query<(&TabContent, &InfoTab)>,
-        mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
-    ) {
-        let (children, selected_actor) = selected_actor.into_inner();
-        let (tab_content, _) = tabs
-            .iter()
-            .find(|(_, &tab)| tab == InfoTab::Needs)
-            .expect("tab with cities should be spawned on state enter");
+fn update_need_bars(
+    mut commands: Commands,
+    selected_actor: Single<(&Children, Ref<SelectedActor>)>,
+    needs: Query<(Entity, &NeedGlyph, Ref<Need>)>,
+    tabs: Query<(&TabContent, &InfoTab)>,
+    mut progress_bars: Query<(&mut ProgressBar, &BarNeed)>,
+) {
+    let (children, selected_actor) = selected_actor.into_inner();
+    let (tab_content, _) = tabs
+        .iter()
+        .find(|(_, &tab)| tab == InfoTab::Needs)
+        .expect("tab with cities should be spawned on state enter");
 
-        if selected_actor.is_added() {
-            commands.entity(tab_content.0).despawn_descendants();
-        }
-
-        for (entity, glyph, need) in needs
-            .iter_many(children)
-            .filter(|(.., need)| need.is_changed() || selected_actor.is_added())
-        {
-            if let Some((mut progress_bar, _)) = progress_bars
-                .iter_mut()
-                .find(|(_, bar_need)| bar_need.0 == entity)
-            {
-                trace!("updating bar with `{need:?}` for `{entity}`");
-                progress_bar.0 = need.0;
-            } else {
-                trace!("creating bar with `{need:?}` for `{entity}`");
-                commands.entity(tab_content.0).with_children(|parent| {
-                    parent.spawn((LabelKind::Symbol, Text::new(glyph.0)));
-                    parent.spawn((BarNeed(entity), ProgressBar(need.0)));
-                });
-            }
-        }
+    if selected_actor.is_added() {
+        commands.entity(tab_content.0).despawn_descendants();
     }
 
-    fn cleanup_need_bars(
-        trigger: Trigger<OnRemove, Need>,
-        mut commands: Commands,
-        progress_bars: Query<(Entity, &BarNeed)>,
-    ) {
-        if let Some((entity, _)) = progress_bars
-            .iter()
-            .find(|(_, bar_need)| bar_need.0 == trigger.entity())
+    for (entity, glyph, need) in needs
+        .iter_many(children)
+        .filter(|(.., need)| need.is_changed() || selected_actor.is_added())
+    {
+        if let Some((mut progress_bar, _)) = progress_bars
+            .iter_mut()
+            .find(|(_, bar_need)| bar_need.0 == entity)
         {
-            debug!("despawning bar `{entity}` for need `{}`", trigger.entity());
-            commands.entity(entity).despawn_recursive();
+            trace!("updating bar with `{need:?}` for `{entity}`");
+            progress_bar.0 = need.0;
+        } else {
+            trace!("creating bar with `{need:?}` for `{entity}`");
+            commands.entity(tab_content.0).with_children(|parent| {
+                parent.spawn((LabelKind::Symbol, Text::new(glyph.0)));
+                parent.spawn((BarNeed(entity), ProgressBar(need.0)));
+            });
         }
+    }
+}
+
+fn cleanup_need_bars(
+    trigger: Trigger<OnRemove, Need>,
+    mut commands: Commands,
+    progress_bars: Query<(Entity, &BarNeed)>,
+) {
+    if let Some((entity, _)) = progress_bars
+        .iter()
+        .find(|(_, bar_need)| bar_need.0 == trigger.entity())
+    {
+        debug!("despawning bar `{entity}` for need `{}`", trigger.entity());
+        commands.entity(entity).despawn_recursive();
     }
 }
 

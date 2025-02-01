@@ -10,105 +10,103 @@ pub(super) struct TasksNodePlugin;
 
 impl Plugin for TasksNodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::change_actor.never_param_warn())
-            .add_observer(Self::add_task.never_param_warn())
-            .add_observer(Self::activate_task.never_param_warn())
-            .add_observer(Self::cleanup);
+        app.add_observer(change_actor.never_param_warn())
+            .add_observer(add_task.never_param_warn())
+            .add_observer(activate_task.never_param_warn())
+            .add_observer(cleanup);
     }
 }
 
-impl TasksNodePlugin {
-    // TODO 0.16: listen for `Task` insertion when hierarchy will be available.
-    fn add_task(
-        trigger: Trigger<OnAdd, Parent>,
-        mut commands: Commands,
-        queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
-        actor_entity: Single<Entity, With<SelectedActor>>,
-        tasks: Query<&Parent, With<Task>>,
-    ) {
-        let Ok(parent) = tasks.get(trigger.entity()) else {
-            return;
-        };
-        if **parent != *actor_entity {
-            return;
-        }
+// TODO 0.16: listen for `Task` insertion when hierarchy will be available.
+fn add_task(
+    trigger: Trigger<OnAdd, Parent>,
+    mut commands: Commands,
+    queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
+    actor_entity: Single<Entity, With<SelectedActor>>,
+    tasks: Query<&Parent, With<Task>>,
+) {
+    let Ok(parent) = tasks.get(trigger.entity()) else {
+        return;
+    };
+    if **parent != *actor_entity {
+        return;
+    }
 
-        debug!("creating queued task button for `{}`", trigger.entity());
+    debug!("creating queued task button for `{}`", trigger.entity());
 
+    commands
+        .entity(*queued_node_entity)
+        .with_children(|parent| {
+            spawn_button(parent, trigger.entity());
+        });
+}
+
+fn activate_task(
+    trigger: Trigger<OnAdd, ActiveTask>,
+    mut commands: Commands,
+    active_node_entity: Single<Entity, With<ActiveTasksNode>>,
+    buttons: Query<(Entity, &TaskButton)>,
+) {
+    if let Some((button_entity, _)) = buttons
+        .iter()
+        .find(|(_, task_button)| task_button.task_entity == trigger.entity())
+    {
+        debug!(
+            "turning queued button for `{}` into active",
+            trigger.entity()
+        );
         commands
-            .entity(*queued_node_entity)
-            .with_children(|parent| {
-                spawn_button(parent, trigger.entity());
-            });
+            .entity(button_entity)
+            .set_parent(*active_node_entity);
     }
+}
 
-    fn activate_task(
-        trigger: Trigger<OnAdd, ActiveTask>,
-        mut commands: Commands,
-        active_node_entity: Single<Entity, With<ActiveTasksNode>>,
-        buttons: Query<(Entity, &TaskButton)>,
-    ) {
-        if let Some((button_entity, _)) = buttons
-            .iter()
-            .find(|(_, task_button)| task_button.task_entity == trigger.entity())
-        {
-            debug!(
-                "turning queued button for `{}` into active",
-                trigger.entity()
-            );
-            commands
-                .entity(button_entity)
-                .set_parent(*active_node_entity);
-        }
+fn change_actor(
+    _trigger: Trigger<OnAdd, SelectedActor>,
+    mut commands: Commands,
+    actor_children: Single<&Children, With<SelectedActor>>,
+    queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
+    active_node_entity: Single<Entity, With<ActiveTasksNode>>,
+    tasks: Query<(Entity, Has<ActiveTask>), With<Task>>,
+) {
+    debug!("reloading actor task buttons");
+
+    commands.entity(*queued_node_entity).despawn_descendants();
+    commands.entity(*active_node_entity).despawn_descendants();
+
+    for (task_entity, active) in tasks.iter_many(*actor_children) {
+        let node_entity = if active {
+            *active_node_entity
+        } else {
+            *queued_node_entity
+        };
+
+        commands.entity(node_entity).with_children(|parent| {
+            spawn_button(parent, task_entity);
+        });
     }
+}
 
-    fn change_actor(
-        _trigger: Trigger<OnAdd, SelectedActor>,
-        mut commands: Commands,
-        actor_children: Single<&Children, With<SelectedActor>>,
-        queued_node_entity: Single<Entity, With<QueuedTasksNode>>,
-        active_node_entity: Single<Entity, With<ActiveTasksNode>>,
-        tasks: Query<(Entity, Has<ActiveTask>), With<Task>>,
-    ) {
-        debug!("reloading actor task buttons");
+fn cancel(
+    trigger: Trigger<Pointer<Click>>,
+    mut cancel_events: EventWriter<TaskCancel>,
+    buttons: Query<&TaskButton>,
+) {
+    let task_button = buttons.get(trigger.entity()).unwrap();
+    cancel_events.send(TaskCancel(task_button.task_entity));
+}
 
-        commands.entity(*queued_node_entity).despawn_descendants();
-        commands.entity(*active_node_entity).despawn_descendants();
-
-        for (task_entity, active) in tasks.iter_many(*actor_children) {
-            let node_entity = if active {
-                *active_node_entity
-            } else {
-                *queued_node_entity
-            };
-
-            commands.entity(node_entity).with_children(|parent| {
-                spawn_button(parent, task_entity);
-            });
-        }
-    }
-
-    fn cancel(
-        trigger: Trigger<Pointer<Click>>,
-        mut cancel_events: EventWriter<TaskCancel>,
-        buttons: Query<&TaskButton>,
-    ) {
-        let task_button = buttons.get(trigger.entity()).unwrap();
-        cancel_events.send(TaskCancel(task_button.task_entity));
-    }
-
-    fn cleanup(
-        trigger: Trigger<OnRemove, Task>,
-        mut commands: Commands,
-        buttons: Query<(Entity, &TaskButton)>,
-    ) {
-        if let Some((entity, _)) = buttons
-            .iter()
-            .find(|(_, task_button)| task_button.task_entity == trigger.entity())
-        {
-            debug!("removing task button `{entity}` for `{}`", trigger.entity());
-            commands.entity(entity).despawn_recursive();
-        }
+fn cleanup(
+    trigger: Trigger<OnRemove, Task>,
+    mut commands: Commands,
+    buttons: Query<(Entity, &TaskButton)>,
+) {
+    if let Some((entity, _)) = buttons
+        .iter()
+        .find(|(_, task_button)| task_button.task_entity == trigger.entity())
+    {
+        debug!("removing task button `{entity}` for `{}`", trigger.entity());
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -191,7 +189,7 @@ fn spawn_button(parent: &mut ChildBuilder, task_entity: Entity) {
     parent
         .spawn(TaskButton { task_entity })
         .with_child(ImageNode::default())
-        .observe(TasksNodePlugin::cancel);
+        .observe(cancel);
 }
 
 #[derive(Component)]

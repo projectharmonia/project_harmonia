@@ -8,7 +8,7 @@ use super::placing_object::PlacingObject;
 use crate::{
     core::GameState,
     game_world::{
-        family::building::wall::{Aperture, Apertures, WallPlugin},
+        family::building::wall::{self, Aperture, Apertures},
         segment::Segment,
         Layer,
     },
@@ -19,97 +19,76 @@ pub(super) struct WallMountPlugin;
 impl Plugin for WallMountPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<WallMount>()
-            .add_observer(Self::init)
+            .add_observer(init)
             .add_systems(
                 PostUpdate,
-                Self::update_apertures
-                    .before(WallPlugin::update_meshes)
+                update_apertures
+                    .before(wall::update_meshes)
                     .run_if(in_state(GameState::InGame)),
             );
     }
 }
 
-impl WallMountPlugin {
-    fn init(trigger: Trigger<OnAdd, WallMount>, mut objects: Query<&mut CollisionLayers>) {
-        let Ok(mut collision_layers) = objects.get_mut(trigger.entity()) else {
-            error!("wall mounts should always have collision");
-            return;
-        };
+fn init(trigger: Trigger<OnAdd, WallMount>, mut objects: Query<&mut CollisionLayers>) {
+    let Ok(mut collision_layers) = objects.get_mut(trigger.entity()) else {
+        error!("wall mounts should always have collision");
+        return;
+    };
 
-        collision_layers.filters.remove(Layer::Wall);
-    }
+    collision_layers.filters.remove(Layer::Wall);
+}
 
-    /// Updates [`Apertures`] based on spawned objects.
-    fn update_apertures(
-        mut walls: Query<(Entity, &Parent, &Segment, &mut Apertures)>,
-        mut objects: Query<
-            (
-                Entity,
-                &Parent,
-                &Visibility,
-                &Transform,
-                &WallMount,
-                &mut ObjectWall,
-                Has<PlacingObject>,
-            ),
-            Or<(Changed<Transform>, Changed<Visibility>)>,
-        >,
-    ) {
-        for (
-            object_entity,
-            object_parent,
-            visibility,
-            transform,
-            wall_mount,
-            mut object_wall,
-            placing_object,
-        ) in &mut objects
-        {
-            if visibility == Visibility::Hidden {
-                if let Some(wall_entity) = object_wall.0.take() {
-                    trace!(
-                        "removing hidden `{object_entity}` from the aperture of `{wall_entity}`"
-                    );
-                    let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
-                    apertures.remove(object_entity);
-                }
-                continue;
+/// Updates [`Apertures`] based on spawned objects.
+fn update_apertures(
+    mut walls: Query<(Entity, &Parent, &Segment, &mut Apertures)>,
+    mut objects: Query<
+        (
+            Entity,
+            &Parent,
+            &Visibility,
+            &Transform,
+            &WallMount,
+            &mut ObjectWall,
+            Has<PlacingObject>,
+        ),
+        Or<(Changed<Transform>, Changed<Visibility>)>,
+    >,
+) {
+    for (
+        object_entity,
+        object_parent,
+        visibility,
+        transform,
+        wall_mount,
+        mut object_wall,
+        placing_object,
+    ) in &mut objects
+    {
+        if visibility == Visibility::Hidden {
+            if let Some(wall_entity) = object_wall.0.take() {
+                trace!("removing hidden `{object_entity}` from the aperture of `{wall_entity}`");
+                let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
+                apertures.remove(object_entity);
             }
+            continue;
+        }
 
-            let translation = transform.translation;
-            if let Some((wall_entity, _, segment, mut apertures)) = walls
-                .iter_mut()
-                .filter(|&(_, parent, ..)| parent == object_parent)
-                .find(|(.., segment, _)| segment.contains(translation.xz()))
-            {
-                let distance = translation.xz().distance(segment.start);
-                if let Some(current_entity) = object_wall.0 {
-                    if current_entity == wall_entity {
-                        trace!("updating aperture of `{wall_entity}` for `{object_entity}`");
-                        // Remove to update distance.
-                        let mut aperture = apertures.remove(object_entity);
+        let translation = transform.translation;
+        if let Some((wall_entity, _, segment, mut apertures)) = walls
+            .iter_mut()
+            .filter(|&(_, parent, ..)| parent == object_parent)
+            .find(|(.., segment, _)| segment.contains(translation.xz()))
+        {
+            let distance = translation.xz().distance(segment.start);
+            if let Some(current_entity) = object_wall.0 {
+                if current_entity == wall_entity {
+                    trace!("updating aperture of `{wall_entity}` for `{object_entity}`");
+                    // Remove to update distance.
+                    let mut aperture = apertures.remove(object_entity);
 
-                        aperture.distance = distance;
+                    aperture.distance = distance;
 
-                        apertures.insert(aperture);
-                    } else {
-                        trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
-                        apertures.insert(Aperture {
-                            object_entity,
-                            distance,
-                            cutout: wall_mount.cutout.clone(),
-                            hole: wall_mount.hole,
-                            placing_object,
-                        });
-
-                        object_wall.0 = Some(wall_entity);
-
-                        trace!(
-                            "removing `{object_entity}` from the aperture of `{current_entity}`"
-                        );
-                        let (.., mut current_apertures) = walls.get_mut(current_entity).unwrap();
-                        current_apertures.remove(object_entity);
-                    }
+                    apertures.insert(aperture);
                 } else {
                     trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
                     apertures.insert(Aperture {
@@ -121,12 +100,27 @@ impl WallMountPlugin {
                     });
 
                     object_wall.0 = Some(wall_entity);
+
+                    trace!("removing `{object_entity}` from the aperture of `{current_entity}`");
+                    let (.., mut current_apertures) = walls.get_mut(current_entity).unwrap();
+                    current_apertures.remove(object_entity);
                 }
-            } else if let Some(wall_entity) = object_wall.0.take() {
-                trace!("removing `{object_entity}` from the aperture of `{wall_entity}`");
-                let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
-                apertures.remove(object_entity);
+            } else {
+                trace!("adding `{object_entity}` to the aperture of `{wall_entity}`");
+                apertures.insert(Aperture {
+                    object_entity,
+                    distance,
+                    cutout: wall_mount.cutout.clone(),
+                    hole: wall_mount.hole,
+                    placing_object,
+                });
+
+                object_wall.0 = Some(wall_entity);
             }
+        } else if let Some(wall_entity) = object_wall.0.take() {
+            trace!("removing `{object_entity}` from the aperture of `{wall_entity}`");
+            let (.., mut apertures) = walls.get_mut(wall_entity).unwrap();
+            apertures.remove(object_entity);
         }
     }
 }

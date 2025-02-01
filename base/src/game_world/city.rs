@@ -27,18 +27,12 @@ impl Plugin for CityPlugin {
             .register_type::<City>()
             .replicate_group::<(City, Name)>()
             .init_resource::<PlacedCities>()
-            .add_observer(Self::init)
-            .add_observer(Self::activate)
-            .add_systems(OnEnter(WorldState::Family), Self::activate_by_actor)
-            .add_systems(
-                OnExit(WorldState::City),
-                Self::deactivate.never_param_warn(),
-            )
-            .add_systems(
-                OnExit(WorldState::Family),
-                Self::deactivate.never_param_warn(),
-            )
-            .add_systems(OnExit(GameState::InGame), Self::cleanup);
+            .add_observer(init)
+            .add_observer(activate)
+            .add_systems(OnEnter(WorldState::Family), activate_by_actor)
+            .add_systems(OnExit(WorldState::City), deactivate.never_param_warn())
+            .add_systems(OnExit(WorldState::Family), deactivate.never_param_warn())
+            .add_systems(OnExit(GameState::InGame), cleanup);
     }
 }
 
@@ -46,99 +40,94 @@ impl Plugin for CityPlugin {
 const CITY_SIZE: f32 = 500.0;
 pub(super) const HALF_CITY_SIZE: f32 = CITY_SIZE / 2.0;
 
-impl CityPlugin {
-    /// Inserts [`TransformBundle`] and places cities next to each other.
-    fn init(
-        trigger: Trigger<OnAdd, City>,
-        ground_mesh: Local<GroundMesh>,
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        mut placed_citites: ResMut<PlacedCities>,
-        mut cities: Query<(&mut Transform, &mut CityNavMesh)>,
-    ) {
-        debug!("initializing city `{}`", trigger.entity());
-        let (mut transform, mut nav_mesh) = cities.get_mut(trigger.entity()).unwrap();
-        transform.translation = Vec3::X * CITY_SIZE * **placed_citites as f32;
+/// Inserts [`TransformBundle`] and places cities next to each other.
+fn init(
+    trigger: Trigger<OnAdd, City>,
+    ground_mesh: Local<GroundMesh>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut placed_citites: ResMut<PlacedCities>,
+    mut cities: Query<(&mut Transform, &mut CityNavMesh)>,
+) {
+    debug!("initializing city `{}`", trigger.entity());
+    let (mut transform, mut nav_mesh) = cities.get_mut(trigger.entity()).unwrap();
+    transform.translation = Vec3::X * CITY_SIZE * **placed_citites as f32;
 
-        commands.entity(trigger.entity()).with_children(|parent| {
-            parent.spawn((
-                Ground,
-                Mesh3d(ground_mesh.0.clone()),
-                MeshMaterial3d::<StandardMaterial>(
-                    asset_server.load("base/ground/spring_grass/spring_glass.ron"),
-                ),
-            ));
+    commands.entity(trigger.entity()).with_children(|parent| {
+        parent.spawn((
+            Ground,
+            Mesh3d(ground_mesh.0.clone()),
+            MeshMaterial3d::<StandardMaterial>(
+                asset_server.load("base/ground/spring_grass/spring_glass.ron"),
+            ),
+        ));
 
-            nav_mesh.0 = parent
-                .spawn((
-                    ManagedNavMesh::from_id(**placed_citites as u128),
-                    NavMeshSettings {
-                        fixed: Triangulation::from_outer_edges(&[
-                            Vec2::new(-HALF_CITY_SIZE, -HALF_CITY_SIZE),
-                            Vec2::new(HALF_CITY_SIZE, -HALF_CITY_SIZE),
-                            Vec2::new(HALF_CITY_SIZE, HALF_CITY_SIZE),
-                            Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
-                        ]),
-                        agent_radius: ACTOR_RADIUS,
-                        merge_steps: 1, // Merge triangles when possible to reduce the number of triangles.
-                        simplify: 0.01, // Remove points that contribute very little to the mesh.
-                        default_search_delta: 0.2, // To avoid agents stuck on namesh edges.
-                        ..Default::default()
-                    },
-                    Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
-                    NavMeshUpdateMode::Direct,
-                ))
-                .id();
-        });
+        nav_mesh.0 = parent
+            .spawn((
+                ManagedNavMesh::from_id(**placed_citites as u128),
+                NavMeshSettings {
+                    fixed: Triangulation::from_outer_edges(&[
+                        Vec2::new(-HALF_CITY_SIZE, -HALF_CITY_SIZE),
+                        Vec2::new(HALF_CITY_SIZE, -HALF_CITY_SIZE),
+                        Vec2::new(HALF_CITY_SIZE, HALF_CITY_SIZE),
+                        Vec2::new(-HALF_CITY_SIZE, HALF_CITY_SIZE),
+                    ]),
+                    agent_radius: ACTOR_RADIUS,
+                    merge_steps: 1, // Merge triangles when possible to reduce the number of triangles.
+                    simplify: 0.01, // Remove points that contribute very little to the mesh.
+                    default_search_delta: 0.2, // To avoid agents stuck on namesh edges.
+                    ..Default::default()
+                },
+                Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
+                NavMeshUpdateMode::Direct,
+            ))
+            .id();
+    });
 
-        **placed_citites += 1;
-    }
+    **placed_citites += 1;
+}
 
-    fn activate(
-        trigger: Trigger<OnAdd, ActiveCity>,
-        mut commands: Commands,
-        mut active_cities: Query<&mut Visibility>,
-    ) {
-        debug!("activating city `{}`", trigger.entity());
+fn activate(
+    trigger: Trigger<OnAdd, ActiveCity>,
+    mut commands: Commands,
+    mut active_cities: Query<&mut Visibility>,
+) {
+    debug!("activating city `{}`", trigger.entity());
 
-        let mut visibility = active_cities.get_mut(trigger.entity()).unwrap();
-        *visibility = Visibility::Visible;
+    let mut visibility = active_cities.get_mut(trigger.entity()).unwrap();
+    *visibility = Visibility::Visible;
 
-        commands.entity(trigger.entity()).with_children(|parent| {
-            parent.spawn((
-                Sun,
-                Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ));
-            parent.spawn((PlayerCamera, AtmosphereCamera::default()));
-        });
-    }
+    commands.entity(trigger.entity()).with_children(|parent| {
+        parent.spawn((
+            Sun,
+            Transform::from_xyz(4.0, 7.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ));
+        parent.spawn((PlayerCamera, AtmosphereCamera::default()));
+    });
+}
 
-    fn activate_by_actor(
-        mut commands: Commands,
-        actor_parent: Single<&Parent, With<SelectedActor>>,
-    ) {
-        info!("activating selected actor's city `{}`", ***actor_parent);
-        commands.entity(***actor_parent).insert(ActiveCity);
-    }
+fn activate_by_actor(mut commands: Commands, actor_parent: Single<&Parent, With<SelectedActor>>) {
+    info!("activating selected actor's city `{}`", ***actor_parent);
+    commands.entity(***actor_parent).insert(ActiveCity);
+}
 
-    fn deactivate(
-        mut commands: Commands,
-        active_city: Single<(Entity, &mut Visibility), With<ActiveCity>>,
-        sun_entity: Single<Entity, With<Sun>>,
-        camera_entity: Single<Entity, With<PlayerCamera>>,
-    ) {
-        let (city_entity, mut visibility) = active_city.into_inner();
-        info!("deactivating city `{city_entity}`");
-        *visibility = Visibility::Hidden;
-        commands.entity(city_entity).remove::<ActiveCity>();
-        commands.entity(*sun_entity).despawn();
-        commands.entity(*camera_entity).despawn();
-    }
+fn deactivate(
+    mut commands: Commands,
+    active_city: Single<(Entity, &mut Visibility), With<ActiveCity>>,
+    sun_entity: Single<Entity, With<Sun>>,
+    camera_entity: Single<Entity, With<PlayerCamera>>,
+) {
+    let (city_entity, mut visibility) = active_city.into_inner();
+    info!("deactivating city `{city_entity}`");
+    *visibility = Visibility::Hidden;
+    commands.entity(city_entity).remove::<ActiveCity>();
+    commands.entity(*sun_entity).despawn();
+    commands.entity(*camera_entity).despawn();
+}
 
-    /// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
-    fn cleanup(mut placed_citites: ResMut<PlacedCities>) {
-        placed_citites.0 = 0;
-    }
+/// Removes all cities with their children and resets [`PlacedCities`] counter to 0.
+fn cleanup(mut placed_citites: ResMut<PlacedCities>) {
+    placed_citites.0 = 0;
 }
 
 struct GroundMesh(Handle<Mesh>);

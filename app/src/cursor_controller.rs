@@ -6,20 +6,18 @@ pub(super) struct CursorControllerPlugin;
 impl Plugin for CursorControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<CursorController>()
-            .add_systems(Startup, Self::setup)
-            .add_observer(Self::update_position);
+            .add_systems(Startup, setup)
+            .add_observer(update_position);
     }
 }
 
-impl CursorControllerPlugin {
-    fn setup(mut commands: Commands) {
-        commands.spawn(CursorController);
-    }
+fn setup(mut commands: Commands) {
+    commands.spawn(CursorController);
+}
 
-    fn update_position(trigger: Trigger<Fired<MoveCursor>>, mut window: Single<&mut Window>) {
-        if let Some(cursor_pos) = window.cursor_position() {
-            window.set_cursor_position(Some(cursor_pos + trigger.value));
-        }
+fn update_position(trigger: Trigger<Fired<MoveCursor>>, mut window: Single<&mut Window>) {
+    if let Some(cursor_pos) = window.cursor_position() {
+        window.set_cursor_position(Some(cursor_pos + trigger.value));
     }
 }
 

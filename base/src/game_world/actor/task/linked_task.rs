@@ -4,20 +4,18 @@ pub(super) struct LinkedTaskPlugin;
 
 impl Plugin for LinkedTaskPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::cleanup);
+        app.add_observer(cleanup);
     }
 }
 
-impl LinkedTaskPlugin {
-    fn cleanup(
-        trigger: Trigger<OnRemove, LinkedTask>,
-        mut commands: Commands,
-        tasks: Query<&LinkedTask>,
-    ) {
-        let linked_task = tasks.get(trigger.entity()).unwrap();
-        if let Some(mut entity) = linked_task.and_then(|entity| commands.get_entity(entity)) {
-            entity.despawn();
-        }
+fn cleanup(
+    trigger: Trigger<OnRemove, LinkedTask>,
+    mut commands: Commands,
+    tasks: Query<&LinkedTask>,
+) {
+    let linked_task = tasks.get(trigger.entity()).unwrap();
+    if let Some(mut entity) = linked_task.and_then(|entity| commands.get_entity(entity)) {
+        entity.despawn();
     }
 }
 

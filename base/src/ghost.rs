@@ -5,53 +5,51 @@ pub(super) struct GhostPlugin;
 
 impl Plugin for GhostPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::init).add_observer(Self::cleanup);
+        app.add_observer(init).add_observer(cleanup);
     }
 }
 
-impl GhostPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, Ghost>,
-        ghosts: Query<&mut Ghost>,
-        mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
-    ) {
-        let ghost = ghosts.get(trigger.entity()).unwrap();
-        let (mut visibility, collision_layers) = targets.get_mut(ghost.original_entity).unwrap();
+fn init(
+    trigger: Trigger<OnAdd, Ghost>,
+    ghosts: Query<&mut Ghost>,
+    mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
+) {
+    let ghost = ghosts.get(trigger.entity()).unwrap();
+    let (mut visibility, collision_layers) = targets.get_mut(ghost.original_entity).unwrap();
 
-        *visibility = Visibility::Hidden;
-        debug!(
-            "changing visibility to `{:?}` for `{}`",
-            *visibility, ghost.original_entity
-        );
+    *visibility = Visibility::Hidden;
+    debug!(
+        "changing visibility to `{:?}` for `{}`",
+        *visibility, ghost.original_entity
+    );
 
-        if let Some(mut collision_layers) = collision_layers {
-            if ghost.filters != LayerMask::NONE {
-                collision_layers.filters.remove(ghost.filters);
-            }
+    if let Some(mut collision_layers) = collision_layers {
+        if ghost.filters != LayerMask::NONE {
+            collision_layers.filters.remove(ghost.filters);
         }
     }
+}
 
-    fn cleanup(
-        trigger: Trigger<OnRemove, Ghost>,
-        ghosts: Query<&mut Ghost>,
-        mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
-    ) {
-        let ghost = ghosts.get(trigger.entity()).unwrap();
-        let Ok((mut visibility, collision_layers)) = targets.get_mut(ghost.original_entity) else {
-            // If entity missing visibility, consider it despawned.
-            return;
-        };
+fn cleanup(
+    trigger: Trigger<OnRemove, Ghost>,
+    ghosts: Query<&mut Ghost>,
+    mut targets: Query<(&mut Visibility, Option<&mut CollisionLayers>)>,
+) {
+    let ghost = ghosts.get(trigger.entity()).unwrap();
+    let Ok((mut visibility, collision_layers)) = targets.get_mut(ghost.original_entity) else {
+        // If entity missing visibility, consider it despawned.
+        return;
+    };
 
-        *visibility = Visibility::Inherited;
-        debug!(
-            "changing visibility to `{:?}` for `{}`",
-            *visibility, ghost.original_entity
-        );
+    *visibility = Visibility::Inherited;
+    debug!(
+        "changing visibility to `{:?}` for `{}`",
+        *visibility, ghost.original_entity
+    );
 
-        if let Some(mut collision_layers) = collision_layers {
-            if ghost.filters != LayerMask::NONE {
-                collision_layers.filters.add(ghost.filters);
-            }
+    if let Some(mut collision_layers) = collision_layers {
+        if ghost.filters != LayerMask::NONE {
+            collision_layers.filters.add(ghost.filters);
         }
     }
 }

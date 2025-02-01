@@ -24,37 +24,35 @@ impl Plugin for CommandHistoryPlugin {
             .add_server_event::<CommandConfirmation>(ChannelKind::Unordered)
             .add_systems(
                 PreUpdate,
-                Self::confirm
+                confirm
                     .after(ClientSet::Receive)
                     .run_if(in_state(GameState::InGame)),
             )
-            .add_systems(OnExit(GameState::InGame), Self::cleanup);
+            .add_systems(OnExit(GameState::InGame), cleanup);
     }
 }
 
-impl CommandHistoryPlugin {
-    fn confirm(
-        mut commands: Commands,
-        mut confirmation_events: EventReader<CommandConfirmation>,
-        mut buffer: ResMut<HistoryBuffer>,
-        despawn_entities: Query<(Entity, &PendingDespawn)>,
-    ) {
-        for &confirmation in confirmation_events.read() {
-            buffer.confirm(confirmation);
+fn confirm(
+    mut commands: Commands,
+    mut confirmation_events: EventReader<CommandConfirmation>,
+    mut buffer: ResMut<HistoryBuffer>,
+    despawn_entities: Query<(Entity, &PendingDespawn)>,
+) {
+    for &confirmation in confirmation_events.read() {
+        buffer.confirm(confirmation);
 
-            if let Some((entity, _)) = despawn_entities
-                .iter()
-                .find(|(_, despawn)| despawn.command_id == confirmation.id)
-            {
-                debug!("despawning entity `{entity}` for `{confirmation:?}`");
-                commands.entity(entity).despawn_recursive();
-            }
+        if let Some((entity, _)) = despawn_entities
+            .iter()
+            .find(|(_, despawn)| despawn.command_id == confirmation.id)
+        {
+            debug!("despawning entity `{entity}` for `{confirmation:?}`");
+            commands.entity(entity).despawn_recursive();
         }
     }
+}
 
-    fn cleanup(mut buffer: ResMut<HistoryBuffer>) {
-        buffer.clear();
-    }
+fn cleanup(mut buffer: ResMut<HistoryBuffer>) {
+    buffer.clear();
 }
 
 /// Entities marked with this component will be despawned when the command with this ID will be confirmed.

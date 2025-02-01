@@ -33,104 +33,102 @@ impl Plugin for ObjectPlugin {
             .register_type::<Object>()
             .replicate_group::<(Object, Transform)>()
             .add_mapped_client_event::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
-            .add_observer(Self::init)
+            .add_observer(init)
             .add_systems(
                 PostUpdate,
-                Self::apply_command
+                apply_command
                     .before(ServerSet::StoreHierarchy)
                     .run_if(server_or_singleplayer),
             );
     }
 }
 
-impl ObjectPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, Object>,
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        manifests: Res<Assets<ObjectManifest>>,
-        mut objects: Query<(&Object, &mut Name, &mut SceneRoot)>,
-    ) {
-        let (object, mut name, mut scene_root) = objects.get_mut(trigger.entity()).unwrap();
-        let Some(manifest_handle) = asset_server.get_handle(&**object) else {
-            error!("'{}' is missing, ignoring", &**object);
-            return;
-        };
+fn init(
+    trigger: Trigger<OnAdd, Object>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    manifests: Res<Assets<ObjectManifest>>,
+    mut objects: Query<(&Object, &mut Name, &mut SceneRoot)>,
+) {
+    let (object, mut name, mut scene_root) = objects.get_mut(trigger.entity()).unwrap();
+    let Some(manifest_handle) = asset_server.get_handle(&**object) else {
+        error!("'{}' is missing, ignoring", &**object);
+        return;
+    };
 
-        debug!(
-            "initializing object '{}' for `{}`",
-            &**object,
-            trigger.entity()
-        );
+    debug!(
+        "initializing object '{}' for `{}`",
+        &**object,
+        trigger.entity()
+    );
 
-        let manifest = manifests
-            .get(&manifest_handle)
-            .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**object));
+    let manifest = manifests
+        .get(&manifest_handle)
+        .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**object));
 
-        *name = Name::new(manifest.general.name.clone());
-        scene_root.0 = asset_server.load(manifest.scene.clone());
+    *name = Name::new(manifest.general.name.clone());
+    scene_root.0 = asset_server.load(manifest.scene.clone());
 
-        let mut entity = commands.entity(trigger.entity());
-        for component in &manifest.components {
-            entity.insert_reflect(component.clone_value());
-        }
-        for component in &manifest.spawn_components {
-            entity.insert_reflect(component.clone_value());
-        }
+    let mut entity = commands.entity(trigger.entity());
+    for component in &manifest.components {
+        entity.insert_reflect(component.clone_value());
     }
+    for component in &manifest.spawn_components {
+        entity.insert_reflect(component.clone_value());
+    }
+}
 
-    fn apply_command(
-        mut commands: Commands,
-        mut request_events: EventReader<FromClient<CommandRequest<ObjectCommand>>>,
-        mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
-        mut objects: Query<&mut Transform, Without<City>>,
-    ) {
-        for FromClient { client_id, event } in request_events.read().cloned() {
-            // TODO: validate if command can be applied.
-            let mut confirmation = CommandConfirmation::new(event.id);
-            match event.command {
-                ObjectCommand::Buy {
-                    manifest_path,
-                    city_entity,
-                    translation,
-                    rotation,
-                } => {
-                    if translation.y.abs() > HALF_CITY_SIZE {
-                        error!("received translation {translation} with 'y' outside of city size");
-                        continue;
-                    }
+fn apply_command(
+    mut commands: Commands,
+    mut request_events: EventReader<FromClient<CommandRequest<ObjectCommand>>>,
+    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
+    mut objects: Query<&mut Transform, Without<City>>,
+) {
+    for FromClient { client_id, event } in request_events.read().cloned() {
+        // TODO: validate if command can be applied.
+        let mut confirmation = CommandConfirmation::new(event.id);
+        match event.command {
+            ObjectCommand::Buy {
+                manifest_path,
+                city_entity,
+                translation,
+                rotation,
+            } => {
+                if translation.y.abs() > HALF_CITY_SIZE {
+                    error!("received translation {translation} with 'y' outside of city size");
+                    continue;
+                }
 
-                    info!("`{client_id:?}` buys object {manifest_path:?}");
-                    commands.entity(city_entity).with_children(|parent| {
-                        let transform =
-                            Transform::from_translation(translation).with_rotation(rotation);
-                        let entity = parent.spawn((Object(manifest_path), transform)).id();
-                        confirmation.entity = Some(entity);
-                    });
-                }
-                ObjectCommand::Move {
-                    entity,
-                    translation,
-                    rotation,
-                } => match objects.get_mut(entity) {
-                    Ok(mut transform) => {
-                        info!("`{client_id:?}` moves object `{entity}`");
-                        transform.translation = translation;
-                        transform.rotation = rotation;
-                    }
-                    Err(e) => error!("unable to move object `{entity}`: {e}"),
-                },
-                ObjectCommand::Sell { entity } => {
-                    info!("`{client_id:?}` sells object `{entity}`");
-                    commands.entity(entity).despawn_recursive();
-                }
+                info!("`{client_id:?}` buys object {manifest_path:?}");
+                commands.entity(city_entity).with_children(|parent| {
+                    let transform =
+                        Transform::from_translation(translation).with_rotation(rotation);
+                    let entity = parent.spawn((Object(manifest_path), transform)).id();
+                    confirmation.entity = Some(entity);
+                });
             }
-
-            confirm_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: confirmation,
-            });
+            ObjectCommand::Move {
+                entity,
+                translation,
+                rotation,
+            } => match objects.get_mut(entity) {
+                Ok(mut transform) => {
+                    info!("`{client_id:?}` moves object `{entity}`");
+                    transform.translation = translation;
+                    transform.rotation = rotation;
+                }
+                Err(e) => error!("unable to move object `{entity}`: {e}"),
+            },
+            ObjectCommand::Sell { entity } => {
+                info!("`{client_id:?}` sells object `{entity}`");
+                commands.entity(entity).despawn_recursive();
+            }
         }
+
+        confirm_events.send(ToClients {
+            mode: SendMode::Direct(client_id),
+            event: confirmation,
+        });
     }
 }
 

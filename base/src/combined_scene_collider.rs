@@ -13,54 +13,52 @@ pub(super) struct SceneColliderConstructorPlugin;
 impl Plugin for SceneColliderConstructorPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<SceneColliderConstructor>()
-            .add_observer(Self::init);
+            .add_observer(init);
     }
 }
 
-impl SceneColliderConstructorPlugin {
-    fn init(
-        trigger: Trigger<SceneInstanceReady>,
-        meshes: Res<Assets<Mesh>>,
-        mut scenes: Query<(&Children, &SceneColliderConstructor, &mut Collider)>,
-        scene_meshes: Query<(&Transform, Option<&Mesh3d>, Option<&Children>)>,
-    ) {
-        let Ok((children, constructor, mut collider)) = scenes.get_mut(trigger.entity()) else {
-            return;
-        };
+fn init(
+    trigger: Trigger<SceneInstanceReady>,
+    meshes: Res<Assets<Mesh>>,
+    mut scenes: Query<(&Children, &SceneColliderConstructor, &mut Collider)>,
+    scene_meshes: Query<(&Transform, Option<&Mesh3d>, Option<&Children>)>,
+) {
+    let Ok((children, constructor, mut collider)) = scenes.get_mut(trigger.entity()) else {
+        return;
+    };
 
-        debug!("generating collider for scene `{}`", trigger.entity());
+    debug!("generating collider for scene `{}`", trigger.entity());
 
-        let mut combined_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
-            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
-            .with_inserted_indices(Indices::U32(Vec::new()));
+    let mut combined_mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<Vec3>::new())
+        .with_inserted_indices(Indices::U32(Vec::new()));
 
-        for &child_entity in children {
-            recursive_merge(
-                &meshes,
-                &scene_meshes,
-                child_entity,
-                Default::default(),
-                &mut combined_mesh,
-            );
-        }
-
-        *collider = match constructor {
-            SceneColliderConstructor::Aabb => {
-                let aabb = combined_mesh
-                    .compute_aabb()
-                    .expect("object mesh should be in compatible format");
-                let center: Vec3 = aabb.center.into();
-                let cuboid = Collider::cuboid(
-                    aabb.half_extents.x * 2.0,
-                    aabb.half_extents.y * 2.0,
-                    aabb.half_extents.z * 2.0,
-                );
-                Collider::compound(vec![(center, Rotation::default(), cuboid)])
-            }
-            SceneColliderConstructor::ConvexHull => Collider::convex_hull_from_mesh(&combined_mesh)
-                .expect("object mesh should be in compatible format"),
-        };
+    for &child_entity in children {
+        recursive_merge(
+            &meshes,
+            &scene_meshes,
+            child_entity,
+            Default::default(),
+            &mut combined_mesh,
+        );
     }
+
+    *collider = match constructor {
+        SceneColliderConstructor::Aabb => {
+            let aabb = combined_mesh
+                .compute_aabb()
+                .expect("object mesh should be in compatible format");
+            let center: Vec3 = aabb.center.into();
+            let cuboid = Collider::cuboid(
+                aabb.half_extents.x * 2.0,
+                aabb.half_extents.y * 2.0,
+                aabb.half_extents.z * 2.0,
+            );
+            Collider::compound(vec![(center, Rotation::default(), cuboid)])
+        }
+        SceneColliderConstructor::ConvexHull => Collider::convex_hull_from_mesh(&combined_mesh)
+            .expect("object mesh should be in compatible format"),
+    };
 }
 
 fn recursive_merge(

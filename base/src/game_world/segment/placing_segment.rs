@@ -14,62 +14,59 @@ pub(super) struct PlacingSegmentPlugin;
 impl Plugin for PlacingSegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_input_context::<PlacingSegment>()
-            .add_observer(Self::cancel)
+            .add_observer(cancel)
             .add_systems(
                 Update,
-                Self::update_position
+                update_position
                     .never_param_warn()
                     .run_if(in_state(BuildingMode::Walls).or(in_state(CityMode::Roads))),
             );
     }
 }
 
-impl PlacingSegmentPlugin {
-    fn update_position(
-        camera_caster: CameraCaster,
-        instances: Res<ContextInstances>,
-        placing_segment: Single<(
-            Entity,
-            &mut Segment,
-            &SegmentConnections,
-            &Parent,
-            &PlacingSegment,
-        )>,
-        segments: Query<(&Parent, &Segment), Without<PlacingSegment>>,
-    ) {
-        let (entity, mut segment, connections, moving_parent, placing) =
-            placing_segment.into_inner();
+fn update_position(
+    camera_caster: CameraCaster,
+    instances: Res<ContextInstances>,
+    placing_segment: Single<(
+        Entity,
+        &mut Segment,
+        &SegmentConnections,
+        &Parent,
+        &PlacingSegment,
+    )>,
+    segments: Query<(&Parent, &Segment), Without<PlacingSegment>>,
+) {
+    let (entity, mut segment, connections, moving_parent, placing) = placing_segment.into_inner();
 
-        let Some(mut new_point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
-            return;
-        };
+    let Some(mut new_point) = camera_caster.intersect_ground().map(|pos| pos.xz()) else {
+        return;
+    };
 
-        // Use an already existing point if it is within the `snap_offset` distance if one exists.
-        // Otherwise try to use rounded point.
-        new_point = segments
-            .iter()
-            .filter(|(parent, _)| *parent == moving_parent)
-            .flat_map(|(_, segment)| segment.points())
-            .find(|point| point.distance(new_point) < placing.snap_offset)
-            .unwrap_or_else(|| {
-                round_placement(
-                    &instances,
-                    entity,
-                    *segment,
-                    connections,
-                    *placing,
-                    new_point,
-                )
-            });
+    // Use an already existing point if it is within the `snap_offset` distance if one exists.
+    // Otherwise try to use rounded point.
+    new_point = segments
+        .iter()
+        .filter(|(parent, _)| *parent == moving_parent)
+        .flat_map(|(_, segment)| segment.points())
+        .find(|point| point.distance(new_point) < placing.snap_offset)
+        .unwrap_or_else(|| {
+            round_placement(
+                &instances,
+                entity,
+                *segment,
+                connections,
+                *placing,
+                new_point,
+            )
+        });
 
-        trace!("updating `{:?}` to `{new_point:?}`", placing.point_kind);
-        segment.set_point(placing.point_kind, new_point);
-    }
+    trace!("updating `{:?}` to `{new_point:?}`", placing.point_kind);
+    segment.set_point(placing.point_kind, new_point);
+}
 
-    fn cancel(trigger: Trigger<Completed<CancelSegment>>, mut commands: Commands) {
-        debug!("cancelling placing");
-        commands.entity(trigger.entity()).despawn_recursive();
-    }
+fn cancel(trigger: Trigger<Completed<CancelSegment>>, mut commands: Commands) {
+    debug!("cancelling placing");
+    commands.entity(trigger.entity()).despawn_recursive();
 }
 
 fn round_placement(

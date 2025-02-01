@@ -16,55 +16,53 @@ pub(super) struct SettingsPlugin;
 
 impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(Self::apply.pipe(error_message))
-            .add_systems(Startup, Self::load);
+        app.add_observer(apply.pipe(error_message))
+            .add_systems(Startup, load);
     }
 }
 
-impl SettingsPlugin {
-    fn load(
-        mut commands: Commands,
-        mut config_store: ResMut<GizmoConfigStore>,
-        mut wireframe_config: ResMut<WireframeConfig>,
-        game_paths: Res<GamePaths>,
-        mut window: Single<&mut Window>,
-    ) {
-        info!("loading settings");
+fn load(
+    mut commands: Commands,
+    mut config_store: ResMut<GizmoConfigStore>,
+    mut wireframe_config: ResMut<WireframeConfig>,
+    game_paths: Res<GamePaths>,
+    mut window: Single<&mut Window>,
+) {
+    info!("loading settings");
 
-        let settings = Settings::read(&game_paths.settings).unwrap_or_default();
+    let settings = Settings::read(&game_paths.settings).unwrap_or_default();
 
-        apply_settings(
-            &mut commands,
-            &mut config_store,
-            &mut wireframe_config,
-            &mut window,
-            &settings,
-        );
+    apply_settings(
+        &mut commands,
+        &mut config_store,
+        &mut wireframe_config,
+        &mut window,
+        &settings,
+    );
 
-        commands.insert_resource(settings);
-    }
+    commands.insert_resource(settings);
+}
 
-    fn apply(
-        _trigger: Trigger<SettingsApply>,
-        mut commands: Commands,
-        mut config_store: ResMut<GizmoConfigStore>,
-        mut wireframe_config: ResMut<WireframeConfig>,
-        settings: Res<Settings>,
-        game_paths: Res<GamePaths>,
-        mut window: Single<&mut Window>,
-    ) -> Result<()> {
-        info!("applying settings");
+fn apply(
+    _trigger: Trigger<SettingsApply>,
+    mut commands: Commands,
+    mut config_store: ResMut<GizmoConfigStore>,
+    mut wireframe_config: ResMut<WireframeConfig>,
+    settings: Res<Settings>,
+    game_paths: Res<GamePaths>,
+    mut window: Single<&mut Window>,
+) -> Result<()> {
+    info!("applying settings");
 
-        apply_settings(
-            &mut commands,
-            &mut config_store,
-            &mut wireframe_config,
-            &mut window,
-            &settings,
-        );
+    apply_settings(
+        &mut commands,
+        &mut config_store,
+        &mut wireframe_config,
+        &mut window,
+        &settings,
+    );
 
-        settings.write(&game_paths.settings)
-    }
+    settings.write(&game_paths.settings)
 }
 
 fn apply_settings(

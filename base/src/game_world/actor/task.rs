@@ -22,117 +22,112 @@ impl Plugin for TaskPlugin {
         app.add_plugins((FriendlyPlugins, LinkedTaskPlugin, MoveHerePlugin))
             .replicate::<ActiveTask>()
             .add_client_event::<TaskCancel>(ChannelKind::Unordered)
-            .add_observer(Self::spawn_available.never_param_warn())
-            .add_observer(Self::cleanup)
+            .add_observer(spawn_available.never_param_warn())
+            .add_observer(cleanup)
             .add_systems(
                 PreUpdate,
-                Self::cancel
+                cancel
                     .after(ClientSet::Receive)
                     .run_if(server_or_singleplayer),
             )
-            .add_systems(
-                PostUpdate,
-                Self::activate_queued.run_if(server_or_singleplayer),
-            );
+            .add_systems(PostUpdate, activate_queued.run_if(server_or_singleplayer));
     }
 }
 
-impl TaskPlugin {
-    fn spawn_available(
-        mut trigger: Trigger<Pointer<Click>>,
-        mut commands: Commands,
-        family_mode: Res<State<FamilyMode>>,
-        city_transform: Single<&GlobalTransform, With<ActiveCity>>,
-        tasks_entity: Option<Single<Entity, With<AvailableTasks>>>,
-    ) {
-        if trigger.button != PointerButton::Primary {
-            return;
-        }
-        if *family_mode != FamilyMode::Life {
-            return;
-        }
-        let Some(mut click_point) = trigger.hit.position else {
-            // Consider only world clicking.
-            return;
-        };
-        trigger.propagate(false);
-        debug!("generating available tasks");
+fn spawn_available(
+    mut trigger: Trigger<Pointer<Click>>,
+    mut commands: Commands,
+    family_mode: Res<State<FamilyMode>>,
+    city_transform: Single<&GlobalTransform, With<ActiveCity>>,
+    tasks_entity: Option<Single<Entity, With<AvailableTasks>>>,
+) {
+    if trigger.button != PointerButton::Primary {
+        return;
+    }
+    if *family_mode != FamilyMode::Life {
+        return;
+    }
+    let Some(mut click_point) = trigger.hit.position else {
+        // Consider only world clicking.
+        return;
+    };
+    trigger.propagate(false);
+    debug!("generating available tasks");
 
-        click_point = city_transform
-            .affine()
-            .inverse()
-            .transform_point3(click_point);
+    click_point = city_transform
+        .affine()
+        .inverse()
+        .transform_point3(click_point);
 
-        // Remove previous.
-        if let Some(tasks_entity) = tasks_entity {
-            commands.entity(*tasks_entity).despawn();
-        }
+    // Remove previous.
+    if let Some(tasks_entity) = tasks_entity {
+        commands.entity(*tasks_entity).despawn();
+    }
 
-        commands.entity(trigger.entity()).with_children(|parent| {
-            parent.spawn(AvailableTasks {
-                interaction_entity: trigger.entity(),
-                click_point,
-            });
+    commands.entity(trigger.entity()).with_children(|parent| {
+        parent.spawn(AvailableTasks {
+            interaction_entity: trigger.entity(),
+            click_point,
         });
-    }
+    });
+}
 
-    fn activate_queued(
-        mut commands: Commands,
-        tasks: Query<(Entity, &Name, &TaskGroups), Without<ActiveTask>>,
-        mut actors: Query<(&Children, &mut ActorTaskGroups)>,
-    ) {
-        for (children, mut actor_groups) in &mut actors {
-            for (entity, name, &groups) in tasks.iter_many(children) {
-                if !groups.intersects(**actor_groups) {
-                    debug!("activating '{name}' for `{entity}`");
-                    actor_groups.insert(groups);
-                    commands.entity(entity).insert(ActiveTask);
-                }
+fn activate_queued(
+    mut commands: Commands,
+    tasks: Query<(Entity, &Name, &TaskGroups), Without<ActiveTask>>,
+    mut actors: Query<(&Children, &mut ActorTaskGroups)>,
+) {
+    for (children, mut actor_groups) in &mut actors {
+        for (entity, name, &groups) in tasks.iter_many(children) {
+            if !groups.intersects(**actor_groups) {
+                debug!("activating '{name}' for `{entity}`");
+                actor_groups.insert(groups);
+                commands.entity(entity).insert(ActiveTask);
             }
         }
     }
+}
 
-    fn cancel(
-        mut commands: Commands,
-        mut cancel_events: EventReader<FromClient<TaskCancel>>,
-        tasks: Query<(), With<Task>>,
-    ) {
-        for FromClient { client_id, event } in cancel_events.read() {
-            if tasks.get(**event).is_ok() {
-                info!("`{client_id:?}` cancels task `{}`", **event);
-                commands.entity(**event).despawn();
-            } else {
-                error!("task {:?} is not active", **event);
-            }
+fn cancel(
+    mut commands: Commands,
+    mut cancel_events: EventReader<FromClient<TaskCancel>>,
+    tasks: Query<(), With<Task>>,
+) {
+    for FromClient { client_id, event } in cancel_events.read() {
+        if tasks.get(**event).is_ok() {
+            info!("`{client_id:?}` cancels task `{}`", **event);
+            commands.entity(**event).despawn();
+        } else {
+            error!("task {:?} is not active", **event);
         }
     }
+}
 
-    fn cleanup(
-        trigger: Trigger<OnRemove, TaskGroups>,
-        tasks: Query<(&Parent, &TaskGroups), With<ActiveTask>>,
-        mut actors: Query<(
-            &mut ActorTaskGroups,
-            &mut NavDestination,
-            &mut AnimationState,
-        )>,
-    ) {
-        let Ok((parent, &task_groups)) = tasks.get(trigger.entity()) else {
-            return;
-        };
-        let Ok((mut actor_groups, mut dest, mut animation_state)) = actors.get_mut(**parent) else {
-            return;
-        };
+fn cleanup(
+    trigger: Trigger<OnRemove, TaskGroups>,
+    tasks: Query<(&Parent, &TaskGroups), With<ActiveTask>>,
+    mut actors: Query<(
+        &mut ActorTaskGroups,
+        &mut NavDestination,
+        &mut AnimationState,
+    )>,
+) {
+    let Ok((parent, &task_groups)) = tasks.get(trigger.entity()) else {
+        return;
+    };
+    let Ok((mut actor_groups, mut dest, mut animation_state)) = actors.get_mut(**parent) else {
+        return;
+    };
 
-        debug!("removing `{:?}` from actor `{}`", task_groups, **parent);
-        actor_groups.remove(task_groups);
+    debug!("removing `{:?}` from actor `{}`", task_groups, **parent);
+    actor_groups.remove(task_groups);
 
-        if task_groups.contains(TaskGroups::LEGS) {
-            debug!("cancelling task navigation");
-            **dest = None;
-        }
-
-        animation_state.stop_montage();
+    if task_groups.contains(TaskGroups::LEGS) {
+        debug!("cancelling task navigation");
+        **dest = None;
     }
+
+    animation_state.stop_montage();
 }
 
 #[derive(Component)]

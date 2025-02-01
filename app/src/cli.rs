@@ -31,103 +31,100 @@ impl Plugin for CliPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_systems(
             OnExit(GameState::ManifestsLoading),
-            Self::apply_subcommand.pipe(error_message),
+            apply_subcommand.pipe(error_message),
         )
         .add_systems(
             PostUpdate,
-            Self::quick_load
+            quick_load
                 .pipe(error_message)
                 .run_if(in_state(GameState::InGame).and(run_once)),
         );
     }
 }
 
-impl CliPlugin {
-    fn apply_subcommand(
-        mut commands: Commands,
-        cli: Res<Cli>,
-        network_channels: Res<RepliconChannels>,
-    ) -> Result<()> {
-        if let Some(subcommand) = &cli.subcommand {
-            match subcommand {
-                GameCommand::Play(world_load) => {
-                    info!("selecting world '{}' from CLI", world_load.world_name);
-                    commands.insert_resource(WorldName(world_load.world_name.clone()));
-                    commands.trigger(GameLoad);
-                }
-                GameCommand::Host { world_load, port } => {
-                    info!(
-                        "hosting world '{}' on port {port} from CLI",
-                        world_load.world_name
-                    );
-                    let server = RenetServer::new(ConnectionConfig {
-                        server_channels_config: network_channels.get_server_configs(),
-                        client_channels_config: network_channels.get_client_configs(),
-                        ..Default::default()
-                    });
-                    let transport =
-                        network::create_server(*port).context("unable to create server")?;
+fn apply_subcommand(
+    mut commands: Commands,
+    cli: Res<Cli>,
+    network_channels: Res<RepliconChannels>,
+) -> Result<()> {
+    if let Some(subcommand) = &cli.subcommand {
+        match subcommand {
+            GameCommand::Play(world_load) => {
+                info!("selecting world '{}' from CLI", world_load.world_name);
+                commands.insert_resource(WorldName(world_load.world_name.clone()));
+                commands.trigger(GameLoad);
+            }
+            GameCommand::Host { world_load, port } => {
+                info!(
+                    "hosting world '{}' on port {port} from CLI",
+                    world_load.world_name
+                );
+                let server = RenetServer::new(ConnectionConfig {
+                    server_channels_config: network_channels.get_server_configs(),
+                    client_channels_config: network_channels.get_client_configs(),
+                    ..Default::default()
+                });
+                let transport = network::create_server(*port).context("unable to create server")?;
 
-                    commands.insert_resource(server);
-                    commands.insert_resource(transport);
-                    commands.insert_resource(WorldName(world_load.world_name.clone()));
-                    commands.trigger(GameLoad);
-                }
-                GameCommand::Join { ip, port } => {
-                    info!("joining world at {ip}:{port} from CLI");
-                    let client = RenetClient::new(ConnectionConfig {
-                        server_channels_config: network_channels.get_server_configs(),
-                        client_channels_config: network_channels.get_client_configs(),
-                        ..Default::default()
-                    });
-                    let transport =
-                        network::create_client(*ip, *port).context("unable to create client")?;
+                commands.insert_resource(server);
+                commands.insert_resource(transport);
+                commands.insert_resource(WorldName(world_load.world_name.clone()));
+                commands.trigger(GameLoad);
+            }
+            GameCommand::Join { ip, port } => {
+                info!("joining world at {ip}:{port} from CLI");
+                let client = RenetClient::new(ConnectionConfig {
+                    server_channels_config: network_channels.get_server_configs(),
+                    client_channels_config: network_channels.get_client_configs(),
+                    ..Default::default()
+                });
+                let transport =
+                    network::create_client(*ip, *port).context("unable to create client")?;
 
-                    commands.insert_resource(client);
-                    commands.insert_resource(transport);
-                }
+                commands.insert_resource(client);
+                commands.insert_resource(transport);
             }
         }
-
-        Ok(())
     }
 
-    fn quick_load(
-        mut commands: Commands,
-        cli: Res<Cli>,
-        cities: Query<(Entity, &Name), With<City>>,
-        families: Query<(&Name, &FamilyMembers)>,
-    ) -> Result<()> {
-        if let Some(quick_load) = cli.quick_load() {
-            match quick_load {
-                QuickLoad::City { name } => {
-                    info!("selecting city '{name}' from CLI");
-                    let (entity, _) = cities
-                        .iter()
-                        .find(|(_, city_name)| city_name.as_str() == name)
-                        .with_context(|| format!("unable to find city named '{name}'"))?;
+    Ok(())
+}
 
-                    commands.entity(entity).insert(ActiveCity);
-                    commands.set_state(WorldState::City);
-                }
-                QuickLoad::Family { name } => {
-                    info!("selecting family '{name}' from CLI");
-                    let (_, members) = families
-                        .iter()
-                        .find(|(family_name, _)| family_name.as_str() == name)
-                        .with_context(|| format!("unable to find family named '{name}'"))?;
+fn quick_load(
+    mut commands: Commands,
+    cli: Res<Cli>,
+    cities: Query<(Entity, &Name), With<City>>,
+    families: Query<(&Name, &FamilyMembers)>,
+) -> Result<()> {
+    if let Some(quick_load) = cli.quick_load() {
+        match quick_load {
+            QuickLoad::City { name } => {
+                info!("selecting city '{name}' from CLI");
+                let (entity, _) = cities
+                    .iter()
+                    .find(|(_, city_name)| city_name.as_str() == name)
+                    .with_context(|| format!("unable to find city named '{name}'"))?;
 
-                    let entity = *members
-                        .first()
-                        .expect("family should contain at least one actor");
-                    commands.entity(entity).insert(SelectedActor);
-                    commands.set_state(WorldState::Family);
-                }
+                commands.entity(entity).insert(ActiveCity);
+                commands.set_state(WorldState::City);
+            }
+            QuickLoad::Family { name } => {
+                info!("selecting family '{name}' from CLI");
+                let (_, members) = families
+                    .iter()
+                    .find(|(family_name, _)| family_name.as_str() == name)
+                    .with_context(|| format!("unable to find family named '{name}'"))?;
+
+                let entity = *members
+                    .first()
+                    .expect("family should contain at least one actor");
+                commands.entity(entity).insert(SelectedActor);
+                commands.set_state(WorldState::Family);
             }
         }
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 #[derive(Parser, Clone, Resource)]

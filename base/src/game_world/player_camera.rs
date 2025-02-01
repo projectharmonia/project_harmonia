@@ -21,13 +21,13 @@ impl Plugin for PlayerCameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Collection<EnvironmentMap>>()
             .add_input_context::<PlayerCamera>()
-            .add_observer(Self::init)
-            .add_observer(Self::pan)
-            .add_observer(Self::zoom)
-            .add_observer(Self::rotate)
+            .add_observer(init)
+            .add_observer(pan)
+            .add_observer(zoom)
+            .add_observer(rotate)
             .add_systems(
                 Update,
-                Self::apply_transform.run_if(in_any_state([
+                apply_transform.run_if(in_any_state([
                     WorldState::FamilyEditor,
                     WorldState::City,
                     WorldState::Family,
@@ -36,70 +36,68 @@ impl Plugin for PlayerCameraPlugin {
     }
 }
 
-impl PlayerCameraPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, PlayerCamera>,
-        mut cameras: Query<&mut EnvironmentMapLight>,
-        environment_map: Res<Collection<EnvironmentMap>>,
-    ) {
-        debug!("initializing player camera");
-        let mut env_light = cameras.get_mut(trigger.entity()).unwrap();
-        env_light.diffuse_map = environment_map.handle(EnvironmentMap::Diffuse);
-        env_light.specular_map = environment_map.handle(EnvironmentMap::Specular);
-        env_light.intensity = 800.0;
+fn init(
+    trigger: Trigger<OnAdd, PlayerCamera>,
+    mut cameras: Query<&mut EnvironmentMapLight>,
+    environment_map: Res<Collection<EnvironmentMap>>,
+) {
+    debug!("initializing player camera");
+    let mut env_light = cameras.get_mut(trigger.entity()).unwrap();
+    env_light.diffuse_map = environment_map.handle(EnvironmentMap::Diffuse);
+    env_light.specular_map = environment_map.handle(EnvironmentMap::Specular);
+    env_light.intensity = 800.0;
+}
+
+fn pan(
+    trigger: Trigger<Fired<PanCamera>>,
+    world_state: Res<State<WorldState>>,
+    camera: Single<(&mut OrbitOrigin, &Transform, &SpringArm)>,
+) {
+    if *world_state == WorldState::FamilyEditor {
+        return;
     }
 
-    fn pan(
-        trigger: Trigger<Fired<PanCamera>>,
-        world_state: Res<State<WorldState>>,
-        camera: Single<(&mut OrbitOrigin, &Transform, &SpringArm)>,
-    ) {
-        if *world_state == WorldState::FamilyEditor {
-            return;
-        }
+    // Calculate direction without camera's tilt.
+    let (mut orbit_origin, transform, spring_arm) = camera.into_inner();
+    let forward = transform.forward();
+    let camera_dir = Vec3::new(forward.x, 0.0, forward.z).normalize();
+    let rotation = Quat::from_rotation_arc(Vec3::NEG_Z, camera_dir);
 
-        // Calculate direction without camera's tilt.
-        let (mut orbit_origin, transform, spring_arm) = camera.into_inner();
-        let forward = transform.forward();
-        let camera_dir = Vec3::new(forward.x, 0.0, forward.z).normalize();
-        let rotation = Quat::from_rotation_arc(Vec3::NEG_Z, camera_dir);
+    // Movement consists of X and -Z components, so swap Y and Z with negation.
+    let mut movement = trigger.value.extend(0.0).xzy();
+    movement.z = -movement.z;
 
-        // Movement consists of X and -Z components, so swap Y and Z with negation.
-        let mut movement = trigger.value.extend(0.0).xzy();
-        movement.z = -movement.z;
+    // Make speed dependent on camera distance.
+    let arm_multiplier = **spring_arm * 0.02;
 
-        // Make speed dependent on camera distance.
-        let arm_multiplier = **spring_arm * 0.02;
+    **orbit_origin += rotation * movement * arm_multiplier;
+}
 
-        **orbit_origin += rotation * movement * arm_multiplier;
-    }
+fn zoom(trigger: Trigger<Fired<ZoomCamera>>, mut spring_arm: Single<&mut SpringArm>) {
+    // Limit to prevent clipping into the ground.
+    ***spring_arm = (***spring_arm - trigger.value).max(0.2);
+}
 
-    fn zoom(trigger: Trigger<Fired<ZoomCamera>>, mut spring_arm: Single<&mut SpringArm>) {
-        // Limit to prevent clipping into the ground.
-        ***spring_arm = (***spring_arm - trigger.value).max(0.2);
-    }
+fn rotate(
+    trigger: Trigger<Fired<RotateCamera>>,
+    settings: Res<Settings>,
+    mut rotation: Single<&mut OrbitRotation>,
+) {
+    ***rotation += trigger.value;
 
-    fn rotate(
-        trigger: Trigger<Fired<RotateCamera>>,
-        settings: Res<Settings>,
-        mut rotation: Single<&mut OrbitRotation>,
-    ) {
-        ***rotation += trigger.value;
+    let max_y = if settings.developer.free_camera_rotation {
+        PI // To avoid flipping when the camera is under ground.
+    } else {
+        FRAC_PI_2 - 0.01 // To avoid ground intersection.
+    };
+    let min_y = 0.001; // To avoid flipping when the camera is vertical.
+    rotation.y = rotation.y.clamp(min_y, max_y);
+}
 
-        let max_y = if settings.developer.free_camera_rotation {
-            PI // To avoid flipping when the camera is under ground.
-        } else {
-            FRAC_PI_2 - 0.01 // To avoid ground intersection.
-        };
-        let min_y = 0.001; // To avoid flipping when the camera is vertical.
-        rotation.y = rotation.y.clamp(min_y, max_y);
-    }
-
-    fn apply_transform(camera: Single<(&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm)>) {
-        let (mut transform, orbit_origin, orbit_rotation, spring_arm) = camera.into_inner();
-        transform.translation = orbit_rotation.sphere_pos() * **spring_arm + **orbit_origin;
-        transform.look_at(**orbit_origin, Vec3::Y);
-    }
+fn apply_transform(camera: Single<(&mut Transform, &OrbitOrigin, &OrbitRotation, &SpringArm)>) {
+    let (mut transform, orbit_origin, orbit_rotation, spring_arm) = camera.into_inner();
+    transform.translation = orbit_rotation.sphere_pos() * **spring_arm + **orbit_origin;
+    transform.look_at(**orbit_origin, Vec3::Y);
 }
 
 #[derive(Component)]
