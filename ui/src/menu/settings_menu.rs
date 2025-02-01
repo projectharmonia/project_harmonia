@@ -104,14 +104,14 @@ impl SettingsMenuPlugin {
     }
 
     fn update_mapping_text(
-        buttons: Query<(&MappingButton, &Children), Changed<MappingButton>>,
+        buttons: Query<(&KeyButton, &Children), Changed<KeyButton>>,
         mut text: Query<&mut Text>,
     ) {
-        for (mapping, children) in &buttons {
+        for (button, children) in &buttons {
             let mut iter = text.iter_many_mut(children);
             let mut text = iter.fetch_next().unwrap();
             text.clear();
-            if let Some(key) = mapping.key {
+            if let Some(key) = button.key {
                 write!(text, "{key:?}").unwrap();
             } else {
                 write!(text, "Empty").unwrap();
@@ -124,10 +124,10 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         theme: Res<Theme>,
         root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
-        buttons: Query<&MappingButton>,
+        buttons: Query<&KeyButton>,
     ) {
-        let mapping = buttons.get(trigger.entity()).unwrap();
-        info!("starting binding for '{}'", mapping.name);
+        let button = buttons.get(trigger.entity()).unwrap();
+        info!("starting binding for '{}'", button.name);
 
         commands.entity(*root_entity).with_children(|parent| {
             parent
@@ -148,7 +148,7 @@ impl SettingsMenuPlugin {
                         .with_children(|parent| {
                             parent.spawn((
                                 BindingLabel,
-                                Text::new(format!("Binding \"{}\", press any key", mapping.name)),
+                                Text::new(format!("Binding \"{}\", press any key", button.name)),
                             ));
                             parent
                                 .spawn(Node {
@@ -188,7 +188,7 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut key_events: EventReader<KeyboardInput>,
         dialog: Single<(Entity, &mut BindingDialog)>,
-        mut buttons: Query<(Entity, &mut MappingButton)>,
+        mut buttons: Query<(Entity, &mut KeyButton)>,
         mut labels: Query<&mut Text, With<BindingLabel>>,
         mut replace_nodes: Query<&mut Node, With<ReplaceButton>>,
     ) {
@@ -197,23 +197,23 @@ impl SettingsMenuPlugin {
         };
 
         let (dialog_entity, mut dialog) = dialog.into_inner();
-        if let Some((conflict_entity, mapping)) = buttons
+        if let Some((conflict_entity, button)) = buttons
             .iter()
             .find(|(_, mapping)| mapping.key == Some(key_code))
         {
-            info!("found conflict with '{}' for `{key_code:?}`", mapping.name);
+            info!("found conflict with '{}' for `{key_code:?}`", button.name);
             **labels.single_mut() =
-                format!("\"{key_code:?}\" is already used by \"{:?}\"", mapping.name);
+                format!("\"{key_code:?}\" is already used by \"{:?}\"", button.name);
 
             dialog.conflict_button = Some(conflict_entity);
 
             replace_nodes.single_mut().display = Display::Flex;
         } else {
-            let (_, mut mapping) = buttons
+            let (_, mut button) = buttons
                 .get_mut(dialog.binding_button)
-                .expect("binding dialog should point to a button with mapping");
-            info!("assigning `{key_code:?}` to '{}'", mapping.name);
-            mapping.key = Some(key_code);
+                .expect("binding dialog should point to a button with key");
+            info!("assigning `{key_code:?}` to '{}'", button.name);
+            button.key = Some(key_code);
             commands.entity(dialog_entity).despawn_recursive();
         }
     }
@@ -222,22 +222,22 @@ impl SettingsMenuPlugin {
         _trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
         dialog: Single<(Entity, &BindingDialog)>,
-        mut buttons: Query<&mut MappingButton>,
+        mut buttons: Query<&mut KeyButton>,
     ) {
         let (dialog_entity, dialog) = *dialog;
-        let mut conflict_mapping = dialog
+        let mut conflict_button = dialog
             .conflict_button
             .and_then(|entity| buttons.get_mut(entity).ok())
             .expect("binding conflict should point to a button");
-        let input_kind = conflict_mapping.key;
-        conflict_mapping.key = None;
+        let input_kind = conflict_button.key;
+        conflict_button.key = None;
 
-        let mut mapping = buttons
+        let mut button = buttons
             .get_mut(dialog.binding_button)
             .expect("binding should point to a button");
-        mapping.key = input_kind;
+        button.key = input_kind;
 
-        info!("reassigning binding to '{}'", mapping.name);
+        info!("reassigning binding to '{}'", button.name);
         commands.entity(dialog_entity).despawn_recursive();
     }
 
@@ -245,15 +245,15 @@ impl SettingsMenuPlugin {
         _trigger: Trigger<Pointer<Click>>,
         mut commands: Commands,
         dialog: Single<(Entity, &BindingDialog)>,
-        mut buttons: Query<&mut MappingButton>,
+        mut buttons: Query<&mut KeyButton>,
     ) {
         let (entity, dialog) = *dialog;
-        let mut mapping = buttons
+        let mut button = buttons
             .get_mut(dialog.binding_button)
             .expect("binding should point to a button");
-        mapping.key = None;
+        button.key = None;
 
-        info!("deleting binding for '{}'", mapping.name);
+        info!("deleting binding for '{}'", button.name);
         commands.entity(entity).despawn_recursive();
     }
 
@@ -271,7 +271,7 @@ impl SettingsMenuPlugin {
         mut commands: Commands,
         mut settings: ResMut<Settings>,
         menu_entity: Single<Entity, With<SettingsMenu>>,
-        buttons: Query<(&MappingButton, &SettingsField)>,
+        buttons: Query<(&KeyButton, &SettingsField)>,
         checkboxes: Query<(&Checkbox, &SettingsField)>,
     ) {
         info!("confirming settings");
@@ -283,8 +283,8 @@ impl SettingsMenuPlugin {
             *field_value = checkbox.0;
         }
         settings.keyboard.clear();
-        for (mapping, field) in &buttons {
-            if let Some(key) = mapping.key {
+        for (button, field) in &buttons {
+            if let Some(key) = button.key {
                 let field_value = settings
                     .path_mut::<Vec<KeyCode>>(field.0)
                     .expect("fields with mappings should be stored as Vec");
@@ -431,7 +431,7 @@ fn setup_action_row(
         parent
             .spawn((
                 field,
-                MappingButton {
+                KeyButton {
                     name,
                     key: keys.get(index).copied(),
                 },
@@ -514,7 +514,7 @@ struct ReplaceButton;
 /// Stores information about button mapping.
 #[derive(Component)]
 #[require(Name(|| Name::new("Mapping button")), ButtonKind(|| ButtonKind::Normal))]
-struct MappingButton {
+struct KeyButton {
     name: &'static str,
     key: Option<KeyCode>,
 }
