@@ -343,8 +343,7 @@ fn read_binding(
         .find(|(_, mapping)| mapping.key == Some(key_code))
     {
         info!("found conflict with '{}' for `{key_code:?}`", button.name);
-        **labels.single_mut() =
-            format!("\"{key_code:?}\" is already used by \"{:?}\"", button.name);
+        **labels.single_mut() = format!("\"{key_code:?}\" is already used by \"{}\"", button.name);
 
         dialog.conflict_button = Some(conflict_entity);
 
