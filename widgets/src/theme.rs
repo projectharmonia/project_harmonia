@@ -50,8 +50,8 @@ impl FromWorld for Theme {
                     color: Color::srgb(0.9, 0.9, 0.9).into(),
                 },
                 symbol: TextButtonTheme {
-                    width: Val::Px(30.0),
-                    height: Val::Px(30.0),
+                    width: Val::Px(35.0),
+                    height: Val::Px(35.0),
                     font: symbol_handle.clone(),
                     font_size: 20.0,
                     color: Color::srgb(0.9, 0.9, 0.9).into(),

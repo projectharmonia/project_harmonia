@@ -145,17 +145,17 @@ pub struct VideoSettings {
 #[derive(Clone, Deserialize, Reflect, Serialize)]
 #[serde(default)]
 pub struct KeyboardSettings {
-    pub camera_forward: Vec<KeyCode>,
-    pub camera_left: Vec<KeyCode>,
-    pub camera_backward: Vec<KeyCode>,
-    pub camera_right: Vec<KeyCode>,
-    pub rotate_left: Vec<KeyCode>,
-    pub rotate_right: Vec<KeyCode>,
-    pub zoom_in: Vec<KeyCode>,
-    pub zoom_out: Vec<KeyCode>,
-    pub delete: Vec<KeyCode>,
-    pub free_placement: Vec<KeyCode>,
-    pub ordinal_placement: Vec<KeyCode>,
+    pub camera_forward: Vec<Input>,
+    pub camera_left: Vec<Input>,
+    pub camera_backward: Vec<Input>,
+    pub camera_right: Vec<Input>,
+    pub rotate_left: Vec<Input>,
+    pub rotate_right: Vec<Input>,
+    pub zoom_in: Vec<Input>,
+    pub zoom_out: Vec<Input>,
+    pub delete: Vec<Input>,
+    pub free_placement: Vec<Input>,
+    pub ordinal_placement: Vec<Input>,
 }
 
 impl KeyboardSettings {
@@ -176,17 +176,17 @@ impl KeyboardSettings {
 impl Default for KeyboardSettings {
     fn default() -> Self {
         Self {
-            camera_forward: vec![KeyCode::KeyW, KeyCode::ArrowUp],
-            camera_left: vec![KeyCode::KeyA, KeyCode::ArrowLeft],
-            camera_backward: vec![KeyCode::KeyS, KeyCode::ArrowDown],
-            camera_right: vec![KeyCode::KeyD, KeyCode::ArrowRight],
-            rotate_left: vec![KeyCode::Comma],
-            rotate_right: vec![KeyCode::Period],
-            zoom_in: vec![KeyCode::Equal, KeyCode::NumpadAdd],
-            zoom_out: vec![KeyCode::Minus, KeyCode::NumpadSubtract],
-            delete: vec![KeyCode::Delete, KeyCode::Backspace],
-            free_placement: vec![KeyCode::AltLeft, KeyCode::AltRight],
-            ordinal_placement: vec![KeyCode::ShiftLeft, KeyCode::ShiftRight],
+            camera_forward: vec![KeyCode::KeyW.into(), KeyCode::ArrowUp.into()],
+            camera_left: vec![KeyCode::KeyA.into(), KeyCode::ArrowLeft.into()],
+            camera_backward: vec![KeyCode::KeyS.into(), KeyCode::ArrowDown.into()],
+            camera_right: vec![KeyCode::KeyD.into(), KeyCode::ArrowRight.into()],
+            rotate_left: vec![KeyCode::Comma.into()],
+            rotate_right: vec![KeyCode::Period.into()],
+            zoom_in: vec![KeyCode::Equal.into(), KeyCode::NumpadAdd.into()],
+            zoom_out: vec![KeyCode::Minus.into(), KeyCode::NumpadSubtract.into()],
+            delete: vec![KeyCode::Delete.into(), KeyCode::Backspace.into()],
+            free_placement: vec![KeyCode::AltLeft.into(), KeyCode::AltRight.into()],
+            ordinal_placement: vec![KeyCode::ShiftLeft.into(), KeyCode::ShiftRight.into()],
         }
     }
 }
