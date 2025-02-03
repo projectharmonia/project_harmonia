@@ -26,7 +26,7 @@ bevy_mod_billboard = { git = "https://github.com/voximity/bevy_mod_billboard", b
 bevy_simple_text_input = "0.10"
 vleue_navigator = { version = "0.11", features = ["avian3d"] }
 avian3d = { version = "0.2", features = ["serialize"] }
-bevy-inspector-egui = "0.28"
+bevy-inspector-egui = "0.29"
 app_dirs2 = "2.5"
 serde = "1.0"
 earcut = "0.4"
