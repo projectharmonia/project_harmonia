@@ -34,124 +34,121 @@ impl Plugin for RoadPlugin {
             .register_type::<RoadData>()
             .replicate::<Road>()
             .add_mapped_client_event::<CommandRequest<RoadCommand>>(ChannelKind::Unordered)
-            .add_observer(Self::init)
+            .add_observer(init)
             .add_systems(
                 PostUpdate,
                 (
-                    Self::apply_command
+                    apply_command
                         .run_if(server_or_singleplayer)
                         .before(ServerSet::StoreHierarchy),
-                    Self::update_meshes.after(segment::update_connections),
+                    update_meshes.after(segment::update_connections),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
     }
 }
 
-impl RoadPlugin {
-    fn init(
-        trigger: Trigger<OnAdd, Road>,
-        asset_server: Res<AssetServer>,
-        mut meshes: ResMut<Assets<Mesh>>,
-        manifests: Res<Assets<RoadManifest>>,
-        mut roads: Query<(
-            &Road,
-            &mut RoadData,
-            &mut Mesh3d,
-            &mut MeshMaterial3d<StandardMaterial>,
-        )>,
-    ) {
-        let (road, mut road_data, mut mesh, mut material) =
-            roads.get_mut(trigger.entity()).unwrap();
-        let Some(manifest_handle) = asset_server.get_handle(&**road) else {
-            error!("'{}' is missing, ignoring", &**road);
-            return;
-        };
+fn init(
+    trigger: Trigger<OnAdd, Road>,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    manifests: Res<Assets<RoadManifest>>,
+    mut roads: Query<(
+        &Road,
+        &mut RoadData,
+        &mut Mesh3d,
+        &mut MeshMaterial3d<StandardMaterial>,
+    )>,
+) {
+    let (road, mut road_data, mut mesh, mut material) = roads.get_mut(trigger.entity()).unwrap();
+    let Some(manifest_handle) = asset_server.get_handle(&**road) else {
+        error!("'{}' is missing, ignoring", &**road);
+        return;
+    };
 
-        debug!("initializing road '{}' for `{}`", &**road, trigger.entity());
+    debug!("initializing road '{}' for `{}`", &**road, trigger.entity());
 
-        let manifest = manifests
-            .get(&manifest_handle)
-            .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**road));
+    let manifest = manifests
+        .get(&manifest_handle)
+        .unwrap_or_else(|| panic!("'{:?}' should be loaded", &**road));
 
-        road_data.half_width = manifest.half_width;
-        **mesh = meshes.add(DynamicMesh::create_empty());
-        **material = asset_server.load(manifest.material.clone());
-    }
+    road_data.half_width = manifest.half_width;
+    **mesh = meshes.add(DynamicMesh::create_empty());
+    **material = asset_server.load(manifest.material.clone());
+}
 
-    fn update_meshes(
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut changed_roads: Query<
-            (
-                &Mesh3d,
-                Ref<Segment>,
-                &SegmentConnections,
-                &RoadData,
-                &mut Collider,
-            ),
-            Changed<SegmentConnections>,
-        >,
-    ) {
-        for (mesh_handle, segment, connections, road_data, mut collider) in &mut changed_roads {
-            let mesh = meshes
-                .get_mut(mesh_handle)
-                .expect("road handles should be valid");
+fn update_meshes(
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut changed_roads: Query<
+        (
+            &Mesh3d,
+            Ref<Segment>,
+            &SegmentConnections,
+            &RoadData,
+            &mut Collider,
+        ),
+        Changed<SegmentConnections>,
+    >,
+) {
+    for (mesh_handle, segment, connections, road_data, mut collider) in &mut changed_roads {
+        let mesh = meshes
+            .get_mut(mesh_handle)
+            .expect("road handles should be valid");
 
-            trace!("regenerating road mesh");
-            let mut dyn_mesh = DynamicMesh::take(mesh);
-            road_mesh::generate(&mut dyn_mesh, *segment, connections, road_data.half_width);
-            dyn_mesh.apply(mesh);
+        trace!("regenerating road mesh");
+        let mut dyn_mesh = DynamicMesh::take(mesh);
+        road_mesh::generate(&mut dyn_mesh, *segment, connections, road_data.half_width);
+        dyn_mesh.apply(mesh);
 
-            if segment.is_changed() || collider.is_added() {
-                trace!("regenerating road collision");
-                *collider = road_mesh::generate_collider(*segment, road_data.half_width);
-            }
+        if segment.is_changed() || collider.is_added() {
+            trace!("regenerating road collision");
+            *collider = road_mesh::generate_collider(*segment, road_data.half_width);
         }
     }
+}
 
-    fn apply_command(
-        mut commands: Commands,
-        mut request_events: EventReader<FromClient<CommandRequest<RoadCommand>>>,
-        mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
-        mut roads: Query<&mut Segment, With<Road>>,
-    ) {
-        for FromClient { client_id, event } in request_events.read().cloned() {
-            // TODO: validate if command can be applied.
-            let mut confirmation = CommandConfirmation::new(event.id);
-            match event.command {
-                RoadCommand::Create {
-                    city_entity,
-                    manifest_path,
-                    segment,
-                } => {
-                    info!("`{client_id:?}` spawns road");
-                    commands.entity(city_entity).with_children(|parent| {
-                        let entity = parent.spawn((Road(manifest_path.clone()), segment)).id();
-                        confirmation.entity = Some(entity);
-                    });
-                }
-                RoadCommand::EditPoint {
-                    entity,
-                    kind,
-                    point,
-                } => match roads.get_mut(entity) {
-                    Ok(mut segment) => {
-                        info!("`{client_id:?}` edits `{kind:?}` for road `{entity}`");
-                        segment.set_point(kind, point);
-                    }
-                    Err(e) => error!("unable to move road `{entity}`: {e}"),
-                },
-                RoadCommand::Delete { entity } => {
-                    info!("`{client_id:?}` removes road `{entity}`");
-                    commands.entity(entity).despawn();
-                }
+fn apply_command(
+    mut commands: Commands,
+    mut request_events: EventReader<FromClient<CommandRequest<RoadCommand>>>,
+    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
+    mut roads: Query<&mut Segment, With<Road>>,
+) {
+    for FromClient { client_id, event } in request_events.read().cloned() {
+        // TODO: validate if command can be applied.
+        let mut confirmation = CommandConfirmation::new(event.id);
+        match event.command {
+            RoadCommand::Create {
+                city_entity,
+                manifest_path,
+                segment,
+            } => {
+                info!("`{client_id:?}` spawns road");
+                commands.entity(city_entity).with_children(|parent| {
+                    let entity = parent.spawn((Road(manifest_path.clone()), segment)).id();
+                    confirmation.entity = Some(entity);
+                });
             }
-
-            confirm_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: confirmation,
-            });
+            RoadCommand::EditPoint {
+                entity,
+                kind,
+                point,
+            } => match roads.get_mut(entity) {
+                Ok(mut segment) => {
+                    info!("`{client_id:?}` edits `{kind:?}` for road `{entity}`");
+                    segment.set_point(kind, point);
+                }
+                Err(e) => error!("unable to move road `{entity}`: {e}"),
+            },
+            RoadCommand::Delete { entity } => {
+                info!("`{client_id:?}` removes road `{entity}`");
+                commands.entity(entity).despawn();
+            }
         }
+
+        confirm_events.send(ToClients {
+            mode: SendMode::Direct(client_id),
+            event: confirmation,
+        });
     }
 }
 
