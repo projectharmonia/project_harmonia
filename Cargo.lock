@@ -140,7 +140,7 @@ dependencies = [
  "ndk-context",
  "ndk-sys 0.6.0+11769913",
  "num_enum",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1090,7 +1090,7 @@ dependencies = [
  "bitfield",
  "interpolation",
  "nonmax",
- "thiserror",
+ "thiserror 1.0.69",
  "wgpu-types",
 ]
 
@@ -1260,9 +1260,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_replicon"
-version = "0.29.2"
+version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "355ea11780dbb02ce46211ec7e8f38343549eef782e9bf2f66d125e7be156378"
+checksum = "af2a0ea8a5aa1d9fb949cda6636d51744e38cdbd7d6986c50b36ee494ac4b86f"
 dependencies = [
  "bevy",
  "bincode",
@@ -1271,13 +1271,15 @@ dependencies = [
  "integer-encoding",
  "ordered-multimap",
  "serde",
+ "thiserror 2.0.11",
+ "typeid",
 ]
 
 [[package]]
 name = "bevy_replicon_renet"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fba162e2a4677c3afaaa6c1b149b60eebc618d02b356c4da157444404ed46f6"
+checksum = "39d256c39155fc1f41c38ef350e616d8a4ae204078907f1ae620d9d76bf9b963"
 dependencies = [
  "bevy",
  "bevy_renet",
@@ -1750,7 +1752,7 @@ dependencies = [
  "polling",
  "rustix",
  "slab",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2348,7 +2350,7 @@ dependencies = [
  "const_panic",
  "encase_derive",
  "glam",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2878,7 +2880,7 @@ checksum = "c151a2a5ef800297b4e79efa4f4bec035c5f51d5ae587287c9b952bdf734cacd"
 dependencies = [
  "log",
  "presser",
- "thiserror",
+ "thiserror 1.0.69",
  "windows",
 ]
 
@@ -3188,7 +3190,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.69",
  "walkdir",
  "windows-sys 0.45.0",
 ]
@@ -3460,7 +3462,7 @@ dependencies = [
  "rustc-hash 1.1.0",
  "spirv",
  "termcolor",
- "thiserror",
+ "thiserror 1.0.69",
  "unicode-xid",
 ]
 
@@ -3479,7 +3481,7 @@ dependencies = [
  "regex",
  "regex-syntax 0.8.5",
  "rustc-hash 1.1.0",
- "thiserror",
+ "thiserror 1.0.69",
  "tracing",
  "unicode-ident",
 ]
@@ -3525,7 +3527,7 @@ dependencies = [
  "ndk-sys 0.6.0+11769913",
  "num_enum",
  "raw-window-handle",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4056,7 +4058,7 @@ dependencies = [
  "slab",
  "smallvec",
  "spade",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4084,7 +4086,7 @@ dependencies = [
  "slab",
  "smallvec",
  "spade",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4206,7 +4208,7 @@ dependencies = [
  "log",
  "smallvec",
  "spade",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4864,7 +4866,7 @@ dependencies = [
  "log",
  "memmap2",
  "rustix",
- "thiserror",
+ "thiserror 1.0.69",
  "wayland-backend",
  "wayland-client",
  "wayland-csd-frame",
@@ -5028,7 +5030,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+dependencies = [
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -5036,6 +5047,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5635,7 +5657,7 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.69",
  "wgpu-hal",
  "wgpu-types",
 ]
@@ -5677,7 +5699,7 @@ dependencies = [
  "renderdoc-sys",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.69",
  "wasm-bindgen",
  "web-sys",
  "wgpu-types",

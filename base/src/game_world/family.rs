@@ -1,18 +1,15 @@
 pub mod building;
 pub mod editor;
 
-use std::io::Cursor;
+use std::{io::Cursor, mem};
 
 use bevy::{
-    ecs::{
-        entity::{EntityMapper, MapEntities},
-        reflect::ReflectCommandExt,
-    },
+    ecs::reflect::ReflectCommandExt,
     prelude::*,
     reflect::serde::{ReflectDeserializer, ReflectSerializer},
 };
 use bevy_replicon::{
-    core::event_registry::ctx::{ClientSendCtx, ServerReceiveCtx},
+    core::event::ctx::{ClientSendCtx, ServerReceiveCtx},
     prelude::*,
 };
 use bincode::{DefaultOptions, ErrorKind, Options};
@@ -38,24 +35,19 @@ impl Plugin for FamilyPlugin {
             .register_type::<Budget>()
             .replicate::<Budget>()
             .replicate_group::<(Family, Name)>()
-            .add_client_event_with(
+            .add_client_trigger_with(
                 ChannelKind::Unordered,
-                serialize_family_spawn,
-                deserialize_family_spawn,
+                serialize_family_create,
+                deserialize_family_create,
             )
-            .add_mapped_client_event::<FamilyDelete>(ChannelKind::Unordered)
-            .add_mapped_server_event::<SelectedFamilyCreated>(ChannelKind::Unordered)
+            .add_client_trigger::<FamilyDelete>(ChannelKind::Unordered)
+            .add_server_trigger::<SelectedFamilyCreated>(ChannelKind::Unordered)
             .add_observer(record_new_members)
             .add_observer(update_members)
+            .add_observer(create)
+            .add_observer(delete)
             .add_systems(OnEnter(WorldState::Family), select)
-            .add_systems(OnExit(WorldState::Family), deselect.never_param_warn())
-            .add_systems(
-                PreUpdate,
-                (create, delete)
-                    .run_if(server_or_singleplayer)
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            );
+            .add_systems(OnExit(WorldState::Family), deselect.never_param_warn());
     }
 }
 
@@ -73,46 +65,48 @@ fn update_members(trigger: Trigger<FamilyMemberAdded>, mut families: Query<&mut 
     members.push(**trigger)
 }
 
-fn create(
-    mut commands: Commands,
-    mut created_events: EventWriter<ToClients<SelectedFamilyCreated>>,
-    mut create_events: ResMut<Events<FromClient<FamilyCreate>>>,
-) {
-    for FromClient { client_id, event } in create_events.drain() {
-        info!("creating new family");
-        let family_entity = commands.spawn((Family, Name::new(event.scene.name))).id();
-        for actor in event.scene.actors {
-            commands.entity(event.city_entity).with_children(|parent| {
-                parent
-                    .spawn(Actor { family_entity })
-                    .insert_reflect(actor.into_partial_reflect());
-            });
-        }
-        if event.select {
-            created_events.send(ToClients {
-                mode: SendMode::Direct(client_id),
-                event: SelectedFamilyCreated(family_entity),
-            });
-        }
+fn create(mut trigger: Trigger<FromClient<FamilyCreate>>, mut commands: Commands) {
+    info!("creating new family");
+    let family_entity = commands
+        .spawn((Family, Name::new(mem::take(&mut trigger.event.scene.name))))
+        .id();
+    let entity = trigger.entity();
+    for actor in trigger.event.scene.actors.drain(..) {
+        commands.entity(entity).with_children(|parent| {
+            parent
+                .spawn(Actor { family_entity })
+                .insert_reflect(actor.into_partial_reflect());
+        });
+    }
+    if trigger.event.select {
+        commands.server_trigger_targets(
+            ToClients {
+                mode: SendMode::Direct(trigger.client_id),
+                event: SelectedFamilyCreated,
+            },
+            family_entity,
+        );
     }
 }
 
 fn delete(
+    trigger: Trigger<FromClient<FamilyDelete>>,
     mut commands: Commands,
-    mut delete_events: EventReader<FromClient<FamilyDelete>>,
     families: Query<&mut FamilyMembers>,
 ) {
-    for family_entity in delete_events.read().map(|event| event.event.0) {
-        match families.get(family_entity) {
-            Ok(members) => {
-                info!("deleting family `{family_entity}`");
-                commands.entity(family_entity).despawn();
-                for &entity in &members.0 {
-                    commands.entity(entity).despawn_recursive();
-                }
+    match families.get(trigger.entity()) {
+        Ok(members) => {
+            info!(
+                "`{:?}` deletes family `{}`",
+                trigger.client_id,
+                trigger.entity()
+            );
+            commands.entity(trigger.entity()).despawn();
+            for &entity in &members.0 {
+                commands.entity(entity).despawn_recursive();
             }
-            Err(e) => error!("received an invalid family to despawn: {e}"),
         }
+        Err(e) => error!("received an invalid family to despawn: {e}"),
     }
 }
 
@@ -130,12 +124,11 @@ fn deselect(mut commands: Commands, selected_actor: Single<&Actor, With<Selected
         .remove::<SelectedFamily>();
 }
 
-fn serialize_family_spawn(
+fn serialize_family_create(
     ctx: &mut ClientSendCtx,
     event: &FamilyCreate,
-    cursor: &mut Cursor<Vec<u8>>,
+    cursor: &mut Vec<u8>,
 ) -> bincode::Result<()> {
-    DefaultOptions::new().serialize_into(&mut *cursor, &event.city_entity)?;
     DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.name)?;
     DefaultOptions::new().serialize_into(&mut *cursor, &event.scene.actors.len())?;
     for actor in &event.scene.actors {
@@ -147,11 +140,10 @@ fn serialize_family_spawn(
     Ok(())
 }
 
-fn deserialize_family_spawn(
+fn deserialize_family_create(
     ctx: &mut ServerReceiveCtx,
     cursor: &mut Cursor<&[u8]>,
 ) -> bincode::Result<FamilyCreate> {
-    let city_entity = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let name = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let actors_count = DefaultOptions::new().deserialize_from(&mut *cursor)?;
     let mut actors = Vec::with_capacity(actors_count);
@@ -186,7 +178,6 @@ fn deserialize_family_spawn(
     let select = DefaultOptions::new().deserialize_from(cursor)?;
 
     Ok(FamilyCreate {
-        city_entity,
         scene: FamilyScene { name, actors },
         select,
     })
@@ -251,32 +242,13 @@ pub struct SelectedFamily;
 
 #[derive(Event)]
 pub struct FamilyCreate {
-    pub city_entity: Entity,
     pub scene: FamilyScene,
     pub select: bool,
 }
 
-impl MapEntities for FamilyCreate {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.city_entity = entity_mapper.map_entity(self.city_entity);
-    }
-}
-
-#[derive(Clone, Copy, Deserialize, Event, Serialize)]
-pub struct FamilyDelete(pub Entity);
-
-impl MapEntities for FamilyDelete {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.0 = entity_mapper.map_entity(self.0);
-    }
-}
+#[derive(Deserialize, Event, Serialize)]
+pub struct FamilyDelete;
 
 /// An event from server which indicates spawn confirmation for the selected family.
 #[derive(Deserialize, Event, Serialize)]
-pub(super) struct SelectedFamilyCreated(pub(super) Entity);
-
-impl MapEntities for SelectedFamilyCreated {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.0 = entity_mapper.map_entity(self.0);
-    }
-}
+pub(super) struct SelectedFamilyCreated;

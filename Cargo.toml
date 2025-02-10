@@ -19,8 +19,8 @@ project_harmonia_widgets = { path = "widgets" }
 bevy = { version = "0.15", default-features = false }
 bevy_atmosphere = "0.12"
 bevy_enhanced_input = { git = "https://github.com/projectharmonia/bevy_enhanced_input" }
-bevy_replicon = "0.29"
-bevy_replicon_renet = "0.6"
+bevy_replicon = "0.30"
+bevy_replicon_renet = "0.7"
 bevy_mod_outline = "0.9"
 bevy_mod_billboard = { git = "https://github.com/voximity/bevy_mod_billboard", branch = "migrate-0.15" }
 bevy_simple_text_input = "0.10"

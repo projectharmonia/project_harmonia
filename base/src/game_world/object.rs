@@ -32,14 +32,9 @@ impl Plugin for ObjectPlugin {
         app.add_plugins((DoorPlugin, PlacingObjectPlugin, WallMountPlugin))
             .register_type::<Object>()
             .replicate_group::<(Object, Transform)>()
-            .add_mapped_client_event::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
+            .add_mapped_client_trigger::<CommandRequest<ObjectCommand>>(ChannelKind::Unordered)
             .add_observer(init)
-            .add_systems(
-                PostUpdate,
-                apply_command
-                    .before(ServerSet::StoreHierarchy)
-                    .run_if(server_or_singleplayer),
-            );
+            .add_observer(apply_command);
     }
 }
 
@@ -79,57 +74,58 @@ fn init(
 }
 
 fn apply_command(
+    trigger: Trigger<FromClient<CommandRequest<ObjectCommand>>>,
     mut commands: Commands,
-    mut request_events: EventReader<FromClient<CommandRequest<ObjectCommand>>>,
-    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
     mut objects: Query<&mut Transform, Without<City>>,
 ) {
-    for FromClient { client_id, event } in request_events.read().cloned() {
-        // TODO: validate if command can be applied.
-        let mut confirmation = CommandConfirmation::new(event.id);
-        match event.command {
-            ObjectCommand::Buy {
-                manifest_path,
-                city_entity,
-                translation,
-                rotation,
-            } => {
-                if translation.y.abs() > HALF_CITY_SIZE {
-                    error!("received translation {translation} with 'y' outside of city size");
-                    continue;
-                }
+    // TODO: validate if command can be applied.
+    let mut confirmation = CommandConfirmation::new(trigger.event.id);
+    match &trigger.event.command {
+        ObjectCommand::Buy {
+            manifest_path,
+            city_entity,
+            translation,
+            rotation,
+        } => {
+            if translation.y.abs() > HALF_CITY_SIZE {
+                error!("received translation {translation} with 'y' outside of city size");
+                return;
+            }
 
-                info!("`{client_id:?}` buys object {manifest_path:?}");
-                commands.entity(city_entity).with_children(|parent| {
-                    let transform =
-                        Transform::from_translation(translation).with_rotation(rotation);
-                    let entity = parent.spawn((Object(manifest_path), transform)).id();
-                    confirmation.entity = Some(entity);
-                });
-            }
-            ObjectCommand::Move {
-                entity,
-                translation,
-                rotation,
-            } => match objects.get_mut(entity) {
-                Ok(mut transform) => {
-                    info!("`{client_id:?}` moves object `{entity}`");
-                    transform.translation = translation;
-                    transform.rotation = rotation;
-                }
-                Err(e) => error!("unable to move object `{entity}`: {e}"),
-            },
-            ObjectCommand::Sell { entity } => {
-                info!("`{client_id:?}` sells object `{entity}`");
-                commands.entity(entity).despawn_recursive();
-            }
+            info!("`{:?}` buys object {manifest_path:?}", trigger.client_id);
+            commands.entity(*city_entity).with_children(|parent| {
+                let transform = Transform::from_translation(*translation).with_rotation(*rotation);
+                let entity = parent
+                    .spawn((Object(manifest_path.clone()), transform))
+                    .id();
+                confirmation.entity = Some(entity);
+            });
         }
-
-        confirm_events.send(ToClients {
-            mode: SendMode::Direct(client_id),
-            event: confirmation,
-        });
+        ObjectCommand::Move {
+            entity,
+            translation,
+            rotation,
+        } => match objects.get_mut(*entity) {
+            Ok(mut transform) => {
+                info!("`{:?}` moves object `{entity}`", trigger.client_id);
+                transform.translation = *translation;
+                transform.rotation = *rotation;
+            }
+            Err(e) => {
+                error!("unable to move object `{entity}`: {e}");
+                return;
+            }
+        },
+        ObjectCommand::Sell { entity } => {
+            info!("`{:?}` sells object `{entity}`", trigger.client_id);
+            commands.entity(*entity).despawn_recursive();
+        }
     }
+
+    commands.server_trigger(ToClients {
+        mode: SendMode::Direct(trigger.client_id),
+        event: confirmation,
+    });
 }
 
 /// Contains path to the object info.
@@ -202,7 +198,7 @@ impl PendingCommand for ObjectCommand {
             }
         };
 
-        world.send_event(CommandRequest { id, command: *self });
+        world.client_trigger(CommandRequest { id, command: *self });
 
         Box::new(reverse_command)
     }

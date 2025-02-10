@@ -16,8 +16,8 @@ impl Plugin for EditorPlugin {
         app.add_observer(reset_family)
             .add_observer(show)
             .add_observer(hide)
+            .add_observer(play)
             .add_systems(OnEnter(WorldState::FamilyEditor), setup)
-            .add_systems(Update, play.run_if(in_state(WorldState::FamilyEditor)))
             .add_systems(
                 PostUpdate,
                 update_names.run_if(in_state(WorldState::FamilyEditor)),
@@ -41,17 +41,19 @@ fn setup(mut commands: Commands) {
 }
 
 fn play(
+    trigger: Trigger<SelectedFamilyCreated>,
     mut commands: Commands,
-    mut spawn_select_events: EventReader<SelectedFamilyCreated>,
     families: Query<&FamilyMembers>,
 ) {
-    for members in families.iter_many(spawn_select_events.read().map(|event| event.0)) {
+    if let Ok(members) = families.get(trigger.entity()) {
         info!("starting playing");
         let actor_entity = *members
             .first()
             .expect("family should always have at least one member");
         commands.entity(actor_entity).insert(SelectedActor);
         commands.set_state(WorldState::Family);
+    } else {
+        error!("received create confirmation for invalid family");
     }
 }
 

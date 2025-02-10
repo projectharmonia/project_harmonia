@@ -21,15 +21,10 @@ impl Plugin for TaskPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((FriendlyPlugins, LinkedTaskPlugin, MoveHerePlugin))
             .replicate::<ActiveTask>()
-            .add_client_event::<TaskCancel>(ChannelKind::Unordered)
+            .add_client_trigger::<TaskCancel>(ChannelKind::Unordered)
             .add_observer(spawn_available.never_param_warn())
             .add_observer(cleanup)
-            .add_systems(
-                PreUpdate,
-                cancel
-                    .after(ClientSet::Receive)
-                    .run_if(server_or_singleplayer),
-            )
+            .add_observer(cancel)
             .add_systems(PostUpdate, activate_queued.run_if(server_or_singleplayer));
     }
 }
@@ -89,17 +84,19 @@ fn activate_queued(
 }
 
 fn cancel(
+    trigger: Trigger<FromClient<TaskCancel>>,
     mut commands: Commands,
-    mut cancel_events: EventReader<FromClient<TaskCancel>>,
     tasks: Query<(), With<Task>>,
 ) {
-    for FromClient { client_id, event } in cancel_events.read() {
-        if tasks.get(**event).is_ok() {
-            info!("`{client_id:?}` cancels task `{}`", **event);
-            commands.entity(**event).despawn();
-        } else {
-            error!("task {:?} is not active", **event);
-        }
+    if tasks.get(trigger.entity()).is_ok() {
+        info!(
+            "`{:?}` cancels task `{}`",
+            trigger.client_id,
+            trigger.entity(),
+        );
+        commands.entity(trigger.entity()).despawn();
+    } else {
+        error!("task {:?} is not active", trigger.entity());
     }
 }
 
@@ -155,72 +152,22 @@ bitflags! {
     }
 }
 
-/// An event for selecting a task from menu.
+/// A trigger for selecting a task from menu.
 #[derive(Deserialize, Event, Serialize)]
 pub struct TaskSelect;
 
-/// An event of canceling the specified task.
+/// A trigger of canceling the specified task.
 ///
 /// Emitted by players.
-#[derive(Deserialize, Event, Serialize, Deref)]
-pub struct TaskCancel(pub Entity);
+#[derive(Deserialize, Event, Serialize)]
+pub struct TaskCancel;
 
-#[derive(Event, Clone, Copy, Serialize, Deserialize)]
-pub struct TaskRequest<C> {
-    pub entity: Entity,
-    pub task: C,
-}
+#[derive(Event, Clone, Copy, Serialize, Deserialize, Deref)]
+pub struct TaskRequest<C>(C);
 
-impl<C> MapEntities for TaskRequest<C> {
+impl<C: MapEntities> MapEntities for TaskRequest<C> {
     fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.entity = entity_mapper.map_entity(self.entity);
-    }
-}
-
-#[derive(Event, Clone, Copy, Serialize, Deserialize)]
-pub struct MappedTaskRequest<C> {
-    pub entity: Entity,
-    pub task: C,
-}
-
-impl<C: MapEntities> MapEntities for MappedTaskRequest<C> {
-    fn map_entities<T: EntityMapper>(&mut self, entity_mapper: &mut T) {
-        self.entity = entity_mapper.map_entity(self.entity);
-        self.task.map_entities(entity_mapper);
-    }
-}
-
-trait Request<C> {
-    fn new(entity: Entity, task: C) -> Self;
-    fn entity(&self) -> Entity;
-    fn take_task(self) -> C;
-}
-
-impl<C> Request<C> for TaskRequest<C> {
-    fn new(entity: Entity, task: C) -> Self {
-        Self { entity, task }
-    }
-
-    fn entity(&self) -> Entity {
-        self.entity
-    }
-
-    fn take_task(self) -> C {
-        self.task
-    }
-}
-
-impl<C> Request<C> for MappedTaskRequest<C> {
-    fn new(entity: Entity, task: C) -> Self {
-        Self { entity, task }
-    }
-
-    fn entity(&self) -> Entity {
-        self.entity
-    }
-
-    fn take_task(self) -> C {
-        self.task
+        self.0.map_entities(entity_mapper);
     }
 }
 
@@ -241,14 +188,9 @@ impl TaskAppExt for App {
     {
         self.register_type::<C>()
             .replicate::<C>()
-            .add_client_event::<TaskRequest<C>>(ChannelKind::Ordered)
-            .add_observer(request::<TaskRequest<C>, _>)
-            .add_systems(
-                PreUpdate,
-                queue::<TaskRequest<C>, _>
-                    .after(ClientSet::Receive)
-                    .run_if(server_or_singleplayer),
-            )
+            .add_client_trigger::<TaskRequest<C>>(ChannelKind::Ordered)
+            .add_observer(request::<C>)
+            .add_observer(queue::<C>)
     }
 
     fn add_mapped_task<C>(&mut self) -> &mut Self
@@ -257,53 +199,43 @@ impl TaskAppExt for App {
     {
         self.register_type::<C>()
             .replicate_mapped::<C>()
-            .add_mapped_client_event::<MappedTaskRequest<C>>(ChannelKind::Ordered)
-            .add_observer(request::<MappedTaskRequest<C>, _>)
-            .add_systems(
-                PreUpdate,
-                queue::<MappedTaskRequest<C>, _>
-                    .after(ClientSet::Receive)
-                    .run_if(server_or_singleplayer),
-            )
+            .add_mapped_client_trigger::<TaskRequest<C>>(ChannelKind::Ordered)
+            .add_observer(request::<C>)
+            .add_observer(queue::<C>)
     }
 }
 
-fn request<R, C>(
+fn request<C: Component + Copy>(
     trigger: Trigger<TaskSelect>,
     mut commands: Commands,
-    mut request_events: EventWriter<R>,
     tasks: Query<(&Name, &C)>,
     tasks_entity: Single<Entity, With<AvailableTasks>>,
     selected_entity: Single<Entity, With<SelectedActor>>,
-) where
-    R: Request<C> + Event,
-    C: Component + Copy,
-{
+) {
     let Ok((name, &task)) = tasks.get(trigger.entity()) else {
         return;
     };
 
     info!("selecting `{name}`");
-    request_events.send(R::new(*selected_entity, task));
     commands.entity(*tasks_entity).despawn_recursive();
+    commands.client_trigger_targets(TaskRequest(task), *selected_entity);
 }
 
-fn queue<R, C>(
+fn queue<C: Component + Copy>(
+    trigger: Trigger<FromClient<TaskRequest<C>>>,
     mut commands: Commands,
-    mut request_events: EventReader<FromClient<R>>,
     actors: Query<(), With<Actor>>,
-) where
-    R: Request<C> + Copy + Event,
-    C: Component + Copy,
-{
-    for FromClient { client_id, event } in request_events.read() {
-        if actors.get(event.entity()).is_ok() {
-            info!("`{client_id:?}` requests task `{}`", any::type_name::<C>());
-            commands.entity(event.entity()).with_children(|parent| {
-                parent.spawn(event.take_task());
-            });
-        } else {
-            error!("entity {:?} is not an actor", event.entity());
-        }
+) {
+    if actors.get(trigger.entity()).is_ok() {
+        info!(
+            "`{:?}` requests task `{}`",
+            trigger.client_id,
+            any::type_name::<C>()
+        );
+        commands.entity(trigger.entity()).with_children(|parent| {
+            parent.spawn(*trigger.event);
+        });
+    } else {
+        error!("entity {:?} is not an actor", trigger.entity());
     }
 }

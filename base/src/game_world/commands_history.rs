@@ -21,33 +21,26 @@ impl Plugin for CommandHistoryPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HistoryBuffer>()
             .init_resource::<CommandIds>()
-            .add_server_event::<CommandConfirmation>(ChannelKind::Unordered)
-            .add_systems(
-                PreUpdate,
-                confirm
-                    .after(ClientSet::Receive)
-                    .run_if(in_state(GameState::InGame)),
-            )
+            .add_server_trigger::<CommandConfirmation>(ChannelKind::Unordered)
+            .add_observer(confirm)
             .add_systems(OnExit(GameState::InGame), cleanup);
     }
 }
 
 fn confirm(
+    trigger: Trigger<CommandConfirmation>,
     mut commands: Commands,
-    mut confirmation_events: EventReader<CommandConfirmation>,
     mut buffer: ResMut<HistoryBuffer>,
     despawn_entities: Query<(Entity, &PendingDespawn)>,
 ) {
-    for &confirmation in confirmation_events.read() {
-        buffer.confirm(confirmation);
+    buffer.confirm(*trigger);
 
-        if let Some((entity, _)) = despawn_entities
-            .iter()
-            .find(|(_, despawn)| despawn.command_id == confirmation.id)
-        {
-            debug!("despawning entity `{entity}` for `{confirmation:?}`");
-            commands.entity(entity).despawn_recursive();
-        }
+    if let Some((entity, _)) = despawn_entities
+        .iter()
+        .find(|(_, despawn)| despawn.command_id == trigger.id)
+    {
+        debug!("despawning entity `{entity}` for `{:?}`", trigger.id);
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -380,7 +373,7 @@ impl<'a> EntityRecorder<'a> {
     }
 }
 
-/// Server event to notify client about command confirmation.
+/// Server trigger to notify client about command confirmation.
 #[derive(Event, Serialize, Deserialize, Clone, Copy, Debug)]
 pub(super) struct CommandConfirmation {
     /// Confirmed command ID.

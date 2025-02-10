@@ -1,6 +1,7 @@
 use std::mem;
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 
 use project_harmonia_base::{
@@ -214,7 +215,7 @@ fn play_family(
 
 fn delete_family(
     trigger: Trigger<Pointer<Click>>,
-    mut delete_events: EventWriter<FamilyDelete>,
+    mut commands: Commands,
     buttons: Query<&WorldEntity>,
 ) {
     let world_entity = **buttons
@@ -222,7 +223,7 @@ fn delete_family(
         .expect("family button should reference world entity node");
 
     info!("deleting family `{world_entity}`");
-    delete_events.send(FamilyDelete(world_entity));
+    commands.client_trigger_targets(FamilyDelete, world_entity);
 }
 
 fn setup_city_buttons(parent: &mut ChildBuilder, world_entity: WorldEntity) {

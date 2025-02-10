@@ -33,16 +33,13 @@ impl Plugin for RoadPlugin {
             .register_type::<Road>()
             .register_type::<RoadData>()
             .replicate::<Road>()
-            .add_mapped_client_event::<CommandRequest<RoadCommand>>(ChannelKind::Unordered)
+            .add_mapped_client_trigger::<CommandRequest<RoadCommand>>(ChannelKind::Unordered)
             .add_observer(init)
+            .add_observer(apply_command)
             .add_systems(
                 PostUpdate,
-                (
-                    apply_command
-                        .run_if(server_or_singleplayer)
-                        .before(ServerSet::StoreHierarchy),
-                    update_meshes.after(segment::update_connections),
-                )
+                update_meshes
+                    .after(segment::update_connections)
                     .run_if(in_state(GameState::InGame)),
             );
     }
@@ -108,48 +105,51 @@ fn update_meshes(
 }
 
 fn apply_command(
+    trigger: Trigger<FromClient<CommandRequest<RoadCommand>>>,
     mut commands: Commands,
-    mut request_events: EventReader<FromClient<CommandRequest<RoadCommand>>>,
-    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
     mut roads: Query<&mut Segment, With<Road>>,
 ) {
-    for FromClient { client_id, event } in request_events.read().cloned() {
-        // TODO: validate if command can be applied.
-        let mut confirmation = CommandConfirmation::new(event.id);
-        match event.command {
-            RoadCommand::Create {
-                city_entity,
-                manifest_path,
-                segment,
-            } => {
-                info!("`{client_id:?}` spawns road");
-                commands.entity(city_entity).with_children(|parent| {
-                    let entity = parent.spawn((Road(manifest_path.clone()), segment)).id();
-                    confirmation.entity = Some(entity);
-                });
-            }
-            RoadCommand::EditPoint {
-                entity,
-                kind,
-                point,
-            } => match roads.get_mut(entity) {
-                Ok(mut segment) => {
-                    info!("`{client_id:?}` edits `{kind:?}` for road `{entity}`");
-                    segment.set_point(kind, point);
-                }
-                Err(e) => error!("unable to move road `{entity}`: {e}"),
-            },
-            RoadCommand::Delete { entity } => {
-                info!("`{client_id:?}` removes road `{entity}`");
-                commands.entity(entity).despawn();
-            }
+    // TODO: validate if command can be applied.
+    let mut confirmation = CommandConfirmation::new(trigger.event.id);
+    match &trigger.event.command {
+        RoadCommand::Create {
+            city_entity,
+            manifest_path,
+            segment,
+        } => {
+            info!("`{:?}` spawns road", trigger.client_id);
+            commands.entity(*city_entity).with_children(|parent| {
+                let entity = parent.spawn((Road(manifest_path.clone()), *segment)).id();
+                confirmation.entity = Some(entity);
+            });
         }
-
-        confirm_events.send(ToClients {
-            mode: SendMode::Direct(client_id),
-            event: confirmation,
-        });
+        RoadCommand::EditPoint {
+            entity,
+            kind,
+            point,
+        } => match roads.get_mut(*entity) {
+            Ok(mut segment) => {
+                info!(
+                    "`{:?}` edits `{kind:?}` for road `{entity}`",
+                    trigger.client_id
+                );
+                segment.set_point(*kind, *point);
+            }
+            Err(e) => {
+                error!("unable to move road `{entity}`: {e}");
+                return;
+            }
+        },
+        RoadCommand::Delete { entity } => {
+            info!("`{:?}` removes road `{entity}`", trigger.client_id);
+            commands.entity(*entity).despawn();
+        }
     }
+
+    commands.server_trigger(ToClients {
+        mode: SendMode::Direct(trigger.client_id),
+        event: confirmation,
+    });
 }
 
 #[derive(Clone, Component, Copy, Debug, Default, EnumIter, Eq, Hash, PartialEq, SubStates)]
@@ -244,7 +244,7 @@ impl PendingCommand for RoadCommand {
             }
         };
 
-        world.send_event(CommandRequest { id, command: *self });
+        world.client_trigger(CommandRequest { id, command: *self });
 
         Box::new(reverse_command)
     }

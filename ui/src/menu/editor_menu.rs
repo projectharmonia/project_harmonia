@@ -1,6 +1,7 @@
 use std::mem;
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use bevy_simple_text_input::TextInputValue;
 
 use crate::preview::{Preview, PreviewProcessed};
@@ -453,34 +454,37 @@ fn setup_place_family_dialog(
 
 fn place_and_play(
     trigger: Trigger<Pointer<Click>>,
-    mut spawn_events: EventWriter<FamilyCreate>,
+    mut commands: Commands,
     mut family_scene: ResMut<FamilyScene>,
     buttons: Query<&PlaceCityButton>,
 ) {
     info!("placing family with select");
     let city_button = buttons.get(trigger.entity()).unwrap();
-    spawn_events.send(FamilyCreate {
-        city_entity: city_button.city_entity,
-        scene: mem::take(&mut family_scene),
-        select: true,
-    });
+    commands.client_trigger_targets(
+        FamilyCreate {
+            scene: mem::take(&mut family_scene),
+            select: true,
+        },
+        city_button.city_entity,
+    );
 }
 
 fn place(
     trigger: Trigger<Pointer<Click>>,
     mut commands: Commands,
-    mut spawn_events: EventWriter<FamilyCreate>,
     mut family_scene: ResMut<FamilyScene>,
     buttons: Query<&PlaceCityButton>,
     dialog_entity: Single<Entity, With<Dialog>>,
 ) {
     info!("placing family");
     let city_button = buttons.get(trigger.entity()).unwrap();
-    spawn_events.send(FamilyCreate {
-        city_entity: city_button.city_entity,
-        scene: mem::take(&mut family_scene),
-        select: false,
-    });
+    commands.client_trigger_targets(
+        FamilyCreate {
+            scene: mem::take(&mut family_scene),
+            select: false,
+        },
+        city_button.city_entity,
+    );
     commands.entity(*dialog_entity).despawn_recursive();
     commands.trigger(EditorFamilyReset);
 }

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use bevy_replicon::prelude::*;
 use project_harmonia_base::game_world::actor::{
     task::{ActiveTask, Task, TaskCancel},
     SelectedActor,
@@ -87,13 +88,9 @@ fn change_actor(
     }
 }
 
-fn cancel(
-    trigger: Trigger<Pointer<Click>>,
-    mut cancel_events: EventWriter<TaskCancel>,
-    buttons: Query<&TaskButton>,
-) {
+fn cancel(trigger: Trigger<Pointer<Click>>, mut commands: Commands, buttons: Query<&TaskButton>) {
     let task_button = buttons.get(trigger.entity()).unwrap();
-    cancel_events.send(TaskCancel(task_button.task_entity));
+    commands.client_trigger_targets(TaskCancel, task_button.task_entity);
 }
 
 fn cleanup(

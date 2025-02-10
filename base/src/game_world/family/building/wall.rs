@@ -35,16 +35,13 @@ impl Plugin for WallPlugin {
             .init_resource::<WallMaterial>()
             .register_type::<Wall>()
             .replicate::<Wall>()
-            .add_mapped_client_event::<CommandRequest<WallCommand>>(ChannelKind::Unordered)
+            .add_mapped_client_trigger::<CommandRequest<WallCommand>>(ChannelKind::Unordered)
             .add_observer(init)
+            .add_observer(apply_command)
             .add_systems(
                 PostUpdate,
-                (
-                    apply_command
-                        .run_if(server_or_singleplayer)
-                        .before(ServerSet::StoreHierarchy),
-                    update_meshes.after(segment::update_connections),
-                )
+                update_meshes
+                    .after(segment::update_connections)
                     .run_if(in_state(GameState::InGame)),
             );
     }
@@ -101,47 +98,50 @@ pub(crate) fn update_meshes(
 }
 
 fn apply_command(
+    trigger: Trigger<FromClient<CommandRequest<WallCommand>>>,
     mut commands: Commands,
-    mut request_events: EventReader<FromClient<CommandRequest<WallCommand>>>,
-    mut confirm_events: EventWriter<ToClients<CommandConfirmation>>,
     mut walls: Query<&mut Segment, With<Wall>>,
 ) {
-    for FromClient { client_id, event } in request_events.read().copied() {
-        // TODO: validate if command can be applied.
-        let mut confirmation = CommandConfirmation::new(event.id);
-        match event.command {
-            WallCommand::Create {
-                city_entity,
-                segment,
-            } => {
-                info!("`{client_id:?}` creates wall");
-                commands.entity(city_entity).with_children(|parent| {
-                    let entity = parent.spawn((Wall, segment)).id();
-                    confirmation.entity = Some(entity);
-                });
-            }
-            WallCommand::EditPoint {
-                entity,
-                kind,
-                point,
-            } => match walls.get_mut(entity) {
-                Ok(mut segment) => {
-                    info!("`{client_id:?}` edits `{kind:?}` for wall `{entity}`");
-                    segment.set_point(kind, point);
-                }
-                Err(e) => error!("unable to move wall `{entity}`: {e}"),
-            },
-            WallCommand::Delete { entity } => {
-                info!("`{client_id:?}` removes wall `{entity}`");
-                commands.entity(entity).despawn();
-            }
+    // TODO: validate if command can be applied.
+    let mut confirmation = CommandConfirmation::new(trigger.event.id);
+    match trigger.event.command {
+        WallCommand::Create {
+            city_entity,
+            segment,
+        } => {
+            info!("`{:?}` creates wall", trigger.client_id);
+            commands.entity(city_entity).with_children(|parent| {
+                let entity = parent.spawn((Wall, segment)).id();
+                confirmation.entity = Some(entity);
+            });
         }
-
-        confirm_events.send(ToClients {
-            mode: SendMode::Direct(client_id),
-            event: confirmation,
-        });
+        WallCommand::EditPoint {
+            entity,
+            kind,
+            point,
+        } => match walls.get_mut(entity) {
+            Ok(mut segment) => {
+                info!(
+                    "`{:?}` edits `{kind:?}` for wall `{entity}`",
+                    trigger.client_id
+                );
+                segment.set_point(kind, point);
+            }
+            Err(e) => {
+                error!("unable to move wall `{entity}`: {e}");
+                return;
+            }
+        },
+        WallCommand::Delete { entity } => {
+            info!("`{:?}` removes wall `{entity}`", trigger.client_id);
+            commands.entity(entity).despawn();
+        }
     }
+
+    commands.server_trigger(ToClients {
+        mode: SendMode::Direct(trigger.client_id),
+        event: confirmation,
+    });
 }
 
 #[derive(Resource)]
@@ -306,7 +306,7 @@ impl PendingCommand for WallCommand {
             }
         };
 
-        world.send_event(CommandRequest { id, command: *self });
+        world.client_trigger(CommandRequest { id, command: *self });
 
         Box::new(reverse_command)
     }
