@@ -24,19 +24,19 @@ impl Plugin for InGameMenuPlugin {
 fn toggle(
     _trigger: Trigger<Started<ToggleIngameMenu>>,
     mut commands: Commands,
-    menu: Single<(Entity, &Parent, &mut Node), With<IngameMenu>>,
+    menu: Single<(Entity, &Parent, &mut Visibility), With<IngameMenu>>,
 ) {
-    let (entity, parent, mut node) = menu.into_inner();
-    match node.display {
-        Display::Flex => {
+    let (entity, parent, mut visibility) = menu.into_inner();
+    match *visibility {
+        Visibility::Inherited => {
             info!("closing in-game menu");
-            node.display = Display::None;
+            *visibility = Visibility::Hidden;
         }
-        Display::None => {
+        Visibility::Hidden => {
+            *visibility = Visibility::Inherited;
             info!("showing in-game menu");
-            node.display = Display::Flex;
         }
-        Display::Block | Display::Grid => unreachable!(),
+        Visibility::Visible => unreachable!(),
     }
 
     // Reparent to keep it on top of all UI.
@@ -51,14 +51,7 @@ fn setup(
 ) {
     commands.entity(*root_entity).with_children(|parent| {
         parent
-            .spawn((
-                IngameMenu,
-                Node {
-                    display: Display::None,
-                    ..Default::default()
-                },
-                StateScoped(**world_state),
-            ))
+            .spawn((IngameMenu, Visibility::Hidden, StateScoped(**world_state)))
             .with_children(|parent| {
                 parent
                     .spawn((
@@ -104,19 +97,22 @@ fn setup(
     });
 }
 
-fn resume(_trigger: Trigger<Pointer<Click>>, mut menu_node: Single<&mut Node, With<IngameMenu>>) {
+fn resume(
+    _trigger: Trigger<Pointer<Click>>,
+    mut menu_visibility: Single<&mut Visibility, With<IngameMenu>>,
+) {
     info!("closing in-game menu");
-    menu_node.display = Display::None;
+    **menu_visibility = Visibility::Hidden;
 }
 
 fn save(
     _trigger: Trigger<Pointer<Click>>,
     mut commands: Commands,
-    mut menu_node: Single<&mut Node, With<IngameMenu>>,
+    mut menu_visibility: Single<&mut Visibility, With<IngameMenu>>,
 ) {
     info!("closing in-game menu");
     commands.trigger(GameSave);
-    menu_node.display = Display::None;
+    **menu_visibility = Visibility::Hidden;
 }
 
 fn open_settings(_trigger: Trigger<Pointer<Click>>, mut commands: Commands) {
