@@ -263,7 +263,7 @@ fn delete_city(
 
     // TODO: use event for despawn, otherwise client will despawn the city locally.
     info!("deleting city `{world_entity}`");
-    commands.entity(world_entity).despawn();
+    commands.entity(world_entity).despawn_recursive();
 }
 
 fn setup_create_city_dialog(parent: &mut ChildBuilder, theme: &Theme) {
