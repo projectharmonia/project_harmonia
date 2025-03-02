@@ -163,21 +163,15 @@ fn delete(
     trigger: Trigger<Completed<DeleteSegment>>,
     mut commands: Commands,
     mut history: CommandsHistory,
-    placing_wall: Single<(&PlacingWall, &mut Segment)>,
-    walls: Query<&Segment, Without<PlacingWall>>,
+    placing_wall: Single<&PlacingWall>,
 ) {
-    let (&placing_wall, mut segment) = placing_wall.into_inner();
-
     info!("deleting wall");
-    if let PlacingWall::EditingPoint { entity } = placing_wall {
-        // Set original segment until the deletion is confirmed.
-        *segment = *walls.get(entity).expect("moving wall should exist");
-
+    if let PlacingWall::EditingPoint { entity } = **placing_wall {
         let command_id = history.push_pending(WallCommand::Delete { entity });
         commands
             .entity(trigger.entity())
             .insert(PendingDespawn { command_id })
-            .remove::<PlacingWall>();
+            .remove::<(PlacingWall, Segment)>();
     } else {
         commands.entity(trigger.entity()).despawn_recursive();
     }
@@ -210,7 +204,7 @@ fn confirm(
     commands
         .entity(trigger.entity())
         .insert(PendingDespawn { command_id })
-        .remove::<PlacingWall>();
+        .remove::<(PlacingWall, Segment)>();
 }
 
 #[derive(Debug, Clone, Copy, Component)]

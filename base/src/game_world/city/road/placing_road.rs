@@ -184,21 +184,15 @@ fn delete(
     trigger: Trigger<Completed<DeleteSegment>>,
     mut commands: Commands,
     mut history: CommandsHistory,
-    placing_road: Single<(&PlacingRoad, &mut Segment)>,
-    roads: Query<&Segment, Without<PlacingRoad>>,
+    placing_road: Single<&PlacingRoad>,
 ) {
-    let (&placing_road, mut segment) = placing_road.into_inner();
-
     info!("deleting road");
-    if let PlacingRoad::EditPoint { entity } = placing_road {
-        // Set original segment until the deletion is confirmed.
-        *segment = *roads.get(entity).expect("moving road should exist");
-
+    if let PlacingRoad::EditPoint { entity } = **placing_road {
         let command_id = history.push_pending(RoadCommand::Delete { entity });
         commands
             .entity(trigger.entity())
             .insert(PendingDespawn { command_id })
-            .remove::<PlacingRoad>();
+            .remove::<(PlacingRoad, Segment)>();
     } else {
         commands.entity(trigger.entity()).despawn_recursive();
     }
@@ -238,7 +232,7 @@ fn confirm(
     commands
         .entity(trigger.entity())
         .insert(PendingDespawn { command_id })
-        .remove::<PlacingRoad>();
+        .remove::<(PlacingRoad, Segment)>();
 }
 
 /// ID to spawn new roads with.

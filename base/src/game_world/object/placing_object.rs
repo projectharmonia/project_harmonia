@@ -184,15 +184,10 @@ fn sell(
     trigger: Trigger<Completed<SellObject>>,
     mut commands: Commands,
     mut history: CommandsHistory,
-    placing_object: Single<(&PlacingObject, &mut Transform)>,
-    objects: Query<&Transform, Without<PlacingObject>>,
+    placing_object: Single<&PlacingObject>,
 ) {
     info!("selling `{:?}`", trigger.entity());
-    let (&placing_object, mut transform) = placing_object.into_inner();
-    if let PlacingObject::Moving(entity) = placing_object {
-        // Set original position until the deletion is confirmed.
-        *transform = *objects.get(entity).expect("moving object should exist");
-
+    if let PlacingObject::Moving(entity) = **placing_object {
         let command_id = history.push_pending(ObjectCommand::Sell { entity });
         commands
             .entity(trigger.entity())
