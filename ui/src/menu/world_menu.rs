@@ -6,6 +6,7 @@ use bevy_simple_text_input::TextInputValue;
 
 use project_harmonia_base::{
     core::GameState,
+    error_message::ErrorMessage,
     game_world::{
         actor::SelectedActor,
         city::{ActiveCity, City},
@@ -335,6 +336,7 @@ fn create(
     theme: Res<Theme>,
     root_entity: Single<Entity, (With<Node>, Without<Parent>)>,
     tabs: Query<(&Toggled, &WorldTab)>,
+    cities: Query<(), With<City>>,
 ) {
     let current_tab = tabs
         .iter()
@@ -343,7 +345,13 @@ fn create(
 
     info!("starting creation for `{current_tab:?}`");
     match current_tab {
-        WorldTab::Families => commands.set_state(WorldState::FamilyEditor),
+        WorldTab::Families => {
+            if cities.is_empty() {
+                commands.trigger(ErrorMessage::new("You need to create at least one city"));
+            } else {
+                commands.set_state(WorldState::FamilyEditor);
+            }
+        }
         WorldTab::Cities => {
             commands.entity(*root_entity).with_children(|parent| {
                 setup_create_city_dialog(parent, &theme);
