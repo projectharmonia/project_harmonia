@@ -782,7 +782,7 @@ dependencies = [
 [[package]]
 name = "bevy_enhanced_input"
 version = "0.7.2"
-source = "git+https://github.com/projectharmonia/bevy_enhanced_input#aa52c073091add096e0a56f1f3d0156ba9a85e99"
+source = "git+https://github.com/projectharmonia/bevy_enhanced_input#0bec5be40d14b8ebccd55cd38ffd667d5ddabb4e"
 dependencies = [
  "bevy",
  "bevy_egui",
@@ -794,7 +794,7 @@ dependencies = [
 [[package]]
 name = "bevy_enhanced_input_macros"
 version = "0.7.0"
-source = "git+https://github.com/projectharmonia/bevy_enhanced_input#aa52c073091add096e0a56f1f3d0156ba9a85e99"
+source = "git+https://github.com/projectharmonia/bevy_enhanced_input#0bec5be40d14b8ebccd55cd38ffd667d5ddabb4e"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1585,7 +1585,7 @@ dependencies = [
  "bitflags 2.8.0",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.11.0",
  "log",
  "prettyplease",
  "proc-macro2",
